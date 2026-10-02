@@ -36,7 +36,7 @@ Apply `database/migrations/001_identity_authorization.sql` to a dedicated develo
 sqlcmd -S tcp:YOUR-SERVER.database.windows.net,1433 -d YOUR-DATABASE -G -b -i database/migrations/001_identity_authorization.sql
 ```
 
-No database has been provisioned or changed by this step. SQL syntax and constraints need live validation against Azure SQL before deployment. The script records its version transactionally and refuses repeat application. There is no destructive rollback script.
+The personal development database is provisioned. Migration 001 was applied and verified live on 2 October 2026 using the passwordless Node migration command. A new connection confirmed version 1 and all six roles. Application identity, scoped repositories and runtime database access remain pending. The script records its version transactionally and refuses repeat application. There is no destructive rollback script.
 
 Composite foreign keys stop cross-account relationships. They do not provide row-level read isolation. Future repositories must filter by trusted account context on every query; database RLS and restricted runtime permissions should be added before deployment.
 
@@ -53,6 +53,6 @@ The runtime application must not use schema-owner credentials.
 
 ## Next work
 
-Connect real Entra sign-in and Azure SQL, apply and validate the migration, implement authenticated repositories and `/api/me`, then build the skill-claim vertical slice.
+Connect real Entra application sign-in, configure a restricted runtime SQL identity, implement authenticated repositories and `/api/me`, then build the skill-claim vertical slice. The development schema is now initialized.
 
 Needed configuration: tenant ID, separate SPA/API app registrations, exposed API scope, localhost redirect URI, Azure SQL server/database and a permitted authentication method. Store secrets only in ignored local environment files or Azure secret management.

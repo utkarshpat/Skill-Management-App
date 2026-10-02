@@ -36,7 +36,7 @@ Laptop is the primary design and development view; phone layouts remain responsi
 
 The welcome page at `/` uses the supplied Sopra Steria logo and orange/red theme. Its Microsoft sign-in button is disabled until Entra integration is configured. The public `/preview` route shows the themed overview and API connection check, with no employee data and disabled module buttons. It does not create an authenticated session. Step 02 adds an SQL migration and tested permission/N+1 functions; these are not yet wired to authentication, HTTP or a live database. Protected API paths deny access. API liveness does not imply database readiness.
 
-See `docs/AZURE_SETUP.md` for the personal free Azure setup and later company migration. No Azure resource creation or live SQL migration has been completed yet. The provided mark file had a `.svg` extension but contained PNG bytes; it is stored as `apps/web/public/brand/sopra-steria-mark.png`. The full wordmark remains SVG.
+See `docs/AZURE_SETUP.md` for the personal free Azure setup and later company migration. The personal development Azure SQL database is deployed, and migration 001 has been applied and verified live. Application SSO and authenticated repositories are still pending. The provided mark file had a `.svg` extension but contained PNG bytes; it is stored as `apps/web/public/brand/sopra-steria-mark.png`. The full wordmark remains SVG.
 
 Vite serves the frontend locally; Express serves the API. Vite's `/api` proxy sends browser requests to Express so the frontend uses relative URLs. Production hosting/proxy and environment configuration will be added in a later step. The API binds to loopback for this local foundation.
 
@@ -51,7 +51,7 @@ npm.cmd run db:check -w apps/api
 npm.cmd run db:migrate -w apps/api
 ```
 
-Configure the ignored `apps/api/.env` and a supported local Azure developer identity first. `db:check` verifies a real connection and reports migration/role seed state; `db:migrate` executes the reviewed SQL migration. Both close the SQL connection after use. TLS certificate validation stays enabled. These tools do not enable API access or Microsoft sign-in in the frontend. Live integration remains unverified until network access and local Azure authentication are configured.
+Configure the ignored `apps/api/.env` and a supported local Azure developer identity first. `db:check` verifies a real connection and reports migration/role seed state; `db:migrate` executes the reviewed SQL migration. Both close the SQL connection after use. TLS certificate validation stays enabled. These tools do not enable API access or Microsoft sign-in in the frontend. Live setup verification succeeded on 2 October 2026: connected to the development database, applied migration 001, and confirmed six role seeds from a new connection. HTTP/database repositories and app SSO remain pending.
 
 Validate and apply the prepared migration, then connect organizational identity using validated server-side tokens. Azure tenant/application identifiers and database access will be needed to validate real integration. Never trust user IDs, roles or manager IDs supplied by the browser as authority.
 
