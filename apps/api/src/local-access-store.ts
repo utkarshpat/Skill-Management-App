@@ -6,7 +6,7 @@ import { permissionCatalogue, type PermissionCode } from './access-catalogue.js'
 
 export interface Assignment { permission: PermissionCode; scope: 'OWN' | 'ORGANIZATION'; effect: 'ALLOW' | 'DENY'; validUntil?: string }
 export interface CustomRole { id: string; name: string; permissions: Assignment[] }
-export interface LocalPerson { id: string; displayName: string; employeeCode: string; active: boolean; roleIds: string[]; overrides: Assignment[] }
+export interface LocalPerson { id: string; displayName: string; employeeCode: string; active: boolean; entraObjectId?:string; roleIds: string[]; overrides: Assignment[] }
 export interface LocalAccessState { revision: number; roles: CustomRole[]; people: LocalPerson[]; audit: { actorId: string; action: string; targetId: string; at: string; revision: number; before?: CustomRole | LocalPerson; after?: CustomRole | LocalPerson }[] }
 export class AccessError extends Error { constructor(public status: number, message: string) { super(message); } }
 export interface AccessStore {
@@ -95,7 +95,7 @@ export class LocalAccessStore {
         const previous = state.people.find(person => person.id === id);
         if (body.id !== undefined && !previous) throw new AccessError(404,'Person not found.');
         if (typeof body.active !== 'boolean' || !Array.isArray(body.roleIds) || body.roleIds.length > 100 || body.roleIds.some(roleId => typeof roleId !== 'string' || !state.roles.some(role => role.id === roleId))) throw new AccessError(400,'Invalid status or roles.');
-        const person: LocalPerson = { id, displayName:text(body.displayName,100), employeeCode:text(body.employeeCode,40), active:body.active, roleIds:[...new Set(body.roleIds as string[])], overrides:assignments(body.overrides) };
+        const person: LocalPerson = { id, displayName:text(body.displayName,100), employeeCode:text(body.employeeCode,40), active:body.active, ...(previous?.entraObjectId?{entraObjectId:previous.entraObjectId}:{}), roleIds:[...new Set(body.roleIds as string[])], overrides:assignments(body.overrides) };
         if (state.people.some(item => item.id !== id && item.employeeCode.toLowerCase() === person.employeeCode.toLowerCase())) throw new AccessError(400,'Person ID already exists.');
         if (!previous && state.people.length >= 200) throw new AccessError(400,'Local people limit reached.');
         state.people = [...state.people.filter(person => person.id !== id),person];

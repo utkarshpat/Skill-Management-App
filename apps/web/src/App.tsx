@@ -70,6 +70,7 @@ function ProfilePage() {
       if (response.status === 401) throw new Error('Your session could not be verified. Sign out and try again.');
       if (!response.ok) throw new Error('Your profile could not be loaded. Please try again.');
       const body = await response.json();
+      if(body.profile?.canManageAccess && !isDemoSession()){window.location.replace('/access');return;}
       if (active) setProfile(body.profile);
     }).catch(err => { if (active) setError(err.name === 'AbortError' ? 'The connection took too long. Please try again.' : err.message); }).finally(() => { clearTimeout(timeout); if (active) setLoading(false); });
     return () => { active = false; clearTimeout(timeout); controller.abort(); };

@@ -56,3 +56,8 @@ export async function profileToken() {
     throw new Error('Please sign in again to continue.');
   }
 }
+export async function authenticatedFetch(path:string,init:RequestInit={}) {
+  const headers=new Headers(init.headers);
+  if(!isDemoSession())headers.set('Authorization',`Bearer ${await profileToken()}`);
+  return fetch(path,{...init,headers,signal:init.signal?AbortSignal.any([init.signal,AbortSignal.timeout(45000)]):AbortSignal.timeout(45000)});
+}

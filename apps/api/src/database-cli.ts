@@ -18,7 +18,7 @@ if (command !== 'check' && command !== 'migrate') {
           await pool.request().query(await readFile(new URL('../../../database/migrations/001_identity_authorization.sql', import.meta.url), 'utf8'));
           console.log('Migration 001 applied.');
         }
-        for (const [version,filename] of [[2,'002_own_profile.sql'],[3,'003_custom_access.sql']] as const) {
+        for (const [version,filename] of [[2,'002_own_profile.sql'],[3,'003_custom_access.sql'],[4,'004_microsoft_access.sql']] as const) {
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
         try {

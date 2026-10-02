@@ -7,7 +7,7 @@ import { createDevelopmentSessions, localMutation, localRequest } from './develo
 import { type AccessStore, AccessError, can } from './local-access-store.js';
 import { permissionCatalogue } from './access-catalogue.js';
 
-export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined> }, options: { developmentStore?: AccessStore } = {}) {
+export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; access?:AccessStore; resolveAccess?:(identity:Identity)=>Promise<string|undefined> }, options: { developmentStore?: AccessStore } = {}) {
   const app = express();
   const store = options.developmentStore;
   const demo = store ? createDevelopmentSessions(store) : undefined;
@@ -24,7 +24,7 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
     if (!demo || !localRequest(req)) { res.sendStatus(404); return; }
     next();
   });
-  app.get('/api/dev-login', async (req, res) => res.json({ people: (await store!.snapshot()).people.filter(person => person.active).map(person => ({ id:person.id,displayName:person.displayName,employeeCode:person.employeeCode })), signedIn: Boolean(await demo!.person(req)), mode:'local-demo' }));
+  app.get('/api/dev-login', async (req, res) => res.json({ people: (await store!.snapshot()).people.filter(person => person.active&&!person.entraObjectId).map(person => ({ id:person.id,displayName:person.displayName,employeeCode:person.employeeCode })), signedIn: Boolean(await demo!.person(req)), mode:'local-demo' }));
   app.post('/api/dev-login', async (req, res) => {
     if (!localMutation(req)) { res.sendStatus(403); return; }
     const id = req.body?.personId;
@@ -41,7 +41,7 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
   app.use('/api/dev-access', async (req,res,next) => {
     res.setHeader('Cache-Control','no-store');
     if (!demo || !store || !localRequest(req)) { res.sendStatus(404); return; }
-    const state=await store.snapshot(); const person=state.people.find(person=>person.id===demo.subject(req)&&person.active);
+    const state=await store.snapshot(); const person=state.people.find(person=>person.id===demo.subject(req)&&person.active&&!person.entraObjectId);
     if (!person) { res.sendStatus(401); return; }
     if (!can(state,person,'permissions.manage')) { res.sendStatus(403); return; }
     res.locals.demoPersonId=person.id; res.locals.accessState=state; res.locals.accessPerson=person; next();
@@ -54,6 +54,24 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
     if (!localMutation(req)) { res.sendStatus(403); return; }
     try { await store!.save(res.locals.demoPersonId,req.body); res.json({saved:true}); }
     catch (error) { if (error instanceof AccessError) { res.status(error.status).json({error:{code:'ACCESS_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}}); return; } throw error; }
+  });
+  app.use('/api/access',async(req,res,next)=>{
+    res.setHeader('Cache-Control','no-store');
+    let identity:Identity;
+    try{if(!dependencies?.resolveAccess||!dependencies.access)throw new Error();identity=await dependencies.verify(req.headers.authorization);}
+    catch{res.status(401).json({error:{code:'NOT_AUTHORIZED',message:'Microsoft sign-in is required.'}});return;}
+    const id=await dependencies.resolveAccess(identity);const state=await dependencies.access.snapshot();
+    const person=state.people.find(person=>person.id===id&&person.active);
+    if(!person||!can(state,person,'permissions.manage')){res.status(403).json({error:{code:'ACCESS_DENIED',message:'Permission administration is not assigned.'}});return;}
+    res.locals.accessState=state;res.locals.accessPerson=person;next();
+  });
+  app.get('/api/access',(_req,res)=>{
+    const state=res.locals.accessState;const person=res.locals.accessPerson;
+    res.json({...state,storage:dependencies!.access!.storage,currentPerson:person,authentication:'microsoft',audit:can(state,person,'audit.view')?state.audit:[],catalogue:permissionCatalogue.map(([code,label])=>({code,label})),canManageUsers:can(state,person,'users.manage')});
+  });
+  app.post('/api/access',async(req,res)=>{
+    try{await dependencies!.access!.save(res.locals.accessPerson.id,req.body);res.json({saved:true});}
+    catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'ACCESS_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
 
   // Liveness only: this must never imply SQL or organizational SSO is ready.

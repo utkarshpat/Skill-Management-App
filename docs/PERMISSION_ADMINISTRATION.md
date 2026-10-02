@@ -6,7 +6,7 @@ Roles and people are administrator-defined. Permission codes and resource scopes
 
 Migration 003 adds account-scoped custom roles, people, role memberships, permissions, individual overrides and access audit. Runtime uses SqlAccessStore and calls restricted procedures; local JSON is no longer read or written by the running app. The original ignored file remains an import backup. Development direct login remains loopback-only, opt-in and refused outside NODE_ENV=development.
 
-Configure ignored apps/api/.env with ACCESS_ACCOUNT_ID for the initialized workspace, SQL runtime credentials, NODE_ENV=development and DEV_DIRECT_LOGIN=true. Run npm run dev, open http://localhost:5173/, choose Development Super Admin / DEV-ADMIN, then Access administration. Create/edit role names and people IDs, assign role permissions and individual overrides. Active people appear in the temporary login picker.
+Configure ignored apps/api/.env with ACCESS_ACCOUNT_ID for the initialized workspace, SQL runtime credentials, NODE_ENV=development and DEV_DIRECT_LOGIN=true. Run npm run dev, open http://localhost:5173/, continue with your explicitly linked Microsoft account to the administration dashboard. Create/edit role names and people IDs, assign role permissions and individual overrides. Only active people without a Microsoft identity appear in the temporary login picker.
 
 Only OWN and ORGANIZATION scopes are available in this increment. Trusted team, department, unit and resource bindings require the next organization increment. Configuring a permission does not enable an unimplemented workflow. Review assignment, self-approval and resource-state checks remain mandatory.
 
@@ -39,3 +39,16 @@ Migrations 1, 2 and 3 are applied. Two roles, two test people and existing chang
 The QA records are clearly labelled test data. They are not fixed business roles or company employee records. The prior local editor/browser tests remain recorded in Git history.
 
 Browser SQL verification also saved a role rename to QA Profile Reader (SQL) and removed QA-001's individual profile DENY. A new database connection confirmed both changes and their audit events; QA-001 now inherits the role's profile-view ALLOW. SQL administrator-retention rollback was exercised directly and confirmed from a new connection.
+
+
+## Microsoft account owner and dashboard
+
+Migration 004 adds ResolveAccessIdentity and exposes the linked Entra object ID in the restricted workspace snapshot. Resolution requires the configured Account, its exact Entra tenant and the cryptographically verified token object ID. It returns suspended mappings too, so profile authorization can deny them without falling back to legacy membership.
+
+The personal account owner was explicitly linked to the existing bootstrap administrator, retaining its grants and person UUID, with an identity.microsoft.linked audit event. Identity linking is a privileged deployment operation; role/person forms cannot change the Microsoft mapping. Never grant administrator access based on an email, a display name or being the first user to sign in. Company migration requires an explicit bootstrap for the company tenant and designated owner.
+
+GET/POST /api/access require Microsoft bearer tokens and current permissions.manage at ORGANIZATION scope. The verified mapping determines the actor; submitted actor fields are ignored. People changes additionally require users.manage. Audit visibility requires audit.view. SQL checks current authority again inside the atomic write. These endpoints operate with DEV_DIRECT_LOGIN disabled too. Mapped people cannot obtain a direct-login cookie, including through crafted requests, and existing demo sessions cannot administer a subsequently linked identity.
+
+The owner profile redirects to /access when permission administration is assigned. The dashboard includes overview counts from SQL, people management, custom roles and permission editors, and access change history. The Sopra Steria interface prioritizes laptop layouts and adapts to phones. Metrics describe current records; no performance or growth figures are fabricated. Permission catalogue entries for future workflows do not enable those workflows.
+
+Verification on 2 October 2026: the owner's existing Microsoft browser session opened the real Azure SQL dashboard as Utkarsh Patel, with Microsoft verified status. Sixteen automated tests passed, including verified actor binding, unauthorized access, immediate DENY and mapped-identity demo bypass. Live SQL transaction/isolation/rollback checks passed. Production readiness still requires the existing deployment, network, credential, monitoring and organization-model work.

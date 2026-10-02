@@ -25,16 +25,16 @@ export function createDevelopmentSessions(store: AccessStore, now = Date.now) {
   const token = (req: Request) => req.get('Cookie')?.split(';').map(part => part.trim()).find(part => part.startsWith(`${cookieName}=`))?.slice(cookieName.length+1);
   const sweep = () => { for (const [key,session] of sessions) if (session.expires <= now()) sessions.delete(key); };
   const subject = (req: Request) => { sweep(); if (!localRequest(req)) return undefined; const value = token(req); return value ? sessions.get(value)?.personId : undefined; };
-  const person = async (req: Request) => { const id=subject(req); return id ? store.person(id) : undefined; };
+  const person = async (req: Request) => { const id=subject(req); const user=id?await store.person(id):undefined;return user?.entraObjectId?undefined:user; };
   return {
     cookieName,lifetime,person,
     subject,
-    async issue(id: string) { sweep(); if (!await store.person(id) || sessions.size >= 100) return undefined; const value=randomBytes(32).toString('hex'); sessions.set(value,{personId:id,expires:now()+lifetime}); return value; },
+    async issue(id: string) { sweep(); const user=await store.person(id); if (!user || user.entraObjectId || sessions.size >= 100) return undefined; const value=randomBytes(32).toString('hex'); sessions.set(value,{personId:id,expires:now()+lifetime}); return value; },
     revoke(req: Request) { const value=token(req); if (value) sessions.delete(value); },
     async profile(req: Request) {
       const id=subject(req); if(!id)return undefined;
       const state=await store.snapshot(); const user=state.people.find(person=>person.id===id&&person.active);
-      if (!user || !can(state,user,'profile.view',true)) return undefined;
+      if (!user || user.entraObjectId || !can(state,user,'profile.view',true)) return undefined;
       return { id:user.id,displayName:user.displayName,employeeCode:user.employeeCode,organization:'Development Workspace',status:'ACTIVE',roles:state.roles.filter(role => user.roleIds.includes(role.id)).map(role => role.name) };
     },
   };

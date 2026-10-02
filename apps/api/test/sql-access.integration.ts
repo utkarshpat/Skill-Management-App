@@ -12,6 +12,13 @@ try {
  assert.ok(state.roles.length&&state.people.length);
  const admin=state.people.find(person=>can(state,person,'permissions.manage')&&can(state,person,'users.manage'))!;
  assert.ok(admin,'Active permission administrator required.');
+ const mapped=state.people.find(person=>person.entraObjectId);
+ assert.ok(mapped?.entraObjectId,'Explicit Microsoft owner mapping required.');
+ const tenantId=process.env.ENTRA_TENANT_ID;assert.ok(tenantId);
+ const repository=new SqlAccessStore(accountId);
+ assert.equal(await repository.resolveIdentity({tenantId,objectId:mapped.entraObjectId}),mapped.id);
+ assert.equal(await repository.resolveIdentity({tenantId:'55555555-5555-4555-8555-555555555555',objectId:mapped.entraObjectId}),undefined);
+ assert.equal(await repository.resolveIdentity({tenantId,objectId:'55555555-5555-4555-8555-555555555555'}),undefined);
  const denied=state.people.find(person=>person.overrides.some(item=>item.permission==='profile.view'&&item.effect==='DENY'&&item.scope==='OWN'));
  if(denied)assert.equal(can(state,denied,'profile.view',true),false);
  const sqlReject=async(account:string,actor:string,revision:number,number:number)=>{

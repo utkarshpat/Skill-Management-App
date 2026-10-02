@@ -20,7 +20,7 @@ Setup/migration commands use a developer Entra identity. HTTP database requests 
 
 For the configured runtime database user, a DBA grants EXECUTE ON dbo.GetOwnProfile. Migration 002 creates the procedure; it does not grant a service identity or onboard employees. Those are explicit environment-specific administrative operations. The current development user is skill_management_runtime, a contained external service-principal user with this procedure grant and no direct table read grant.
 
-Migration 003 additionally provides SQL-backed custom access administration. The runtime is explicitly bound to the development Account and receives EXECUTE on ReadAccessWorkspace and SaveAccessChange; direct table/audit modification remains denied. Development direct identities are separate from real Entra users. See PERMISSION_ADMINISTRATION.md for import, SQL transaction checks and the remaining real-Entra administration work.
+Migration 003 additionally provides SQL-backed custom access administration. The runtime is explicitly bound to the development Account and receives EXECUTE on ReadAccessWorkspace and SaveAccessChange; direct table/audit modification remains denied. Development direct identities are separate from real Entra users. See PERMISSION_ADMINISTRATION.md for import, SQL transaction checks and Microsoft permission administration.
 
 An explicit personal development bootstrap created Development Workspace, DEV-001 (Utkarsh Patel) and one EMPLOYEE role with a bootstrap audit event. This is test workspace membership, not company HR data or an automatic onboarding mechanism. The runtime cannot create or elevate employees.
 
@@ -34,4 +34,8 @@ Additional live transactional checks confirmed that an explicit OWN DENY blocks 
 
 ## Follow-up
 
-Add scoped skill catalogue and claim workflows, then private evidence and N+1 review. Add access administration, readiness, operational telemetry and deployment controls before production. AI reuses these identity and policy boundaries as described in AI_INTEGRATION.md.
+Add scoped skill catalogue and claim workflows, then private evidence and N+1 review. Add operational readiness, operational telemetry and deployment controls before production. AI reuses these identity and policy boundaries as described in AI_INTEGRATION.md.
+
+## Microsoft permission administration increment
+
+Migration 004 resolves explicitly linked Microsoft identities to custom workspace people. The account owner now uses the same validated Microsoft session for the Super Admin dashboard. Custom grants govern mapped profile access; missing profile.view, suspension or DENY does not fall back to the legacy profile. Sign-in creates no grants. The prior EMPLOYEE bootstrap is historical test membership; it is not the owner's current custom administrator policy. See PERMISSION_ADMINISTRATION.md for endpoint behavior, audit and company bootstrap requirements. The live owner dashboard and restricted SQL integration checks succeeded on 2 October 2026.
