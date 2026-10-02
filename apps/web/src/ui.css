@@ -93,3 +93,15 @@ body{cursor:default;caret-color:transparent}input,textarea,[contenteditable=true
 @media(max-width:650px){.admin-metrics{grid-template-columns:1fr}.visual-layout .org-detail-column{grid-template-columns:1fr}.visual-tree-scroll{padding:16px;max-height:380px}.assistant-launcher{right:18px;bottom:18px}.assistant-panel{right:12px;left:12px;bottom:86px;width:auto;max-height:calc(100dvh - 110px)}.assignment-matrix th:first-child{min-width:160px}.panel-title>.department-filter{width:100%}.assistant-panel header button{min-height:36px}}
 
 .tree-zoom-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}.tree-zoom-controls button{padding:6px 10px;border:1px solid #dfe2e7;background:white;border-radius:6px;font-size:12px}.tree-zoom-controls span{font-size:12px;min-width:35px;text-align:center}
+
+/* Page navigation owns the title and primary actions. */
+.admin-topbar{height:auto;min-height:72px;gap:16px;padding:14px 32px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+.page-location{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
+.page-location>span{color:#737985;font-size:13px}.page-location>svg{flex-shrink:0;color:#737985}
+.page-location h1{font-size:16px;line-height:1.4;letter-spacing:0;margin:0;text-wrap:wrap}
+.page-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;min-width:0}
+.page-actions:empty{display:none}.page-actions .list-search{margin:0;max-width:280px}
+.page-actions .org-toolbar{margin:0;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.page-actions .org-view-switch button{min-height:42px;padding:9px 12px}
+@media(max-width:1000px){.page-actions:has(.org-toolbar){flex-basis:100%;justify-content:flex-start}.page-actions .org-toolbar{justify-content:flex-start}}
+@media(max-width:650px){.admin-topbar{padding:12px 20px;gap:12px}.page-location{flex-basis:calc(100% - 60px)}.page-location>span,.page-location>svg{display:none}.page-actions{order:3;width:100%;justify-content:flex-start}.page-actions .org-toolbar{width:100%;flex-direction:row;align-items:center}.page-actions .org-view-switch{width:100%}.page-actions .list-search{width:100%;max-width:none}.page-actions>button,.page-actions .org-toolbar>.admin-primary{flex:1}.page-actions .org-view-switch button{min-width:0;padding:9px}.mobile-admin-signout{margin-left:auto}}
