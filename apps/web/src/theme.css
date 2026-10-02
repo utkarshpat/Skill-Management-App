@@ -151,3 +151,40 @@ html[data-theme] .form-dialog-message:has([role=status]) {color:var(--success-in
 html[data-theme] .visual-tree-canvas>svg path {stroke:var(--line)}
 html[data-theme] .page-location>span,html[data-theme] .page-location>svg {color:var(--muted)}
 html[data-theme] .skip-link {background:var(--color-primary);color:#fff}
+/* Navigation owns its scroll; the document remains the content scroll surface. */
+html[data-theme] .admin-sidebar {height:100dvh;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#526078 #172033}
+.admin-sidebar>* {flex-shrink:0}
+html[data-theme] .admin-sidebar .admin-account {margin-top:auto}
+.navigation-toggle {display:none}
+.admin-topbar>.theme-switcher {order:2;margin:0!important;flex-shrink:0}
+.admin-topbar>.page-actions {order:1;margin-left:auto}
+.admin-topbar>.page-location {min-width:0;flex:1}
+.navigation-drawer {padding:0;margin:0;border:0;background:transparent;width:100vw;max-width:none;height:100dvh;max-height:none;overflow:hidden;color:#f0f4fa}
+.navigation-drawer:not([open]) {display:none}
+.navigation-drawer::backdrop {background:rgb(10 18 31 / 55%)}
+.navigation-drawer-panel {position:relative;width:min(320px,calc(100vw - 64px));height:100%;background:#172033;animation:navigation-in 180ms ease-out}
+.navigation-drawer.closing .navigation-drawer-panel {animation:navigation-out 180ms ease-in forwards}
+.drawer-close {position:absolute;top:14px;right:10px;z-index:1;display:grid;place-items:center;width:38px;height:38px;border:0;border-radius:6px;background:#223047;color:#f0f4fa;cursor:pointer}
+.drawer-close:focus-visible {outline:2px solid #8cdbd5;outline-offset:2px}
+@keyframes navigation-in {from{transform:translateX(-100%)}to{transform:translateX(0)}}
+@keyframes navigation-out {from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@media(max-width:650px) {
+  .admin-shell {display:block}
+  .desktop-sidebar {display:none!important}
+  .navigation-toggle {display:grid;place-items:center;width:40px;min-width:40px;padding:0;min-height:40px}
+  .admin-topbar {gap:10px;padding:12px 16px}
+  .admin-topbar>.page-actions {order:3;width:100%;margin-left:0}
+  .admin-topbar>.theme-switcher {margin:0!important}
+  .admin-topbar>.theme-switcher>span,.admin-topbar>.theme-switcher>svg {display:none}
+  .admin-topbar>.page-location {flex-basis:0}
+  .navigation-drawer .admin-sidebar {position:static;display:flex;width:100%;height:100%;padding:18px 20px;border:0}
+  .navigation-drawer .admin-brand {padding-right:36px}
+  .navigation-drawer .admin-brand img {width:170px;max-width:100%}
+  .navigation-drawer .admin-workspace {display:flex;margin:26px 0 18px}
+  .navigation-drawer .nav-caption {display:block}
+  .navigation-drawer .admin-sidebar nav {display:grid;overflow:visible;margin:0 0 24px;gap:4px}
+  .navigation-drawer .admin-sidebar nav button {font-size:14px;padding:12px;white-space:normal}
+  .navigation-drawer .admin-sidebar nav button svg {width:19px;flex-shrink:0}
+  .navigation-drawer .admin-account {display:flex;padding-top:18px}
+}
+@media(prefers-reduced-motion:reduce) {.navigation-drawer-panel,.navigation-drawer.closing .navigation-drawer-panel {animation:none}}
