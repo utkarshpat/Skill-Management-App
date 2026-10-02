@@ -2,7 +2,7 @@
 
 ## Delivered scope
 
-Employees can open `/my-skills` from My profile. Administrators have a My skills section in their existing sidebar. Both use the same component, authenticated API and own-person storage. No administrator bypass grants the right to claim skills: permissions must explicitly allow the action.
+People with the required own-profile and skill-view permissions open `/my-skills` from their personal workspace sidebar. My skills is absent from administration; administrators can switch to Personal workspace through the account menu, where the same permission checks apply. The component, authenticated API and own-person storage are shared. No administrator bypass grants the right to claim skills: permissions must explicitly allow the action.
 
 The table shows the skill, claimed proficiency, experience and `Draft · Unverified` status. The Add/Edit popup separates skill selection, published proficiency criteria and experience into short steps. Desktop forms do not add an internal scroll area; phone dialogs retain scrolling. Search and pagination fetch published definitions only. The description and level are self-assessments, not verified or certified capability.
 

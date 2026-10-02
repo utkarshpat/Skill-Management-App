@@ -18,7 +18,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
   });
   app.get('/api/dev-access', (req,res) => {
     const state=res.locals.accessState; const person=res.locals.accessPerson;
-    res.json({ ...state, storage:store!.storage, audit:can(state,person,'audit.view') ? state.audit : [], presets:rolePresets, catalogue:permissionCatalogue.map(([code,label]) => ({code,label})), canManageUsers:can(state,person,'users.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage') });
+    res.json({ ...state, storage:store!.storage, currentPerson:person,authentication:'local-demo',audit:can(state,person,'audit.view') ? state.audit : [], presets:rolePresets, catalogue:permissionCatalogue.map(([code,label]) => ({code,label})), canManageUsers:can(state,person,'users.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage'),canViewAudit:can(state,person,'audit.view') });
   });
   app.post('/api/dev-access', async (req,res) => {
     if (!localMutation(req)) { res.sendStatus(403); return; }
@@ -37,7 +37,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
   });
   app.get('/api/access',(_req,res)=>{
     const state=res.locals.accessState;const person=res.locals.accessPerson;
-    res.json({...state,storage:dependencies!.access!.storage,currentPerson:person,authentication:'microsoft',audit:can(state,person,'audit.view')?state.audit:[],presets:rolePresets, catalogue:permissionCatalogue.map(([code,label])=>({code,label})),canManageUsers:can(state,person,'users.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage')});
+    res.json({...state,storage:dependencies!.access!.storage,currentPerson:person,authentication:'microsoft',audit:can(state,person,'audit.view')?state.audit:[],presets:rolePresets, catalogue:permissionCatalogue.map(([code,label])=>({code,label})),canManageUsers:can(state,person,'users.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage'),canViewAudit:can(state,person,'audit.view')});
   });
   app.post('/api/access',async(req,res)=>{
     try{await dependencies!.access!.save(res.locals.accessPerson.id,req.body);res.json({saved:true});}

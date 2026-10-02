@@ -25,6 +25,8 @@ Technical skills and workplace evaluations are separate. Claimed, verified, cert
 
 Each step produces a runnable result and relevant verification. Build one complete workflow at a time.
 
+Personal navigation and dashboards now derive from effective permissions for existing presets and custom roles. The development selector identifies each person's assigned roles; administrators can switch workspace contexts. Client-side routing prevents sidebar navigation from reloading the document. Manager review, evidence, learning, requests/incidents and approved AI writes remain upcoming workflows. See WORKSPACES_AND_MODEL_SELECTION.md and LEARNING_AND_CONVERSATIONAL_AI.md.
+
 Current increment: custom-role/person/individual-permission administration persists in Azure SQL through migration 003, with explicit local import, restricted runtime procedures, transactionally generated audit and revision checks. Temporary direct login is development-only. Microsoft-based Super Admin administration is live. Six editable role presets exist. Organization Setup now stores delivery units, departments, optional teams, direct department membership and current person-specific reporting lines with two expandable trees. Scoped permission bindings and workflow routing remain upcoming work; see ORGANIZATION_SETUP.md.
 
 ## Decisions still needed

@@ -246,3 +246,35 @@ html[data-theme] .navbar-context h1 {font-size:12px;color:var(--muted);text-over
 }
 @media(min-width:901px) and (max-width:1100px) {.welcome-main{gap:40px;padding:36px;grid-template-columns:minmax(0,1fr) 370px}.login-introduction h2{font-size:38px}}
 @media(max-width:650px) {.navbar-account-controls{gap:4px}.navbar-popover{inset:72px 16px auto auto}.navbar-greeting{font-size:20px}.admin-topbar>.navbar-context{flex-basis:0}}
+
+/* The personal workspace shares the responsive administration shell. */
+html[data-theme] .admin-sidebar .workspace-nav-link {display:flex;align-items:center;gap:13px;min-height:48px;padding:13px 14px;margin:4px 0;border-radius:9px;text-decoration:none;font-size:14px;color:#c8d2e0}
+html[data-theme] .admin-sidebar .workspace-nav-link:hover {background:#243147}
+html[data-theme] .admin-sidebar .workspace-nav-link[aria-current=page] {background:#244448;color:#b3efdf;font-weight:600}
+.workspace-nav-link svg {flex-shrink:0}
+.workspace-nav-link svg:last-child:not(:first-child) {margin-left:auto}
+html[data-theme] .workspace-context-link {display:flex;align-items:center;gap:12px;border-top:1px solid #334057;padding:20px 14px;margin-top:24px;text-decoration:none;color:#c8d2e0;font-size:13px}
+.personal-dashboard {display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);gap:24px;align-items:start}
+.personal-dashboard .profile-panel {margin:0;min-width:0}
+.workspace-eyebrow {font-size:11px;letter-spacing:1.4px;color:var(--accent-ink);margin:0 0 8px;font-weight:650}
+.personal-dashboard .panel-title {gap:16px;flex-wrap:wrap}
+.personal-dashboard .panel-title h2 {margin:0}
+.personal-dashboard .panel-title a {display:inline-flex;align-items:center;gap:8px}
+.personal-skill-total {display:flex;align-items:baseline;gap:12px;margin:28px 0}
+.personal-skill-total strong {font-size:48px;font-weight:650;line-height:1;color:var(--heading)}
+.personal-skill-total span,.workspace-muted {font-size:14px;line-height:1.7;color:var(--muted)}
+.personal-skill-list {padding:0;margin:0;list-style:none}
+.personal-skill-list li {display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 0;border-top:1px solid var(--line)}
+.personal-skill-list strong {font-size:14px;overflow-wrap:anywhere}
+.personal-skill-list div>span {display:block;color:var(--muted);font-size:12px;margin-top:5px}
+.workspace-identity>p {font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+.workspace-upcoming {grid-column:1/-1}
+.workspace-upcoming summary {cursor:pointer;color:var(--muted);font-size:14px;font-weight:500}
+.workspace-upcoming p {font-size:13px;color:var(--muted);line-height:1.6}
+.workspace-upcoming ul {padding:0;margin:16px 0 0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.workspace-upcoming li {display:flex;justify-content:space-between;align-items:center;gap:16px;font-size:13px;padding:12px;border:1px solid var(--line);border-radius:8px}
+.workspace-upcoming li span {color:var(--muted);font-size:11px;white-space:nowrap}
+.workspace-demo {color:var(--muted);font-size:12px;margin:0 0 18px}
+.account-context {display:flex;width:100%;justify-content:center;margin-top:14px;text-decoration:none}
+@media(max-width:1000px) {.personal-dashboard{grid-template-columns:1fr}}
+@media(max-width:650px) {.workspace-upcoming ul{grid-template-columns:1fr}.personal-skill-list li{align-items:flex-start}.personal-skill-total strong{font-size:40px}html[data-theme] .navigation-drawer .workspace-nav-link{min-height:48px;font-size:14px}}

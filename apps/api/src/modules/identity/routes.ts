@@ -4,15 +4,19 @@ import type { Profile } from './profile.js';
 import { createDevelopmentSessions } from './development-login.js';
 import { localMutation, localRequest } from '../../shared/http-security.js';
 import type { AccessStore } from '../access/index.js';
+import { workspaceFor } from './workspace.js';
 type DevelopmentSessions = ReturnType<typeof createDevelopmentSessions>;
-export interface HttpDependencies { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; }
+export interface HttpDependencies { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; resolveAccess?: (identity: Identity) => Promise<string | undefined>; access?: AccessStore; }
 export function registerRoutes(app: Express, dependencies: HttpDependencies | undefined, store?: AccessStore, demo?: DevelopmentSessions) {
   app.use('/api/dev-login', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     if (!demo || !localRequest(req)) { res.sendStatus(404); return; }
     next();
   });
-  app.get('/api/dev-login', async (req, res) => res.json({ people: (await store!.snapshot()).people.filter(person => person.active&&!person.entraObjectId).map(person => ({ id:person.id,displayName:person.displayName,employeeCode:person.employeeCode })), signedIn: Boolean(await demo!.person(req)), mode:'local-demo' }));
+  app.get('/api/dev-login', async (req, res) => {
+    const state = await store!.snapshot();
+    res.json({ people: state.people.filter(person => person.active&&!person.entraObjectId).map(person => ({ id:person.id,displayName:person.displayName,employeeCode:person.employeeCode,roles:state.roles.filter(role=>person.roleIds.includes(role.id)).map(role=>role.name) })), signedIn: Boolean(await demo!.person(req)), mode:'local-demo' });
+  });
   app.post('/api/dev-login', async (req, res) => {
     if (!localMutation(req)) { res.sendStatus(403); return; }
     const id = req.body?.personId;
@@ -25,6 +29,29 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
   app.delete('/api/dev-login', (req, res) => {
     if (!localMutation(req)) { res.sendStatus(403); return; }
     demo!.revoke(req); res.clearCookie(demo!.cookieName, { path: '/api', httpOnly: true, sameSite: 'strict' }); res.sendStatus(204);
+  });
+  app.get('/api/workspace', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    let actor: string | undefined;
+    if (demo?.subject(req)) {
+      actor = (await demo.person(req))?.id;
+    } else {
+      let identity: Identity;
+      try {
+        if (!dependencies?.resolveAccess) throw new Error();
+        identity = await dependencies.verify(req.headers.authorization);
+      } catch {
+        res.setHeader('WWW-Authenticate', 'Bearer');
+        res.status(401).json({ error: { code: 'NOT_AUTHORIZED', message: 'Sign in to continue.', requestId: res.locals.requestId } }); return;
+      }
+      actor = await dependencies!.resolveAccess!(identity);
+    }
+    const state = await (dependencies?.access ?? store)?.snapshot();
+    const person = state?.people.find(item => item.id === actor && item.active);
+    if (!state || !person) {
+      res.status(403).json({ error: { code: 'ACCESS_NOT_PROVISIONED', message: 'Workspace access is not assigned.', requestId: res.locals.requestId } }); return;
+    }
+    res.json({ ...workspaceFor(state, person), authentication: demo?.subject(req) ? 'local-demo' : 'microsoft' });
   });
   app.get('/api/me', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
