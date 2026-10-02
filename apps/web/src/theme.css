@@ -1,4 +1,22 @@
 /* Workforce intelligence palette. Logo artwork retains its original colours. */
+.my-skills-actions {display:flex;justify-content:flex-end;margin-bottom:16px}
+.my-skills-panel .panel-title {gap:12px;flex-wrap:wrap}
+.my-skills-count {color:var(--muted);font-size:14px;font-weight:500;margin-left:6px}
+.claim-status {display:inline-flex;align-items:center;border-radius:20px;background:var(--accent-soft);color:var(--accent-ink);font-size:12px;padding:5px 9px;white-space:nowrap}
+.my-skills-note {color:var(--muted);font-size:13px;line-height:1.6}
+.my-skills-table-wrap {overflow-x:auto;overscroll-behavior-x:contain}
+.my-skills-table {width:100%;border-collapse:collapse;text-align:left}
+.my-skills-table th {padding:14px 12px;color:var(--muted);font-size:12px;font-weight:600;border-bottom:1px solid var(--line)}
+.my-skills-table td {padding:18px 12px;border-bottom:1px solid var(--line);font-size:14px}
+.my-skills-table td>span:not(.claim-status) {display:block;margin-top:5px;color:var(--muted);font-size:12px}
+.my-skills-table td:last-child {text-align:right;width:88px}
+.claim-field-pair {display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.claim-search {display:flex;align-items:center;gap:8px}
+.claim-search svg {flex-shrink:0;color:var(--muted)}
+.claim-option-pages {display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.claim-option-pages span {margin-right:auto}
+.claim-level-description {font-size:14px;color:var(--muted);line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:650px) {.claim-field-pair{grid-template-columns:1fr}.my-skills-table{min-width:600px}.claim-level-description{max-height:none}}
 :root {
   --color-primary: #172033;
   --color-secondary: #167c80;

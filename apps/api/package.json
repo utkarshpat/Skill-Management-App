@@ -14,7 +14,8 @@
     "access:import": "node --env-file-if-exists=.env --import tsx src/access-import-cli.ts",
     "test:organization": "node --env-file-if-exists=.env --import tsx test/organization.integration.ts",
     "test:catalogue": "node --env-file-if-exists=.env --import tsx test/skill-catalogue.integration.ts",
-    "test:sql": "node --env-file-if-exists=.env --import tsx test/sql-access.integration.ts"
+    "test:sql": "node --env-file-if-exists=.env --import tsx test/sql-access.integration.ts",
+    "test:claims": "node --env-file-if-exists=.env --import tsx test/claims.integration.ts"
   },
   "dependencies": {
     "@azure/identity": "4.13.3",

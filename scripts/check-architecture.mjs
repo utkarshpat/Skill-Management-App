@@ -5,11 +5,11 @@ import { fileURLToPath } from 'node:url';
 const moduleNames = new Set(['identity', 'access', 'organization', 'skills', 'ai']);
 const runtimeDependencies = {
   identity: ['access'], access: [], organization: ['access'],
-  skills: ['access'], ai: ['access', 'organization'],
+  skills: ['access'], ai: ['access', 'organization', 'skills'],
 };
 const typeDependencies = {
   identity: ['access'], access: ['identity'], organization: ['access'],
-  skills: ['access', 'identity'], ai: ['access', 'organization', 'identity'],
+  skills: ['access', 'identity'], ai: ['access', 'organization', 'skills', 'identity'],
 };
 const normalize = value => value.replaceAll('\\', '/');
 const owner = file => /^apps\/api\/src\/modules\/([^/]+)\//.exec(file)?.[1];

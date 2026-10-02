@@ -4,7 +4,7 @@ Baseline: shared planning chat and full final engineering handover, reviewed 2 O
 
 ## Agreed direction
 
-React, Node.js, Azure SQL, private Blob Storage, organizational SSO. No MCP. AI uses an internal allowlisted Tool Registry through an authorization/policy gateway.
+React, Node.js, Azure SQL, private Blob Storage, organizational SSO. No MCP. AI uses an internal allowlisted Tool Registry through an authorization/policy gateway. The API stays a modular monolith with a separate frontend; see ARCHITECTURE.md.
 
 Updated user decision, 2 October 2026: roles and people are administrator-defined. Super Admin creates names, roles and permission assignments; individual IDs can receive or lose permissions independently of roles. The six earlier role labels are editable starting permission sets, not a fixed role model. Policy checks permission codes and resource scopes, never role names. Organizational reporting relationships remain separate from access roles; N+1 is the direct reporting relationship; N+2 follows the reporting relationship of that N+1 person. Neither is a role name. Taxonomy governance and other responsibilities are assigned through permissions rather than hard-coded titles.
 
@@ -29,7 +29,7 @@ Current increment: custom-role/person/individual-permission administration persi
 
 ## Decisions still needed
 
-Skill catalogue is now implemented as the start of step 3: migration 007, restricted procedures, independently permission-checked API, search/pagination and editable proficiency definitions. The catalogue is empty until actual definitions are entered; company proficiency criteria remain editable. Published-only access and atomic auditing are verified in SQL. Employee claims, evidence and reporting-manager reviews are next; see SKILL_CATALOGUE.md.
+Skill catalogue is implemented as the start of step 3: migration 007, restricted procedures, independently permission-checked API, search/pagination and editable proficiency definitions. My Skills now saves own self-assessed drafts through migration 008, with published choices, proficiency snapshots, per-record concurrency and atomic auditing. The catalogue remains empty until actual definitions are entered; no integration-test skills are retained. Evidence, submission and reporting-manager review are next; see MY_SKILLS.md. Requests/incidents remain in the plan with their routing/approval requirements preserved in REQUESTS_AND_INCIDENTS.md. AI now has a typed ToolRegistry/policy gateway and a read-only own-skills tool; provider setup and approved writes remain pending.
 
 - Company tenant/app configuration and production SQL access. Personal development registrations and restricted profile access exist; see SSO_AND_PROFILE.md.
 - Who can grant each permission, including scopes exceeding an N+1's authority.

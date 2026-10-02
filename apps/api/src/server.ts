@@ -8,6 +8,7 @@ import { SqlAccessStore } from './modules/access/sql-access-store.js';
 import {can} from './modules/access/index.js';
 import {AssistantService,configuredProvider} from './modules/ai/index.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
+import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
 
 const port = Number(process.env.PORT ?? 3001);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be between 1 and 65535.');
@@ -15,9 +16,10 @@ const config = identityConfig(process.env);
 const access=process.env.ACCESS_ACCOUNT_ID?new SqlAccessStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const developmentStore = developmentLoginEnabled(process.env) ? access : undefined;
 const organization=process.env.ACCESS_ACCOUNT_ID?new SqlOrganizationStore(process.env.ACCESS_ACCOUNT_ID):undefined;
-const assistant=access?new AssistantService(access,organization,configuredProvider(process.env)):undefined;
+const claims=process.env.ACCESS_ACCOUNT_ID?new SqlClaimsStore(process.env.ACCESS_ACCOUNT_ID):undefined;
+const assistant=access?new AssistantService(access,organization,configuredProvider(process.env),claims):undefined;
 const catalogue=process.env.ACCESS_ACCOUNT_ID?new SqlCatalogueStore(process.env.ACCESS_ACCOUNT_ID):undefined;
-const server = createApp(config ? { verify: tokenVerifier(config),access,organization,assistant,catalogue,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
+const server = createApp(config ? { verify: tokenVerifier(config),access,organization,assistant,catalogue,claims,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
   const id=await access?.resolveIdentity(identity);
   if(!id)return ownProfile(identity);
   const state=await access!.snapshot();const person=state.people.find(person=>person.id===id);

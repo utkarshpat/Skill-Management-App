@@ -42,7 +42,7 @@ Organization and Skills keep validation and types in their domain files and SQL 
 | Access | None | Identity |
 | Organization | Access | None |
 | Skills | Access | Identity |
-| AI | Access, Organization | Identity |
+| AI | Access, Organization, Skills | Identity |
 
 Shared infrastructure cannot import modules or bootstrap files. Modules cannot import `app.ts`, `server.ts`, administrator CLIs or frontend implementation. The runtime module graph is acyclic; type-only identity references are erased during compilation. SQL, cryptography and provider SDKs remain normal external dependencies.
 
@@ -70,4 +70,4 @@ npm.cmd run build
 
 The refactor was verified with architecture guard tests, API/policy tests, strict frontend/backend types and both builds. Live Azure SQL integration tests were not rerun for this source-only refactor; migrations and SQL procedures were unchanged. The existing opt-in `test:organization`, `test:catalogue` and `test:sql` commands remain available with the updated adapter imports.
 
-Claims, evidence, review and learning are future workflows. Add them as owned modules only when their behavior and authorization are implemented. Company migration still needs approved tenant/runtime identity, network configuration, monitoring, readiness, operational controls and deployment verification. Modular structure alone does not establish production readiness.
+Own claim drafts now belong to Skills, with domain validation, SQL adapters and authenticated routes; AI consumes the public ClaimsStore contract. Evidence, submission, review and learning are future workflows. Add owned modules when their behavior and authorization are implemented. Company migration still needs approved tenant/runtime identity, network configuration, monitoring, readiness, operational controls and deployment verification. Modular structure alone does not establish production readiness.

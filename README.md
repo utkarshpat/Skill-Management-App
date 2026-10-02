@@ -24,7 +24,7 @@ npm.cmd run db:check -w apps/api
 npm.cmd run db:migrate -w apps/api
 ```
 
-Database setup uses the developer's Azure identity, applies reviewed migrations and closes connections. Migration 001 manages its own transaction; the runner skips an initialized schema and transactionally applies outstanding migrations 002/003/004/005/006/007. Use a single migration worker. Runtime SQL uses a separate restricted identity.
+Database setup uses the developer's Azure identity, applies reviewed migrations and closes connections. Migration 001 manages its own transaction; the runner skips an initialized schema and transactionally applies outstanding migrations 002/003/004/005/006/007/008. Use a single migration worker. Runtime SQL uses a separate restricted identity.
 
 ## Current scope
 
@@ -32,11 +32,13 @@ Temporary local direct login and permission administration are available when NO
 
 Microsoft SPA/API registrations, validated delegated tokens, restricted SQL own-profile access and a responsive authenticated profile page are implemented. Missing membership is denied; sign-in does not automatically onboard employees. The complete browser login and live Azure SQL profile retrieval succeeded after user-completed individual consent. Migrations 1, 2, 3, 4 and 5, historical role seeds and custom access records are verified in the personal development database. Verification details are in docs/SSO_AND_PROFILE.md.
 
-The personal development workspace contains the imported NHS SBS department under UK and a separate development test branch. Dashboard cards, visual hierarchy editing and a department-filtered role-assignment matrix are implemented. The floating AI assistant has authenticated read-only tools and optional Azure/OpenAI/Ollama adapters; a live model is not connected yet. See docs/AI_INTEGRATION.md for server configuration and verification boundaries. The skill catalogue now supports governed draft/publish/archive definitions and editable proficiency levels; see docs/SKILL_CATALOGUE.md. Employee claims, evidence, review, onboarding and production deployment are upcoming increments. This development foundation is not yet production-ready.
+The personal development workspace contains the imported NHS SBS department under UK and a separate development test branch. Dashboard cards, visual hierarchy editing and a department-filtered role-assignment matrix are implemented. The floating AI assistant has authenticated read-only tools and optional Azure/OpenAI/Ollama adapters; a live model is not connected yet. See docs/AI_INTEGRATION.md for server configuration and verification boundaries. The skill catalogue now supports governed draft/publish/archive definitions and editable proficiency levels; see docs/SKILL_CATALOGUE.md. My Skills now saves own self-assessed drafts with version checks and audit; see docs/MY_SKILLS.md. Evidence, submission, review, requests/incidents, onboarding and production deployment are upcoming increments. This development foundation is not yet production-ready.
 
 ## Documentation
 
 - docs/ARCHITECTURE.md: module ownership, public contracts, dependency rules and deployment boundaries.
+- docs/MY_SKILLS.md: own draft claims, permissions, SQL concurrency and verification.
+- docs/REQUESTS_AND_INCIDENTS.md: preserved routing, approvals, IT assignment and AI boundaries.
 - docs/BUILD_PLAN.md: agreed workflows and delivery sequence.
 - docs/SKILL_CATALOGUE.md: catalogue permissions, proficiency definitions, SQL migration and verification.
 - docs/UI_DESIGN.md: simplified page structure, responsive behavior and UI verification.
