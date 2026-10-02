@@ -3,12 +3,12 @@ import { SkillCatalogue } from './SkillCatalogue';
 import { FormDialog } from './FormDialog';
 import { NavigationDrawer } from './NavigationDrawer';
 import { Sidebar } from './Sidebar';
-import { ThemeSwitcher } from './Theme';
+import { NavbarAccount } from './NavbarAccount';
 import { RoleAssignments } from './RoleAssignments';
 import { PermissionEditor } from './PermissionEditor';
 import { useEffect, useState } from 'react';
-import { signOut,authenticatedFetch,isDemoSession } from './auth';
-import {LayoutDashboard,Users,ShieldCheck,History,ArrowUpRight,Plus,LogOut,BookOpen,ChevronRight,FolderTree,Search,Menu} from 'lucide-react';
+import { authenticatedFetch,isDemoSession } from './auth';
+import {LayoutDashboard,Users,ShieldCheck,History,ArrowUpRight,Plus,BookOpen,ChevronRight,FolderTree,Search,Menu} from 'lucide-react';
 interface Assignment { permission:string; scope:'OWN'|'ORGANIZATION'; effect:'ALLOW'|'DENY'; validUntil?:string }
 interface Role { id:string; name:string; permissions:Assignment[] }
 interface Person { id:string; displayName:string; employeeCode:string; active:boolean; roleIds:string[]; overrides:Assignment[] }
@@ -64,14 +64,14 @@ export function AccessAdmin() {
   const visibleAudit=state?.audit.filter(item=>(item.action+' '+actionLabel(item.action)+' '+(state.people.find(person=>person.id===item.actorId)?.displayName??'')+' '+(state.roles.find(role=>role.id===item.targetId)?.name??state.people.find(person=>person.id===item.targetId)?.displayName??item.after?.name??'')).toLowerCase().includes(search.toLowerCase()))??[];
   const name=state?.currentPerson?.displayName??'Workspace administrator';
   const sections=[{id:'overview',label:'Dashboard',icon:LayoutDashboard},{id:'organization',label:'Organization',icon:FolderTree},{id:'skills',label:'Skill catalogue',icon:BookOpen},{id:'people',label:'People',icon:Users},{id:'roles',label:'Roles & permissions',icon:ShieldCheck},{id:'assignments',label:'Role assignments',icon:Users},{id:'audit',label:'Activity log',icon:History}] as const;
-  const sidebarContent=(close:()=>void=()=>{})=><><a className="admin-brand" href="/access"><img src="/brand/sopra-steria.svg" alt="Sopra Steria"/></a><div className="admin-workspace"><span className="workspace-symbol"><ShieldCheck size={20}/></span><div><strong>Skill Management</strong><span>Administration</span></div></div><p className="nav-caption">WORKSPACE</p><nav aria-label="Administration sections">{sections.filter(section=>section.id!=='skills'||state?.canViewSkills).map(({id,label,icon:Icon})=><button key={id} aria-current={tab===id?'page':undefined} onClick={()=>{setTab(id);setSearch('');setNotice('');close();}}><Icon size={19}/>{label}{tab===id&&<ChevronRight size={15}/>}</button>)}</nav><div className="admin-account"><span className="account-avatar">{name.split(/\s+/).slice(0,2).map(part=>part[0]).join('')}</span><div><strong>{name}</strong><span>{state?.authentication==='microsoft'?'Microsoft account':'Administrator'}</span></div><button aria-label="Sign out" onClick={()=>{signOut().catch(()=>setError('Sign out could not finish.'));}}><LogOut size={18}/></button></div></>;
+  const sidebarContent=(close:()=>void=()=>{})=><><a className="admin-brand" href="/access"><img src="/brand/sopra-steria.svg" alt="Sopra Steria"/></a><p className="nav-caption">WORKSPACE</p><nav aria-label="Administration sections">{sections.filter(section=>section.id!=='skills'||state?.canViewSkills).map(({id,label,icon:Icon})=><button key={id} aria-current={tab===id?'page':undefined} onClick={()=>{setTab(id);setSearch('');setNotice('');close();}}><Icon size={19}/>{label}{tab===id&&<ChevronRight size={15}/>}</button>)}</nav></>;
   return <div className="admin-shell"><a className="skip-link" href="#access-main">Skip to content</a><Sidebar className="desktop-sidebar">{sidebarContent()}</Sidebar>{navigationOpen&&<NavigationDrawer onClose={()=>setNavigationOpen(false)}>{close=><Sidebar>{sidebarContent(close)}</Sidebar>}</NavigationDrawer>}
-    <div className="admin-content"><header className="admin-topbar"><button className="navigation-toggle secondary-button" aria-label="Open navigation" aria-expanded={navigationOpen} aria-controls="workspace-navigation" onClick={()=>setNavigationOpen(true)}><Menu size={20}/></button><div className="page-location"><span>Workspace</span><ChevronRight size={14} aria-hidden="true"/><h1>{sections.find(section=>section.id===tab)?.label}</h1></div><div className="page-actions" role="group" aria-label="Page actions" ref={setPageActions}>
+    <div className="admin-content"><header className="admin-topbar"><button className="navigation-toggle secondary-button" aria-label="Open navigation" aria-expanded={navigationOpen} aria-controls="workspace-navigation" onClick={()=>setNavigationOpen(true)}><Menu size={20}/></button><div className="page-location navbar-context"><strong title={name}>Hello {state?.currentPerson?name:'there'}</strong><h1>{sections.find(section=>section.id===tab)?.label}</h1></div><div className="page-actions" role="group" aria-label="Page actions" ref={setPageActions}>
       {state&&tab==='overview'&&<>{state.canManageUsers&&<button className="admin-primary" onClick={()=>createRecord('person')}><Plus size={17}/>Add person</button>}<button className="secondary-button" onClick={()=>createRecord('role')}>Create role</button></>}
       {state&&tab==='people'&&state.canManageUsers&&<><button className="secondary-button" disabled={busy} onClick={()=>createRecord('person')}><Plus size={16}/>New person</button></>}
       {state&&tab==='roles'&&<><button className="secondary-button" disabled={busy} onClick={()=>createRecord('role')}><Plus size={16}/>New role</button></>}
       {state&&tab==='audit'&&<label className="list-search"><Search size={16} aria-hidden="true"/><input aria-label="Search activity" placeholder="Search activity…" value={search} onChange={event=>setSearch(event.target.value)}/></label>}
-      </div><ThemeSwitcher/></header><main id="access-main" className="access-main">
+      </div><NavbarAccount name={name} identity={state?.authentication==='microsoft'?'Microsoft account':'Administrator'}/></header><main id="access-main" className="access-main">
       {error&&<div className="access-message" role="alert">{error}<button className="secondary-button" onClick={()=>{setError('');load().catch(err=>setError(err.message));}}>Reload current configuration</button></div>}{notice&&<p className="access-message" role="status">{notice}</p>}
       {!state&&!error&&<div className="admin-loading" role="status">Loading your administration workspace…</div>}
       {state&&<>

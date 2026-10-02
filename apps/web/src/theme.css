@@ -190,3 +190,39 @@ html[data-theme] .admin-sidebar .admin-account {margin-top:auto}
 
 html[data-theme] .theme-toggle {display:grid;place-items:center;width:44px;min-width:44px;height:44px;padding:0;border:1px solid var(--line);border-radius:8px;background:var(--raised);color:var(--ink);cursor:pointer}
 html[data-theme] .theme-toggle>svg {display:block}
+/* Account actions remain in the contextual navbar. */
+.navbar-account-controls {display:flex;align-items:center;gap:8px;order:2;flex-shrink:0}
+.navbar-account-controls .theme-switcher {margin:0!important}
+html[data-theme] .navbar-icon,html[data-theme] .navbar-avatar {display:grid;place-items:center;width:44px;min-width:44px;height:44px;padding:0;border:0;border-radius:8px;cursor:pointer;background:transparent;color:var(--ink)}
+html[data-theme] .navbar-icon:hover {background:var(--raised)}
+html[data-theme] .navbar-avatar {border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:650;border:1px solid var(--line)}
+.admin-topbar>.navbar-context {display:grid;gap:3px}
+.navbar-context strong {font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+html[data-theme] .navbar-context h1 {font-size:12px;color:var(--muted);text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.admin-sidebar>.nav-caption {margin:26px 12px 12px}
+.navbar-popover {position:fixed;inset:76px 24px auto auto;width:min(300px,calc(100vw - 32px));padding:20px;margin:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);box-shadow:0 8px 28px rgb(10 18 31 / 15%)}
+.notification-popover {right:76px}
+.navbar-popover h2 {font-size:16px;margin:0 0 16px}
+.navbar-popover strong {font-size:14px;overflow-wrap:anywhere}
+.navbar-popover p {font-size:13px;line-height:1.5;color:var(--muted)}
+.notification-empty {display:grid;justify-items:center;text-align:center;padding:18px 0 8px;gap:8px;color:var(--muted)}
+.notification-empty p {margin:0}
+.account-signout {display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:18px}
+.login-introduction,.desktop-welcome {display:none}
+@media(min-width:901px) {
+  .welcome-main {display:grid;grid-template-columns:minmax(0,1fr) 420px;align-items:center;gap:80px;max-width:1280px;margin:0 auto;padding:50px 64px}
+  .login-introduction {display:block;min-width:0}
+  .desktop-welcome {display:inline}
+  .mobile-welcome {display:none}
+  .login-eyebrow {font-size:11px;letter-spacing:2px;font-weight:650;color:var(--accent-ink);margin:0 0 24px}
+  .login-introduction h2 {font-size:clamp(36px,3.7vw,54px);letter-spacing:-1.8px;line-height:1.1;font-weight:650;margin:0 0 26px;text-wrap:initial}
+  .login-title-dot {color:var(--accent-ink)}
+  .login-tagline {font-size:23px;line-height:1.45;font-weight:500;color:var(--ink);margin:0 0 14px}
+  .login-description {font-size:14px;color:var(--muted);line-height:1.7;margin:0}
+  .login-pillars {display:flex;flex-wrap:wrap;gap:20px;border-top:1px solid var(--line);margin-top:32px;padding-top:24px}
+  .login-pillars span {display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+  .login-pillars svg {color:var(--accent-ink);flex-shrink:0}
+  .welcome-main .signin-card {width:100%;padding:32px}
+}
+@media(min-width:901px) and (max-width:1100px) {.welcome-main{gap:40px;padding:36px;grid-template-columns:minmax(0,1fr) 370px}.login-introduction h2{font-size:38px}}
+@media(max-width:650px) {.navbar-account-controls{gap:4px}.navbar-popover{inset:72px 16px auto auto}.navbar-context strong{font-size:13px}.admin-topbar>.navbar-context{flex-basis:0}}

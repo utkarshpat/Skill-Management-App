@@ -65,3 +65,13 @@ Theme selection is in the navbar's top-right corner on desktop and phone. The co
 Browser checks verified 390px hamburger opening, body scroll lock, selecting People, close-button dismissal, restored trigger focus, phone width and navbar theme placement. Desktop overflow/overscroll styles and wheel boundary handling were reviewed. No people or role data changed.
 
 The theme control now uses a 44px neutral square with only the current-mode sun or moon icon, matching the supplied reference. Clicking switches to the opposite mode and persists the choice. There is no theme dropdown or visible text; accessible action labels, tooltips and keyboard focus remain. The same button is visible on desktop and phones. Production build/type checking and browser toggle checks pass.
+
+## Login introduction and navbar account controls (3 October 2026)
+
+Above 900px, the Microsoft sign-in card is accompanied by a laptop-only introduction: Cognitive Intelligence Lab, the tagline Understand capability. Build what comes next., and three compact capability/development/people labels. At smaller sizes the introduction is hidden and the original concise Skill Management sign-in remains. Authentication and the development-login gates are unchanged.
+
+The administration sidebar now contains the supplied logo and navigation only. The Skill Management/Administration workspace block and duplicate account footer were removed. The navbar's left side greets the currently mapped person by display name and retains a compact current-page title. Its right side groups the sun/moon toggle, notification bell and initials avatar. The avatar opens an account popover with the current name, authentication label and the existing sign-out flow; failures remain visible and retryable. Native popovers close on outside click or Escape.
+
+The notification bell opens a clear empty-state panel. There is no live notification service, unread badge, synthesized activity notification or new notification permission in this increment. A future authenticated feed must provide actual per-person notifications. The sidebar intentionally uses the same Deep Navy in both modes, following the supplied visual direction; the content canvas, surfaces and interaction colours adapt to the selected theme.
+
+Browser verification covered the laptop introduction, compact 390px phone login, owner greeting, simplified sidebar, account name and Sign out button, mutually exclusive notification/account popovers, and phone navbar/popover bounds. The live sign-out redirect was not triggered during this UI check. Build and strict type checking pass; no database records or access assignments changed.

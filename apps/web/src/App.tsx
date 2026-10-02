@@ -33,10 +33,10 @@ function Welcome({ authError }: { authError: boolean }) {
     <a className="skip-link" href="#welcome-main">Skip to content</a>
     <header className="welcome-header"><ThemeSwitcher/><img src="/brand/sopra-steria.svg" alt="Sopra Steria" /></header>
     <main id="welcome-main" className="welcome-main" tabIndex={-1}>
-      <section className="signin-card" aria-labelledby="signin-title">
+      <section className="login-introduction" aria-label="About Cognitive Intelligence Lab"><p className="login-eyebrow">WORKFORCE INTELLIGENCE</p><h2>Cognitive<br/>Intelligence Lab<span className="login-title-dot">.</span></h2><p className="login-tagline">Understand capability.<br/>Build what comes next.</p><p className="login-description">One workspace for people, skills and growth.</p><div className="login-pillars"><span><Compass size={18}/>Discover capability</span><span><BookOpen size={18}/>Develop potential</span><span><Users size={18}/>Connect people</span></div></section><section className="signin-card" aria-labelledby="signin-title">
 
 
-        <h1 id="signin-title">Skill Management</h1>
+        <h1 id="signin-title"><span className="desktop-welcome">Welcome back</span><span className="mobile-welcome">Skill Management</span></h1>
         <p className="signin-intro">Sign in to your workspace.</p>
         <button className="microsoft-button" disabled={!signInConfigured || authError} aria-describedby="signin-status" onClick={() => { signIn().catch(() => setError('Sign-in could not start. Please refresh and try again.')); }}><span className="microsoft-symbol" aria-hidden="true"><i /><i /><i /><i /></span>Continue with Microsoft</button>
         <p id="signin-status" className="signin-status" role="status">{error || (authError ? 'Sign-in could not finish. Please return to this page and try again.' : signInConfigured ? 'Use your Microsoft account to access your assigned workspace.' : 'Sign-in is being set up. Access will be available soon.')}</p>
