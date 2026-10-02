@@ -5,7 +5,7 @@ import { AccessError } from './local-access-store.js';
 
 export type NodeKind = 'DELIVERY_UNIT' | 'DEPARTMENT' | 'TEAM';
 export interface OrgNode { id:string; kind:NodeKind; name:string; parentId:string|null; active:boolean }
-export interface OrgAssignment { personId:string; teamId:string|null; managerId:string|null }
+export interface OrgAssignment { personId:string; teamId:string|null; departmentId?:string|null; managerId:string|null }
 export interface OrgPerson { id:string; displayName:string; employeeCode:string; active:boolean }
 export interface OrganizationState { revision:number; nodes:OrgNode[]; assignments:OrgAssignment[]; people:OrgPerson[] }
 export interface OrganizationStore { snapshot():Promise<OrganizationState>; save(actorId:string,input:unknown):Promise<void> }
@@ -25,7 +25,11 @@ export function organizationChange(input:unknown) {
     if((body.type==='DELIVERY_UNIT')!==(parentId===null))throw new AccessError(400,'Choose the parent for this level.');
     return {kind:'node',revision:Number(body.revision),targetId:body.id===undefined?randomUUID():identifier(body.id)!,isNew:body.id===undefined,payload:{type:body.type,name:body.name.trim(),parentId,active:body.active}};
   }
-  if(body.kind==='assignment')return {kind:'assignment',revision:Number(body.revision),targetId:identifier(body.personId)!,isNew:false,payload:{teamId:identifier(body.teamId,true),managerId:identifier(body.managerId,true)}};
+  if(body.kind==='assignment') {
+    const teamId=identifier(body.teamId,true),departmentId=identifier(body.departmentId,true);
+    if(teamId&&departmentId)throw new AccessError(400,'Choose either a department or a team.');
+    return {kind:'assignment',revision:Number(body.revision),targetId:identifier(body.personId)!,isNew:false,payload:{teamId,departmentId,managerId:identifier(body.managerId,true)}};
+  }
   throw new AccessError(400,'Unknown organization change.');
 }
 
@@ -53,7 +57,7 @@ export class SqlOrganizationStore implements OrganizationStore {
     return withRuntimeDatabase(async pool=>{
       const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).execute('dbo.ReadOrganization');
       const sets=result.recordsets as unknown as [sql.IRecordSet<{revision:number}>,sql.IRecordSet<OrgNode>,sql.IRecordSet<OrgAssignment>,sql.IRecordSet<OrgPerson>];
-      return {revision:sets[0][0].revision,nodes:sets[1].map(row=>({...row,id:row.id.toLowerCase(),parentId:row.parentId?.toLowerCase()??null})),assignments:sets[2].map(row=>({personId:row.personId.toLowerCase(),teamId:row.teamId?.toLowerCase()??null,managerId:row.managerId?.toLowerCase()??null})),people:sets[3].map(row=>({...row,id:row.id.toLowerCase()}))};
+      return {revision:sets[0][0].revision,nodes:sets[1].map(row=>({...row,id:row.id.toLowerCase(),parentId:row.parentId?.toLowerCase()??null})),assignments:sets[2].map(row=>({personId:row.personId.toLowerCase(),teamId:row.teamId?.toLowerCase()??null,departmentId:row.departmentId?.toLowerCase()??null,managerId:row.managerId?.toLowerCase()??null})),people:sets[3].map(row=>({...row,id:row.id.toLowerCase()}))};
     });
   }
   async save(actorId:string,input:unknown) {

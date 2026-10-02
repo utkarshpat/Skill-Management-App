@@ -24,7 +24,9 @@ test('organization input rejects missing parents, arbitrary IDs and untrusted hi
   assert.throws(()=>organizationChange({kind:'assignment',personId:'outside',revision:1}),/valid/);
   assert.throws(()=>organizationChange({kind:'node',type:'DELIVERY_UNIT',name:'Unit',active:true,revision:1,parentId:first}),/parent/);
   const change=organizationChange({kind:'assignment',personId:first,teamId:null,managerId:second,revision:1,actorId:third,role:'Super Admin',reportingLevel:200});
-  assert.deepEqual(change.payload,{teamId:null,managerId:second});assert.equal(change.targetId,first);
+  assert.deepEqual(change.payload,{teamId:null,departmentId:null,managerId:second});assert.equal(change.targetId,first);
+  assert.throws(()=>organizationChange({kind:'assignment',personId:first,teamId:second,departmentId:third,revision:1}),/either/);
+  assert.equal(organizationChange({kind:'assignment',personId:first,departmentId:second,revision:1}).payload.departmentId,second);
 });
 
 test('organization endpoints bind actor to Microsoft identity and require current people administration',async()=>{

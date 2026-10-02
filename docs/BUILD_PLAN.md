@@ -25,7 +25,7 @@ Technical skills and workplace evaluations are separate. Claimed, verified, cert
 
 Each step produces a runnable result and relevant verification. Build one complete workflow at a time.
 
-Current increment: custom-role/person/individual-permission administration persists in Azure SQL through migration 003, with explicit local import, restricted runtime procedures, transactionally generated audit and revision checks. Temporary direct login is development-only. Microsoft-based Super Admin administration is live. Six editable role presets exist. Organization Setup now stores delivery units, departments, teams and current person-specific reporting lines with two expandable trees. Scoped permission bindings and workflow routing remain upcoming work; see ORGANIZATION_SETUP.md.
+Current increment: custom-role/person/individual-permission administration persists in Azure SQL through migration 003, with explicit local import, restricted runtime procedures, transactionally generated audit and revision checks. Temporary direct login is development-only. Microsoft-based Super Admin administration is live. Six editable role presets exist. Organization Setup now stores delivery units, departments, optional teams, direct department membership and current person-specific reporting lines with two expandable trees. Scoped permission bindings and workflow routing remain upcoming work; see ORGANIZATION_SETUP.md.
 
 ## Decisions still needed
 

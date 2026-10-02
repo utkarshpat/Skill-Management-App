@@ -21,7 +21,7 @@ npm.cmd run db:check -w apps/api
 npm.cmd run db:migrate -w apps/api
 ```
 
-Database setup uses the developer's Azure identity, applies reviewed migrations and closes connections. Migration 001 manages its own transaction; the runner skips an initialized schema and transactionally applies outstanding migrations 002/003/004/005. Use a single migration worker. Runtime SQL uses a separate restricted identity.
+Database setup uses the developer's Azure identity, applies reviewed migrations and closes connections. Migration 001 manages its own transaction; the runner skips an initialized schema and transactionally applies outstanding migrations 002/003/004/005/006. Use a single migration worker. Runtime SQL uses a separate restricted identity.
 
 ## Current scope
 
@@ -34,7 +34,7 @@ The personal development workspace contains one explicitly provisioned test memb
 ## Documentation
 
 - docs/BUILD_PLAN.md: agreed workflows and delivery sequence.
-- docs/ORGANIZATION_SETUP.md: organization tree, team assignment, reporting chain and audited SQL validation.
+- docs/ORGANIZATION_SETUP.md: organization tree, direct department or team assignment, reporting chain and audited SQL validation.
 - docs/UI_DESIGN.md: laptop-first branding and responsive design.
 - docs/AZURE_SETUP.md: Azure setup and company migration.
 - docs/SSO_AND_PROFILE.md: sign-in, runtime SQL isolation and verification.
