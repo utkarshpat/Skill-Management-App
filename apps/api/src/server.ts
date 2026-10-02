@@ -1,3 +1,4 @@
+import { SqlOrganizationStore } from './organization.js';
 import { createApp } from './app.js';
 import { identityConfig, tokenVerifier } from './auth.js';
 import { ownProfile } from './profile.js';
@@ -11,7 +12,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT m
 const config = identityConfig(process.env);
 const access=process.env.ACCESS_ACCOUNT_ID?new SqlAccessStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const developmentStore = developmentLoginEnabled(process.env) ? access : undefined;
-const server = createApp(config ? { verify: tokenVerifier(config),access,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
+const server = createApp(config ? { verify: tokenVerifier(config),access,organization:process.env.ACCESS_ACCOUNT_ID?new SqlOrganizationStore(process.env.ACCESS_ACCOUNT_ID):undefined,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
   const id=await access?.resolveIdentity(identity);
   if(!id)return ownProfile(identity);
   const state=await access!.snapshot();const person=state.people.find(person=>person.id===id);

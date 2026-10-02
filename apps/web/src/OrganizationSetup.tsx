@@ -1,0 +1,88 @@
+import { useEffect, useState, type ReactNode } from 'react';
+import { Building2, Network, Users, ChevronDown, ChevronRight, Plus, Search, GitBranch, Check, FolderTree } from 'lucide-react';
+import { authenticatedFetch } from './auth';
+
+type Kind='DELIVERY_UNIT'|'DEPARTMENT'|'TEAM';
+interface OrgNode {id:string;kind:Kind;name:string;parentId:string|null;active:boolean}
+interface Person {id:string;displayName:string;employeeCode:string;active:boolean}
+interface Assignment {personId:string;teamId:string|null;managerId:string|null}
+interface State {revision:number;nodes:OrgNode[];assignments:Assignment[];people:Person[]}
+const labels:Record<Kind,string>={DELIVERY_UNIT:'Delivery unit',DEPARTMENT:'Department',TEAM:'Team'};
+const icons={DELIVERY_UNIT:Building2,DEPARTMENT:Network,TEAM:Users};
+const blank=(kind:Kind='DELIVERY_UNIT',parentId:string|null=null)=>({id:'',kind,name:'',parentId,active:true});
+const endpoint='/api/access/organization';
+
+export function OrganizationSetup({onChanged}:{onChanged:()=>void}) {
+  const [state,setState]=useState<State>();
+  const [mode,setMode]=useState<'organization'|'reporting'>('organization');
+  const [expanded,setExpanded]=useState<Set<string>>(new Set());
+  const [search,setSearch]=useState('');const [archived,setArchived]=useState(false);
+  const [selected,setSelected]=useState<string>();const [form,setForm]=useState(blank());
+  const [personId,setPersonId]=useState('');const [teamId,setTeamId]=useState('');const [managerId,setManagerId]=useState('');
+  const [busy,setBusy]=useState(false);const [error,setError]=useState('');const [notice,setNotice]=useState('');
+  async function read(signal?:AbortSignal) {
+    const response=await authenticatedFetch(endpoint,{signal});
+    if(!response.ok)throw new Error(response.status===403?'Organization setup requires people administration permission.':'Organization could not be loaded. Please try again.');
+    const result:State=await response.json();setState(result);return result;
+  }
+  useEffect(()=>{const controller=new AbortController();read(controller.signal).then(result=>setExpanded(new Set(result.nodes.map(node=>node.id)))).catch(err=>{if(!controller.signal.aborted)setError(err.message);});return()=>controller.abort();},[]);
+  async function save(value:object) {
+    if(!state||busy)return;
+    setBusy(true);setError('');setNotice('');
+    try {
+      const response=await authenticatedFetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...value,revision:state.revision})});
+      if(!response.ok){const body=await response.json().catch(()=>undefined);throw new Error(body?.error?.message??'The change could not be saved.');}
+      const fresh=await read();setNotice('Saved. Organization and reporting details are up to date.');onChanged();
+      if('kind' in value&&value.kind==='node') {
+        const node=fresh.nodes.find(node=>node.kind===form.kind&&node.parentId===form.parentId&&node.name===form.name.trim());
+        if(node){setForm(node);setSelected(node.id);setExpanded(new Set(fresh.nodes.map(item=>item.id)));}
+      }
+    }catch(err){setError(err instanceof Error?err.message:'Could not save.');}finally{setBusy(false);}
+  }
+  function choose(node:OrgNode){setSelected(node.id);setForm({...node});setNotice('');}
+  function add(kind:Kind,parentId:string|null=null){setSelected(undefined);setForm(blank(kind,parentId));setNotice('');}
+  function selectPerson(id:string){setPersonId(id);const assignment=state?.assignments.find(item=>item.personId===id);setTeamId(assignment?.teamId??'');setManagerId(assignment?.managerId??'');setNotice('');}
+  function toggle(id:string){setExpanded(current=>{const next=new Set(current);if(next.has(id))next.delete(id);else next.add(id);return next;});}
+  function lineage(id:string):Person[] {
+    if(!state)return [];
+    const result:Person[]=[];const seen=new Set([id]);let cursor=id;
+    while(result.length<200){const next=state.assignments.find(item=>item.personId===cursor)?.managerId;if(!next||seen.has(next))break;const person=state.people.find(item=>item.id===next);if(!person)break;seen.add(next);result.push(person);cursor=next;}
+    return result;
+  }
+  if(!state)return <section className="profile-panel" aria-live="polite">{error?<><p role="alert">{error}</p><button className="secondary-button" onClick={()=>{setError('');read().catch(err=>setError(err.message));}}>Retry</button></>:<p>Loading your organization…</p>}</section>;
+  const query=search.trim().toLowerCase();
+  const visible=state.nodes.filter(node=>archived||node.active);
+  const matches=(node:OrgNode):boolean=>node.name.toLowerCase().includes(query)||visible.filter(child=>child.parentId===node.id).some(matches);
+  const teamPath=(id:string)=>{const team=state.nodes.find(node=>node.id===id);const department=state.nodes.find(node=>node.id===team?.parentId);const unit=state.nodes.find(node=>node.id===department?.parentId);return [unit?.name,department?.name,team?.name].filter(Boolean).join(' / ');};
+  const assigned=state.assignments.filter(item=>item.teamId&&state.people.some(person=>person.id===item.personId&&person.active)).length;
+  const activePeople=state.people.filter(person=>person.active);
+  const direct=state.assignments.filter(item=>item.teamId===selected).map(item=>state.people.find(person=>person.id===item.personId)).filter((person):person is Person=>Boolean(person));
+  const descendants=(id:string):number=>state.nodes.filter(node=>node.parentId===id&&node.active).reduce((count,node)=>count+1+descendants(node.id),0);
+  const nodeBranch=(node:OrgNode):ReactNode=>{
+    const children=visible.filter(child=>child.parentId===node.id).filter(matches);const Icon=icons[node.kind];const open=Boolean(query)||expanded.has(node.id);
+    return <li key={node.id}><div className={`org-tree-row ${selected===node.id?'selected':''} ${!node.active?'archived':''}`}>
+      {children.length?<button className="org-expand" aria-label={`${open?'Collapse':'Expand'} ${node.name}`} aria-expanded={open} onClick={()=>toggle(node.id)}><ChevronDown size={15} className={open?'':'closed'}/></button>:<span className="org-expand"/>}
+      <button className="org-node-select" onClick={()=>choose(node)} aria-pressed={selected===node.id}><span className={`org-node-icon ${node.kind.toLowerCase()}`}><Icon size={18}/></span><span><strong>{node.name}</strong><small>{labels[node.kind]}{!node.active?' · Archived':''}</small></span><span className="org-node-count">{node.kind==='TEAM'?state.assignments.filter(item=>item.teamId===node.id).length:children.length}</span></button>
+    </div>{open&&children.length>0&&<ul>{children.map(nodeBranch)}</ul>}</li>;
+  };
+  const reports=(id:string)=>state.assignments.filter(item=>item.managerId===id).map(item=>state.people.find(person=>person.id===item.personId)).filter((person):person is Person=>Boolean(person));
+  const personMatches=(person:Person,seen=new Set<string>()):boolean=>{if(seen.has(person.id))return false;seen.add(person.id);return `${person.displayName} ${person.employeeCode}`.toLowerCase().includes(query)||reports(person.id).some(child=>personMatches(child,new Set(seen)));};
+  const personBranch=(person:Person,seen=new Set<string>()):ReactNode=>{
+    if(seen.has(person.id))return null;const next=new Set(seen).add(person.id);const children=reports(person.id).filter(child=>personMatches(child));const open=Boolean(query)||expanded.has(person.id);
+    return <li key={person.id}><div className={`org-tree-row ${personId===person.id?'selected':''}`}>{children.length?<button className="org-expand" aria-label={`${open?'Collapse':'Expand'} reports for ${person.displayName}`} aria-expanded={open} onClick={()=>toggle(person.id)}><ChevronDown size={15} className={open?'':'closed'}/></button>:<span className="org-expand"/>}<button className="org-node-select" onClick={()=>selectPerson(person.id)} aria-pressed={personId===person.id}><span className="org-person-avatar">{person.displayName.split(' ').slice(0,2).map(part=>part[0]).join('')}</span><span><strong>{person.displayName}</strong><small>{person.employeeCode}{!person.active?' · Suspended':''}</small></span><span className="org-node-count">{children.length}</span></button></div>{open&&children.length>0&&<ul>{children.map(child=>personBranch(child,next))}</ul>}</li>;
+  };
+  const chain=personId?lineage(personId):[];
+  return <div className="organization-setup">
+    <div className="org-summary">{([{kind:'DELIVERY_UNIT',label:'Delivery units',Icon:Building2},{kind:'DEPARTMENT',label:'Departments',Icon:Network},{kind:'TEAM',label:'Teams',Icon:Users}] as const).map(({kind,label,Icon})=><div key={kind}><Icon size={19}/><strong>{state.nodes.filter(node=>node.kind===kind&&node.active).length}</strong><span>{label}</span></div>)}<div><Check size={19}/><strong>{assigned}/{activePeople.length}</strong><span>People assigned to teams</span></div></div>
+    <div className="org-toolbar"><div className="org-view-switch" role="group" aria-label="Hierarchy view"><button aria-pressed={mode==='organization'} onClick={()=>setMode('organization')}><FolderTree size={17}/>Organization</button><button aria-pressed={mode==='reporting'} onClick={()=>{setMode('reporting');setExpanded(current=>new Set([...current,...state.people.map(person=>person.id)]));}}><GitBranch size={17}/>Reporting lines</button></div><button className="admin-primary" onClick={()=>{setMode('organization');add('DELIVERY_UNIT');}}><Plus size={17}/>Add delivery unit</button></div>
+    {error&&<div className="access-message" role="alert">{error}<button className="secondary-button" onClick={()=>read().then(()=>setError('')).catch(err=>setError(err.message))}>Reload organization</button></div>}{notice&&<p className="org-success" role="status"><Check size={17}/>{notice}</p>}
+    <div className="org-layout"><section className="profile-panel org-tree-panel"><div className="panel-title"><div><h2>{mode==='organization'?'Organization tree':'Reporting tree'}</h2><p>{mode==='organization'?'Delivery unit → Department → Team':'Each branch follows a person’s reporting manager.'}</p></div></div><label className="org-search"><Search size={17}/><input aria-label="Search hierarchy" placeholder={mode==='organization'?'Find a unit, department or team':'Find a person or employee ID'} value={search} onChange={event=>setSearch(event.target.value)}/></label><div className="org-tree-tools"><button onClick={()=>setExpanded(new Set([...state.nodes.map(node=>node.id),...state.people.map(person=>person.id)]))}>Expand all</button><button onClick={()=>setExpanded(new Set())}>Collapse all</button>{mode==='organization'&&<label><input type="checkbox" checked={archived} onChange={event=>setArchived(event.target.checked)}/>Show archived</label>}</div>
+      {mode==='organization'?(state.nodes.length?<nav aria-label="Organization hierarchy"><ul className="org-tree">{visible.filter(node=>!node.parentId).filter(matches).map(nodeBranch)}</ul>{!visible.some(matches)&&<p className="org-empty-small">No matching organization records.</p>}</nav>:<div className="org-empty"><span><Building2 size={32}/></span><h3>Give your workspace a structure</h3><p>Start with a delivery unit, add its departments, then create teams.</p><button className="admin-primary" onClick={()=>add('DELIVERY_UNIT')}><Plus size={16}/>Create first delivery unit</button></div>):<nav aria-label="Reporting hierarchy"><ul className="org-tree">{state.people.filter(person=>!state.assignments.find(item=>item.personId===person.id)?.managerId).filter(person=>personMatches(person)).map(person=>personBranch(person))}</ul>{!state.people.some(person=>personMatches(person))&&<p>No matching people.</p>}</nav>}
+      <p className="org-tree-footnote">{mode==='organization'?'Select a branch to edit details and manage its structure.':'Access roles and reporting relationships are managed separately.'}</p>
+    </section>
+    <div className="org-detail-column">{mode==='organization'?<>
+      <form className="profile-panel access-form org-node-form" onSubmit={event=>{event.preventDefault();void save({kind:'node',type:form.kind,id:form.id||undefined,name:form.name,parentId:form.parentId,active:form.active});}}><div className="org-detail-heading"><span className="org-node-icon"><Building2 size={22}/></span><div><p className="eyebrow">{form.id?'SELECTED BRANCH':'NEW BRANCH'}</p><h2>{form.id?form.name:`Create ${labels[form.kind].toLowerCase()}`}</h2></div></div><label>Level<select disabled={Boolean(form.id)} value={form.kind} onChange={event=>add(event.target.value as Kind)}>{Object.entries(labels).map(([kind,label])=><option key={kind} value={kind}>{label}</option>)}</select></label><label>{labels[form.kind]} name<input required maxLength={100} placeholder={`Enter ${labels[form.kind].toLowerCase()} name`} value={form.name} onChange={event=>setForm({...form,name:event.target.value})}/></label>{form.kind!=='DELIVERY_UNIT'&&<label>Parent {form.kind==='TEAM'?'department':'delivery unit'}<select required value={form.parentId??''} onChange={event=>setForm({...form,parentId:event.target.value||null})}><option value="">Choose parent</option>{state.nodes.filter(node=>node.active&&node.kind===(form.kind==='TEAM'?'DEPARTMENT':'DELIVERY_UNIT')).map(node=><option key={node.id} value={node.id}>{node.name}{node.parentId?` · ${state.nodes.find(parent=>parent.id===node.parentId)?.name??''}`:''}</option>)}</select></label>}<label className="access-check"><input type="checkbox" checked={form.active} onChange={event=>setForm({...form,active:event.target.checked})}/>Active branch</label>{form.id&&<div className="org-selected-actions"><span>{form.kind==='TEAM'?`${direct.length} people assigned`:`${descendants(form.id)} active branches below`}</span>{form.kind!=='TEAM'&&<button className="secondary-button" type="button" onClick={()=>add(form.kind==='DELIVERY_UNIT'?'DEPARTMENT':'TEAM',form.id)}><Plus size={15}/>Add {form.kind==='DELIVERY_UNIT'?'department':'team'}</button>}</div>}<button className="microsoft-button" disabled={busy}>{busy?'Saving…':form.id?'Save branch':'Create branch'}</button><p className="access-help">Archive empty branches when they are no longer needed. Saved changes remain in the activity log.</p></form>
+      {selected&&form.kind==='TEAM'&&<section className="profile-panel"><h2>People in this team</h2>{direct.length?<ul className="org-team-people">{direct.map(person=><li key={person.id}><button onClick={()=>{setMode('reporting');selectPerson(person.id);}}><strong>{person.displayName}</strong><span>{person.employeeCode}<ChevronRight size={15}/></span></button></li>)}</ul>:<p>No people assigned yet.</p>}<button className="secondary-button" onClick={()=>{setMode('reporting');setTeamId(selected);setPersonId('');setManagerId('');}}>Assign a person</button></section>}
+    </>:<form className="profile-panel access-form" onSubmit={event=>{event.preventDefault();void save({kind:'assignment',personId,teamId:teamId||null,managerId:managerId||null});}}><div className="org-detail-heading"><span className="org-node-icon"><GitBranch size={22}/></span><div><p className="eyebrow">PERSON & REPORTING</p><h2>Place people in your organization</h2></div></div><label>Person<select required value={personId} onChange={event=>selectPerson(event.target.value)}><option value="">Choose a person</option>{activePeople.map(person=><option key={person.id} value={person.id}>{person.displayName} · {person.employeeCode}</option>)}</select></label><label>Team<select value={teamId} onChange={event=>setTeamId(event.target.value)}><option value="">No team assigned</option>{state.nodes.filter(node=>node.kind==='TEAM'&&node.active).map(node=><option key={node.id} value={node.id}>{teamPath(node.id)}</option>)}</select></label><label>Direct reporting manager<select value={managerId} onChange={event=>setManagerId(event.target.value)}><option value="">No reporting manager</option>{activePeople.filter(person=>person.id!==personId&&!lineage(person.id).some(manager=>manager.id===personId)).map(person=><option key={person.id} value={person.id}>{person.displayName} · {person.employeeCode}</option>)}</select></label><p className="access-help">Choose the person they report to directly. Higher reporting levels follow that manager’s own reporting line.</p><button className="microsoft-button" disabled={busy||!personId}>{busy?'Saving…':'Save assignment'}</button>{personId&&<section className="org-chain"><h3>Saved reporting chain</h3><p>{state.people.find(person=>person.id===personId)?.displayName}</p>{chain.length?<ol>{chain.map((person,index)=><li key={person.id}><span>Reporting level {index+1}</span><strong>{person.displayName}</strong><small>{person.active?person.employeeCode:'Suspended — review required'}</small></li>)}</ol>:<p className="access-help">No reporting manager assigned.</p>}</section>}</form>}</div></div>
+  </div>;
+}

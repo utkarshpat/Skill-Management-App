@@ -21,19 +21,20 @@ npm.cmd run db:check -w apps/api
 npm.cmd run db:migrate -w apps/api
 ```
 
-Database setup uses the developer's Azure identity, applies reviewed migrations and closes connections. Migration 001 manages its own transaction; the runner skips an initialized schema and transactionally applies outstanding migrations 002/003/004. Use a single migration worker. Runtime SQL uses a separate restricted identity.
+Database setup uses the developer's Azure identity, applies reviewed migrations and closes connections. Migration 001 manages its own transaction; the runner skips an initialized schema and transactionally applies outstanding migrations 002/003/004/005. Use a single migration worker. Runtime SQL uses a separate restricted identity.
 
 ## Current scope
 
 Temporary local direct login and permission administration are available when NODE_ENV=development and DEV_DIRECT_LOGIN=true. The account owner signs in with Microsoft and opens the Super Admin dashboard; the passwordless picker contains only unlinked test people. Define custom role names, people IDs, role permissions and per-person ALLOW/DENY overrides. Configuration now persists in account-scoped Azure SQL tables with transactional revision checks and audit. Set ACCESS_ACCOUNT_ID after the explicit access:import operation. Production must leave this flag off. See docs/PERMISSION_ADMINISTRATION.md for scope, tests and the company migration boundary.
 
-Microsoft SPA/API registrations, validated delegated tokens, restricted SQL own-profile access and a responsive authenticated profile page are implemented. Missing membership is denied; sign-in does not automatically onboard employees. The complete browser login and live Azure SQL profile retrieval succeeded after user-completed individual consent. Migrations 1, 2, 3 and 4, historical role seeds and custom access records are verified in the personal development database. Verification details are in docs/SSO_AND_PROFILE.md.
+Microsoft SPA/API registrations, validated delegated tokens, restricted SQL own-profile access and a responsive authenticated profile page are implemented. Missing membership is denied; sign-in does not automatically onboard employees. The complete browser login and live Azure SQL profile retrieval succeeded after user-completed individual consent. Migrations 1, 2, 3, 4 and 5, historical role seeds and custom access records are verified in the personal development database. Verification details are in docs/SSO_AND_PROFILE.md.
 
 The personal development workspace contains one explicitly provisioned test member with EMPLOYEE role. Skills, evidence, review, onboarding, AI tools and production deployment are upcoming increments. This development foundation is not yet production-ready.
 
 ## Documentation
 
 - docs/BUILD_PLAN.md: agreed workflows and delivery sequence.
+- docs/ORGANIZATION_SETUP.md: organization tree, team assignment, reporting chain and audited SQL validation.
 - docs/UI_DESIGN.md: laptop-first branding and responsive design.
 - docs/AZURE_SETUP.md: Azure setup and company migration.
 - docs/SSO_AND_PROFILE.md: sign-in, runtime SQL isolation and verification.

@@ -1,3 +1,4 @@
+import type { OrganizationStore } from './organization.js';
 import { rolePresets } from './role-presets.js';
 import { randomUUID } from 'node:crypto';
 import express, { type ErrorRequestHandler } from 'express';
@@ -8,7 +9,7 @@ import { createDevelopmentSessions, localMutation, localRequest } from './develo
 import { type AccessStore, AccessError, can } from './local-access-store.js';
 import { permissionCatalogue } from './access-catalogue.js';
 
-export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; access?:AccessStore; resolveAccess?:(identity:Identity)=>Promise<string|undefined> }, options: { developmentStore?: AccessStore } = {}) {
+export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; access?:AccessStore; organization?:OrganizationStore; resolveAccess?:(identity:Identity)=>Promise<string|undefined> }, options: { developmentStore?: AccessStore } = {}) {
   const app = express();
   const store = options.developmentStore;
   const demo = store ? createDevelopmentSessions(store) : undefined;
@@ -75,6 +76,15 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
     catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'ACCESS_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
 
+  app.get('/api/access/organization',async(_req,res)=>{
+    if(!dependencies?.organization||!can(res.locals.accessState,res.locals.accessPerson,'users.manage')){res.sendStatus(403);return;}
+    res.json(await dependencies.organization.snapshot());
+  });
+  app.post('/api/access/organization',async(req,res)=>{
+    if(!dependencies?.organization||!can(res.locals.accessState,res.locals.accessPerson,'users.manage')){res.sendStatus(403);return;}
+    try { await dependencies.organization.save(res.locals.accessPerson.id,req.body);res.json({saved:true}); }
+    catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'ORGANIZATION_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
+  });
   // Liveness only: this must never imply SQL or organizational SSO is ready.
   app.get('/api/health', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');

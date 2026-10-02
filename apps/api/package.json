@@ -12,6 +12,7 @@
     "db:migrate": "node --env-file-if-exists=.env --import tsx src/database-cli.ts migrate",
     "access:presets": "node --env-file-if-exists=.env --import tsx src/role-presets-cli.ts",
     "access:import": "node --env-file-if-exists=.env --import tsx src/access-import-cli.ts",
+    "test:organization": "node --env-file-if-exists=.env --import tsx test/organization.integration.ts",
     "test:sql": "node --env-file-if-exists=.env --import tsx test/sql-access.integration.ts"
   },
   "dependencies": {
