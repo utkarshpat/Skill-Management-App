@@ -32,7 +32,9 @@ npm.cmd run build
 - `apps/api/src/domain/authorization.ts`: scoped permission and N+1 routing helpers.
 - `docs/IDENTITY_AND_ACCESS.md`: integration rules, migration instructions and pending setup.
 
-Only the overview and connection check are available in the UI. Module buttons are visibly disabled. Step 02 adds an SQL migration and tested permission/N+1 functions; these are not yet wired to authentication, HTTP or a live database. Protected API paths deny access. API liveness does not imply database readiness.
+The welcome page at `/` uses the supplied Sopra Steria logo and orange/red theme. Its Microsoft sign-in button is disabled until Entra integration is configured. The public `/preview` route shows the themed overview and API connection check, with no employee data and disabled module buttons. It does not create an authenticated session. Step 02 adds an SQL migration and tested permission/N+1 functions; these are not yet wired to authentication, HTTP or a live database. Protected API paths deny access. API liveness does not imply database readiness.
+
+See `docs/AZURE_SETUP.md` for the personal free Azure setup and later company migration. No Azure resource creation or live SQL migration has been completed yet. The provided mark file had a `.svg` extension but contained PNG bytes; it is stored as `apps/web/public/brand/sopra-steria-mark.png`. The full wordmark remains SVG.
 
 Vite serves the frontend locally; Express serves the API. Vite's `/api` proxy sends browser requests to Express so the frontend uses relative URLs. Production hosting/proxy and environment configuration will be added in a later step. The API binds to loopback for this local foundation.
 
