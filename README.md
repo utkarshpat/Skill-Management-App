@@ -34,6 +34,7 @@ The personal development workspace contains one explicitly provisioned test memb
 ## Documentation
 
 - docs/BUILD_PLAN.md: agreed workflows and delivery sequence.
+- docs/UI_DESIGN.md: simplified page structure, responsive behavior and UI verification.
 - docs/ORGANIZATION_SETUP.md: organization tree, direct department or team assignment, reporting chain and audited SQL validation.
 - docs/UI_DESIGN.md: laptop-first branding and responsive design.
 - docs/AZURE_SETUP.md: Azure setup and company migration.
