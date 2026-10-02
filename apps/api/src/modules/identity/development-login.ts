@@ -1,23 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import type { Request } from 'express';
-import { can, type AccessStore } from './local-access-store.js';
+import { localRequest } from '../../shared/http-security.js';
+export { localRequest, localMutation } from '../../shared/http-security.js';
+import { can, type AccessStore } from '../access/index.js';
 export function developmentLoginEnabled(env: NodeJS.ProcessEnv) {
   if (env.DEV_DIRECT_LOGIN !== 'true') return false;
   if (env.NODE_ENV !== 'development') throw new Error('Direct login requires NODE_ENV=development.');
   return true;
-}
-export function localRequest(req: Request) {
-  return ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '') && ['localhost','127.0.0.1','[::1]'].includes(req.hostname);
-}
-export function localMutation(req: Request) {
-  if (!localRequest(req)) return false;
-  try {
-    const origin = new URL(req.get('Origin') ?? '');
-    // Vite's proxy can replace Host with the API target; explicitly allow only our local UI origins.
-    return origin.protocol === 'http:' && ['localhost','127.0.0.1','[::1]'].includes(origin.hostname) &&
-      (origin.host === req.get('host') || ['http://localhost:5173','http://127.0.0.1:5173'].includes(origin.origin));
-  }
-  catch { return false; }
 }
 export function createDevelopmentSessions(store: AccessStore, now = Date.now) {
   const sessions = new Map<string,{personId:string;expires:number}>();

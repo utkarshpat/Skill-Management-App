@@ -6,6 +6,8 @@ Every increment should be runnable, reviewable and documented. Production readin
 
 Use strict TypeScript, pinned dependencies and the lockfile. Keep identity verification, business policy and persistence explicit. Validate inputs at trust boundaries; derive actor, organization, permissions and reviewer from server-side sources. Reject missing identity, inactive membership and unknown authorization paths. Use parameterized SQL and restrict runtime database permissions per implemented workflow.
 
+Follow the module ownership and public-contract rules in ARCHITECTURE.md. Keep the frontend separate and the API deployable as one process. Run `npm run architecture:check` before committing backend changes; CI also enforces this boundary.
+
 Use transactions for changes and their audit events, record versions for concurrent edits, and idempotency for retryable mutations. Scope every API, search, export, job and AI tool. Keep development bootstrap data separate from production onboarding. Do not seed real employee information or infer administrator roles from successful sign-in.
 
 Keep secrets out of Git and frontend bundles. Production uses HTTPS, approved origins, managed identity/secret management, private evidence storage and reviewed network access. Return generic failures with request IDs; operational logging must be structured and redact tokens, credentials and personal data.

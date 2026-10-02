@@ -1,6 +1,6 @@
 import sql from 'mssql';
-import type {Identity} from './auth.js';
-import { withRuntimeDatabase } from './database.js';
+import type {Identity} from '../identity/index.js';
+import { withRuntimeDatabase } from '../../shared/database.js';
 import { LocalAccessStore, AccessError, type AccessStore, type LocalAccessState, type Assignment } from './local-access-store.js';
 type PermissionRow = { permission:Assignment['permission'];scope:Assignment['scope'];effect:Assignment['effect'];validUntil:Date|null };
 type ResultSets = [

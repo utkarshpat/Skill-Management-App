@@ -1,7 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import sql from 'mssql';
-import { withRuntimeDatabase } from './database.js';
-import { AccessError } from './local-access-store.js';
+import { AccessError } from '../../shared/errors.js';
 
 export type SkillStatus='DRAFT'|'PUBLISHED'|'ARCHIVED';
 export interface SkillLevel { rank:number; name:string; description:string }
@@ -9,7 +7,7 @@ export interface CatalogueSkill { id:string; name:string; category:string; descr
 export interface CatalogueQuery { search:string; status:SkillStatus|''; page:number }
 export interface CatalogueState { revision:number; canManage:boolean; total:number; page:number; pageSize:number; skills:CatalogueSkill[] }
 export interface CatalogueStore { read(actorId:string,query:CatalogueQuery):Promise<CatalogueState>; save(actorId:string,input:unknown):Promise<void> }
-const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const statuses=['DRAFT','PUBLISHED','ARCHIVED'];
 function text(value:unknown,max:number,required=true,compact=false):string {
  if(typeof value!=='string')throw new AccessError(400,'Enter valid skill fields.');
@@ -40,32 +38,4 @@ export function catalogueChange(input:unknown) {
   return {rank:index+1,name,description};
  });
  return {revision:Number(body.revision),targetId:body.id===undefined?randomUUID():String(body.id).toLowerCase(),isNew:body.id===undefined,payload:{name:text(body.name,100,true,true),category:text(body.category,80,true,true),description:text(body.description,2000,published),status:body.status as SkillStatus,levels}};
-}
-export class SqlCatalogueStore implements CatalogueStore {
- constructor(private accountId:string){if(!uuid.test(accountId))throw new Error('Catalogue requires a workspace UUID.');}
- async read(actorId:string,query:CatalogueQuery):Promise<CatalogueState> {
-  try{return await withRuntimeDatabase(async pool=>{
-   const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId)
-    .input('query',sql.NVarChar(100),query.search).input('status',sql.VarChar(20),query.status).input('page',sql.Int,query.page).execute('dbo.ReadSkillCatalogue');
-   const sets=result.recordsets as unknown as [sql.IRecordSet<{revision:number;canManage:boolean;total:number}>,sql.IRecordSet<Omit<CatalogueSkill,'levels'>>,sql.IRecordSet<SkillLevel&{skillId:string}>];
-   return {...sets[0][0],page:query.page,pageSize:25,skills:sets[1].map(item=>({...item,id:item.id.toLowerCase(),levels:sets[2].filter(level=>level.skillId===item.id).map(({rank,name,description})=>({rank,name,description}))}))};
-  });}catch(error){throw catalogueError(error);}
- }
- async save(actorId:string,input:unknown) {
-  const change=catalogueChange(input);
-  try{await withRuntimeDatabase(pool=>pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId)
-   .input('expected_revision',sql.Int,change.revision).input('target_id',sql.UniqueIdentifier,change.targetId).input('is_new',sql.Bit,change.isNew)
-   .input('payload',sql.NVarChar(sql.MAX),JSON.stringify(change.payload)).execute('dbo.SaveSkillCatalogue'));
-  }catch(error){throw catalogueError(error);}
- }
-}
-function catalogueError(error:unknown) {
- const number=(error as {number?:number})?.number;
- if(number===51003)return new AccessError(403,'Skill catalogue permission is not assigned.');
- if(number===51004)return new AccessError(404,'Workspace or skill is unavailable.');
- if(number===51009)return new AccessError(409,'Workspace changed. Reload the catalogue and review your draft before saving again.');
- if(number===51000)return new AccessError(400,(error as Error).message);
- if(number===2601||number===2627)return new AccessError(409,'A skill with this name already exists.');
- if(number===547)return new AccessError(400,'Skill definition is invalid.');
- return error;
 }

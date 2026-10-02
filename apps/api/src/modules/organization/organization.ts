@@ -1,7 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import sql from 'mssql';
-import { withRuntimeDatabase } from './database.js';
-import { AccessError } from './local-access-store.js';
+import { AccessError } from '../../shared/errors.js';
 
 export type NodeKind = 'DELIVERY_UNIT' | 'DEPARTMENT' | 'TEAM';
 export interface OrgNode { id:string; kind:NodeKind; name:string; parentId:string|null; active:boolean }
@@ -9,8 +7,8 @@ export interface OrgAssignment { personId:string; teamId:string|null; department
 export interface OrgPerson { id:string; displayName:string; employeeCode:string; active:boolean }
 export interface OrganizationState { revision:number; nodes:OrgNode[]; assignments:OrgAssignment[]; people:OrgPerson[] }
 export interface OrganizationStore { snapshot():Promise<OrganizationState>; save(actorId:string,input:unknown):Promise<void> }
-const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function identifier(value:unknown,optional=false):string|null {
+export const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function identifier(value:unknown,optional=false):string|null {
   if(optional&&(value===null||value===undefined||value===''))return null;
   if(typeof value!=='string'||!uuid.test(value))throw new AccessError(400,'Choose a valid workspace record.');
   return value.toLowerCase();
@@ -49,34 +47,4 @@ export function reportingChain(state:OrganizationState,personId:string):OrgPerso
     seen.add(managerId);chain.push(manager);current=managerId;
   }
   throw new AccessError(400,'Reporting chain is too deep.');
-}
-
-export class SqlOrganizationStore implements OrganizationStore {
-  constructor(private accountId:string) { identifier(accountId); }
-  async snapshot():Promise<OrganizationState> {
-    return withRuntimeDatabase(async pool=>{
-      const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).execute('dbo.ReadOrganization');
-      const sets=result.recordsets as unknown as [sql.IRecordSet<{revision:number}>,sql.IRecordSet<OrgNode>,sql.IRecordSet<OrgAssignment>,sql.IRecordSet<OrgPerson>];
-      return {revision:sets[0][0].revision,nodes:sets[1].map(row=>({...row,id:row.id.toLowerCase(),parentId:row.parentId?.toLowerCase()??null})),assignments:sets[2].map(row=>({personId:row.personId.toLowerCase(),teamId:row.teamId?.toLowerCase()??null,departmentId:row.departmentId?.toLowerCase()??null,managerId:row.managerId?.toLowerCase()??null})),people:sets[3].map(row=>({...row,id:row.id.toLowerCase()}))};
-    });
-  }
-  async save(actorId:string,input:unknown) {
-    const change=organizationChange(input);
-    try {
-      await withRuntimeDatabase(pool=>pool.request()
-        .input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId)
-        .input('expected_revision',sql.Int,change.revision).input('kind',sql.VarChar(20),change.kind)
-        .input('target_id',sql.UniqueIdentifier,change.targetId).input('is_new',sql.Bit,change.isNew)
-        .input('payload',sql.NVarChar(sql.MAX),JSON.stringify(change.payload)).execute('dbo.SaveOrganizationChange'));
-    } catch(error) {
-      const number=(error as {number?:number}).number;
-      if(number===51009)throw new AccessError(409,'Configuration changed. Reload and try again.');
-      if(number===51003)throw new AccessError(403,'Organization administration is not assigned.');
-      if(number===51004)throw new AccessError(404,'Workspace record unavailable.');
-      if(number===51000)throw new AccessError(400,(error as Error).message);
-      if([2601,2627].includes(number??0))throw new AccessError(400,'This name already exists under the selected parent.');
-      if(number===547)throw new AccessError(400,'Choose records from this workspace.');
-      throw error;
-    }
-  }
 }

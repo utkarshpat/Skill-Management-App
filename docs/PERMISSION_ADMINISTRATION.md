@@ -72,7 +72,7 @@ These scoped proposals are visible in the preset panel but are not effective gra
 
 Reporting is person-specific: A reports to B (A's N+1); B reports to C (A's N+2). Derive these levels by following current reporting relationships, irrespective of access roles. Missing/ambiguous relationships, self-reference and cycles must block routing. Team membership and review assignment need explicit trusted bindings; a Manager role is not a reporting relationship. Live N+2 reporting resolution remains future organization-model work.
 
-Source templates live in apps/api/src/role-presets.ts. The dashboard opens an existing role without resetting edits, or prefills an absent role for review/save. Role renaming remains allowed. Suggestions are reference templates, not synchronized runtime policy.
+Source templates live in apps/api/src/modules/access/role-presets.ts. The dashboard opens an existing role without resetting edits, or prefills an absent role for review/save. Role renaming remains allowed. Suggestions are reference templates, not synchronized runtime policy.
 
 Explicit development provisioning: set ROLE_PRESET_OWNER_OBJECT_ID to the linked Microsoft owner UUID, then run npm.cmd run access:presets -w apps/api. The development-only command uses restricted runtime SQL procedures and the owner's current permission, creates one audit event per role, never assigns people and preserves existing roles with the same name. Rerunning after renaming can create a fresh role under the original name; use the dashboard for subsequent customization.
 

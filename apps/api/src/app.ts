@@ -1,17 +1,17 @@
-import type { OrganizationStore } from './organization.js';
-import { rolePresets } from './role-presets.js';
 import { randomUUID } from 'node:crypto';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
-import type { Identity } from './auth.js';
-import type { Profile } from './profile.js';
-import { createDevelopmentSessions, localMutation, localRequest } from './development-login.js';
-import { type AccessStore, AccessError, can } from './local-access-store.js';
-import { permissionCatalogue } from './access-catalogue.js';
-import type { AssistantService } from './assistant.js';
-import { catalogueQuery, type CatalogueStore } from './skill-catalogue.js';
+import { createDevelopmentSessions } from './modules/identity/index.js';
+import type { AccessStore } from './modules/access/index.js';
+import { registerRoutes as identityRoutes, type HttpDependencies as IdentityDependencies } from './modules/identity/routes.js';
+import { registerRoutes as accessRoutes, type HttpDependencies as AccessDependencies } from './modules/access/routes.js';
+import { registerRoutes as organizationRoutes, type HttpDependencies as OrganizationDependencies } from './modules/organization/routes.js';
+import { registerRoutes as skillsRoutes, type HttpDependencies as SkillsDependencies } from './modules/skills/routes.js';
+import { registerRoutes as aiRoutes, type HttpDependencies as AiDependencies } from './modules/ai/routes.js';
 
-export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; access?:AccessStore; organization?:OrganizationStore; assistant?:AssistantService; catalogue?:CatalogueStore; resolveAccess?:(identity:Identity)=>Promise<string|undefined> }, options: { developmentStore?: AccessStore } = {}) {
+export type AppDependencies = IdentityDependencies & AccessDependencies & OrganizationDependencies & SkillsDependencies & AiDependencies;
+
+export function createApp(dependencies?: AppDependencies, options: { developmentStore?: AccessStore } = {}) {
   const app = express();
   const store = options.developmentStore;
   const demo = store ? createDevelopmentSessions(store) : undefined;
@@ -23,145 +23,18 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
     next();
   });
   app.use(express.json({ limit: '128kb' }));
-  app.use('/api/dev-login', (req, res, next) => {
-    res.setHeader('Cache-Control', 'no-store');
-    if (!demo || !localRequest(req)) { res.sendStatus(404); return; }
-    next();
-  });
-  app.get('/api/dev-login', async (req, res) => res.json({ people: (await store!.snapshot()).people.filter(person => person.active&&!person.entraObjectId).map(person => ({ id:person.id,displayName:person.displayName,employeeCode:person.employeeCode })), signedIn: Boolean(await demo!.person(req)), mode:'local-demo' }));
-  app.post('/api/dev-login', async (req, res) => {
-    if (!localMutation(req)) { res.sendStatus(403); return; }
-    const id = req.body?.personId;
-    const value = typeof id === 'string' ? await demo!.issue(id) : undefined;
-    if (!value) { res.status(400).json({ error: { code: 'INVALID_DEMO_PERSON', message: 'Choose an available demo person.' } }); return; }
-    demo!.revoke(req);
-    res.cookie(demo!.cookieName, value, { httpOnly: true, sameSite: 'strict', path: '/api', maxAge: demo!.lifetime });
-    res.json({ mode: 'local-demo' });
-  });
-  app.delete('/api/dev-login', (req, res) => {
-    if (!localMutation(req)) { res.sendStatus(403); return; }
-    demo!.revoke(req); res.clearCookie(demo!.cookieName, { path: '/api', httpOnly: true, sameSite: 'strict' }); res.sendStatus(204);
-  });
-  app.use('/api/dev-access', async (req,res,next) => {
-    res.setHeader('Cache-Control','no-store');
-    if (!demo || !store || !localRequest(req)) { res.sendStatus(404); return; }
-    const state=await store.snapshot(); const person=state.people.find(person=>person.id===demo.subject(req)&&person.active&&!person.entraObjectId);
-    if (!person) { res.sendStatus(401); return; }
-    if (!can(state,person,'permissions.manage')) { res.sendStatus(403); return; }
-    res.locals.demoPersonId=person.id; res.locals.accessState=state; res.locals.accessPerson=person; next();
-  });
-  app.get('/api/dev-access', (req,res) => {
-    const state=res.locals.accessState; const person=res.locals.accessPerson;
-    res.json({ ...state, storage:store!.storage, audit:can(state,person,'audit.view') ? state.audit : [], presets:rolePresets, catalogue:permissionCatalogue.map(([code,label]) => ({code,label})), canManageUsers:can(state,person,'users.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage') });
-  });
-  app.post('/api/dev-access', async (req,res) => {
-    if (!localMutation(req)) { res.sendStatus(403); return; }
-    try { await store!.save(res.locals.demoPersonId,req.body); res.json({saved:true}); }
-    catch (error) { if (error instanceof AccessError) { res.status(error.status).json({error:{code:'ACCESS_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}}); return; } throw error; }
-  });
-  app.use('/api/access',async(req,res,next)=>{
-    res.setHeader('Cache-Control','no-store');
-    let identity:Identity;
-    try{if(!dependencies?.resolveAccess||!dependencies.access)throw new Error();identity=await dependencies.verify(req.headers.authorization);}
-    catch{res.status(401).json({error:{code:'NOT_AUTHORIZED',message:'Microsoft sign-in is required.'}});return;}
-    const id=await dependencies.resolveAccess(identity);const state=await dependencies.access.snapshot();
-    const person=state.people.find(person=>person.id===id&&person.active);
-    if(!person||!can(state,person,'permissions.manage')){res.status(403).json({error:{code:'ACCESS_DENIED',message:'Permission administration is not assigned.'}});return;}
-    res.locals.accessState=state;res.locals.accessPerson=person;next();
-  });
-  app.get('/api/access',(_req,res)=>{
-    const state=res.locals.accessState;const person=res.locals.accessPerson;
-    res.json({...state,storage:dependencies!.access!.storage,currentPerson:person,authentication:'microsoft',audit:can(state,person,'audit.view')?state.audit:[],presets:rolePresets, catalogue:permissionCatalogue.map(([code,label])=>({code,label})),canManageUsers:can(state,person,'users.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage')});
-  });
-  app.post('/api/access',async(req,res)=>{
-    try{await dependencies!.access!.save(res.locals.accessPerson.id,req.body);res.json({saved:true});}
-    catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'ACCESS_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
-  });
-
-  app.get('/api/access/organization',async(_req,res)=>{
-    if(!dependencies?.organization||!can(res.locals.accessState,res.locals.accessPerson,'users.manage')){res.sendStatus(403);return;}
-    res.json(await dependencies.organization.snapshot());
-  });
-  app.post('/api/access/organization',async(req,res)=>{
-    if(!dependencies?.organization||!can(res.locals.accessState,res.locals.accessPerson,'users.manage')){res.sendStatus(403);return;}
-    try { await dependencies.organization.save(res.locals.accessPerson.id,req.body);res.json({saved:true}); }
-    catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'ORGANIZATION_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
-  });
-  app.use('/api/assistant',async(req,res,next)=>{
-    res.setHeader('Cache-Control','no-store');
-    const access=dependencies?.access??store;let actor:string|undefined;
-    if(demo?.subject(req)){
-      if(!localRequest(req)||(req.method==='POST'&&!localMutation(req))){res.sendStatus(403);return;}
-      actor=(await demo.person(req))?.id;
-    }else{
-      try{if(!dependencies?.resolveAccess)throw new Error();actor=await dependencies.resolveAccess(await dependencies.verify(req.headers.authorization));}
-      catch{res.status(401).json({error:{code:'NOT_AUTHORIZED',message:'Sign in to continue.',requestId:res.locals.requestId}});return;}
-    }
-    const state=await access?.snapshot(),person=state?.people.find(item=>item.id===actor&&item.active);
-    if(!state||!person||!can(state,person,'profile.view',true)){res.sendStatus(403);return;}
-    res.locals.assistantActor=person.id;next();
-  });
-  // Catalogue authorization is independent of permission-administration access.
-  app.use('/api/skills',async(req,res,next)=>{
-    res.setHeader('Cache-Control','no-store');
-    let actor:string|undefined;
-    if(demo?.subject(req)){
-      if(!localRequest(req)||(req.method==='POST'&&!localMutation(req))){res.sendStatus(403);return;}
-      actor=(await demo.person(req))?.id;
-    }else{
-      let identity:Identity;
-      try{if(!dependencies?.resolveAccess)throw new Error();identity=await dependencies.verify(req.headers.authorization);}
-      catch{res.status(401).json({error:{code:'NOT_AUTHORIZED',message:'Sign in to continue.',requestId:res.locals.requestId}});return;}
-      actor=await dependencies!.resolveAccess!(identity);
-    }
-    const state=await (dependencies?.access??store)?.snapshot(),person=state?.people.find(item=>item.id===actor&&item.active);
-    if(!state||!person||!(req.method==='POST'?can(state,person,'skill.catalogue.manage'):can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage'))){res.sendStatus(403);return;}
-    res.locals.catalogueActor=person.id;next();
-  });
-  app.get('/api/skills',async(req,res)=>{
-    try{if(!dependencies?.catalogue)throw new AccessError(503,'Skill catalogue is not configured.');res.json(await dependencies.catalogue.read(res.locals.catalogueActor,catalogueQuery(req.query)));}
-    catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'CATALOGUE_REQUEST_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
-  });
-  app.post('/api/skills',async(req,res)=>{
-    try{if(!dependencies?.catalogue)throw new AccessError(503,'Skill catalogue is not configured.');await dependencies.catalogue.save(res.locals.catalogueActor,req.body);res.json({saved:true});}
-    catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'CATALOGUE_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
-  });
-  app.get('/api/assistant',(_req,res)=>res.json(dependencies?.assistant?.status()??{configured:false,provider:null,mode:'read-only'}));
-  app.post('/api/assistant',async(req,res)=>{
-    const controller=new AbortController();res.on('close',()=>{if(!res.writableEnded)controller.abort();});
-    try{
-      if(!dependencies?.assistant)throw new AccessError(503,'AI model is not connected yet.');
-      const result=await dependencies.assistant.chat(res.locals.assistantActor,req.body,AbortSignal.any([controller.signal,AbortSignal.timeout(35000)]));
-      if(!controller.signal.aborted)res.json(result);
-    }catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'ASSISTANT_REQUEST_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
-  });
+  identityRoutes(app, dependencies, store, demo);
+  // Access middleware authenticates /api/access before organization routes run.
+  accessRoutes(app, dependencies, store, demo);
+  organizationRoutes(app, dependencies);
+  skillsRoutes(app, dependencies, store, demo);
+  aiRoutes(app, dependencies, store, demo);
   // Liveness only: this must never imply SQL or organizational SSO is ready.
   app.get('/api/health', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.json({ status: 'ok', service: 'capability-api', version: '0.1.0' });
   });
 
-  app.get('/api/me', async (req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
-    const demoProfile = await demo?.profile(req);
-    if (demoProfile) { res.json({ profile: demoProfile, mode: 'local-demo' }); return; }
-    if (demo?.subject(req)) { res.status(403).json({error:{code:'ACCESS_NOT_PROVISIONED',message:'Profile view permission is not assigned.',requestId:res.locals.requestId}}); return; }
-    let identity: Identity;
-    try {
-      if (!dependencies) throw new Error('Identity unavailable');
-      identity = await dependencies.verify(req.headers.authorization);
-    } catch {
-      res.setHeader('WWW-Authenticate', 'Bearer');
-      res.status(401).json({ error: { code: 'NOT_AUTHORIZED', message: 'Please sign in again.', requestId: res.locals.requestId } });
-      return;
-    }
-    const profile = await dependencies!.profile(identity);
-    if (!profile) {
-      res.status(403).json({ error: { code: 'ACCESS_NOT_PROVISIONED', message: 'Your workspace access is not available. Contact your administrator.', requestId: res.locals.requestId } });
-      return;
-    }
-    res.json({ profile });
-  });
   // Other workflows remain closed until their authorization is implemented.
   app.use('/api', (_req, res) => {
     res.status(401).json({ error: { code: 'NOT_AUTHORIZED', message: 'Organizational sign-in is required.', requestId: res.locals.requestId } });

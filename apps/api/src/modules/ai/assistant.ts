@@ -1,5 +1,6 @@
-import { AccessError, can, type AccessStore, type LocalAccessState, type LocalPerson } from './local-access-store.js';
-import type { OrganizationStore } from './organization.js';
+import { AccessError } from '../../shared/errors.js';
+import { can, type AccessStore, type LocalAccessState, type LocalPerson } from '../access/index.js';
+import type { OrganizationStore } from '../organization/index.js';
 
 export interface Message {role:'system'|'user'|'assistant'|'tool';content:string;tool_call_id?:string;tool_name?:string;tool_calls?:ToolCall[]}
 interface ToolCall {id:string;type:'function';function:{name:string;arguments:string}}

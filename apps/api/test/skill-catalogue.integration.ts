@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import sql from 'mssql';
-import { withRuntimeDatabase, closeRuntimeDatabase } from '../src/database.js';
-import { SqlAccessStore } from '../src/sql-access-store.js';
-import { SqlCatalogueStore } from '../src/skill-catalogue.js';
-import { can } from '../src/local-access-store.js';
+import { withRuntimeDatabase, closeRuntimeDatabase } from '../src/shared/database.js';
+import { SqlAccessStore } from '../src/modules/access/sql-access-store.js';
+import { SqlCatalogueStore } from '../src/modules/skills/sql-store.js';
+import { can } from '../src/modules/access/local-access-store.js';
 
 const account=process.env.ACCESS_ACCOUNT_ID;assert.ok(account);
 try{

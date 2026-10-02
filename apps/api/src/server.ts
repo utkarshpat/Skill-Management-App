@@ -1,13 +1,13 @@
-import { SqlOrganizationStore } from './organization.js';
+import { SqlOrganizationStore } from './modules/organization/sql-store.js';
 import { createApp } from './app.js';
-import { identityConfig, tokenVerifier } from './auth.js';
-import { ownProfile } from './profile.js';
-import { closeRuntimeDatabase } from './database.js';
-import { developmentLoginEnabled } from './development-login.js';
-import { SqlAccessStore } from './sql-access-store.js';
-import {can} from './local-access-store.js';
-import {AssistantService,configuredProvider} from './assistant.js';
-import { SqlCatalogueStore } from './skill-catalogue.js';
+import { identityConfig, tokenVerifier } from './modules/identity/index.js';
+import { ownProfile } from './modules/identity/index.js';
+import { closeRuntimeDatabase } from './shared/database.js';
+import { developmentLoginEnabled } from './modules/identity/index.js';
+import { SqlAccessStore } from './modules/access/sql-access-store.js';
+import {can} from './modules/access/index.js';
+import {AssistantService,configuredProvider} from './modules/ai/index.js';
+import { SqlCatalogueStore } from './modules/skills/sql-store.js';
 
 const port = Number(process.env.PORT ?? 3001);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be between 1 and 65535.');

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import sql from 'mssql';
-import { SqlAccessStore } from '../src/sql-access-store.js';
-import { can } from '../src/local-access-store.js';
-import { withRuntimeDatabase,closeRuntimeDatabase } from '../src/database.js';
+import { SqlAccessStore } from '../src/modules/access/sql-access-store.js';
+import { can } from '../src/modules/access/local-access-store.js';
+import { withRuntimeDatabase,closeRuntimeDatabase } from '../src/shared/database.js';
 
 // Explicit live integration check. No employee changes are written by this script.
 const accountId=process.env.ACCESS_ACCOUNT_ID;

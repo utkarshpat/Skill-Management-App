@@ -1,8 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
-import {AssistantService,configuredProvider,conversation,type Provider} from '../src/assistant.js';
-import {LocalAccessStore,AccessError} from '../src/local-access-store.js';
+import {AssistantService,configuredProvider,conversation,type Provider} from '../src/modules/ai/assistant.js';
+import {LocalAccessStore,AccessError} from '../src/modules/access/local-access-store.js';
 import {createApp} from '../src/app.js';
 
 const call=(name:string,args='{}')=>({id:'test-call',type:'function' as const,function:{name,arguments:args}});

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { databaseConfig } from '../src/database.js';
+import { databaseConfig } from '../src/shared/database.js';
 
 test('database setup rejects missing or non-Azure targets and enforces TLS', () => {
   assert.throws(() => databaseConfig({}), /Set AZURE_SQL/);

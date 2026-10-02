@@ -1,7 +1,7 @@
-import { SqlAccessStore } from './sql-access-store.js';
-import { can } from './local-access-store.js';
-import { closeRuntimeDatabase } from './database.js';
-import { rolePresets } from './role-presets.js';
+import { SqlAccessStore } from './modules/access/sql-access-store.js';
+import { can } from './modules/access/local-access-store.js';
+import { closeRuntimeDatabase } from './shared/database.js';
+import { rolePresets } from './modules/access/role-presets.js';
 
 // Explicit local provisioning. Uses the same validated, audited SQL write path
 // as the administrator UI; never assigns people or overwrites customized roles.

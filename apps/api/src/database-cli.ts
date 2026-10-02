@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import sql from 'mssql';
-import { withDatabase } from './database.js';
+import { withDatabase } from './shared/database.js';
 
 const command = process.argv[2];
 if (command !== 'check' && command !== 'migrate') {

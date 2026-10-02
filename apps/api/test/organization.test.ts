@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { organizationChange, reportingChain, type OrganizationState } from '../src/organization.js';
+import { organizationChange, reportingChain, type OrganizationState } from '../src/modules/organization/organization.js';
 import { createApp } from '../src/app.js';
-import { LocalAccessStore } from '../src/local-access-store.js';
+import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
+import express from 'express';
+import { registerRoutes } from '../src/modules/organization/routes.js';
 
 const first='10000000-0000-4000-8000-000000000001';
 const second='10000000-0000-4000-8000-000000000002';
@@ -42,4 +44,25 @@ test('organization endpoints bind actor to Microsoft identity and require curren
     const denied=store.snapshot();denied.people[0].overrides.push({permission:'users.manage',scope:'ORGANIZATION',effect:'DENY'});store.snapshot=()=>structuredClone(denied);
     assert.equal((await fetch(url,{method:'POST',headers,body:'{}'})).status,403);assert.equal(calls,1);
   }finally{await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}
+});
+
+test('organization module fails closed if mounted without access authentication middleware', async () => {
+  let calls = 0;
+  const app = express();
+  registerRoutes(app, { organization: {
+    snapshot: async () => { calls++; return state(); },
+    save: async () => { calls++; },
+  } });
+  const server = app.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const url = `http://127.0.0.1:${address.port}/api/access/organization`;
+  try {
+    assert.equal((await fetch(url)).status, 403);
+    assert.equal((await fetch(url, { method: 'POST' })).status, 403);
+    assert.equal(calls, 0);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  }
 });

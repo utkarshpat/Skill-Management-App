@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rolePresets } from '../src/role-presets.js';
-import { permissionCatalogue } from '../src/access-catalogue.js';
-import { LocalAccessStore, can } from '../src/local-access-store.js';
+import { rolePresets } from '../src/modules/access/role-presets.js';
+import { permissionCatalogue } from '../src/modules/access/access-catalogue.js';
+import { LocalAccessStore, can } from '../src/modules/access/local-access-store.js';
 
 test('six editable presets never widen pending scopes or grant administrative access', async () => {
   const store=await LocalAccessStore.open();

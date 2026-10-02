@@ -5,8 +5,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApp } from '../src/app.js';
-import { LocalAccessStore, can } from '../src/local-access-store.js';
-import { developmentLoginEnabled } from '../src/development-login.js';
+import { LocalAccessStore, can } from '../src/modules/access/local-access-store.js';
+import { developmentLoginEnabled } from '../src/modules/identity/development-login.js';
 
 test('direct login is opt-in and refuses every non-development environment', () => {
   assert.equal(developmentLoginEnabled({NODE_ENV:'development'}),false);

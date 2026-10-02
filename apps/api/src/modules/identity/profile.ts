@@ -1,5 +1,5 @@
 import sql from 'mssql';
-import { withRuntimeDatabase } from './database.js';
+import { withRuntimeDatabase } from '../../shared/database.js';
 import type { Identity } from './auth.js';
 
 export interface Profile { id: string; displayName: string; employeeCode: string; organization: string; status: string; roles: string[]; canManageAccess?:boolean; canViewSkills?:boolean }

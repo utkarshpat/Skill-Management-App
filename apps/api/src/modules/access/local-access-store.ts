@@ -1,3 +1,4 @@
+import { AccessError } from '../../shared/errors.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
@@ -8,7 +9,7 @@ export interface Assignment { permission: PermissionCode; scope: 'OWN' | 'ORGANI
 export interface CustomRole { id: string; name: string; permissions: Assignment[] }
 export interface LocalPerson { id: string; displayName: string; employeeCode: string; active: boolean; entraObjectId?:string; roleIds: string[]; overrides: Assignment[] }
 export interface LocalAccessState { revision: number; roles: CustomRole[]; people: LocalPerson[]; audit: { actorId: string; action: string; targetId: string; at: string; revision: number; before?: CustomRole | LocalPerson; after?: CustomRole | LocalPerson }[] }
-export class AccessError extends Error { constructor(public status: number, message: string) { super(message); } }
+export { AccessError } from '../../shared/errors.js';
 export interface AccessStore {
   readonly storage?: 'azure-sql' | 'local-file';
   snapshot(): LocalAccessState | Promise<LocalAccessState>;

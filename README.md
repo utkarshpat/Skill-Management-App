@@ -2,6 +2,8 @@
 
 React/TypeScript frontend, Node/Express API and Azure SQL. Laptop is the primary design view, with responsive phone layouts and supplied Sopra Steria branding.
 
+The frontend is a separate app; the backend is a modular monolith with Identity, Access, Organization, Skills and AI modules in one process. See [architecture and dependency rules](docs/ARCHITECTURE.md).
+
 ## Local development
 
 Use Node 24. Copy frontend/backend .env.example files into ignored apps/web/.env.local and apps/api/.env. Configure Entra and SQL as described in docs/SSO_AND_PROFILE.md. No secrets belong in the frontend.
@@ -15,6 +17,7 @@ Open http://localhost:5173/ for the registered Microsoft sign-in redirect. GET h
 
 ```powershell
 npm.cmd run typecheck
+npm.cmd run architecture:check
 npm.cmd test
 npm.cmd run build
 npm.cmd run db:check -w apps/api
@@ -33,6 +36,7 @@ The personal development workspace contains the imported NHS SBS department unde
 
 ## Documentation
 
+- docs/ARCHITECTURE.md: module ownership, public contracts, dependency rules and deployment boundaries.
 - docs/BUILD_PLAN.md: agreed workflows and delivery sequence.
 - docs/SKILL_CATALOGUE.md: catalogue permissions, proficiency definitions, SQL migration and verification.
 - docs/UI_DESIGN.md: simplified page structure, responsive behavior and UI verification.
@@ -45,6 +49,6 @@ The personal development workspace contains the imported NHS SBS department unde
 - docs/AI_INTEGRATION.md: internal tools, policy gateway and exact write approvals.
 - docs/ENGINEERING_STANDARDS.md: implementation, verification and deployment gates.
 
-Source is under apps/web and apps/api; reviewed SQL is under database/migrations. CI checks strict types, tests and builds. Dependencies are pinned in package-lock.json. Optional external Google Fonts have local font fallbacks. The supplied mark was PNG despite its original .svg extension and is stored with the correct .png extension.
+Source is under apps/web and apps/api; reviewed SQL is under database/migrations. CI checks module boundaries, strict types, tests and builds. Dependencies are pinned in package-lock.json. Optional external Google Fonts have local font fallbacks. The supplied mark was PNG despite its original .svg extension and is stored with the correct .png extension.
 
 Repository: https://github.com/utkarshpat/Skill-Management-App

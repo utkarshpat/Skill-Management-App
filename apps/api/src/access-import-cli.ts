@@ -1,7 +1,7 @@
 import { readFile,writeFile } from 'node:fs/promises';
 import sql from 'mssql';
-import { withDatabase } from './database.js';
-import { type LocalAccessState,can } from './local-access-store.js';
+import { withDatabase } from './shared/database.js';
+import { type LocalAccessState,can } from './modules/access/local-access-store.js';
 
 // Explicit one-time developer operation. Runtime never imports or falls back to local JSON.
 if(process.env.NODE_ENV!=='development'||process.env.DEV_DIRECT_LOGIN!=='true')throw new Error('Import is only available in explicit development mode.');

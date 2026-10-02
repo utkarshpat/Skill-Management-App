@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { authorize, resolveNPlusOne, type Actor, type Resource, type Grant, type ReportingRelationship } from '../src/domain/authorization.js';
+import { authorize, resolveNPlusOne, type Actor, type Resource, type Grant, type ReportingRelationship } from '../src/modules/access/domain/authorization.js';
 
 const at = new Date('2026-10-02T06:00:00Z');
 const actor: Actor = { id: 'manager', accountId: 'acme', active: true };
