@@ -21,6 +21,8 @@ npm.cmd run build
 
 ## Folder map
 
+Laptop is the primary design and development view; phone layouts remain responsive. See `docs/UI_DESIGN.md` for the design direction applied to future pages.
+
 - `apps/web/src/App.tsx`: frontend shell and actual API connection check.
 - `apps/web/src/styles.css`: desktop layout and responsive styles.
 - `apps/web/vite.config.ts`: development API proxy.

@@ -1,6 +1,6 @@
 # Personal Azure development setup
 
-The personal account is for development. Company Azure instances will be configured independently later. Connected Chrome is signed in to the personal Default Directory and Azure subscription 1. **No cloud resources have been provisioned yet**: the free SQL creation form is being prepared for final review.
+The personal account is for development. Company Azure instances will be configured independently later. Connected Chrome is signed in to the personal Default Directory and Azure subscription 1. The user submitted Create on 2 October 2026. The portal reports **Your deployment is complete** and database status **Online**. Pricing is **Free - General Purpose - Serverless: Gen5, 2 vCores**, with **Overage billing Disabled**. Live SQL query access and schema migration are not yet verified.
 
 ## Azure SQL free offer
 
@@ -8,7 +8,7 @@ Use Azure SQL hub → **Start free**. A normal database is not automatically fre
 
 - Prepared resource group: `rg-skill-management-dev`.
 - Prepared database: `skill-management-dev`.
-- Choose a globally unique logical server name and verify regional availability during setup. The first free database fixes the region for later free databases in that subscription.
+- Deployed server: `sql-skill-management-utkarsh-dev.database.windows.net`, in Southeast Asia. The first free database fixes the region for later free databases in that subscription.
 - Verify **Free offer applied** and zero estimated monthly database cost.
 - Keep **Auto-pause the database until next month** selected when free limits are reached. Do not enable **Continue using database for additional charges**.
 - Monthly allowance: 100,000 vCore seconds, 32 GB data and 32 GB backup storage per database. Monitor consumption; idle open database clients can prevent normal serverless auto-pause.
