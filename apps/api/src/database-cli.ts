@@ -18,17 +18,20 @@ if (command !== 'check' && command !== 'migrate') {
           await pool.request().query(await readFile(new URL('../../../database/migrations/001_identity_authorization.sql', import.meta.url), 'utf8'));
           console.log('Migration 001 applied.');
         }
+        for (const [version,filename] of [[2,'002_own_profile.sql'],[3,'003_custom_access.sql']] as const) {
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
         try {
-          const applied = await new sql.Request(transaction).query('SELECT version FROM dbo.SchemaMigration WITH (UPDLOCK, HOLDLOCK) WHERE version = 2;');
+          const applied = await new sql.Request(transaction).input('version',sql.Int,version).query('SELECT version FROM dbo.SchemaMigration WITH (UPDLOCK, HOLDLOCK) WHERE version = @version;');
           if (!applied.recordset.length) {
-            await new sql.Request(transaction).batch(await readFile(new URL('../../../database/migrations/002_own_profile.sql', import.meta.url), 'utf8'));
-            await new sql.Request(transaction).query('INSERT INTO dbo.SchemaMigration(version) VALUES (2);');
-            console.log('Migration 002 applied.');
+            const source=await readFile(new URL(`../../../database/migrations/${filename}`, import.meta.url),'utf8');
+            for(const batch of source.split(/^GO\s*$/m)) if(batch.trim())await new sql.Request(transaction).batch(batch);
+            await new sql.Request(transaction).input('version',sql.Int,version).query('INSERT INTO dbo.SchemaMigration(version) VALUES (@version);');
+            console.log(`Migration ${version} applied.`);
           }
           await transaction.commit();
         } catch (error) { await transaction.rollback(); throw error; }
+        }
       }
       const exists = await pool.request().query("SELECT CASE WHEN OBJECT_ID(N'dbo.SchemaMigration', N'U') IS NULL THEN 0 ELSE 1 END AS has_migrations;");
       if (exists.recordset[0].has_migrations === 0) {

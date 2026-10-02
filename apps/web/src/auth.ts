@@ -22,7 +22,7 @@ export async function directSignIn(personId: string) {
 }
 export function initializeAuth() {
   return ready ??= (async () => {
-    const demoResponse = await fetch('/api/dev-login', {signal:AbortSignal.timeout(5000)}).catch(() => undefined);
+    const demoResponse = await fetch('/api/dev-login', {signal:AbortSignal.timeout(45000)}).catch(() => undefined);
     if (demoResponse?.ok) {
       const data = await demoResponse.json();
       developmentPeople = data.people; demoSession = data.signedIn === true;

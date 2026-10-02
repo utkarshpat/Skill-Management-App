@@ -4,10 +4,10 @@ import helmet from 'helmet';
 import type { Identity } from './auth.js';
 import type { Profile } from './profile.js';
 import { createDevelopmentSessions, localMutation, localRequest } from './development-login.js';
-import { LocalAccessStore, AccessError, can } from './local-access-store.js';
+import { type AccessStore, AccessError, can } from './local-access-store.js';
 import { permissionCatalogue } from './access-catalogue.js';
 
-export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined> }, options: { developmentStore?: LocalAccessStore } = {}) {
+export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined> }, options: { developmentStore?: AccessStore } = {}) {
   const app = express();
   const store = options.developmentStore;
   const demo = store ? createDevelopmentSessions(store) : undefined;
@@ -24,11 +24,11 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
     if (!demo || !localRequest(req)) { res.sendStatus(404); return; }
     next();
   });
-  app.get('/api/dev-login', (req, res) => res.json({ people: store!.snapshot().people.filter(person => person.active).map(person => ({ id:person.id,displayName:person.displayName,employeeCode:person.employeeCode })), signedIn: Boolean(demo!.person(req)), mode:'local-demo' }));
-  app.post('/api/dev-login', (req, res) => {
+  app.get('/api/dev-login', async (req, res) => res.json({ people: (await store!.snapshot()).people.filter(person => person.active).map(person => ({ id:person.id,displayName:person.displayName,employeeCode:person.employeeCode })), signedIn: Boolean(await demo!.person(req)), mode:'local-demo' }));
+  app.post('/api/dev-login', async (req, res) => {
     if (!localMutation(req)) { res.sendStatus(403); return; }
     const id = req.body?.personId;
-    const value = typeof id === 'string' ? demo!.issue(id) : undefined;
+    const value = typeof id === 'string' ? await demo!.issue(id) : undefined;
     if (!value) { res.status(400).json({ error: { code: 'INVALID_DEMO_PERSON', message: 'Choose an available demo person.' } }); return; }
     demo!.revoke(req);
     res.cookie(demo!.cookieName, value, { httpOnly: true, sameSite: 'strict', path: '/api', maxAge: demo!.lifetime });
@@ -38,17 +38,17 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
     if (!localMutation(req)) { res.sendStatus(403); return; }
     demo!.revoke(req); res.clearCookie(demo!.cookieName, { path: '/api', httpOnly: true, sameSite: 'strict' }); res.sendStatus(204);
   });
-  app.use('/api/dev-access', (req,res,next) => {
+  app.use('/api/dev-access', async (req,res,next) => {
     res.setHeader('Cache-Control','no-store');
     if (!demo || !store || !localRequest(req)) { res.sendStatus(404); return; }
-    const person=demo.person(req);
+    const state=await store.snapshot(); const person=state.people.find(person=>person.id===demo.subject(req)&&person.active);
     if (!person) { res.sendStatus(401); return; }
-    if (!can(store.snapshot(),person,'permissions.manage')) { res.sendStatus(403); return; }
-    res.locals.demoPersonId=person.id; next();
+    if (!can(state,person,'permissions.manage')) { res.sendStatus(403); return; }
+    res.locals.demoPersonId=person.id; res.locals.accessState=state; res.locals.accessPerson=person; next();
   });
   app.get('/api/dev-access', (req,res) => {
-    const state=store!.snapshot(); const person=demo!.person(req)!;
-    res.json({ ...state, audit:can(state,person,'audit.view') ? state.audit : [], catalogue:permissionCatalogue.map(([code,label]) => ({code,label})), canManageUsers:can(state,person,'users.manage') });
+    const state=res.locals.accessState; const person=res.locals.accessPerson;
+    res.json({ ...state, storage:store!.storage, audit:can(state,person,'audit.view') ? state.audit : [], catalogue:permissionCatalogue.map(([code,label]) => ({code,label})), canManageUsers:can(state,person,'users.manage') });
   });
   app.post('/api/dev-access', async (req,res) => {
     if (!localMutation(req)) { res.sendStatus(403); return; }
@@ -64,9 +64,9 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
 
   app.get('/api/me', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    const demoProfile = demo?.profile(req);
+    const demoProfile = await demo?.profile(req);
     if (demoProfile) { res.json({ profile: demoProfile, mode: 'local-demo' }); return; }
-    if (demo?.person(req)) { res.status(403).json({error:{code:'ACCESS_NOT_PROVISIONED',message:'Profile view permission is not assigned.',requestId:res.locals.requestId}}); return; }
+    if (demo?.subject(req)) { res.status(403).json({error:{code:'ACCESS_NOT_PROVISIONED',message:'Profile view permission is not assigned.',requestId:res.locals.requestId}}); return; }
     let identity: Identity;
     try {
       if (!dependencies) throw new Error('Identity unavailable');

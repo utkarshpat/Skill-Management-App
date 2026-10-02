@@ -30,7 +30,7 @@ npm.cmd run db:migrate -w apps/api
 npm.cmd run db:check -w apps/api
 ```
 
-`db:check` reads connectivity, applied migration versions and role count. `db:migrate` applies reviewed migrations 001/002, skipping recorded versions. Use a single migration worker. Setup connections close after use. TLS encryption and certificate validation are required. Raw driver errors and credentials are never printed. These commands are not HTTP endpoints.
+`db:check` reads connectivity, applied migration versions and legacy role count. `db:migrate` applies reviewed migrations 001/002/003, skipping recorded versions. Use a single migration worker. Setup connections close after use. TLS encryption and certificate validation are required. Raw driver errors and credentials are never printed. These commands are not HTTP endpoints. Migration 003 and the explicit access import now persist custom roles/people/overrides in SQL; see PERMISSION_ADMINISTRATION.md for runtime account binding and verification.
 
 Azure CLI 2.90.0 is installed and signed in to the personal development tenant. `db:check` verified the live connection; `db:migrate` applied migration 001; a separate `db:check` confirmed migration version 1 and six roles. Azure resource verification also confirmed `useFreeLimit=true`, `freeLimitExhaustionBehavior=AutoPause` and 32 GB maximum data size. Restart terminal sessions after CLI installation so it is available on PATH. CLI login is developer tooling authentication, not application SSO.
 

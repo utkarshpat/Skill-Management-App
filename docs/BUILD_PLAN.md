@@ -25,6 +25,8 @@ Technical skills and workplace evaluations are separate. Claimed, verified, cert
 
 Each step produces a runnable result and relevant verification. Build one complete workflow at a time.
 
+Current increment: custom-role/person/individual-permission administration persists in Azure SQL through migration 003, with explicit local import, restricted runtime procedures, transactionally generated audit and revision checks. Temporary direct login is development-only. Organization scope bindings and Entra-based custom access administration remain upcoming work.
+
 ## Decisions still needed
 
 - Company tenant/app configuration and production SQL access. Personal development registrations and restricted profile access exist; see SSO_AND_PROFILE.md.

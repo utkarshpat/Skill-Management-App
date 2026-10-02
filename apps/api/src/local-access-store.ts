@@ -9,6 +9,12 @@ export interface CustomRole { id: string; name: string; permissions: Assignment[
 export interface LocalPerson { id: string; displayName: string; employeeCode: string; active: boolean; roleIds: string[]; overrides: Assignment[] }
 export interface LocalAccessState { revision: number; roles: CustomRole[]; people: LocalPerson[]; audit: { actorId: string; action: string; targetId: string; at: string; revision: number; before?: CustomRole | LocalPerson; after?: CustomRole | LocalPerson }[] }
 export class AccessError extends Error { constructor(public status: number, message: string) { super(message); } }
+export interface AccessStore {
+  readonly storage?: 'azure-sql' | 'local-file';
+  snapshot(): LocalAccessState | Promise<LocalAccessState>;
+  person(id: string): LocalPerson | undefined | Promise<LocalPerson | undefined>;
+  save(actorId: string,input: unknown): Promise<LocalAccessState>;
+}
 const accountId = 'local-demo-workspace';
 const codes = new Set<string>(permissionCatalogue.map(item => item[0]));
 const bootstrapId = '00000000-0000-4000-8000-000000000001';
@@ -46,6 +52,7 @@ export class LocalAccessStore {
   private state: LocalAccessState;
   private queue: Promise<unknown> = Promise.resolve();
   private constructor(private path: string | undefined, state: LocalAccessState) { this.state = state; }
+  static fromState(state: LocalAccessState) { return new LocalAccessStore(undefined,structuredClone(state)); }
   static async open(path?: string) {
     let state = bootstrap();
     if (path) {

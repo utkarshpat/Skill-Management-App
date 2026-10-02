@@ -20,6 +20,8 @@ Setup/migration commands use a developer Entra identity. HTTP database requests 
 
 For the configured runtime database user, a DBA grants EXECUTE ON dbo.GetOwnProfile. Migration 002 creates the procedure; it does not grant a service identity or onboard employees. Those are explicit environment-specific administrative operations. The current development user is skill_management_runtime, a contained external service-principal user with this procedure grant and no direct table read grant.
 
+Migration 003 additionally provides SQL-backed custom access administration. The runtime is explicitly bound to the development Account and receives EXECUTE on ReadAccessWorkspace and SaveAccessChange; direct table/audit modification remains denied. Development direct identities are separate from real Entra users. See PERMISSION_ADMINISTRATION.md for import, SQL transaction checks and the remaining real-Entra administration work.
+
 An explicit personal development bootstrap created Development Workspace, DEV-001 (Utkarsh Patel) and one EMPLOYEE role with a bootstrap audit event. This is test workspace membership, not company HR data or an automatic onboarding mechanism. The runtime cannot create or elevate employees.
 
 ## Verification

@@ -1,39 +1,41 @@
-# Permission-led access and temporary direct login
+# Permission-led access on Azure SQL
 
-User decision, 2 October 2026: role names and people are not fixed in source. Super Admin defines them and controls permissions, including individual additions/removals. The old six-role SQL seeds are historical development defaults, not mandatory role names. Existing migrations are preserved; the eventual company migration must establish tenant-local custom roles and map users explicitly.
+Roles and people are administrator-defined. Permission codes and resource scopes determine access; names and organizational titles do not grant authority. Super Admin is an explicit bootstrap grant, not a hard-coded role-name bypass.
 
-## Current runnable increment
+## Current setup
 
-Start local development with NODE_ENV=development and DEV_DIRECT_LOGIN=true in the ignored API environment. The welcome page shows one initial Development Super Admin / DEV-ADMIN. Click Open demo workspace, then Access administration. Create any role name, assign permission codes and scopes, create people IDs, assign roles and set individual overrides. Created active people appear in the direct-login selector. Switch person ends the current demo session before another selection.
+Migration 003 adds account-scoped custom roles, people, role memberships, permissions, individual overrides and access audit. Runtime uses SqlAccessStore and calls restricted procedures; local JSON is no longer read or written by the running app. The original ignored file remains an import backup. Development direct login remains loopback-only, opt-in and refused outside NODE_ENV=development.
 
-The initial administrator is a bootstrap record. Its label does not grant authority: permission administration requires permissions.manage with workspace scope; editing people additionally requires users.manage. Rename the bootstrap role without changing permissions and authority remains intact. No hard-coded role-name bypass exists.
+Configure ignored apps/api/.env with ACCESS_ACCOUNT_ID for the initialized workspace, SQL runtime credentials, NODE_ENV=development and DEV_DIRECT_LOGIN=true. Run npm run dev, open http://localhost:5173/, choose Development Super Admin / DEV-ADMIN, then Access administration. Create/edit role names and people IDs, assign role permissions and individual overrides. Active people appear in the temporary login picker.
 
-The catalogue defines permissions by application operation, independently from titles. AI tools will use these same codes. Unimplemented workflows are still unavailable even when their permission has been configured. Permissions are not endpoints or a substitute for resource-state, assigned-reviewer and self-approval checks.
+Only OWN and ORGANIZATION scopes are available in this increment. Trusted team, department, unit and resource bindings require the next organization increment. Configuring a permission does not enable an unimplemented workflow. Review assignment, self-approval and resource-state checks remain mandatory.
 
-## Permission semantics
+## Migration and import
 
-An assignment consists of a server-defined permission code, ALLOW/DENY effect, target scope and optional expiry. Role IDs are stable even when their display names change. People IDs and their role memberships are separate records. Names do not route reviews or determine access. The permission catalogue is versioned with implemented operations; administrators compose access from it rather than inventing a permission string that the application cannot enforce.
+```powershell
+npm.cmd run db:migrate -w apps/api
+npm.cmd run access:import -w apps/api
+npm.cmd run test:sql -w apps/api
+```
 
-Access defaults to denied. Current role assignments contribute permissions, and individual overrides can contribute ALLOW or DENY. An applicable DENY takes precedence. Removing an individual ALLOW does not remove a permission still inherited from a role; add DENY or change the role assignment to block it. Removing a role assignment stops inheritance. Expired permissions stop applying. Suspending a person prevents login and access.
+The explicit development import uses the developer migration identity. It imports the ignored local access file into the active personal development Account, preserves stable role/person IDs and existing audit history, and adds an import audit event. It refuses an initialized workspace rather than overwriting SQL. Older audit entries without snapshots retain a historical-event marker instead of fabricated before/after values. Set ACCESS_ACCOUNT_ID to the printed account UUID; non-secret import metadata is saved under ignored .local/sql-import.json.
 
-OWN and entire demo workspace scopes are implemented in the editor. Team, department, delivery-unit, capability and specific-resource policy primitives already exist, but their administration needs trusted organization/resource records and is a later increment. An OWN permissions.manage assignment cannot administer the workspace.
+The import binds the already-provisioned skill_management_runtime SQL principal to this account and grants EXECUTE only on ReadAccessWorkspace and SaveAccessChange. The existing GetOwnProfile grant remains for Microsoft sign-in. Another deployment must explicitly provision and bind its own runtime identity. No passwords or tokens are printed.
 
-The API reloads the user's active status and current grants on each request. Sessions store only an opaque user reference, never trusted client-supplied roles. Changes take effect in existing sessions. A revision check rejects stale edits with 409; saves are serialized and atomically replace the local file. Audit records include actor, target, time, revision and before/after assignment snapshots. The API prevents removal of the final active administrator with both administration permissions.
+## Storage and permission rules
 
-## Development boundary and company migration
+AccessWorkspace holds the account revision. AccountRole, AccessPerson, AccountRolePermission, AccessPersonRole and AccessPersonOverride use composite account keys/foreign keys. AccessPerson has an optional Entra object ID; demo IDs are not automatically linked to Microsoft users. AccessAudit stores actual before/after values generated by the SQL write procedure. Runtime has no direct table access or audit update/delete grant.
 
-This temporary identity provider is loopback-only, explicitly enabled, and refuses startup when enabled outside NODE_ENV=development. Absent the flag, direct-login and local administration routes return 404. Mutations require approved local origins; sessions use random opaque HttpOnly/SameSite=Strict cookies, expire after 30 minutes and are invalidated on sign-out/server restart. There is no browser client secret or token in local storage.
+ReadAccessWorkspace returns a consistent transactionally locked view. The runtime principal's account binding prevents arbitrary account selection, including direct procedure calls. SaveAccessChange locks the account revision, checks current SQL authority, applies one target change, protects the final active administrator, advances the revision and appends audit in one transaction. Any failure rolls back all changes. Concurrent/stale writers receive 409. Reads and writes do not fall back to a cached or local configuration.
 
-Development access configuration persists in ignored apps/api/.local/dev-access.json. This local file is separate from the Entra/Azure SQL personal profile and contains no company employees. It is intentionally not a production access database or an Azure SQL migration. Only one local API process should write it. Session state is intentionally ephemeral; access configuration survives process restarts.
+permissions.manage at organization scope is required for administration. Person changes additionally require users.manage. Current status and permissions are loaded for each request. Applicable explicit DENY wins over role and individual ALLOW; expired grants stop applying. Removing an individual ALLOW preserves inherited role access; use DENY or remove/change role membership to block it. SQL independently checks these rules for writes. A role rename preserves its ID and authority.
 
-For company hosting, omit/set false DEV_DIRECT_LOGIN, remove the temporary identity provider/UI, and require Entra. Implement tenant-local custom-role tables, audited role membership and per-user grant services in Azure SQL using restricted stored procedures. Preserve the permission catalogue and authorization engine; replace the local access store adapter. Provision the first company administrator explicitly, define delegation limits, then migrate approved role/person configuration with identity mapping. Do not copy development sessions or personal credentials. Permission administration under real Entra identity is not implemented in this increment.
+Sessions remain opaque, HttpOnly, SameSite=Strict and 30-minute development sessions; restart/sign-out invalidates them. Database configuration survives process restarts. Company production must disable direct login and map real Entra users to the custom access records explicitly. The existing Entra own-profile path still uses the legacy identity tables and is independently verified; production Entra access administration and fine-grained delegation limits remain pending. Organization relationships will be separate from role labels.
 
-Target SQL model: AccountRole with account_id/role_id/display_name/status/record_version; AccountRolePermission with account_id/role_id/permission_code/effect/scope; time-bound UserRoleAssignment with account_id/user_id/role_id/scope bindings; UserPermissionOverride with effect, scope, validity and revocation; append-only AccessAudit with actor, target and before/after values. Use composite account foreign keys, uniqueness within each account, transactional audit and optimistic concurrency. Legacy global role_code tables must be mapped explicitly rather than reused as company-wide titles. Delegation checks must constrain the permissions and scopes an administrator may grant; permissions.manage is not an unrestricted cross-account superuser.
+## Verified on 2 October 2026
 
-## Verification
+Migrations 1, 2 and 3 are applied. Two roles, two test people and existing change history were imported. Live restricted-runtime checks passed for persisted state, individual DENY, stale revision, unauthorized actor, account isolation, table SELECT denial and audit modification denial; failed writes left state/revision unchanged. Fifteen automated tests and builds pass. SQL checks are an explicit opt-in command, not part of credential-free CI.
 
-Automated checks cover non-development refusal, absent endpoints when disabled, administrator retention, arbitrary role labels, default denial, individual DENY, expiry, unauthorized administration, stale revisions, persistence, opaque cookies, cross-origin rejection and live grant removal during a session. The existing signed-token and scoped/N+1 authorization tests remain required. Browser verification records the actual creation and login workflow separately.
+The QA records are clearly labelled test data. They are not fixed business roles or company employee records. The prior local editor/browser tests remain recorded in Git history.
 
-Browser verification on 2 October 2026: direct Super Admin login succeeded; the UI created QA Profile Reader and QA Test Person / QA-001; the administrator assigned the role and an individual profile.view OWN DENY. Direct login for QA-001 succeeded, but profile access was denied despite the role ALLOW. The same ID could not open access administration. These are clearly labelled test records, not predetermined business roles or company people. Fifteen automated tests, type checking and builds passed.
-
-Administration was visually checked on a laptop and at 390px phone width; no phone horizontal overflow was observed. The administrator session is left open at /access. QA-001 retains the test DENY so its behavior can be inspected or changed through People & overrides.
+Browser SQL verification also saved a role rename to QA Profile Reader (SQL) and removed QA-001's individual profile DENY. A new database connection confirmed both changes and their audit events; QA-001 now inherits the role's profile-view ALLOW. SQL administrator-retention rollback was exercised directly and confirmed from a new connection.
