@@ -1,6 +1,18 @@
 # AI integration design
 
-Status: architecture requirement; no model, AI endpoint or provider billing is enabled yet.
+Status: authenticated floating assistant, server-side provider adapters and read-only tools are implemented. No live model, credentials or provider billing have been enabled or tested yet.
+
+## Current implementation and setup
+
+GET /api/assistant reports connection status; POST /api/assistant accepts only user/assistant messages. Trusted identity comes from verified Microsoft authentication, or explicitly enabled loopback development login. Request bodies cannot choose the actor or workspace.
+
+The tools are own_profile (current signed-in profile and role labels) and workspace_summary (people, roles and departments). Both require current profile.view OWN; summary additionally requires permissions.manage and users.manage at workspace scope. Permissions are reread before and after provider requests and before tool execution. There are no write tools, arbitrary SQL, network or MCP tools. Chat text is not persisted by the application.
+
+Configure AI_PROVIDER, AI_MODEL, AI_ENDPOINT and AI_API_KEY in the ignored API .env or deployment secret management. Azure uses the deployment name as AI_MODEL and an approved HTTPS *.openai.azure.com or *.services.ai.azure.com endpoint with /openai/v1/chat/completions. OpenAI uses its fixed API endpoint. Local Ollama accepts only a loopback endpoint and needs no key. Keys never enter web configuration. Restart the API after configuration. Missing configuration keeps the UI composer disabled; it does not generate simulated replies.
+
+Limits: 12 history messages, 2,000 characters per message, 12,000 total characters, 800 output-token cap per provider call, 35-second request timeout, cancellation on panel close, three model rounds and four tool executions. Each API process limits users to 10 requests/minute, one concurrent request/user and 500 requests/day overall. Process restarts reset these counters and multiple instances have independent counters. They are not durable budgets or hard currency caps; add shared rate limits, usage metering and billing alerts before production.
+
+Verification: automated tests cover forged system history, forbidden tools/arguments, permission revocation during a conversation, own-profile isolation, verified HTTP actor resolution, anonymous rejection, disconnected status and upstream error redaction. Live model quality, Azure deployment/region availability and provider retention settings still require verification after provider selection. No employee context is sent to a provider while disconnected.
 
 ## Intended features
 
@@ -28,4 +40,4 @@ Before enabling writes, test forged tool arguments, cross-account targets, unaut
 
 ## Integration sequence
 
-Complete authenticated profile and skill-claim/evidence/review first. Add read-only, referenced assistance next, then drafts. Enable approved writes only after the proposal executor, audit and denial tests exist. AI UI will follow the laptop-first design and remain usable on phones.
+The user requested the floating read-only assistant now; it is delivered ahead of skill-claim/evidence/review workflows. Connect and evaluate the selected model next. Enable approved writes only after the proposal executor, audit and denial tests exist. The UI follows the laptop-first design and adapts to phones.

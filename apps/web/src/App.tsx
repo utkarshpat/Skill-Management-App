@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AccessAdmin } from './AccessAdmin';
+import { AssistantWidget } from './AssistantWidget';
 import { initializeAuth, signedIn, signIn, signOut, profileToken, signInConfigured, developmentPeople, directSignIn, isDemoSession } from './auth';
 import { BookOpen, BriefcaseBusiness, Compass, Layers3, ListChecks, ShieldCheck, Users } from 'lucide-react';
 
@@ -17,8 +18,8 @@ export function App() {
   useEffect(() => { let active = true; initializeAuth().then(() => { if (active) setSession(signedIn() ? 'signed-in' : 'anonymous'); }).catch(() => { if (active) setSession('error'); }); return () => { active = false; }; }, []);
   if (window.location.pathname === '/preview') return <Overview />;
   if (session === 'loading') return <div className="session-loading" role="status">Preparing your workspace…</div>;
-  if (window.location.pathname === '/access' && session === 'signed-in') return <AccessAdmin />;
-  return session === 'signed-in' ? <ProfilePage /> : <Welcome authError={session === 'error'} />;
+  if (window.location.pathname === '/access' && session === 'signed-in') return <><AccessAdmin /><AssistantWidget /></>;
+  return session === 'signed-in' ? <><ProfilePage /><AssistantWidget /></> : <Welcome authError={session === 'error'} />;
 }
 
 function Welcome({ authError }: { authError: boolean }) {

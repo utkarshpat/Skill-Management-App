@@ -8,8 +8,9 @@ import type { Profile } from './profile.js';
 import { createDevelopmentSessions, localMutation, localRequest } from './development-login.js';
 import { type AccessStore, AccessError, can } from './local-access-store.js';
 import { permissionCatalogue } from './access-catalogue.js';
+import type { AssistantService } from './assistant.js';
 
-export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; access?:AccessStore; organization?:OrganizationStore; resolveAccess?:(identity:Identity)=>Promise<string|undefined> }, options: { developmentStore?: AccessStore } = {}) {
+export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; access?:AccessStore; organization?:OrganizationStore; assistant?:AssistantService; resolveAccess?:(identity:Identity)=>Promise<string|undefined> }, options: { developmentStore?: AccessStore } = {}) {
   const app = express();
   const store = options.developmentStore;
   const demo = store ? createDevelopmentSessions(store) : undefined;
@@ -84,6 +85,29 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
     if(!dependencies?.organization||!can(res.locals.accessState,res.locals.accessPerson,'users.manage')){res.sendStatus(403);return;}
     try { await dependencies.organization.save(res.locals.accessPerson.id,req.body);res.json({saved:true}); }
     catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'ORGANIZATION_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
+  });
+  app.use('/api/assistant',async(req,res,next)=>{
+    res.setHeader('Cache-Control','no-store');
+    const access=dependencies?.access??store;let actor:string|undefined;
+    if(demo?.subject(req)){
+      if(!localRequest(req)||(req.method==='POST'&&!localMutation(req))){res.sendStatus(403);return;}
+      actor=(await demo.person(req))?.id;
+    }else{
+      try{if(!dependencies?.resolveAccess)throw new Error();actor=await dependencies.resolveAccess(await dependencies.verify(req.headers.authorization));}
+      catch{res.sendStatus(401);return;}
+    }
+    const state=await access?.snapshot(),person=state?.people.find(item=>item.id===actor&&item.active);
+    if(!state||!person||!can(state,person,'profile.view',true)){res.sendStatus(403);return;}
+    res.locals.assistantActor=person.id;next();
+  });
+  app.get('/api/assistant',(_req,res)=>res.json(dependencies?.assistant?.status()??{configured:false,provider:null,mode:'read-only'}));
+  app.post('/api/assistant',async(req,res)=>{
+    const controller=new AbortController();res.on('close',()=>{if(!res.writableEnded)controller.abort();});
+    try{
+      if(!dependencies?.assistant)throw new AccessError(503,'AI model is not connected yet.');
+      const result=await dependencies.assistant.chat(res.locals.assistantActor,req.body,AbortSignal.any([controller.signal,AbortSignal.timeout(35000)]));
+      if(!controller.signal.aborted)res.json(result);
+    }catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'ASSISTANT_REQUEST_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
   // Liveness only: this must never imply SQL or organizational SSO is ready.
   app.get('/api/health', (_req, res) => {
