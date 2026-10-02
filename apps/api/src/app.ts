@@ -3,9 +3,14 @@ import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
 import type { Identity } from './auth.js';
 import type { Profile } from './profile.js';
+import { createDevelopmentSessions, localMutation, localRequest } from './development-login.js';
+import { LocalAccessStore, AccessError, can } from './local-access-store.js';
+import { permissionCatalogue } from './access-catalogue.js';
 
-export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined> }) {
+export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined> }, options: { developmentStore?: LocalAccessStore } = {}) {
   const app = express();
+  const store = options.developmentStore;
+  const demo = store ? createDevelopmentSessions(store) : undefined;
   app.disable('x-powered-by');
   app.use(helmet());
   app.use((_req, res, next) => {
@@ -14,6 +19,42 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
     next();
   });
   app.use(express.json({ limit: '128kb' }));
+  app.use('/api/dev-login', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    if (!demo || !localRequest(req)) { res.sendStatus(404); return; }
+    next();
+  });
+  app.get('/api/dev-login', (req, res) => res.json({ people: store!.snapshot().people.filter(person => person.active).map(person => ({ id:person.id,displayName:person.displayName,employeeCode:person.employeeCode })), signedIn: Boolean(demo!.person(req)), mode:'local-demo' }));
+  app.post('/api/dev-login', (req, res) => {
+    if (!localMutation(req)) { res.sendStatus(403); return; }
+    const id = req.body?.personId;
+    const value = typeof id === 'string' ? demo!.issue(id) : undefined;
+    if (!value) { res.status(400).json({ error: { code: 'INVALID_DEMO_PERSON', message: 'Choose an available demo person.' } }); return; }
+    demo!.revoke(req);
+    res.cookie(demo!.cookieName, value, { httpOnly: true, sameSite: 'strict', path: '/api', maxAge: demo!.lifetime });
+    res.json({ mode: 'local-demo' });
+  });
+  app.delete('/api/dev-login', (req, res) => {
+    if (!localMutation(req)) { res.sendStatus(403); return; }
+    demo!.revoke(req); res.clearCookie(demo!.cookieName, { path: '/api', httpOnly: true, sameSite: 'strict' }); res.sendStatus(204);
+  });
+  app.use('/api/dev-access', (req,res,next) => {
+    res.setHeader('Cache-Control','no-store');
+    if (!demo || !store || !localRequest(req)) { res.sendStatus(404); return; }
+    const person=demo.person(req);
+    if (!person) { res.sendStatus(401); return; }
+    if (!can(store.snapshot(),person,'permissions.manage')) { res.sendStatus(403); return; }
+    res.locals.demoPersonId=person.id; next();
+  });
+  app.get('/api/dev-access', (req,res) => {
+    const state=store!.snapshot(); const person=demo!.person(req)!;
+    res.json({ ...state, audit:can(state,person,'audit.view') ? state.audit : [], catalogue:permissionCatalogue.map(([code,label]) => ({code,label})), canManageUsers:can(state,person,'users.manage') });
+  });
+  app.post('/api/dev-access', async (req,res) => {
+    if (!localMutation(req)) { res.sendStatus(403); return; }
+    try { await store!.save(res.locals.demoPersonId,req.body); res.json({saved:true}); }
+    catch (error) { if (error instanceof AccessError) { res.status(error.status).json({error:{code:'ACCESS_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}}); return; } throw error; }
+  });
 
   // Liveness only: this must never imply SQL or organizational SSO is ready.
   app.get('/api/health', (_req, res) => {
@@ -23,6 +64,9 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
 
   app.get('/api/me', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
+    const demoProfile = demo?.profile(req);
+    if (demoProfile) { res.json({ profile: demoProfile, mode: 'local-demo' }); return; }
+    if (demo?.person(req)) { res.status(403).json({error:{code:'ACCESS_NOT_PROVISIONED',message:'Profile view permission is not assigned.',requestId:res.locals.requestId}}); return; }
     let identity: Identity;
     try {
       if (!dependencies) throw new Error('Identity unavailable');

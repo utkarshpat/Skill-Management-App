@@ -25,6 +25,8 @@ Database setup uses the developer's Azure identity, applies reviewed migrations 
 
 ## Current scope
 
+Temporary local direct login and permission administration are available when NODE_ENV=development and DEV_DIRECT_LOGIN=true. Choose Development Super Admin / DEV-ADMIN, then Access administration. Define custom role names, people IDs, role permissions and per-person ALLOW/DENY overrides. Configuration persists in an ignored local file, separately from Azure SQL. Production must leave this flag off. See docs/PERMISSION_ADMINISTRATION.md for scope, tests and the company migration boundary.
+
 Microsoft SPA/API registrations, validated delegated tokens, restricted SQL own-profile access and a responsive authenticated profile page are implemented. Missing membership is denied; sign-in does not automatically onboard employees. The complete browser login and live Azure SQL profile retrieval succeeded after user-completed individual consent. Migrations 1 and 2 and six role definitions are verified in the personal development database. Verification details are in docs/SSO_AND_PROFILE.md.
 
 The personal development workspace contains one explicitly provisioned test member with EMPLOYEE role. Skills, evidence, review, onboarding, AI tools and production deployment are upcoming increments. This development foundation is not yet production-ready.
@@ -36,6 +38,7 @@ The personal development workspace contains one explicitly provisioned test memb
 - docs/AZURE_SETUP.md: Azure setup and company migration.
 - docs/SSO_AND_PROFILE.md: sign-in, runtime SQL isolation and verification.
 - docs/IDENTITY_AND_ACCESS.md: scoped roles, grants and N+1 policy.
+- docs/PERMISSION_ADMINISTRATION.md: custom roles, per-ID overrides and local direct login.
 - docs/AI_INTEGRATION.md: internal tools, policy gateway and exact write approvals.
 - docs/ENGINEERING_STANDARDS.md: implementation, verification and deployment gates.
 

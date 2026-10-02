@@ -11,6 +11,8 @@ Build AI into the same workflows, rather than adding a separate privileged assis
 1. The API verifies the human identity and resolves the active workspace from SQL.
 2. An internal Tool Registry lists typed tools, their permission, resource scope and read/write classification. No MCP integration and no arbitrary SQL or HTTP tool.
 3. A Policy Gateway resolves every target from current trusted data and runs the same authorization used by normal APIs. The model cannot supply roles, authorize itself, select another tenant or bypass explicit DENY.
+
+   Roles and labels are administrator-defined. Tools bind to stable permission codes from the application catalogue, with role inheritance plus individual overrides; an AI assistant gains no powers from a name such as Manager or Super Admin. Permission revocation must affect the next tool execution even during an existing session.
 4. Read tools return the minimum permitted context with source identifiers. Retrieval, search indexes and caches must preserve account isolation and current permission checks. Uploaded evidence and retrieved text are untrusted content, never tool instructions.
 5. A write tool creates a proposal containing exact validated arguments, target, expected record version, expiry and payload hash. The UI displays the actual change and asks the human to approve it.
 6. Execution rechecks identity, policy, permission expiry, resource state, N+1 assignment and concurrency. Approval binds to the exact proposal; changed arguments require new approval. A transactional idempotency key prevents duplicate changes.

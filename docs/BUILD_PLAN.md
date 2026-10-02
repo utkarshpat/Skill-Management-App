@@ -6,7 +6,7 @@ Baseline: shared planning chat and full final engineering handover, reviewed 2 O
 
 React, Node.js, Azure SQL, private Blob Storage, organizational SSO. No MCP. AI uses an internal allowlisted Tool Registry through an authorization/policy gateway.
 
-Six human roles: Employee, Manager, Department Head, Delivery Unit Head, CHRO, Capability Lead. Organizational relationships are separate from application roles. Every employee's current N+1 is resolved server-side. Capability Lead owns skill taxonomy publication; department and higher leaders create skill proposals.
+Updated user decision, 2 October 2026: roles and people are administrator-defined. Super Admin creates names, roles and permission assignments; individual IDs can receive or lose permissions independently of roles. The six earlier role labels are legacy migration seeds, not the required role model. Policy checks permission codes and resource scopes, never role names. Organizational reporting relationships remain separate from access roles; N+1 is resolved from reporting data. Taxonomy governance and other responsibilities are assigned through permissions rather than hard-coded titles.
 
 Role grants plus scoped user ALLOW/DENY overrides, validity and revocation history determine authorization. Explicit applicable DENY wins. Self-approval is blocked. Scope applies to every API, export, search, job and AI tool.
 

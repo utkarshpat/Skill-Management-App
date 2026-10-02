@@ -3,7 +3,7 @@
 ## What exists
 
 - Azure SQL migration for organization hierarchy, stable Entra user identifiers, time-bound roles and reporting relationships.
-- Six role definitions and permission catalogue with conservative initial defaults.
+- Historical role seeds and a permission catalogue with conservative initial defaults. Updated requirements make roles administrator-defined; the earlier six labels are not mandatory.
 - Scoped user ALLOW/DENY with expiry, revocation metadata and audit schema.
 - Pure server-side authorization functions with tested denial, scope, expiry and N+1 behavior.
 - Entra/Azure SQL configuration template with no credentials.
@@ -14,7 +14,7 @@ Own-profile HTTP access now uses verified Entra tokens and a restricted SQL proc
 
 After token signature, issuer, audience, tenant and validity are verified, map the stable Entra `oid` and `tid` to an active AppUser and Account. Load current roles and grants from SQL. Resolve scope IDs using current organizational data. Never use browser-supplied roles, scope IDs or manager IDs as authority.
 
-No implicit hierarchy-based superuser exists. Users needing employee actions should also hold EMPLOYEE. Role grants must be expanded only for active, unrevoked assignments. Membership, account and organizational scope validity must be checked by the future repository/resolver before constructing an Actor or Grant.
+No implicit hierarchy-based superuser exists. Role names confer no authority. Assign employee actions through permission grants in any custom role or individual override. Role grants must be expanded only for active, unrevoked assignments. Membership, account and organizational scope validity must be checked by the future repository/resolver before constructing an Actor or Grant. Local custom-role and individual administration is described in PERMISSION_ADMINISTRATION.md; tenant-local SQL administration is still pending.
 
 `authorize()` applies account isolation and actor status, blocks self-approval, checks reviewer assignment, filters permissions by target scope/validity, then applies explicit deny before allow. Resource lifecycle, grant authority, payload validation, optimistic concurrency and exact human approval are additional service checks.
 

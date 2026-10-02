@@ -11,8 +11,23 @@ const client = signInConfigured ? new PublicClientApplication({
 }) : undefined;
 const scopes = [`api://${api}/access_as_user`];
 let ready: Promise<void> | undefined;
+let demoSession = false;
+export interface DemoPerson { id: string; displayName: string; employeeCode: string; roles: string[] }
+export let developmentPeople: DemoPerson[] = [];
+export function isDemoSession() { return demoSession; }
+export async function directSignIn(personId: string) {
+  const response = await fetch('/api/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personId }) });
+  if (!response.ok) throw new Error('Direct login failed.');
+  window.location.assign('/');
+}
 export function initializeAuth() {
   return ready ??= (async () => {
+    const demoResponse = await fetch('/api/dev-login', {signal:AbortSignal.timeout(5000)}).catch(() => undefined);
+    if (demoResponse?.ok) {
+      const data = await demoResponse.json();
+      developmentPeople = data.people; demoSession = data.signedIn === true;
+      if (demoSession) return;
+    }
     if (!client) return;
     await client.initialize();
     const result = await client.handleRedirectPromise();
@@ -20,9 +35,17 @@ export function initializeAuth() {
     if (!client.getActiveAccount() && client.getAllAccounts().length === 1) client.setActiveAccount(client.getAllAccounts()[0]);
   })();
 }
-export function signedIn() { return Boolean(client?.getActiveAccount()); }
+export function signedIn() { return demoSession || Boolean(client?.getActiveAccount()); }
 export async function signIn() { await initializeAuth(); await client?.loginRedirect({ scopes, prompt: 'select_account' }); }
-export async function signOut() { await initializeAuth(); await client?.logoutRedirect({ account: client.getActiveAccount() }); }
+export async function signOut() {
+  await initializeAuth();
+  if (demoSession) {
+    const response = await fetch('/api/dev-login', { method: 'DELETE' });
+    if (!response.ok) throw new Error('Sign-out failed.');
+    window.location.assign('/'); return;
+  }
+  await client?.logoutRedirect({ account: client.getActiveAccount() });
+}
 export async function profileToken() {
   await initializeAuth();
   const account = client?.getActiveAccount();

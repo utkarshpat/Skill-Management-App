@@ -1,6 +1,6 @@
 /** Inputs must come from validated identity and current server-side records, never browser claims. */
-export const roles = ['EMPLOYEE', 'MANAGER', 'DEPARTMENT_HEAD', 'DELIVERY_UNIT_HEAD', 'CHRO', 'CAPABILITY_LEAD'] as const;
-export type Role = typeof roles[number];
+// Role labels and memberships are administrator-defined records, not policy constants.
+export type Role = string;
 
 export type Scope =
   | { kind: 'OWN' }
