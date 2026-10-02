@@ -13,6 +13,7 @@ The interface prioritizes the laptop workflow and adapts to phones. Sopra Steria
 - **Activity log:** searchable Time/Action/Actor/Target table with readable action labels and a no-results state. Technical revision numbers remain in the database/audit model but are not a display column.
 - **Sign-in:** a single centered Microsoft sign-in card. The temporary development login remains clearly separate and development-gated. Marketing copy and preview links are removed.
 - **My profile:** actual identity and workspace details. The placeholder capability-journey panel and outdated statement about missing reporting relationships are removed.
+- **Skill catalogue:** search/status filters, paginated skill table and contextual proficiency editor. New skill is in the page navigation; Save skill remains in the editor. Managers see draft/published/archived skills, while viewers see published definitions and read-only level criteria. Forms stack at smaller widths. See SKILL_CATALOGUE.md for rules and verification.
 - **Preview URL:** a simple, explicitly planned module list replaces the old roadmap, connection-status widget and decorative capability diagram. It exposes no employee records and is no longer promoted on sign-in.
 
 The selected administration view is represented by the validated `view` query parameter and survives a page refresh. Sidebar navigation and native form controls remain keyboard accessible. Individual edit values are not serialized into the URL.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AccessAdmin } from './AccessAdmin';
 import { AssistantWidget } from './AssistantWidget';
+import { SkillCatalogue } from './SkillCatalogue';
 import { initializeAuth, signedIn, signIn, signOut, profileToken, signInConfigured, developmentPeople, directSignIn, isDemoSession } from './auth';
 import { BookOpen, BriefcaseBusiness, Compass, Layers3, ListChecks, ShieldCheck, Users } from 'lucide-react';
 
@@ -18,6 +19,7 @@ export function App() {
   useEffect(() => { let active = true; initializeAuth().then(() => { if (active) setSession(signedIn() ? 'signed-in' : 'anonymous'); }).catch(() => { if (active) setSession('error'); }); return () => { active = false; }; }, []);
   if (window.location.pathname === '/preview') return <Overview />;
   if (session === 'loading') return <div className="session-loading" role="status">Preparing your workspace…</div>;
+  if (window.location.pathname === '/skills' && session === 'signed-in') return <><CataloguePage /><AssistantWidget /></>;
   if (window.location.pathname === '/access' && session === 'signed-in') return <><AccessAdmin /><AssistantWidget /></>;
   return session === 'signed-in' ? <><ProfilePage /><AssistantWidget /></> : <Welcome authError={session === 'error'} />;
 }
@@ -43,7 +45,7 @@ function Welcome({ authError }: { authError: boolean }) {
   </div>;
 }
 
-interface OwnProfile { id: string; displayName: string; employeeCode: string; organization: string; status: string; roles: string[] }
+interface OwnProfile { id: string; displayName: string; employeeCode: string; organization: string; status: string; roles: string[]; canViewSkills?:boolean }
 function ProfilePage() {
   const [profile, setProfile] = useState<OwnProfile>();
   const [error, setError] = useState('');
@@ -69,9 +71,14 @@ function ProfilePage() {
     <main id="profile-main" className="profile-main" tabIndex={-1}>{isDemoSession() && <aside className="demo-banner" role="status">Local demo session · Test data · <a href="/access">Access administration</a><button className="secondary-button" onClick={() => { signOut().catch(() => setError('Could not switch person. Please try again.')); }}>Switch person</button></aside>}<h1>My profile</h1><p className="subtitle">Your account and workspace details.</p>
       {loading ? <section className="profile-panel" role="status">Loading your profile…</section> : error ? <section className="profile-panel"><ShieldCheck size={28} /><h2>Workspace access</h2><p role="alert">{error}</p><button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>Try again</button></section> : profile && <>
         <section className="profile-panel profile-identity"><div className="profile-avatar" aria-hidden="true">{profile.displayName.trim().split(/\s+/).slice(0,2).map(name => name[0]).join('')}</div><div><h2>{profile.displayName}</h2><p>{profile.organization}</p><span className="profile-status">Active workspace member</span></div></section>
-        <section className="profile-panel"><h2>Workspace details</h2><dl className="profile-details"><div><dt>Employee code</dt><dd>{profile.employeeCode}</dd></div><div><dt>Assigned roles</dt><dd>{profile.roles.map(role => role.replaceAll('_',' ')).join(', ') || 'None assigned'}</dd></div><div><dt>Account status</dt><dd>{profile.status}</dd></div></dl></section>
+        <section className="profile-panel"><h2>Workspace details</h2><dl className="profile-details"><div><dt>Employee code</dt><dd>{profile.employeeCode}</dd></div><div><dt>Assigned roles</dt><dd>{profile.roles.map(role => role.replaceAll('_',' ')).join(', ') || 'None assigned'}</dd></div><div><dt>Account status</dt><dd>{profile.status}</dd></div></dl></section>{profile.canViewSkills&&<a className="secondary-button" href="/skills">Skill catalogue</a>}
       </>}
     </main></div>;
+}
+
+function CataloguePage() {
+ const [actions,setActions]=useState<HTMLDivElement|null>(null),[error,setError]=useState('');
+ return <div className="profile-page"><a className="skip-link" href="#catalogue-main">Skip to content</a><header className="welcome-header"><a href="/"><img src="/brand/sopra-steria.svg" alt="Sopra Steria"/></a><a href="/" className="secondary-button">My profile</a><button className="secondary-button" onClick={()=>signOut().catch(()=>setError('Sign out could not finish.'))}>Sign out</button></header><nav className="admin-topbar" aria-label="Skill catalogue actions"><div className="page-location"><h1>Skill catalogue</h1></div><div className="page-actions" ref={setActions}/></nav><main id="catalogue-main" className="catalogue-main">{error&&<p role="alert">{error}</p>}<SkillCatalogue actionsContainer={actions}/></main></div>;
 }
 
 function Overview() {

@@ -9,8 +9,9 @@ import { createDevelopmentSessions, localMutation, localRequest } from './develo
 import { type AccessStore, AccessError, can } from './local-access-store.js';
 import { permissionCatalogue } from './access-catalogue.js';
 import type { AssistantService } from './assistant.js';
+import { catalogueQuery, type CatalogueStore } from './skill-catalogue.js';
 
-export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; access?:AccessStore; organization?:OrganizationStore; assistant?:AssistantService; resolveAccess?:(identity:Identity)=>Promise<string|undefined> }, options: { developmentStore?: AccessStore } = {}) {
+export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; access?:AccessStore; organization?:OrganizationStore; assistant?:AssistantService; catalogue?:CatalogueStore; resolveAccess?:(identity:Identity)=>Promise<string|undefined> }, options: { developmentStore?: AccessStore } = {}) {
   const app = express();
   const store = options.developmentStore;
   const demo = store ? createDevelopmentSessions(store) : undefined;
@@ -51,7 +52,7 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
   });
   app.get('/api/dev-access', (req,res) => {
     const state=res.locals.accessState; const person=res.locals.accessPerson;
-    res.json({ ...state, storage:store!.storage, audit:can(state,person,'audit.view') ? state.audit : [], presets:rolePresets, catalogue:permissionCatalogue.map(([code,label]) => ({code,label})), canManageUsers:can(state,person,'users.manage') });
+    res.json({ ...state, storage:store!.storage, audit:can(state,person,'audit.view') ? state.audit : [], presets:rolePresets, catalogue:permissionCatalogue.map(([code,label]) => ({code,label})), canManageUsers:can(state,person,'users.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage') });
   });
   app.post('/api/dev-access', async (req,res) => {
     if (!localMutation(req)) { res.sendStatus(403); return; }
@@ -70,7 +71,7 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
   });
   app.get('/api/access',(_req,res)=>{
     const state=res.locals.accessState;const person=res.locals.accessPerson;
-    res.json({...state,storage:dependencies!.access!.storage,currentPerson:person,authentication:'microsoft',audit:can(state,person,'audit.view')?state.audit:[],presets:rolePresets, catalogue:permissionCatalogue.map(([code,label])=>({code,label})),canManageUsers:can(state,person,'users.manage')});
+    res.json({...state,storage:dependencies!.access!.storage,currentPerson:person,authentication:'microsoft',audit:can(state,person,'audit.view')?state.audit:[],presets:rolePresets, catalogue:permissionCatalogue.map(([code,label])=>({code,label})),canManageUsers:can(state,person,'users.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage')});
   });
   app.post('/api/access',async(req,res)=>{
     try{await dependencies!.access!.save(res.locals.accessPerson.id,req.body);res.json({saved:true});}
@@ -94,11 +95,36 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
       actor=(await demo.person(req))?.id;
     }else{
       try{if(!dependencies?.resolveAccess)throw new Error();actor=await dependencies.resolveAccess(await dependencies.verify(req.headers.authorization));}
-      catch{res.sendStatus(401);return;}
+      catch{res.status(401).json({error:{code:'NOT_AUTHORIZED',message:'Sign in to continue.',requestId:res.locals.requestId}});return;}
     }
     const state=await access?.snapshot(),person=state?.people.find(item=>item.id===actor&&item.active);
     if(!state||!person||!can(state,person,'profile.view',true)){res.sendStatus(403);return;}
     res.locals.assistantActor=person.id;next();
+  });
+  // Catalogue authorization is independent of permission-administration access.
+  app.use('/api/skills',async(req,res,next)=>{
+    res.setHeader('Cache-Control','no-store');
+    let actor:string|undefined;
+    if(demo?.subject(req)){
+      if(!localRequest(req)||(req.method==='POST'&&!localMutation(req))){res.sendStatus(403);return;}
+      actor=(await demo.person(req))?.id;
+    }else{
+      let identity:Identity;
+      try{if(!dependencies?.resolveAccess)throw new Error();identity=await dependencies.verify(req.headers.authorization);}
+      catch{res.status(401).json({error:{code:'NOT_AUTHORIZED',message:'Sign in to continue.',requestId:res.locals.requestId}});return;}
+      actor=await dependencies!.resolveAccess!(identity);
+    }
+    const state=await (dependencies?.access??store)?.snapshot(),person=state?.people.find(item=>item.id===actor&&item.active);
+    if(!state||!person||!(req.method==='POST'?can(state,person,'skill.catalogue.manage'):can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage'))){res.sendStatus(403);return;}
+    res.locals.catalogueActor=person.id;next();
+  });
+  app.get('/api/skills',async(req,res)=>{
+    try{if(!dependencies?.catalogue)throw new AccessError(503,'Skill catalogue is not configured.');res.json(await dependencies.catalogue.read(res.locals.catalogueActor,catalogueQuery(req.query)));}
+    catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'CATALOGUE_REQUEST_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
+  });
+  app.post('/api/skills',async(req,res)=>{
+    try{if(!dependencies?.catalogue)throw new AccessError(503,'Skill catalogue is not configured.');await dependencies.catalogue.save(res.locals.catalogueActor,req.body);res.json({saved:true});}
+    catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'CATALOGUE_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
   app.get('/api/assistant',(_req,res)=>res.json(dependencies?.assistant?.status()??{configured:false,provider:null,mode:'read-only'}));
   app.post('/api/assistant',async(req,res)=>{

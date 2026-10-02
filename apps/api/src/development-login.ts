@@ -35,7 +35,7 @@ export function createDevelopmentSessions(store: AccessStore, now = Date.now) {
       const id=subject(req); if(!id)return undefined;
       const state=await store.snapshot(); const user=state.people.find(person=>person.id===id&&person.active);
       if (!user || user.entraObjectId || !can(state,user,'profile.view',true)) return undefined;
-      return { id:user.id,displayName:user.displayName,employeeCode:user.employeeCode,organization:'Development Workspace',status:'ACTIVE',roles:state.roles.filter(role => user.roleIds.includes(role.id)).map(role => role.name) };
+      return { id:user.id,displayName:user.displayName,employeeCode:user.employeeCode,organization:'Development Workspace',status:'ACTIVE',canViewSkills:can(state,user,'skill.view')||can(state,user,'skill.catalogue.manage'),roles:state.roles.filter(role => user.roleIds.includes(role.id)).map(role => role.name) };
     },
   };
 }

@@ -29,6 +29,8 @@ Current increment: custom-role/person/individual-permission administration persi
 
 ## Decisions still needed
 
+Skill catalogue is now implemented as the start of step 3: migration 007, restricted procedures, independently permission-checked API, search/pagination and editable proficiency definitions. The catalogue is empty until actual definitions are entered; company proficiency criteria remain editable. Published-only access and atomic auditing are verified in SQL. Employee claims, evidence and reporting-manager reviews are next; see SKILL_CATALOGUE.md.
+
 - Company tenant/app configuration and production SQL access. Personal development registrations and restricted profile access exist; see SSO_AND_PROFILE.md.
 - Who can grant each permission, including scopes exceeding an N+1's authority.
 - Map project ownership, demand approval, matching and IT support responsibilities to permissions within the six roles.
