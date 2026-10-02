@@ -44,6 +44,15 @@ Dependencies are resolved and locked in `package-lock.json`. Use `npm.cmd ci` fo
 
 ## Next step: identity and data foundation
 
+SQL setup tooling is now available:
+
+```powershell
+npm.cmd run db:check -w apps/api
+npm.cmd run db:migrate -w apps/api
+```
+
+Configure the ignored `apps/api/.env` and a supported local Azure developer identity first. `db:check` verifies a real connection and reports migration/role seed state; `db:migrate` executes the reviewed SQL migration. Both close the SQL connection after use. TLS certificate validation stays enabled. These tools do not enable API access or Microsoft sign-in in the frontend. Live integration remains unverified until network access and local Azure authentication are configured.
+
 Validate and apply the prepared migration, then connect organizational identity using validated server-side tokens. Azure tenant/application identifiers and database access will be needed to validate real integration. Never trust user IDs, roles or manager IDs supplied by the browser as authority.
 
 GitHub repository: https://github.com/utkarshpat/Skill-Management-App

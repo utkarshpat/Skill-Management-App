@@ -18,7 +18,23 @@ Use Azure SQL hub → **Start free**. A normal database is not automatically fre
 
 [Microsoft free-offer documentation](https://learn.microsoft.com/en-us/azure/azure-sql/database/free-offer?view=azuresql)
 
-## Identity
+## Local SQL setup commands
+
+Copy `apps/api/.env.example` to the ignored `apps/api/.env`, then configure `AZURE_SQL_SERVER` and `AZURE_SQL_DATABASE`. No password is needed. Browser portal sign-in does not automatically sign in the local Node SDK; `DefaultAzureCredential` needs a supported local developer identity (such as Azure CLI sign-in), or a configured managed identity when hosted.
+
+From the repository root:
+
+```powershell
+npm.cmd run db:check -w apps/api
+npm.cmd run db:migrate -w apps/api
+npm.cmd run db:check -w apps/api
+```
+
+`db:check` reads connectivity, applied migration versions and role count. `db:migrate` applies only the reviewed 001 migration to the configured database; rerunning an already applied migration is refused. All setup connections close after use. TLS encryption and certificate validation are required. Raw driver errors and credentials are never printed. These commands are not HTTP endpoints, and protected API paths remain closed.
+
+The user prefers development from different networks. An all-IPv4 development firewall draft is prepared in the portal but is **not saved pending explicit confirmation of public network exposure**. No live query/migration has been verified. Azure CLI is not installed on this machine yet; local developer authentication must be configured before the Node connection check can succeed.
+
+## Application identity
 
 Register development SPA and API applications within the development Entra tenant, with single-tenant sign-in. The current SPA development origin is `http://127.0.0.1:5173/`; verify loopback redirect acceptance during registration.
 
