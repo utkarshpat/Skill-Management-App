@@ -1,0 +1,153 @@
+/* Workforce intelligence palette. Logo artwork retains its original colours. */
+:root {
+  --color-primary: #172033;
+  --color-secondary: #167c80;
+  --color-ai: #7657d9;
+  --canvas: #f7f8f6;
+  --surface: #ffffff;
+  --raised: #f0f3f3;
+  --ink: #18202a;
+  --heading: #172033;
+  --muted: #687385;
+  --line: #e5e8ec;
+  --accent-soft: #e9f4f3;
+  --accent-ink: #126b70;
+  --ai-soft: #f1edfc;
+  --ai-ink: #6445c2;
+  --success-soft: #eaf5ee;
+  --success-ink: #23744f;
+  --warning-ink: #8a6015;
+  --critical: #c94a4a;
+  --critical-soft: #fbeeee;
+  --critical-ink: #ad3434;
+  --focus: #167c80;
+  --primary-button: #172033;
+  --primary-hover: #283650;
+  --shadow-sm: 0 2px 8px rgb(23 32 51 / 5%);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+}
+:root[data-theme=dark] {
+  --canvas: #101827;
+  --surface: #192437;
+  --raised: #223148;
+  --ink: #e7edf5;
+  --heading: #edf3fa;
+  --muted: #acb8ca;
+  --line: #35455d;
+  --accent-soft: #163a40;
+  --accent-ink: #8cdbd5;
+  --ai-soft: #302849;
+  --ai-ink: #c3b2ff;
+  --success-soft: #193b32;
+  --success-ink: #a4dfbd;
+  --warning-ink: #eac275;
+  --critical-soft: #432a31;
+  --critical-ink: #ffb4b4;
+  --focus: #8cdbd5;
+  --primary-button: #167c80;
+  --primary-hover: #126b70;
+  background: var(--canvas);
+  color: var(--ink);
+}
+/* Explicit theme selector matches the specificity of legacy dark rules. */
+html[data-theme] body, html[data-theme] .admin-shell,
+html[data-theme] .welcome-page, html[data-theme] .profile-page {background:var(--canvas);color:var(--ink)}
+html[data-theme] h1,html[data-theme] h2,html[data-theme] h3 {color:var(--heading)}
+html[data-theme] .admin-topbar,html[data-theme] .welcome-header,
+html[data-theme] .profile-panel,html[data-theme] .signin-card,
+html[data-theme] .metric-card,html[data-theme] .module-card,
+html[data-theme] .assistant-panel,html[data-theme] .visual-node {
+  background:var(--surface);color:var(--ink);border-color:var(--line);
+}
+.metric-card,.module-card,.signin-card,.profile-panel {border-radius:12px;box-shadow:var(--shadow-sm)}
+html[data-theme] .metric-label,html[data-theme] .metric-card>strong,
+html[data-theme] .profile-details dd,html[data-theme] .visual-node strong {color:var(--ink)}
+html[data-theme] .subtitle,html[data-theme] .metric-detail,
+html[data-theme] .profile-details dt,html[data-theme] .visual-node small,
+html[data-theme] .access-list span,html[data-theme] .activity-item p,
+html[data-theme] .activity-item time {color:var(--muted)}
+/* Persistent navy anchor in both modes; the wordmark uses a neutral plate. */
+html[data-theme] .admin-sidebar {background:var(--color-primary);color:#f0f4fa;border-color:#29374d}
+html[data-theme] .admin-brand img {background:#fff;padding:8px 10px;border-radius:8px}
+html[data-theme] .admin-sidebar .admin-workspace,
+html[data-theme] .admin-sidebar .admin-account {border-color:#334057}
+html[data-theme] .admin-sidebar .admin-workspace strong,
+html[data-theme] .admin-sidebar .admin-account strong {color:#f0f4fa}
+html[data-theme] .admin-sidebar .admin-workspace span:not(.workspace-symbol),
+html[data-theme] .admin-sidebar .admin-account div span,
+html[data-theme] .admin-sidebar .nav-caption,
+html[data-theme] .admin-sidebar .theme-switcher {color:#b5c0d1}
+html[data-theme] .admin-sidebar .workspace-symbol,
+html[data-theme] .admin-sidebar .account-avatar {background:#24394b;color:#9cddd8}
+html[data-theme] .admin-sidebar nav button {color:#c8d2e0}
+html[data-theme] .admin-sidebar nav button:hover {background:#243147}
+html[data-theme] .admin-sidebar nav button[aria-current=page] {
+  background:#224047;color:#bcf0e9;box-shadow:inset 3px 0 0 #64c6bf;
+}
+html[data-theme] .admin-sidebar .theme-switcher select {background:#223047;color:#edf3fa;border-color:#45516a}
+html[data-theme] .admin-sidebar .admin-account button {color:#c8d2e0}
+html[data-theme] .admin-primary,html[data-theme] .microsoft-button {
+  background:var(--primary-button);color:#fff;border-color:var(--primary-button);box-shadow:none;
+}
+html[data-theme] .admin-primary:not(:disabled):hover,
+html[data-theme] .microsoft-button:not(:disabled):hover {background:var(--primary-hover);border-color:var(--primary-hover)}
+html[data-theme] .secondary-button,html[data-theme] .tree-zoom-controls button,
+html[data-theme] .visual-node-edit {background:var(--surface);color:var(--ink);border-color:var(--line)}
+html[data-theme] .admin-text-button,html[data-theme] .catalogue-open,
+html[data-theme] .org-tree-tools button {color:var(--accent-ink)}
+html[data-theme] .metric-card:hover {border-color:var(--color-secondary)}
+html[data-theme] input:not([type=checkbox]),html[data-theme] textarea,
+html[data-theme] select,html[data-theme] .list-search,html[data-theme] .org-search {
+  background:var(--surface);color:var(--ink);border-color:var(--line);
+}
+html[data-theme] input[type=checkbox] {accent-color:var(--color-secondary)}
+html[data-theme] :is(button,a,input,select,textarea,summary):focus-visible {
+  outline:2px solid var(--focus);outline-offset:3px;
+}
+html[data-theme] .admin-sidebar :is(button,a,select):focus-visible {outline-color:#8cdbd5}
+html[data-theme] .org-search:focus-within {outline-color:var(--focus)}
+html[data-theme] .org-view-switch,html[data-theme] .visual-tree-scroll,
+html[data-theme] .activity-icon,html[data-theme] .preset-detail,
+html[data-theme] .org-team-people button {background:var(--raised);border-color:var(--line);color:var(--ink)}
+html[data-theme] .access-list button {background:var(--surface);color:var(--ink);border-color:var(--line)}
+html[data-theme] .access-list button[aria-pressed=true],
+html[data-theme] .org-view-switch button[aria-pressed=true],
+html[data-theme] .catalogue-table tr.selected,
+html[data-theme] .permission-card.selected,
+html[data-theme] .form-page-tabs button[aria-current=step],
+html[data-theme] .visual-node.selected {background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent-ink)}
+html[data-theme] .visual-node.selected {box-shadow:0 0 0 1px var(--accent-ink)}
+html[data-theme] .permission-card.blocked {background:var(--critical-soft);border-color:var(--critical-ink)}
+html[data-theme] .permission-card.blocked small {color:var(--critical-ink)}
+html[data-theme] .audit-scroll :is(th,td),html[data-theme] .dialog-table :is(th,td),
+html[data-theme] .role-presets,html[data-theme] .advanced-access {border-color:var(--line)}
+html[data-theme] .audit-scroll th,html[data-theme] .dialog-table thead th,
+html[data-theme] .assignment-matrix th:first-child {background:var(--raised);color:var(--muted)}
+html[data-theme] .skill-status {background:var(--raised);color:var(--muted)}
+html[data-theme] .skill-status.published,html[data-theme] .org-success {background:var(--success-soft);color:var(--success-ink)}
+html[data-theme] .access-message {background:var(--accent-soft);border-color:var(--line);color:var(--ink)}
+html[data-theme] .access-message[role=alert] {background:var(--critical-soft);color:var(--critical-ink)}
+html[data-theme] .form-dialog-message {color:var(--critical-ink)}
+html[data-theme] .org-chain {border-color:var(--line)}
+html[data-theme] .org-chain ol {border-color:var(--color-secondary)}
+html[data-theme] .org-chain li:before {background:var(--color-secondary)}
+/* Violet belongs to intelligence, rather than ordinary workspace selections. */
+html[data-theme] .assistant-launcher {background:var(--color-ai);color:#fff;box-shadow:0 4px 16px rgb(118 87 217 / 20%)}
+html[data-theme] .assistant-launcher>span {background:var(--surface);color:var(--ai-ink);border-color:var(--line)}
+html[data-theme] .assistant-panel>header {border-color:var(--line);box-shadow:inset 3px 0 0 var(--color-ai)}
+html[data-theme] .assistant-panel>header strong {color:var(--ai-ink)}
+html[data-theme] .assistant-panel form {background:var(--surface);border-color:var(--line)}
+html[data-theme] .assistant-panel form button {background:var(--color-ai);color:#fff;border-color:var(--color-ai)}
+html[data-theme] .assistant-message.user p {background:var(--ai-soft);color:var(--ink);border-color:var(--line)}
+html[data-theme] .assistant-message a {color:var(--ai-ink)}
+html[data-theme] .assistant-message p {background:var(--raised);color:var(--ink)}
+html[data-theme] .signin-icon,html[data-theme] .profile-avatar {background:var(--accent-soft);color:var(--accent-ink)}
+html[data-theme] .profile-status {color:var(--success-ink)}
+html[data-theme] .signin-intro,html[data-theme] .signin-status,html[data-theme] .signin-trust {color:var(--muted)}
+html[data-theme] .signin-trust,html[data-theme] .demo-login {border-color:var(--line)}
+html[data-theme] .form-dialog-message:has([role=status]) {color:var(--success-ink)}
+html[data-theme] .visual-tree-canvas>svg path {stroke:var(--line)}
+html[data-theme] .page-location>span,html[data-theme] .page-location>svg {color:var(--muted)}
+html[data-theme] .skip-link {background:var(--color-primary);color:#fff}
