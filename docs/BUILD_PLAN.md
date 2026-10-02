@@ -6,7 +6,7 @@ Baseline: shared planning chat and full final engineering handover, reviewed 2 O
 
 React, Node.js, Azure SQL, private Blob Storage, organizational SSO. No MCP. AI uses an internal allowlisted Tool Registry through an authorization/policy gateway.
 
-Updated user decision, 2 October 2026: roles and people are administrator-defined. Super Admin creates names, roles and permission assignments; individual IDs can receive or lose permissions independently of roles. The six earlier role labels are legacy migration seeds, not the required role model. Policy checks permission codes and resource scopes, never role names. Organizational reporting relationships remain separate from access roles; N+1 is resolved from reporting data. Taxonomy governance and other responsibilities are assigned through permissions rather than hard-coded titles.
+Updated user decision, 2 October 2026: roles and people are administrator-defined. Super Admin creates names, roles and permission assignments; individual IDs can receive or lose permissions independently of roles. The six earlier role labels are editable starting permission sets, not a fixed role model. Policy checks permission codes and resource scopes, never role names. Organizational reporting relationships remain separate from access roles; N+1 is the direct reporting relationship; N+2 follows the reporting relationship of that N+1 person. Neither is a role name. Taxonomy governance and other responsibilities are assigned through permissions rather than hard-coded titles.
 
 Role grants plus scoped user ALLOW/DENY overrides, validity and revocation history determine authorization. Explicit applicable DENY wins. Self-approval is blocked. Scope applies to every API, export, search, job and AI tool.
 
@@ -25,7 +25,7 @@ Technical skills and workplace evaluations are separate. Claimed, verified, cert
 
 Each step produces a runnable result and relevant verification. Build one complete workflow at a time.
 
-Current increment: custom-role/person/individual-permission administration persists in Azure SQL through migration 003, with explicit local import, restricted runtime procedures, transactionally generated audit and revision checks. Temporary direct login is development-only. Organization scope bindings and Entra-based custom access administration remain upcoming work.
+Current increment: custom-role/person/individual-permission administration persists in Azure SQL through migration 003, with explicit local import, restricted runtime procedures, transactionally generated audit and revision checks. Temporary direct login is development-only. Microsoft-based Super Admin administration is live. Six editable role presets exist; trusted organization scope bindings remain upcoming work.
 
 ## Decisions still needed
 

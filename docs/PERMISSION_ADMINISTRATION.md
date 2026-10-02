@@ -52,3 +52,28 @@ GET/POST /api/access require Microsoft bearer tokens and current permissions.man
 The owner profile redirects to /access when permission administration is assigned. The dashboard includes overview counts from SQL, people management, custom roles and permission editors, and access change history. The Sopra Steria interface prioritizes laptop layouts and adapts to phones. Metrics describe current records; no performance or growth figures are fabricated. Permission catalogue entries for future workflows do not enable those workflows.
 
 Verification on 2 October 2026: the owner's existing Microsoft browser session opened the real Azure SQL dashboard as Utkarsh Patel, with Microsoft verified status. Sixteen automated tests passed, including verified actor binding, unauthorized access, immediate DENY and mapped-identity demo bypass. Live SQL transaction/isolation/rollback checks passed. Production readiness still requires the existing deployment, network, credential, monitoring and organization-model work.
+
+## Editable predefined role sets
+
+Employee, Manager, Department Head, Delivery Unit Head, CHRO and Capability Lead are now editable starting permission sets in the custom AccountRole workspace. No people were assigned or their grants changed. Existing Super Admin and QA roles remain intact. Role names intentionally contain no N+1/N+2 labels.
+
+Every preset starts with Employee self-service: own profile view/edit, claims, evidence view/submit, learning view/manage, requests create/view, incidents create/view, plus organization published-skill view (12 assignments). CHRO additionally receives organization reports.view (13 assignments). Additional responsibilities retain their original restricted scope:
+
+| Set | Additional scoped proposals |
+| --- | --- |
+| Employee | None |
+| Manager | TEAM profile.view, assessment.view, skill.verify, assessment.approve, evidence.view, learning.view, reports.view |
+| Department Head | DEPARTMENT reports.view; CAPABILITY skill.catalogue.propose |
+| Delivery Unit Head | DELIVERY_UNIT reports.view; CAPABILITY skill.catalogue.propose |
+| CHRO | CAPABILITY skill.catalogue.propose |
+| Capability Lead | CAPABILITY skill.catalogue.manage, reports.view |
+
+These scoped proposals are visible in the preset panel but are not effective grants yet. The custom-role store supports OWN/ORGANIZATION only. Do not widen these proposals to organization-wide permissions. Trusted reporting/organization bindings and workflow endpoints must be implemented first. Configured permissions do not enable unimplemented workflows. None of these presets grants users.manage, permissions.manage or audit.view.
+
+Reporting is person-specific: A reports to B (A's N+1); B reports to C (A's N+2). Derive these levels by following current reporting relationships, irrespective of access roles. Missing/ambiguous relationships, self-reference and cycles must block routing. Team membership and review assignment need explicit trusted bindings; a Manager role is not a reporting relationship. Live N+2 reporting resolution remains future organization-model work.
+
+Source templates live in apps/api/src/role-presets.ts. The dashboard opens an existing role without resetting edits, or prefills an absent role for review/save. Role renaming remains allowed. Suggestions are reference templates, not synchronized runtime policy.
+
+Explicit development provisioning: set ROLE_PRESET_OWNER_OBJECT_ID to the linked Microsoft owner UUID, then run npm.cmd run access:presets -w apps/api. The development-only command uses restricted runtime SQL procedures and the owner's current permission, creates one audit event per role, never assigns people and preserves existing roles with the same name. Rerunning after renaming can create a fresh role under the original name; use the dashboard for subsequent customization.
+
+Verified on 2 October 2026: six roles persisted in Azure SQL, existing people unchanged; 17 automated tests passed, including own-scope isolation, pending team-review denial and no administrative grants.

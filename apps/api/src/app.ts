@@ -1,3 +1,4 @@
+import { rolePresets } from './role-presets.js';
 import { randomUUID } from 'node:crypto';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
@@ -48,7 +49,7 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
   });
   app.get('/api/dev-access', (req,res) => {
     const state=res.locals.accessState; const person=res.locals.accessPerson;
-    res.json({ ...state, storage:store!.storage, audit:can(state,person,'audit.view') ? state.audit : [], catalogue:permissionCatalogue.map(([code,label]) => ({code,label})), canManageUsers:can(state,person,'users.manage') });
+    res.json({ ...state, storage:store!.storage, audit:can(state,person,'audit.view') ? state.audit : [], presets:rolePresets, catalogue:permissionCatalogue.map(([code,label]) => ({code,label})), canManageUsers:can(state,person,'users.manage') });
   });
   app.post('/api/dev-access', async (req,res) => {
     if (!localMutation(req)) { res.sendStatus(403); return; }
@@ -67,7 +68,7 @@ export function createApp(dependencies?: { verify: (authorization: string | unde
   });
   app.get('/api/access',(_req,res)=>{
     const state=res.locals.accessState;const person=res.locals.accessPerson;
-    res.json({...state,storage:dependencies!.access!.storage,currentPerson:person,authentication:'microsoft',audit:can(state,person,'audit.view')?state.audit:[],catalogue:permissionCatalogue.map(([code,label])=>({code,label})),canManageUsers:can(state,person,'users.manage')});
+    res.json({...state,storage:dependencies!.access!.storage,currentPerson:person,authentication:'microsoft',audit:can(state,person,'audit.view')?state.audit:[],presets:rolePresets, catalogue:permissionCatalogue.map(([code,label])=>({code,label})),canManageUsers:can(state,person,'users.manage')});
   });
   app.post('/api/access',async(req,res)=>{
     try{await dependencies!.access!.save(res.locals.accessPerson.id,req.body);res.json({saved:true});}
