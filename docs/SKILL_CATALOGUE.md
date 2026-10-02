@@ -4,11 +4,11 @@ Implemented 2 October 2026 as the first part of the employee skill workflow. The
 
 ## User workflow
 
-Administration contains Skill catalogue, with New skill in its page navigation. Define a name, category, description and one to eight sequential proficiency levels. Level names and criteria are editable. The three initial Level 1/2/3 rows are blank drafting aids, not an approved company rubric. Category is workspace-managed text, with suggestions from the current results; separate category governance is not yet implemented.
+Administration contains Skill catalogue, with New skill in its page navigation. Define a name, category, description and one to eight sequential proficiency levels. Level names and criteria are editable. The three initial Level 1/2/3 definitions are blank drafting aids, not an approved company rubric. Category is workspace-managed text, with suggestions from the current results; separate category governance is not yet implemented.
 
 Drafts are visible only to catalogue managers. Publishing requires a skill description and criteria for every level. Archived skills remain stored for history but are hidden from ordinary viewers. Managers can edit and restore definitions by changing status; there is no delete endpoint. Skill names are unique within a workspace regardless of letter case. Name/category whitespace is normalized on the API.
 
-The catalogue has search by skill/category, status filtering for managers, 25-item server pagination, a selected-skill editor and read-only proficiency details. Save skill remains within the editor. The employee profile exposes /skills when the current identity has catalogue access; it uses the same API without requiring permission-administration access. Temporary development sessions also use current permissions and retain their loopback/origin restrictions.
+The catalogue has search by skill/category, status filtering for managers, 25-item server pagination, a selected-skill popup editor and read-only proficiency details. Save skill remains within the editor. The employee profile exposes /skills when the current identity has catalogue access; it uses the same API without requiring permission-administration access. Temporary development sessions also use current permissions and retain their loopback/origin restrictions.
 
 ## Authorization and persistence
 
@@ -29,4 +29,6 @@ Run npm run db:migrate -w apps/api with the approved setup identity. Keep ACCESS
 
 Checks: npm run typecheck, npm test, npm run build, npm run test:catalogue -w apps/api. The catalogue SQL integration test uses the restricted identity and rolls back all fixtures/audit changes. It verifies published-only visibility, 25-row pagination, case-insensitive uniqueness, create/archive, required criteria, unauthorized and stale writes, missing/cross-account targets, atomic audit and denial of direct table access. It compares complete before/after snapshots to confirm cleanup.
 
-Browser verification covers the real Microsoft owner's empty state, New skill action/focus, draft editor and published-field validation. At 390px, the editor stacks and document scroll width matches available width; the original viewport was restored. Test form values were discarded without saving. A live employee review/claim flow remains the next increment.
+Browser verification covers the real Microsoft owner's empty state, New skill action/focus, draft editor and published-field validation. At 390px, the popup allows internal scrolling and document scroll width matches available width; the original viewport was restored. Test form values were discarded without saving. A live employee review/claim flow remains the next increment.
+
+The popup separates Details from Proficiency levels. Select a level to edit its name and criteria; all levels remain in the draft and save together. Missing publication criteria on any level selects that level and reports the error. Laptop form bodies do not scroll; phone bodies may scroll with Save/Cancel fixed outside them. Close discards a skill draft. On a revision conflict, close, reload the catalogue and reopen the current definition before retrying.

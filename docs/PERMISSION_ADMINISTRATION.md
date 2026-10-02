@@ -77,3 +77,9 @@ Source templates live in apps/api/src/role-presets.ts. The dashboard opens an ex
 Explicit development provisioning: set ROLE_PRESET_OWNER_OBJECT_ID to the linked Microsoft owner UUID, then run npm.cmd run access:presets -w apps/api. The development-only command uses restricted runtime SQL procedures and the owner's current permission, creates one audit event per role, never assigns people and preserves existing roles with the same name. Rerunning after renaming can create a fresh role under the original name; use the dashboard for subsequent customization.
 
 Verified on 2 October 2026: six roles persisted in Azure SQL, existing people unchanged; 17 automated tests passed, including own-scope isolation, pending team-review denial and no administrative grants.
+
+## Popup administration (3 October 2026)
+
+People and role edits open modal sections. Person sections are Details, Assigned roles (five roles per page) and Individual permissions. Role sections are Details and Permissions. Select a permission to amend Effect, Scope or optional expiry; all assignments remain in the draft. Save uses the revision captured when opening the record. On a conflict, close, reload and reopen the current record.
+
+The role assignment page retains its read-only matrix. Edit assignments opens a checkbox popup showing three people and three roles at a time. Draft selections survive pagination and filtering; reverting a person to the saved roles removes its draft entry. Close retains the assignment draft until navigating away, and Save assignments preserves the existing sequential audited writes and partial-failure handling. Errors and save results appear inside the popup. Backend access rules are unchanged.

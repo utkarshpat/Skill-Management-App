@@ -5,7 +5,7 @@ The interface prioritizes the laptop workflow and adapts to phones. Sopra Steria
 ## Current pages
 
 - **Dashboard:** People, Roles and active Departments summaries, three direct management actions, and five recent changes.
-- **People:** searchable roster, selected-person highlight, account fields and role assignments. Individual permission overrides remain available in a collapsed advanced section.
+- **People:** searchable roster, selected-person highlight, account fields and role assignments. The editor opens in a modal with Details, Assigned roles and Individual permissions sections.
 - **Roles & permissions:** searchable roles, a focused permission editor and collapsed preset suggestions. Permissions use readable labels; Allow/Block, scope and optional expiry remain explicit. Adding a permission requires an explicit scope and rejects an existing permission/scope pair. Role names remain independent of authority.
 - **Organization:** visual organization/reporting trees with connected cards, zoom/fit controls and selected-record editors. Selecting a person exposes Edit roles and opens that person's editor. Department branches can open a filtered assignment table. Direct department membership and optional teams remain supported.
 - **Role assignments:** people-by-role checkbox matrix with name search and department filter. Changes remain drafts until Save assignments. Each person is saved sequentially with the expected shared revision and an audit event. A failed row stops the batch and reports partial completion; the entire batch is not atomic. Assign a replacement administrator before removing the existing last administrator.
@@ -13,7 +13,7 @@ The interface prioritizes the laptop workflow and adapts to phones. Sopra Steria
 - **Activity log:** searchable Time/Action/Actor/Target table with readable action labels and a no-results state. Technical revision numbers remain in the database/audit model but are not a display column.
 - **Sign-in:** a single centered Microsoft sign-in card. The temporary development login remains clearly separate and development-gated. Marketing copy and preview links are removed.
 - **My profile:** actual identity and workspace details. The placeholder capability-journey panel and outdated statement about missing reporting relationships are removed.
-- **Skill catalogue:** search/status filters, paginated skill table and contextual proficiency editor. New skill is in the page navigation; Save skill remains in the editor. Managers see draft/published/archived skills, while viewers see published definitions and read-only level criteria. Forms stack at smaller widths. See SKILL_CATALOGUE.md for rules and verification.
+- **Skill catalogue:** search/status filters, paginated skill table and contextual proficiency editor. New skill is in the page navigation; Save skill remains in the editor. Managers see draft/published/archived skills, while viewers see published definitions and read-only level criteria. Editors use separate Details and Proficiency levels sections, with one level visible at a time. See SKILL_CATALOGUE.md for rules and verification.
 - **Preview URL:** a simple, explicitly planned module list replaces the old roadmap, connection-status widget and decorative capability diagram. It exposes no employee records and is no longer promoted on sign-in.
 
 The selected administration view is represented by the validated `view` query parameter and survives a page refresh. Sidebar navigation and native form controls remain keyboard accessible. Individual edit values are not serialized into the URL.
@@ -22,11 +22,11 @@ The selected administration view is represented by the validated `view` query pa
 
 The top navigation contains the current page title once. The large repeated title, subtitle, development-workspace label and session badge were removed. Dashboard creation shortcuts, New person and New role now appear in the navigation for their relevant pages. Organization view switches and Add delivery unit use the same navigation region; Activity log exposes its search there. Existing permission checks still determine whether people-management actions are shown.
 
-Save person, Save role and branch/reporting saves remain inside their editors. Save assignments stays alongside the assignment table and filters. Save is contextual to the displayed record or draft, rather than a generic navbar action. The top bar sticks during desktop scrolling and wraps actions below the page title on phones; the sidebar remains the section navigator.
+Save person, Save role and branch/reporting saves remain inside their editors. Edit assignments opens a paginated checkbox popup; Save assignments stays in its footer. Save is contextual to the displayed record or draft, rather than a generic navbar action. The top bar sticks during desktop scrolling and wraps actions below the page title on phones; the sidebar remains the section navigator.
 
 ## Responsive behavior
 
-At laptop sizes, a compact persistent sidebar and paired list/editor panes keep related tasks together. Below the layout breakpoints, panes stack and navigation becomes a labelled horizontal strip. Roster/tree regions and audit tables contain their own scrolling. Page headers constrain long titles so the page itself does not overflow. The desktop account footer and mobile sign-out control do not duplicate each other. Reduced-motion preferences disable nonessential transitions.
+At laptop sizes, a compact persistent sidebar accompanies searchable lists and visual trees. Record editors open in separate modal dialogs. Below the layout breakpoints, panes stack and navigation becomes a labelled horizontal strip. Roster/tree regions and audit tables contain their own scrolling. Page headers constrain long titles so the page itself does not overflow. The desktop account footer and mobile sign-out control do not duplicate each other. Reduced-motion preferences disable nonessential transitions.
 
 ## Validation and scope
 
@@ -37,3 +37,11 @@ These are the implemented administration/account screens. Skill submissions, rev
 Current browser checks verified the real owner's three cards (17 people, 9 roles, 2 departments), Anupriya's visual-node role edit, the role checkbox table, 14 NHS SBS members in the department filter, and the disconnected assistant state. No role assignments were saved during these UI checks. Normal page areas use the arrow cursor; inputs retain their text caret. Chrome's separate caret-browsing setting requires manual F7 if enabled.
 
 Review reference: [Web Interface Guidelines](https://github.com/vercel-labs/web-interface-guidelines/blob/main/command.md).
+
+## Form dialogs and theme (3 October 2026)
+
+People, roles, skill catalogue, organization branches and reporting assignments use a shared native modal dialog. Laptop forms have fixed headers and Save/Cancel footers, section navigation and bounded contents without form scrolling. People role choices and the editable assignment matrix use pagination; permission and proficiency selectors show one assignment/level at a time while retaining the entire draft. Search, read-only rosters, trees and chat history may still scroll. Phone dialogs allow internal scrolling and retain the footer. Native modal behavior traps focus and makes the background inert; closing restores focus. Required-field validation switches to the relevant section before focusing the field. All proficiency levels are validated before publication. Busy saves disable editing and dismissal.
+
+Theme offers System, Light and Dark from the administration sidebar and account-page header. System is the default and follows OS changes. The preference is stored locally as skill-ui-theme, survives refresh and synchronizes across tabs; no identity or credentials are stored by this feature. Semantic canvas/surface/text/border tokens cover forms, tables, trees and the assistant. The original wordmark uses a white plate in dark mode.
+
+Browser verification at 1536x639 covered skill Details/Levels, person roles/overrides, role permissions, branch/reporting editors and the paginated assignment popup without overflowing form bodies. At 390x844 the permission popup scrolls internally with no document horizontal overflow and a fixed Save footer. Cross-section required-field focus and dark-theme persistence after reload were verified. Unsaved test drafts were discarded; no SQL data or permissions were changed.

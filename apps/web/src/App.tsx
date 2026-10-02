@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AccessAdmin } from './AccessAdmin';
 import { AssistantWidget } from './AssistantWidget';
 import { SkillCatalogue } from './SkillCatalogue';
+import { ThemeSwitcher } from './Theme';
 import { initializeAuth, signedIn, signIn, signOut, profileToken, signInConfigured, developmentPeople, directSignIn, isDemoSession } from './auth';
 import { BookOpen, BriefcaseBusiness, Compass, Layers3, ListChecks, ShieldCheck, Users } from 'lucide-react';
 
@@ -30,7 +31,7 @@ function Welcome({ authError }: { authError: boolean }) {
   const [busy, setBusy] = useState(false);
   return <div className="welcome-page">
     <a className="skip-link" href="#welcome-main">Skip to content</a>
-    <header className="welcome-header"><img src="/brand/sopra-steria.svg" alt="Sopra Steria" /></header>
+    <header className="welcome-header"><ThemeSwitcher/><img src="/brand/sopra-steria.svg" alt="Sopra Steria" /></header>
     <main id="welcome-main" className="welcome-main" tabIndex={-1}>
       <section className="signin-card" aria-labelledby="signin-title">
 
@@ -67,7 +68,7 @@ function ProfilePage() {
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [attempt]);
   return <div className="profile-page"><a className="skip-link" href="#profile-main">Skip to content</a>
-    <header className="welcome-header"><img src="/brand/sopra-steria.svg" alt="Sopra Steria" /><button className="secondary-button" onClick={() => { signOut().catch(() => setError('Sign-out could not finish. Please try again.')); }}>Sign out</button></header>
+    <header className="welcome-header"><ThemeSwitcher/><img src="/brand/sopra-steria.svg" alt="Sopra Steria" /><button className="secondary-button" onClick={() => { signOut().catch(() => setError('Sign-out could not finish. Please try again.')); }}>Sign out</button></header>
     <main id="profile-main" className="profile-main" tabIndex={-1}>{isDemoSession() && <aside className="demo-banner" role="status">Local demo session · Test data · <a href="/access">Access administration</a><button className="secondary-button" onClick={() => { signOut().catch(() => setError('Could not switch person. Please try again.')); }}>Switch person</button></aside>}<h1>My profile</h1><p className="subtitle">Your account and workspace details.</p>
       {loading ? <section className="profile-panel" role="status">Loading your profile…</section> : error ? <section className="profile-panel"><ShieldCheck size={28} /><h2>Workspace access</h2><p role="alert">{error}</p><button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>Try again</button></section> : profile && <>
         <section className="profile-panel profile-identity"><div className="profile-avatar" aria-hidden="true">{profile.displayName.trim().split(/\s+/).slice(0,2).map(name => name[0]).join('')}</div><div><h2>{profile.displayName}</h2><p>{profile.organization}</p><span className="profile-status">Active workspace member</span></div></section>
@@ -78,9 +79,9 @@ function ProfilePage() {
 
 function CataloguePage() {
  const [actions,setActions]=useState<HTMLDivElement|null>(null),[error,setError]=useState('');
- return <div className="profile-page"><a className="skip-link" href="#catalogue-main">Skip to content</a><header className="welcome-header"><a href="/"><img src="/brand/sopra-steria.svg" alt="Sopra Steria"/></a><a href="/" className="secondary-button">My profile</a><button className="secondary-button" onClick={()=>signOut().catch(()=>setError('Sign out could not finish.'))}>Sign out</button></header><nav className="admin-topbar" aria-label="Skill catalogue actions"><div className="page-location"><h1>Skill catalogue</h1></div><div className="page-actions" ref={setActions}/></nav><main id="catalogue-main" className="catalogue-main">{error&&<p role="alert">{error}</p>}<SkillCatalogue actionsContainer={actions}/></main></div>;
+ return <div className="profile-page"><a className="skip-link" href="#catalogue-main">Skip to content</a><header className="welcome-header"><ThemeSwitcher/><a href="/"><img src="/brand/sopra-steria.svg" alt="Sopra Steria"/></a><a href="/" className="secondary-button">My profile</a><button className="secondary-button" onClick={()=>signOut().catch(()=>setError('Sign out could not finish.'))}>Sign out</button></header><nav className="admin-topbar" aria-label="Skill catalogue actions"><div className="page-location"><h1>Skill catalogue</h1></div><div className="page-actions" ref={setActions}/></nav><main id="catalogue-main" className="catalogue-main">{error&&<p role="alert">{error}</p>}<SkillCatalogue actionsContainer={actions}/></main></div>;
 }
 
 function Overview() {
-  return <div className="profile-page"><header className="welcome-header"><img src="/brand/sopra-steria.svg" alt="Sopra Steria"/><a className="secondary-button" href="/">Sign in</a></header><main className="profile-main"><h1>Workspace preview</h1><p className="subtitle">Planned modules. Sign in to access your assigned workspace.</p><div className="module-grid">{modules.map(({title,icon:Icon,description})=><section className="module-card" key={title}><Icon size={20} aria-hidden="true"/><h2>{title}</h2><p>{description}</p></section>)}</div></main></div>;
+  return <div className="profile-page"><header className="welcome-header"><ThemeSwitcher/><img src="/brand/sopra-steria.svg" alt="Sopra Steria"/><a className="secondary-button" href="/">Sign in</a></header><main className="profile-main"><h1>Workspace preview</h1><p className="subtitle">Planned modules. Sign in to access your assigned workspace.</p><div className="module-grid">{modules.map(({title,icon:Icon,description})=><section className="module-card" key={title}><Icon size={20} aria-hidden="true"/><h2>{title}</h2><p>{description}</p></section>)}</div></main></div>;
 }
