@@ -197,9 +197,9 @@ html[data-theme] .navbar-icon,html[data-theme] .navbar-avatar {display:grid;plac
 html[data-theme] .navbar-icon:hover {background:var(--raised)}
 html[data-theme] .navbar-avatar {border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:650;border:1px solid var(--line)}
 .admin-topbar>.navbar-context {display:grid;gap:3px}
-.navbar-greeting {display:flex;align-items:baseline;gap:6px;min-width:0;line-height:1.3}
-.greeting-hello {flex-shrink:0;font-size:14px;font-weight:500;color:var(--muted)}
-.navbar-context .greeting-name {min-width:0;font-family:'Segoe Script','Bradley Hand','Apple Chancery',cursive;font-size:24px;font-weight:600;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent-ink);background:linear-gradient(110deg,var(--heading) 25%,var(--accent-ink));background-clip:text;-webkit-text-fill-color:transparent}
+.navbar-greeting {display:flex;align-items:baseline;gap:6px;min-width:0;font-family:'Segoe Script','Bradley Hand','Apple Chancery',cursive;font-size:24px;font-weight:600;letter-spacing:0;line-height:1.3}
+.greeting-hello {flex-shrink:0;font:inherit;color:var(--muted)}
+.navbar-context .greeting-name {min-width:0;font:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent-ink);background:linear-gradient(110deg,var(--heading) 25%,var(--accent-ink));background-clip:text;-webkit-text-fill-color:transparent}
 html[data-theme] .navbar-context h1 {font-size:12px;color:var(--muted);text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
 .admin-sidebar>.nav-caption {margin:26px 12px 12px}
 .navbar-popover {position:fixed;inset:76px 24px auto auto;width:min(300px,calc(100vw - 32px));padding:20px;margin:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);box-shadow:0 8px 28px rgb(10 18 31 / 15%)}
@@ -227,4 +227,4 @@ html[data-theme] .navbar-context h1 {font-size:12px;color:var(--muted);text-over
   .welcome-main .signin-card {width:100%;padding:32px}
 }
 @media(min-width:901px) and (max-width:1100px) {.welcome-main{gap:40px;padding:36px;grid-template-columns:minmax(0,1fr) 370px}.login-introduction h2{font-size:38px}}
-@media(max-width:650px) {.navbar-account-controls{gap:4px}.navbar-popover{inset:72px 16px auto auto}.greeting-hello{font-size:12px}.navbar-context .greeting-name{font-size:20px}.admin-topbar>.navbar-context{flex-basis:0}}
+@media(max-width:650px) {.navbar-account-controls{gap:4px}.navbar-popover{inset:72px 16px auto auto}.navbar-greeting{font-size:20px}.admin-topbar>.navbar-context{flex-basis:0}}
