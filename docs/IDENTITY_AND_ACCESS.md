@@ -8,7 +8,7 @@
 - Pure server-side authorization functions with tested denial, scope, expiry and N+1 behavior.
 - Entra/Azure SQL configuration template with no credentials.
 
-The helpers are not wired to HTTP or SQL yet. Protected endpoints still return 401. This is a reviewed code foundation, not completed sign-in or database integration.
+Own-profile HTTP access now uses verified Entra tokens and a restricted SQL procedure. Other workflows remain closed. The pure scoped-policy helpers cover future workflows; see SSO_AND_PROFILE.md for the implemented boundary and verification.
 
 ## Authorization inputs
 
@@ -36,7 +36,7 @@ Apply `database/migrations/001_identity_authorization.sql` to a dedicated develo
 sqlcmd -S tcp:YOUR-SERVER.database.windows.net,1433 -d YOUR-DATABASE -G -b -i database/migrations/001_identity_authorization.sql
 ```
 
-The personal development database is provisioned. Migration 001 was applied and verified live on 2 October 2026 using the passwordless Node migration command. A new connection confirmed version 1 and all six roles. Application identity, scoped repositories and runtime database access remain pending. The script records its version transactionally and refuses repeat application. There is no destructive rollback script.
+The personal development database is provisioned. Migrations 001 and 002 were applied on 2 October 2026, with six role seeds and restricted runtime own-profile access verified live. The CLI skips recorded versions; migration 001 itself refuses direct repeat application. There is no destructive rollback script.
 
 Composite foreign keys stop cross-account relationships. They do not provide row-level read isolation. Future repositories must filter by trusted account context on every query; database RLS and restricted runtime permissions should be added before deployment.
 
@@ -53,6 +53,6 @@ The runtime application must not use schema-owner credentials.
 
 ## Next work
 
-Connect real Entra application sign-in, configure a restricted runtime SQL identity, implement authenticated repositories and `/api/me`, then build the skill-claim vertical slice. The development schema is now initialized.
+Interactive first-login and live profile retrieval are verified. Build the skill-claim vertical slice next. Access administration and production deployment remain pending.
 
 Needed configuration: tenant ID, separate SPA/API app registrations, exposed API scope, localhost redirect URI, Azure SQL server/database and a permitted authentication method. Store secrets only in ignored local environment files or Azure secret management.

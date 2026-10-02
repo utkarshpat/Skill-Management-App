@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { initializeAuth, signedIn, signIn, signOut, profileToken, signInConfigured } from './auth';
 import { ArrowUpRight, BookOpen, BriefcaseBusiness, Check, ChevronRight, CircleHelp, Compass, Layers3, LayoutDashboard, ListChecks, LockKeyhole, RefreshCw, Settings2, ShieldCheck, Sparkles, Users } from 'lucide-react';
 
 const modules = [
@@ -11,10 +12,15 @@ const modules = [
 ];
 
 export function App() {
-  return window.location.pathname === '/preview' ? <Overview /> : <Welcome />;
+  const [session, setSession] = useState<'loading' | 'anonymous' | 'signed-in' | 'error'>('loading');
+  useEffect(() => { let active = true; initializeAuth().then(() => { if (active) setSession(signedIn() ? 'signed-in' : 'anonymous'); }).catch(() => { if (active) setSession('error'); }); return () => { active = false; }; }, []);
+  if (window.location.pathname === '/preview') return <Overview />;
+  if (session === 'loading') return <div className="session-loading" role="status">Preparing your workspace…</div>;
+  return session === 'signed-in' ? <ProfilePage /> : <Welcome authError={session === 'error'} />;
 }
 
-function Welcome() {
+function Welcome({ authError }: { authError: boolean }) {
+  const [error, setError] = useState('');
   return <div className="welcome-page">
     <a className="skip-link" href="#welcome-main">Skip to content</a>
     <header className="welcome-header"><img src="/brand/sopra-steria.svg" alt="Sopra Steria" /><span>SKILL MANAGEMENT</span></header>
@@ -31,8 +37,8 @@ function Welcome() {
         <p className="eyebrow">SKILL & WORKFORCE CAPABILITY</p>
         <h2 id="signin-title">Welcome to your<br />capability workspace.</h2>
         <p className="signin-intro">One place to bring your experience, development and ambitions together.</p>
-        <button className="microsoft-button" disabled aria-describedby="signin-status"><span className="microsoft-symbol" aria-hidden="true"><i /><i /><i /><i /></span>Continue with Microsoft</button>
-        <p id="signin-status" className="signin-status">Sign-in is being set up. Access will be available soon.</p>
+        <button className="microsoft-button" disabled={!signInConfigured || authError} aria-describedby="signin-status" onClick={() => { signIn().catch(() => setError('Sign-in could not start. Please refresh and try again.')); }}><span className="microsoft-symbol" aria-hidden="true"><i /><i /><i /><i /></span>Continue with Microsoft</button>
+        <p id="signin-status" className="signin-status" role="status">{error || (authError ? 'Sign-in could not finish. Please return to this page and try again.' : signInConfigured ? 'Use your Microsoft account to access your assigned workspace.' : 'Sign-in is being set up. Access will be available soon.')}</p>
         <div className="signin-divider"><span>EXPLORE THE PLATFORM</span></div>
         <a className="preview-link" href="/preview">View the workspace preview <ArrowUpRight size={17} /></a>
         <p className="preview-note">A preview of the layout and upcoming workflows. No employee records are available.</p>
@@ -41,6 +47,37 @@ function Welcome() {
     </main>
     <footer className="welcome-footer"><span>Skill Management · Sopra Steria</span><span>Skills that move us forward.</span></footer>
   </div>;
+}
+
+interface OwnProfile { id: string; displayName: string; employeeCode: string; organization: string; status: string; roles: string[] }
+function ProfilePage() {
+  const [profile, setProfile] = useState<OwnProfile>();
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    const timeout = setTimeout(() => controller.abort(), 45000);
+    setLoading(true); setError('');
+    profileToken().then(token => fetch('/api/me', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })).then(async response => {
+      if (response.status === 403) throw new Error('Your Microsoft sign-in is complete. Workspace access has not been assigned yet. Contact your administrator.');
+      if (response.status === 401) throw new Error('Your session could not be verified. Sign out and try again.');
+      if (!response.ok) throw new Error('Your profile could not be loaded. Please try again.');
+      const body = await response.json();
+      if (active) setProfile(body.profile);
+    }).catch(err => { if (active) setError(err.name === 'AbortError' ? 'The connection took too long. Please try again.' : err.message); }).finally(() => { clearTimeout(timeout); if (active) setLoading(false); });
+    return () => { active = false; clearTimeout(timeout); controller.abort(); };
+  }, [attempt]);
+  return <div className="profile-page"><a className="skip-link" href="#profile-main">Skip to content</a>
+    <header className="welcome-header"><img src="/brand/sopra-steria.svg" alt="Sopra Steria" /><button className="secondary-button" onClick={() => { signOut().catch(() => setError('Sign-out could not finish. Please try again.')); }}>Sign out</button></header>
+    <main id="profile-main" className="profile-main" tabIndex={-1}><p className="eyebrow">MY WORKSPACE</p><h1>My profile</h1><p className="subtitle">The starting point for your skills, experience and development.</p>
+      {loading ? <section className="profile-panel" role="status">Loading your profile…</section> : error ? <section className="profile-panel"><ShieldCheck size={28} /><h2>Workspace access</h2><p role="alert">{error}</p><button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>Try again</button></section> : profile && <>
+        <section className="profile-panel profile-identity"><div className="profile-avatar" aria-hidden="true">{profile.displayName.trim().split(/\s+/).slice(0,2).map(name => name[0]).join('')}</div><div><h2>{profile.displayName}</h2><p>{profile.organization}</p><span className="profile-status">Active workspace member</span></div></section>
+        <section className="profile-panel"><h2>Workspace details</h2><dl className="profile-details"><div><dt>Employee code</dt><dd>{profile.employeeCode}</dd></div><div><dt>Assigned roles</dt><dd>{profile.roles.map(role => role.replaceAll('_',' ')).join(', ') || 'None assigned'}</dd></div><div><dt>Organization</dt><dd>{profile.organization}</dd></div><div><dt>Account status</dt><dd>{profile.status}</dd></div></dl></section>
+        <section className="profile-panel"><h2>Your capability journey</h2><p>Skills, evidence and development workflows will appear here as they are built. No skills or manager relationships have been added yet.</p></section>
+      </>}
+    </main><footer className="welcome-footer"><span>Skill Management · Sopra Steria</span><span>Your access follows your assigned permissions.</span></footer></div>;
 }
 
 function Overview() {

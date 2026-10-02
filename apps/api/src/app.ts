@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
+import type { Identity } from './auth.js';
+import type { Profile } from './profile.js';
 
-export function createApp() {
+export function createApp(dependencies?: { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined> }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
@@ -19,7 +21,25 @@ export function createApp() {
     res.json({ status: 'ok', service: 'capability-api', version: '0.1.0' });
   });
 
-  // Protected areas remain closed until verified organizational identity is wired.
+  app.get('/api/me', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    let identity: Identity;
+    try {
+      if (!dependencies) throw new Error('Identity unavailable');
+      identity = await dependencies.verify(req.headers.authorization);
+    } catch {
+      res.setHeader('WWW-Authenticate', 'Bearer');
+      res.status(401).json({ error: { code: 'NOT_AUTHORIZED', message: 'Please sign in again.', requestId: res.locals.requestId } });
+      return;
+    }
+    const profile = await dependencies!.profile(identity);
+    if (!profile) {
+      res.status(403).json({ error: { code: 'ACCESS_NOT_PROVISIONED', message: 'Your workspace access is not available. Contact your administrator.', requestId: res.locals.requestId } });
+      return;
+    }
+    res.json({ profile });
+  });
+  // Other workflows remain closed until their authorization is implemented.
   app.use('/api', (_req, res) => {
     res.status(401).json({ error: { code: 'NOT_AUTHORIZED', message: 'Organizational sign-in is required.', requestId: res.locals.requestId } });
   });

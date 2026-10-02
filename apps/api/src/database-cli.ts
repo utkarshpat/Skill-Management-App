@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import sql from 'mssql';
 import { withDatabase } from './database.js';
 
 const command = process.argv[2];
@@ -12,9 +13,22 @@ if (command !== 'check' && command !== 'migrate') {
       console.log('SQL connection verified:', info.recordset[0].database_name);
       if (command === 'migrate') {
         // Run only the reviewed repository migration; never accept arbitrary SQL from HTTP.
-        const source = await readFile(new URL('../../../database/migrations/001_identity_authorization.sql', import.meta.url), 'utf8');
-        await pool.request().query(source);
-        console.log('Migration 001 applied.');
+        const initialized = await pool.request().query("SELECT CASE WHEN OBJECT_ID(N'dbo.SchemaMigration', N'U') IS NULL THEN 0 ELSE 1 END AS initialized;");
+        if (!initialized.recordset[0].initialized) {
+          await pool.request().query(await readFile(new URL('../../../database/migrations/001_identity_authorization.sql', import.meta.url), 'utf8'));
+          console.log('Migration 001 applied.');
+        }
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        try {
+          const applied = await new sql.Request(transaction).query('SELECT version FROM dbo.SchemaMigration WITH (UPDLOCK, HOLDLOCK) WHERE version = 2;');
+          if (!applied.recordset.length) {
+            await new sql.Request(transaction).batch(await readFile(new URL('../../../database/migrations/002_own_profile.sql', import.meta.url), 'utf8'));
+            await new sql.Request(transaction).query('INSERT INTO dbo.SchemaMigration(version) VALUES (2);');
+            console.log('Migration 002 applied.');
+          }
+          await transaction.commit();
+        } catch (error) { await transaction.rollback(); throw error; }
       }
       const exists = await pool.request().query("SELECT CASE WHEN OBJECT_ID(N'dbo.SchemaMigration', N'U') IS NULL THEN 0 ELSE 1 END AS has_migrations;");
       if (exists.recordset[0].has_migrations === 0) {

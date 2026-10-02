@@ -30,17 +30,17 @@ npm.cmd run db:migrate -w apps/api
 npm.cmd run db:check -w apps/api
 ```
 
-`db:check` reads connectivity, applied migration versions and role count. `db:migrate` applies only the reviewed 001 migration to the configured database; rerunning an already applied migration is refused. All setup connections close after use. TLS encryption and certificate validation are required. Raw driver errors and credentials are never printed. These commands are not HTTP endpoints, and protected API paths remain closed.
+`db:check` reads connectivity, applied migration versions and role count. `db:migrate` applies reviewed migrations 001/002, skipping recorded versions. Use a single migration worker. Setup connections close after use. TLS encryption and certificate validation are required. Raw driver errors and credentials are never printed. These commands are not HTTP endpoints.
 
 Azure CLI 2.90.0 is installed and signed in to the personal development tenant. `db:check` verified the live connection; `db:migrate` applied migration 001; a separate `db:check` confirmed migration version 1 and six roles. Azure resource verification also confirmed `useFreeLimit=true`, `freeLimitExhaustionBehavior=AutoPause` and 32 GB maximum data size. Restart terminal sessions after CLI installation so it is available on PATH. CLI login is developer tooling authentication, not application SSO.
 
 ## Application identity
 
-Register development SPA and API applications within the development Entra tenant, with single-tenant sign-in. The current SPA development origin is `http://127.0.0.1:5173/`; verify loopback redirect acceptance during registration.
+Development SPA and API applications are registered with single-tenant sign-in. The registered SPA redirect is `http://localhost:5173/`; use this origin for local sign-in testing.
 
 Use authorization code with PKCE; never embed a browser client secret. The API must validate issuer, audience, lifetime, tenant and delegated scope before resolving an active application user. Microsoft sign-in alone must not grant employee roles or read access.
 
-Tenant/app IDs belong in environment configuration. Passwords, tokens and connection secrets never enter Git. `apps/api/.env.example` lists pending backend configuration. The welcome page currently disables sign-in: it does not contact Microsoft or create a session.
+Tenant/app IDs belong in environment configuration. Passwords, tokens and connection secrets never enter Git. Both apps provide environment templates. Microsoft sign-in and restricted own-profile access are implemented and verified through the full browser journey after user-completed consent; see SSO_AND_PROFILE.md. The SQL runtime never uses the developer's owner identity.
 
 ## Storage and hosting
 
@@ -50,4 +50,4 @@ Add private evidence storage and hosting after identity and SQL. Blob Storage, m
 
 Provision company resource groups, SQL, private storage and Entra app registrations independently. Change environment configuration without replacing source code. Apply versioned migrations to company SQL and migrate approved data separately with explicit identity/reporting mapping: tenant object IDs cannot be assumed to survive a tenant change. Never copy personal credentials.
 
-Configure production HTTPS origins, redirect URIs, API audiences and network rules, then retest authentication and scoped authorization in the destination tenant. Current loopback hosting and placeholder sign-in are development only.
+Configure production HTTPS origins, redirect URIs, API audiences and network rules, then retest authentication and scoped authorization in the destination tenant. Loopback hosting, personal bootstrap membership and local client secret are development only. The secret expires 1 November 2026 at 00:00 UTC; replace it with company managed identity at hosting.

@@ -1,4 +1,4 @@
-import { DefaultAzureCredential } from '@azure/identity';
+import { DefaultAzureCredential, ClientSecretCredential, ManagedIdentityCredential } from '@azure/identity';
 import sql from 'mssql';
 
 export function databaseConfig(env: NodeJS.ProcessEnv): sql.config {
@@ -26,4 +26,27 @@ export async function withDatabase<T>(action: (pool: sql.ConnectionPool) => Prom
   } finally {
     await pool.close();
   }
+}
+
+let runtimePool: Promise<sql.ConnectionPool> | undefined;
+async function connectRuntime() {
+  const { ENTRA_TENANT_ID: tenant, AZURE_SQL_CLIENT_ID: client, AZURE_SQL_CLIENT_SECRET: secret } = process.env;
+  const config = databaseConfig(process.env);
+  if (process.env.AZURE_SQL_RUNTIME_AUTH === 'managed-identity') {
+    config.authentication = { type: 'token-credential', options: { credential: new ManagedIdentityCredential(process.env.AZURE_SQL_MANAGED_IDENTITY_CLIENT_ID ? { clientId: process.env.AZURE_SQL_MANAGED_IDENTITY_CLIENT_ID } : {}) } };
+  } else {
+    if (!tenant || !client || !secret) throw new Error('Restricted SQL runtime identity is not configured.');
+    config.authentication = { type: 'token-credential', options: { credential: new ClientSecretCredential(tenant, client, secret) } };
+  }
+  const pool = new sql.ConnectionPool(config);
+  try { await pool.connect(); return pool; }
+  catch (error) { await pool.close(); throw error; }
+}
+export async function withRuntimeDatabase<T>(action: (pool: sql.ConnectionPool) => Promise<T>): Promise<T> {
+  runtimePool ??= connectRuntime().catch(error => { runtimePool = undefined; throw error; });
+  return action(await runtimePool);
+}
+export async function closeRuntimeDatabase() {
+  const pending = runtimePool; runtimePool = undefined;
+  if (pending) await (await pending).close();
 }

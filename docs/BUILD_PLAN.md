@@ -27,7 +27,7 @@ Each step produces a runnable result and relevant verification. Build one comple
 
 ## Decisions still needed
 
-- Entra tenant/app configuration and Azure SQL access for real integration.
+- Company tenant/app configuration and production SQL access. Personal development registrations and restricted profile access exist; see SSO_AND_PROFILE.md.
 - Who can grant each permission, including scopes exceeding an N+1's authority.
 - Map project ownership, demand approval, matching and IT support responsibilities to permissions within the six roles.
 - Exact skill proficiency and workplace evaluation rubrics.
