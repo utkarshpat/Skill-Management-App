@@ -32,7 +32,7 @@ npm.cmd run db:check -w apps/api
 
 `db:check` reads connectivity, applied migration versions and role count. `db:migrate` applies only the reviewed 001 migration to the configured database; rerunning an already applied migration is refused. All setup connections close after use. TLS encryption and certificate validation are required. Raw driver errors and credentials are never printed. These commands are not HTTP endpoints, and protected API paths remain closed.
 
-The user prefers development from different networks. An all-IPv4 development firewall draft is prepared in the portal but is **not saved pending explicit confirmation of public network exposure**. No live query/migration has been verified. Azure CLI is not installed on this machine yet; local developer authentication must be configured before the Node connection check can succeed.
+The user prefers development from different networks. An all-IPv4 development firewall draft is prepared in the portal but is **not saved pending explicit confirmation of public network exposure**. No live query/migration has been verified. Azure CLI 2.90.0 is installed. Local Azure sign-in has been started and is awaiting account selection; a live Node connection check is still pending. Restart terminal sessions after installation so the CLI is available on PATH.
 
 ## Application identity
 
