@@ -75,3 +75,9 @@ The administration sidebar now contains the supplied logo and navigation only. T
 The notification bell opens a clear empty-state panel. There is no live notification service, unread badge, synthesized activity notification or new notification permission in this increment. A future authenticated feed must provide actual per-person notifications. The sidebar intentionally uses the same Deep Navy in both modes, following the supplied visual direction; the content canvas, surfaces and interaction colours adapt to the selected theme.
 
 Browser verification covered the laptop introduction, compact 390px phone login, owner greeting, simplified sidebar, account name and Sign out button, mutually exclusive notification/account popovers, and phone navbar/popover bounds. The live sign-out redirect was not triggered during this UI check. Build and strict type checking pass; no database records or access assignments changed.
+
+## Wider navigation and first-name greeting (3 October 2026)
+
+Desktop navigation is 256px wide, up from 224px; smaller laptop layouts use 240px instead of 208px. The phone hamburger drawer retains its existing viewport bounds. The navbar displays “Hello,” followed by only the person's first name in a cursive Segoe Script font, with Bradley Hand/Apple Chancery/system cursive fallbacks and a theme-aware navy–teal gradient. The full display name remains available in the name tooltip and account menu. Long names truncate without pushing the account controls outside the viewport; the cursive name is 24px on laptops and 20px on phones.
+
+Visual checks used an isolated in-memory development workspace, leaving Azure records and the user's main app session untouched. Laptop width, light/dark colours and 390px phone overflow were checked; frontend strict types and the production build passed.
