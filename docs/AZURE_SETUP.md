@@ -46,6 +46,14 @@ Tenant/app IDs belong in environment configuration. Passwords, tokens and connec
 
 Add private evidence storage and hosting after identity and SQL. Blob Storage, monitoring and hosting can incur separate charges even when SQL is free; verify their own free eligibility before provisioning. Keep real employee records and evidence outside the public repository.
 
+## Local recovery on 3 October 2026
+
+An interrupted folder move left the local source and ignored environment files missing. The latest GitHub source was restored to `S:\Skill-Management-App`, and saved registration records were checked against the signed-in Azure tenant and existing SQL resource. The original client secret could not be retrieved; a replacement credential was appended to the existing API registration, retaining its original restricted SQL identity and the 1 November 2026 expiry. Configuration was saved only in ignored `apps/api/.env` and `apps/web/.env.local`.
+
+The existing development account binding was recovered with a read-only SQL lookup. Restricted runtime verification resolved the original Microsoft administrator, loaded 17 people and 9 roles, and confirmed that direct table reads remain denied. No database records, role assignments, network rules or app permissions were changed. Frontend and API were restarted; the temporary local picker returned 16 unlinked test people. Interactive Microsoft sign-in must still be completed by the user.
+
+Keep a recoverable local configuration copy in an approved secret store before moving the checkout; Git restores source and templates, not ignored credentials. Move the complete folder, including `.git` and ignored environment files, and verify the destination before removing the source. Never back up secrets to the public repository.
+
 ## Company migration
 
 Provision company resource groups, SQL, private storage and Entra app registrations independently. Change environment configuration without replacing source code. Apply versioned migrations to company SQL and migrate approved data separately with explicit identity/reporting mapping: tenant object IDs cannot be assumed to survive a tenant change. Never copy personal credentials.
