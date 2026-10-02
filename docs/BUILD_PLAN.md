@@ -41,3 +41,5 @@ Skill catalogue is implemented as the start of step 3: migration 007, restricted
 - Separate platform readiness from liveness; add database/auth readiness when configured.
 
 These unresolved details are not simulated as completed functionality in the foundation.
+
+Gemini is now connected through the user's ignored GEMINI_API key, with live synthetic answer/tool/draft/learning-practice checks. Typed output cards and the skill-description handoff to the existing reviewed form are implemented. Notifications now show personal access-update events, with device-specific read state. Persisted learning attempts, fully filled approved AI write proposals, review/learning/incident notification producers and cross-device notification receipts remain upcoming work. See AI_INTEGRATION.md and NOTIFICATIONS.md.

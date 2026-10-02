@@ -39,7 +39,7 @@ These are recommendations from documented capabilities, not measured rankings on
 
 Google's pricing page states free-tier data may be used to improve products, whereas paid-tier data is not used for that purpose. Use synthetic data for free-tier evaluation; choose approved terms/region/retention before real employee evidence. OpenAI API data is not used for training by default, but retention and endpoint storage controls still require review. Do not infer contractual or residency suitability for Kimi from its model capabilities.
 
-No live API calls, keys, billing or employee-data transmission were enabled in this increment. The existing OpenAI/Azure/Ollama adapters remain in place. Gemini and Kimi adapters, model-specific settings and live quality/latency tests await provider selection. Keep the key in ignored server configuration or deployment secret storage, never chat, Git or VITE variables.
+Later update: the user selected Gemini and configured the ignored server key. A native Gemini adapter and live synthetic smoke checks are now delivered; see AI_INTEGRATION.md. Existing OpenAI/Azure/Ollama adapters remain in place; Kimi integration and broader comparative quality/latency evaluation remain pending. No billing settings were changed and no real employee data was used in smoke checks. Keep keys in ignored server configuration or deployment secret storage, never chat, Git or VITE variables.
 
 ## Evaluation before AI writes
 

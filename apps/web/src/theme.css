@@ -278,3 +278,22 @@ html[data-theme] .workspace-context-link {display:flex;align-items:center;gap:12
 .account-context {display:flex;width:100%;justify-content:center;margin-top:14px;text-decoration:none}
 @media(max-width:1000px) {.personal-dashboard{grid-template-columns:1fr}}
 @media(max-width:650px) {.workspace-upcoming ul{grid-template-columns:1fr}.personal-skill-list li{align-items:flex-start}.personal-skill-total strong{font-size:40px}html[data-theme] .navigation-drawer .workspace-nav-link{min-height:48px;font-size:14px}}
+.notification-trigger { position: relative; }
+.notification-count { position:absolute;top:-3px;right:-4px;min-width:18px;height:18px;padding:0 3px;border-radius:12px;background:var(--accent,#167c80);color:white;font-size:10px;display:grid;place-items:center; }
+.notification-heading,.assistant-output-actions { display:flex;align-items:center;justify-content:space-between;gap:10px; }
+.notification-list { list-style:none;padding:0;margin:12px 0;max-height:340px;overflow:auto;overscroll-behavior:contain; }
+.notification-list li { border-bottom:1px solid var(--line); }
+.notification-list a { display:grid;gap:7px;padding:12px;border-radius:8px;text-decoration:none;color:inherit; }
+.notification-list li.unread { background:var(--accent-soft); }
+.notification-list span,.notification-list time { font-size:12px;line-height:1.5; }
+.assistant-artifact { border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px; }
+.assistant-artifact h3 { font-size:17px;margin:9px 0 12px; }
+.assistant-artifact fieldset { border:0;padding:0;margin:14px 0;min-width:0; }
+.assistant-artifact legend { font-weight:600;line-height:1.5;margin-bottom:12px; }
+.assistant-quiz-option { display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;cursor:pointer; }
+.assistant-quiz-option input { flex:none;width:16px;height:16px;margin-top:3px;accent-color:#167c80; }
+.assistant-quiz-option span { line-height:1.5;overflow-wrap:anywhere; }
+.assistant-draft-text { width:100%;box-sizing:border-box;resize:vertical;background:var(--surface,#fff);color:inherit;border:1px solid var(--line);padding:10px;border-radius:8px;font:inherit; }
+.assistant-artifact li { line-height:1.6;margin-bottom:8px; }
+.assistant-artifact>p,.quiz-explanation p { font-size:12px;line-height:1.6; }
+.assistant-artifact .secondary-button,.assistant-artifact .admin-primary { font-size:12px;padding:8px 12px; }

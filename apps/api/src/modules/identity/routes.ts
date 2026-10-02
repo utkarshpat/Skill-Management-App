@@ -5,6 +5,8 @@ import { createDevelopmentSessions } from './development-login.js';
 import { localMutation, localRequest } from '../../shared/http-security.js';
 import type { AccessStore } from '../access/index.js';
 import { workspaceFor } from './workspace.js';
+import { notificationsFor } from './notifications.js';
+import { can } from '../access/index.js';
 type DevelopmentSessions = ReturnType<typeof createDevelopmentSessions>;
 export interface HttpDependencies { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; resolveAccess?: (identity: Identity) => Promise<string | undefined>; access?: AccessStore; }
 export function registerRoutes(app: Express, dependencies: HttpDependencies | undefined, store?: AccessStore, demo?: DevelopmentSessions) {
@@ -30,7 +32,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     if (!localMutation(req)) { res.sendStatus(403); return; }
     demo!.revoke(req); res.clearCookie(demo!.cookieName, { path: '/api', httpOnly: true, sameSite: 'strict' }); res.sendStatus(204);
   });
-  app.get('/api/workspace', async (req, res) => {
+  app.get(['/api/workspace','/api/notifications'], async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     let actor: string | undefined;
     if (demo?.subject(req)) {
@@ -50,6 +52,10 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     const person = state?.people.find(item => item.id === actor && item.active);
     if (!state || !person) {
       res.status(403).json({ error: { code: 'ACCESS_NOT_PROVISIONED', message: 'Workspace access is not assigned.', requestId: res.locals.requestId } }); return;
+    }
+    if(req.path==='/api/notifications'){
+      if(!can(state,person,'profile.view',true)){res.sendStatus(403);return;}
+      res.json(notificationsFor(state,person));return;
     }
     res.json({ ...workspaceFor(state, person), authentication: demo?.subject(req) ? 'local-demo' : 'microsoft' });
   });

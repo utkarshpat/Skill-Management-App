@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { BookOpen, Plus, Pencil, Search } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { FormDialog } from './FormDialog';
+import { useLocation, useNavigate } from 'react-router';
 
 interface Claim {
   id:string; revision:number; skillId:string; skillName:string; category:string;
@@ -20,6 +21,7 @@ async function body<T>(response:Response):Promise<T> {
   return value;
 }
 export function MySkills({actionsContainer}:{actionsContainer?:HTMLElement|null}) {
+  const location=useLocation(),navigate=useNavigate();
   const [state,setState]=useState<State>(),[page,setPage]=useState(1),[loading,setLoading]=useState(true);
   const [error,setError]=useState(''),[notice,setNotice]=useState('');
   const [draft,setDraft]=useState<Draft>(),[formPage,setFormPage]=useState(0),[busy,setBusy]=useState(false),[formError,setFormError]=useState('');
@@ -31,6 +33,15 @@ export function MySkills({actionsContainer}:{actionsContainer?:HTMLElement|null}
     finally {if(!signal?.aborted)setLoading(false);}
   }
   useEffect(()=>{const controller=new AbortController();void load(controller.signal);return()=>controller.abort();},[page]);
+  useEffect(()=>{
+    const suggested=location.state?.aiDraft?.description;
+    if(typeof suggested!=='string'||!state)return;
+    navigate(location.pathname+location.search,{replace:true,state:null});
+    if(!state.canClaim){setError('Your account does not have permission to add a skill draft.');return;}
+    if(!suggested.trim()||suggested.length>2000){setError('The suggested experience text is invalid.');return;}
+    setDraft({...emptyDraft(),description:suggested});setFormPage(0);setSearch('');setOptionPage(1);setFormError('');
+    setNotice('AI suggestion loaded. Review the skill, proficiency, experience and description before saving.');
+  },[location.key,state?.canClaim]);
   useEffect(()=>{
     if(!draft)return;
     const controller=new AbortController();setOptionsLoading(true);setOptions(undefined);

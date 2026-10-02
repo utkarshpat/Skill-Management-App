@@ -1,6 +1,6 @@
 # AI integration design
 
-Status: authenticated floating assistant, server-side provider adapters and read-only tools are implemented. No live model, credentials or provider billing have been enabled or tested yet.
+Status: authenticated floating assistant, Gemini/server-side provider adapters, read-only tools and validated draft/learning-practice cards are implemented. Live Gemini answer, own-profile tool continuation, skill-draft rendering and a ten-question practice quiz were tested on 3 October 2026 using synthetic data. No employee evidence or Azure test writes were used.
 
 ## Current implementation and setup
 
@@ -14,9 +14,23 @@ This is an explicit application framework, not a new third-party agent SDK or a 
 
 Configure AI_PROVIDER, AI_MODEL, AI_ENDPOINT and AI_API_KEY in the ignored API .env or deployment secret management. Azure uses the deployment name as AI_MODEL and an approved HTTPS *.openai.azure.com or *.services.ai.azure.com endpoint with /openai/v1/chat/completions. OpenAI uses its fixed API endpoint. Local Ollama accepts only a loopback endpoint and needs no key. Keys never enter web configuration. Restart the API after configuration. Missing configuration keeps the UI composer disabled; it does not generate simulated replies.
 
-Limits: 12 history messages, 2,000 characters per message, 12,000 total characters, 800 output-token cap per provider call, 35-second request timeout, cancellation on panel close, three model rounds and four tool executions. Each API process limits users to 10 requests/minute, one concurrent request/user and 500 requests/day overall. Process restarts reset these counters and multiple instances have independent counters. They are not durable budgets or hard currency caps; add shared rate limits, usage metering and billing alerts before production.
+Gemini accepts the user's server-only GEMINI_API variable, with GEMINI_API_KEY as an alias. When AI_PROVIDER is blank and either key exists, Gemini is selected; default AI_MODEL is gemini-3.8-flash. An explicit provider still takes precedence. Gemini requests use the fixed HTTPS Google endpoint and x-goog-api-key header; model names cannot construct arbitrary paths. Full native response parts, including opaque thought signatures, remain server-side and are retained within tool continuation. Quota, billing, access, timeout, blocked and truncated replies have bounded, redacted error handling. Nothing enables billing or purchases credits automatically.
 
-Verification: automated tests cover forged system history, forbidden tools/arguments, permission revocation during a conversation, own-profile isolation, verified HTTP actor resolution, anonymous rejection, disconnected status and upstream error redaction. Live model quality, Azure deployment/region availability and provider retention settings still require verification after provider selection. No employee context is sent to a provider while disconnected.
+## Output and action views
+
+The present_output rendering function has a server-validated, bounded contract: kind, title, summary, body, steps and questions. Supported kinds are skill_draft, task_draft and practice_quiz. Extra fields (including executable actions or model-provided navigation URLs), unknown kinds, invalid choices/answer indices, duplicate question prompts and incomplete quizzes are rejected. This is a presentation function, not a write tool. Plain answers and clarifying questions retain the normal chat view; sources come only from authorized tools.
+
+Drafts show an editable text preview and an optional Copy action. Skill drafts additionally offer Review in My Skills: the edited description fills the existing popup through client navigation. The person must select the published catalogue skill, proficiency and experience and explicitly save through the existing authorized/concurrency-checked claim API. The navigation state is consumed; refreshing does not silently reopen or save a proposal. This initial handoff does not auto-match taxonomy or auto-fill proficiency. Fully filled durable proposals and direct approved execution remain upcoming work.
+
+Tests belong to Learning & Development, not My Skills. The AI drawer provides a ten-question learning-practice preview with four choices per question, previous/next controls, an all-answered check, score, retry and explanations. Attempts are transient browser state and are not saved to learning history, credentials or verified skills. Answers are present client-side, so this is informal practice, not a protected assessment. Persisted learning tests require the Learning module's attempt/version storage and authoritative grading. Learning tasks are draft steps, not scheduled calendar records.
+
+Current Gemini cap is 6,000 output tokens to accommodate ten-question structured output; other existing providers retain 800. Process-local request limits below apply to all providers. Chat/card state is lost on page reload, and no durable conversation or proposal history is claimed.
+
+Limits: 12 history messages, 2,000 characters per message, 12,000 total characters, provider-specific output caps above, 35-second request timeout, cancellation on panel close, three model rounds and four tool executions. Each API process limits users to 10 requests/minute, one concurrent request/user and 500 requests/day overall. Process restarts reset these counters and multiple instances have independent counters. They are not durable budgets or hard currency caps; add shared rate limits, usage metering and billing alerts before production.
+
+Verification: automated tests cover forged system history, forbidden tools/arguments, permission revocation during a conversation, own-profile isolation, verified HTTP actor resolution, anonymous rejection, disconnected status, upstream error redaction, structured-output validation, Gemini signed-part continuation, blocked/truncated replies and own notification isolation. Live synthetic smoke tests passed; broad Hinglish/content-quality evaluations, Azure deployment/region availability and approved employee-data retention settings remain pending.
+
+Official references: [Gemini function calling](https://ai.google.dev/gemini-api/docs/function-calling), [thought signatures](https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures), [structured outputs](https://ai.google.dev/gemini-api/docs/generate-content/structured-output).
 
 ## Intended features
 
