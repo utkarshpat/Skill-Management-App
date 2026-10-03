@@ -17,7 +17,7 @@ test('Vercel entrypoint exports the configured app and public routing retains AP
     const health = await fetch(origin + '/api/health');
     assert.equal(health.status, 200);
     assert.equal((await health.json()).service, 'capability-api');
-    for (const path of ['/api/profile', '/api/my-skills', '/api/assistant']) {
+    for (const path of ['/api/profile', '/api/my-skills', '/api/assistant', '/api/learning']) {
       assert.equal((await fetch(origin + path)).status, 401);
     }
     assert.equal((await fetch(origin + '/api/dev-login')).status, 404);
