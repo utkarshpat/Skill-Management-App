@@ -95,3 +95,5 @@ Recommendations and AI planner call the authenticated assistant on demand using 
 
 Validation includes monthly timezone boundaries, dated roadmap grouping, optional mapping validation, runtime SQL-derived skill-name provenance and missing/forged skill rejection with rollback-only fixtures. Build, typecheck, module boundaries and existing ownership/CAS/completion checks remain required.
 Creation now uses four compact steps (Goal & time, Skill focus, Daily tasks, Review) to keep desktop forms within the dialog. The review names the selected focus and skill before explicit save.
+
+Production acceptance (user Chrome, 2026-10-04): mapped synthetic Azure plan persisted after refresh; Start opened detail without changing completion. Real Gemini planner returned three tasks and Review plan draft prefilled the editable four-step wizard. All four steps had body clientHeight=scrollHeight=392 px in a 606 px desktop dialog. The generated QA draft was closed without saving. Existing completed count remained one. Mobile visual verification is still pending.
