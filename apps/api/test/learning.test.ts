@@ -7,6 +7,11 @@ import {AccessError} from '../src/shared/errors.js';
 import {LocalAccessStore} from '../src/modules/access/local-access-store.js';
 import {createApp} from '../src/create-app.js';
 const draft=()=>({action:'CREATE',id:randomUUID(),revision:0,title:'Goal',goal:'Learn by doing',timezone:'Asia/Kolkata',dailyMinutes:30,targetDate:'2026-10-06',tasks:[{id:randomUUID(),title:'Practice',plannedDate:'2026-10-03',estimatedMinutes:30}]});
+test('learning accepts optional catalogue mapping but never a client supplied skill name',()=>{
+ const skillId=randomUUID();const result=learningChange({...draft(),focus:'Cloud',skillId});
+ assert.equal(result.action,'CREATE');if(result.action==='CREATE'){assert.equal(result.skillId,skillId);assert.equal(result.focus,'Cloud');}
+ for(const extra of [{focus:'Unknown'},{skillId:'invalid'},{skillName:'Forged skill'}])assert.throws(()=>learningChange({...draft(),...extra}));
+});
 test('learning validates dates, capacity, identity fields and completion provenance',()=>{
  const good=draft();assert.equal(learningChange(good).action,'CREATE');
  for(const extra of [{personId:randomUUID()},{status:'ACTIVE'},{revision:1},{timezone:'bad/zone'},{dailyMinutes:29},{targetDate:'2026-99-99'},{targetDate:'2026-02-30'},{tasks:[{...good.tasks[0],completedAt:'2026-10-03'}]},{tasks:[good.tasks[0],{...good.tasks[0],id:randomUUID()}]}])assert.throws(()=>learningChange({...good,...extra}),e=>e instanceof AccessError&&e.status===400);

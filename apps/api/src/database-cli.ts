@@ -18,7 +18,7 @@ if (command !== 'check' && command !== 'migrate') {
           await pool.request().query(await readFile(new URL('../../../database/migrations/001_identity_authorization.sql', import.meta.url), 'utf8'));
           console.log('Migration 001 applied.');
         }
-        for (const [version,filename] of [[2,'002_own_profile.sql'],[3,'003_custom_access.sql'],[4,'004_microsoft_access.sql'],[5,'005_organization_setup.sql'],[6,'006_department_membership.sql'],[7,'007_skill_catalogue.sql'],[8,'008_skill_claim_drafts.sql'],[9,'009_ai_conversations.sql'],[10,'010_skill_claim_reviews.sql'],[11,'011_empty_skill_search.sql'],[12,'012_versioned_skill_framework.sql'],[13,'013_claim_catalogue_discovery.sql'],[14,'014_employee_learning.sql'],[15,'015_learning_log_capacity.sql']] as const) {
+        for (const [version,filename] of [[2,'002_own_profile.sql'],[3,'003_custom_access.sql'],[4,'004_microsoft_access.sql'],[5,'005_organization_setup.sql'],[6,'006_department_membership.sql'],[7,'007_skill_catalogue.sql'],[8,'008_skill_claim_drafts.sql'],[9,'009_ai_conversations.sql'],[10,'010_skill_claim_reviews.sql'],[11,'011_empty_skill_search.sql'],[12,'012_versioned_skill_framework.sql'],[13,'013_claim_catalogue_discovery.sql'],[14,'014_employee_learning.sql'],[15,'015_learning_log_capacity.sql'],[16,'016_learning_skill_mapping.sql']] as const) {
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
         try {
