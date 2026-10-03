@@ -32,6 +32,14 @@ Verification: automated tests cover forged system history, forbidden tools/argum
 
 Official references: [Gemini function calling](https://ai.google.dev/gemini-api/docs/function-calling), [thought signatures](https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures), [structured outputs](https://ai.google.dev/gemini-api/docs/generate-content/structured-output).
 
+## Formatting and document canvas
+
+Assistant replies and draft previews render CommonMark/GFM: paragraphs, headings, bold/italics, bullet and numbered lists, quotations, inline/fenced code and tables. User messages retain literal text. Tables and code contain their own horizontal overflow. Markdown is loaded in a separate bundle when needed. The model prompt requests meaningful formatting and reiterates that tests belong to Learning & Development.
+
+The renderer uses react-markdown/remark-gfm without raw-HTML execution, skips HTML and excludes images. Model links activate only for allowlisted frontend workspace paths; external links and API paths become plain labels. Trusted tool sources remain separate from generated links. Rendering creates React elements, not innerHTML. Frontend tests cover semantic formatting, script/image exclusion and unsafe navigation; see [react-markdown security](https://github.com/remarkjs/react-markdown#security).
+
+Open document shows a read-only, focus-trapped canvas with readable page width, contained scrolling, Copy Markdown and Download .md. Escape closes the canvas while retaining the AI drawer and conversation. Drafts have Preview/Edit and Open draft document; edited text is retained for copying and the My Skills review handoff. This is a transient document view, not a saved document repository or collaborative editor. It changes no records or permission grants.
+
 ## Intended features
 
 Build AI into the same workflows, rather than adding a separate privileged assistant. First candidates are skill-claim drafting, evidence summaries with references, learning-plan drafts, and scoped skill search. Later demand matching must explain its inputs and distinguish verified skills from claims and inference. AI must never convert a claim, course completion or generated answer into a verified skill.
