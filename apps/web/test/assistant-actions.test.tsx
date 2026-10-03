@@ -14,3 +14,10 @@ test('skill output offers an in-place review only when the authorized review han
  const blocked=renderToStaticMarkup(<AssistantOutput artifact={artifact}/>);assert.doesNotMatch(blocked,/Review skill draft|href=|Review in My Skills/);
  const allowed=renderToStaticMarkup(<AssistantOutput artifact={artifact} onReview={()=>{}}/>);assert.match(allowed,/Review skill draft/);assert.doesNotMatch(allowed,/href=|Review in My Skills/);
 });
+
+test('learning AI navigation requires the exact currently permitted page',()=>{
+ const learning={label:'Learning & development',url:'/learning'};
+ assert.deepEqual(assistantNavigationTargets('[Learning](/learning)',[],[learning]),[learning]);
+ assert.deepEqual(assistantNavigationTargets('[Learning](/learning)',[],[]),[]);
+ assert.equal(canonicalAssistantDestination('/learning?personId=other'),undefined);
+});
