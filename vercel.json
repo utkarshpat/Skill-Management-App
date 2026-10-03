@@ -16,7 +16,7 @@
       "buildCommand": "npm run build",
       "outputDirectory": "dist",
       "rewrites": [
-        { "source": "/:page(access|workspace|profile|my-skills|skills|skill-reviews|preview)", "destination": "/index.html" }
+        { "source": "/:page(access|workspace|profile|my-skills|skills|skill-reviews|learning|preview)", "destination": "/index.html" }
       ]
     }
   },
