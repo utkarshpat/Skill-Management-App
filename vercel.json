@@ -5,7 +5,10 @@
       "root": "apps/api",
       "framework": "express",
       "entrypoint": "app.cts",
-      "buildCommand": "npm run build"
+      "buildCommand": "npm run build",
+      "functions": {
+        "app.cts": { "includeFiles": "package.json" }
+      }
     },
     "web": {
       "root": "apps/web",
