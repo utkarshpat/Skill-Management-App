@@ -18,6 +18,8 @@ Local direct login requires the API's existing development-only opt-in and loopb
 
 An enabled endpoint with no eligible people shows an explicit empty state and refresh action. Microsoft-linked accounts still use Microsoft sign-in. Failed direct sign-in shows an error alongside the selector and allows refreshing the available people. Server authorization, person eligibility, permission checks and session lifetime are unchanged; API restarts invalidate in-memory demo sessions.
 
+A 401 response during an authenticated demo request clears the frontend demo-session flag, unmounts the old workspace/chat and rediscovers login availability. The welcome page explains that the session expired or the API restarted and asks the user to choose a test person again. This does not create another AI login, automatically impersonate a person, change Microsoft sessions or recover invalid server sessions. Browser verification used an isolated synthetic 401 during a chat request.
+
 Verified on 3 October 2026: six discovery regression tests cover transient and persistent failures, later recovery, disabled endpoints, empty rosters, malformed/network responses and valid session restoration. An isolated browser fixture returned two synthetic 503 responses; the welcome page displayed the error and its Retry button restored the real fixture selector without a page refresh. The fixture uses no Azure database or paid model calls.
 
 Copy apps/web/.env.example into ignored .env.local and apps/api/.env.example into ignored .env. Configure matching tenant, SPA/API IDs and API scope. Register the SPA redirect as a SPA URI. No Microsoft Graph application permission is required by this feature.

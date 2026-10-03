@@ -7,6 +7,7 @@ import type { ClaimsStore } from '../src/modules/skills/claims.js';
 
 test('typed own-skills tools bind the actor, label unverified drafts and reject write/foreign arguments',async()=>{
   const access=await LocalAccessStore.open(),id=access.snapshot().people[0].id;let actor='';
+  const state=access.snapshot();state.people[0].overrides.push({permission:'skill.view',scope:'OWN',effect:'ALLOW'});access.snapshot=()=>structuredClone(state);
   const claims:ClaimsStore={read:async current=>{actor=current;return {total:1,page:1,pageSize:25,canClaim:false,claims:[{id:'claim',revision:1,skillId:'skill',skillName:'TypeScript',category:'Engineering',definitionRevision:1,rank:1,levelName:'Foundation',levelDescription:'Criteria',experienceMonths:6,description:'Private narrative',status:'DRAFT',updatedAt:new Date().toISOString()}]};},options:async()=>{throw Error('Not a tool');},save:async()=>{throw Error('Writes are forbidden');}};
   const registry=new ToolRegistry(access,undefined,claims),signal=AbortSignal.timeout(5000);
   assert.ok(registry.available(access.snapshot(),access.snapshot().people[0]).some(tool=>tool.function.name==='my_skills'));
@@ -19,6 +20,7 @@ test('typed own-skills tools bind the actor, label unverified drafts and reject 
 
 test('policy gateway rechecks permissions after retrieval and blocks revoked skill context',async()=>{
   const access=await LocalAccessStore.open(),state=access.snapshot(),id=state.people[0].id;access.snapshot=()=>structuredClone(state);
+  state.people[0].overrides.push({permission:'skill.view',scope:'OWN',effect:'ALLOW'});
   const claims:ClaimsStore={read:async()=>{state.people[0].overrides.push({permission:'profile.view',scope:'OWN',effect:'DENY'});return {claims:[],total:0,page:1,pageSize:25,canClaim:false};},options:async()=>{throw Error();},save:async()=>{throw Error();}};
   await assert.rejects(new ToolRegistry(access,undefined,claims).execute(id,'my_skills',{},AbortSignal.timeout(5000)),/permission/);
 });

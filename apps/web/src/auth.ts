@@ -59,5 +59,8 @@ export async function profileToken() {
 export async function authenticatedFetch(path:string,init:RequestInit={}) {
   const headers=new Headers(init.headers);
   if(!isDemoSession())headers.set('Authorization',`Bearer ${await profileToken()}`);
-  return fetch(path,{...init,headers,signal:init.signal?AbortSignal.any([init.signal,AbortSignal.timeout(45000)]):AbortSignal.timeout(45000)});
+  const wasDemo=isDemoSession();
+  const response=await fetch(path,{...init,headers,signal:init.signal?AbortSignal.any([init.signal,AbortSignal.timeout(45000)]):AbortSignal.timeout(45000)});
+  if(wasDemo&&response.status===401){demoSession=false;window.dispatchEvent(new Event('development-session-expired'));}
+  return response;
 }

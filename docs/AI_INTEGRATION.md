@@ -32,6 +32,14 @@ Verification: automated tests cover forged system history, forbidden tools/argum
 
 Official references: [Gemini function calling](https://ai.google.dev/gemini-api/docs/function-calling), [thought signatures](https://ai.google.dev/gemini-api/docs/generate-content/thought-signatures), [structured outputs](https://ai.google.dev/gemini-api/docs/generate-content/structured-output).
 
+## Permission-aware guidance
+
+Assistant context uses the same effective workspace capability calculation as navigation, exposed through the access module's public contract. Each model round receives only permitted pages and applicable step-by-step UI guidance. Current grants, individual DENY and expiry determine these capabilities; role names and chat history do not. Simple English greetings are generated from this context without a model call. Users with identical effective permissions can correctly receive identical guidance even if their role labels differ.
+
+Guidance covers own profile, published catalogue browsing, own skill drafts, catalogue maintenance, permission-set design, assignments and reporting-structure maintenance when applicable. Pending learning, review, request/incident and reporting workflows remain labelled unavailable. No direct-reports retrieval tool or team-scoped assessment workflow is claimed. Manager preset team grants remain pending proposals; they must not be widened to organization access merely to differentiate responses.
+
+The personal `my_skills` tool requires effective own skill-view access, and personal skill-draft outputs require the same claim capability as the UI, checked again before delivery. General draft/practice previews still do not execute writes, schedule tasks or persist learning attempts. Permission-aware prompting improves guidance; server policy checks remain the authorization boundary. Automated coverage includes renamed roles, identical grants, DENY, expiry, refreshed model context and blocked personal skill tools/drafts.
+
 ## Formatting and document canvas
 
 Assistant replies and draft previews render CommonMark/GFM: paragraphs, headings, bold/italics, bullet and numbered lists, quotations, inline/fenced code and tables. User messages retain literal text. Tables and code contain their own horizontal overflow. Markdown is loaded in a separate bundle when needed. The model prompt requests meaningful formatting and reiterates that tests belong to Learning & Development.

@@ -31,7 +31,7 @@ export class ToolRegistry {
     });
     if(claims)this.entries.set('my_skills',{
       definition:definition('my_skills','Read the signed-in person’s first page of self-assessed skill drafts. Drafts are unverified; no other person can be selected.'),
-      permission:()=>true,source:{label:'My skills · Self-assessed drafts',url:'/my-skills'},
+      permission:(state,person)=>can(state,person,'skill.view',true),source:{label:'My skills · Self-assessed drafts',url:'/my-skills'},
       read:async({person})=>{const own=await claims.read(person.id,1);return {total:own.total,page:own.page,pageSize:own.pageSize,hasMore:own.total>own.pageSize,skills:own.claims.map(claim=>({skill:claim.skillName,proficiency:claim.levelName,status:'DRAFT',verification:'UNVERIFIED'})),source:'My skills · Self-assessed drafts'};},
     });
   }

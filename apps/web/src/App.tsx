@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router';
 import { AccessAdmin } from './AccessAdmin';
 import { AssistantWidget } from './AssistantWidget';
 import { ThemeSwitcher } from './Theme';
-import { initializeAuth, signedIn, signIn, signInConfigured } from './auth';
+import { initializeAuth, signedIn, signIn, signInConfigured, refreshDevelopmentLogin } from './auth';
 import { DevelopmentLogin } from './DevelopmentLogin';
 import { BookOpen, BriefcaseBusiness, Compass, Layers3, ListChecks, Users } from 'lucide-react';
 
@@ -20,14 +20,16 @@ const modules = [
 export function App() {
   const { pathname } = useLocation();
   const [session, setSession] = useState<'loading' | 'anonymous' | 'signed-in' | 'error'>('loading');
+  const [sessionNotice,setSessionNotice]=useState('');
+  useEffect(()=>{let active=true;const expired=()=>{setSessionNotice('Your development session expired or the API restarted. Choose a test person to open a new demo session.');setSession('loading');void refreshDevelopmentLogin().then(()=>{if(active)setSession('anonymous');});};window.addEventListener('development-session-expired',expired);return()=>{active=false;window.removeEventListener('development-session-expired',expired);};},[]);
   useEffect(() => { let active = true; initializeAuth().then(() => { if (active) setSession(signedIn() ? 'signed-in' : 'anonymous'); }).catch(() => { if (active) setSession('error'); }); return () => { active = false; }; }, []);
   if (pathname === '/preview') return <Overview />;
   if (session === 'loading') return <div className="session-loading" role="status">Preparing your workspace…</div>;
   if (pathname === '/access' && session === 'signed-in') return <><AccessAdmin /><AssistantWidget /></>;
-  return session === 'signed-in' ? <><Workspace /><AssistantWidget /></> : <Welcome authError={session === 'error'} onDevelopmentSessionReady={()=>setSession('signed-in')} />;
+  return session === 'signed-in' ? <><Workspace /><AssistantWidget /></> : <Welcome authError={session === 'error'} sessionNotice={sessionNotice} onDevelopmentSessionReady={()=>{setSessionNotice('');setSession('signed-in');}} />;
 }
 
-function Welcome({ authError,onDevelopmentSessionReady }: { authError: boolean;onDevelopmentSessionReady:()=>void }) {
+function Welcome({ authError,sessionNotice,onDevelopmentSessionReady }: { authError: boolean;sessionNotice:string;onDevelopmentSessionReady:()=>void }) {
   const [error, setError] = useState('');
   return <div className="welcome-page">
     <a className="skip-link" href="#welcome-main">Skip to content</a>
@@ -38,6 +40,7 @@ function Welcome({ authError,onDevelopmentSessionReady }: { authError: boolean;o
 
         <h1 id="signin-title"><span className="desktop-welcome">Welcome back</span><span className="mobile-welcome">Skill Management</span></h1>
         <p className="signin-intro">Sign in to your workspace.</p>
+        {sessionNotice&&<p role="status">{sessionNotice}</p>}
         <button className="microsoft-button" disabled={!signInConfigured || authError} aria-describedby="signin-status" onClick={() => { signIn().catch(() => setError('Sign-in could not start. Please refresh and try again.')); }}><span className="microsoft-symbol" aria-hidden="true"><i /><i /><i /><i /></span>Continue with Microsoft</button>
         <p id="signin-status" className="signin-status" role="status">{error || (authError ? 'Sign-in could not finish. Please return to this page and try again.' : signInConfigured ? 'Use your Microsoft account to access your assigned workspace.' : 'Sign-in is being set up. Access will be available soon.')}</p>
         <DevelopmentLogin onSessionReady={onDevelopmentSessionReady}/>
