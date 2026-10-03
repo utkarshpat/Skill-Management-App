@@ -17,7 +17,7 @@ const access=process.env.ACCESS_ACCOUNT_ID?new SqlAccessStore(process.env.ACCESS
 const developmentStore = developmentLoginEnabled(process.env) ? access : undefined;
 const organization=process.env.ACCESS_ACCOUNT_ID?new SqlOrganizationStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const claims=process.env.ACCESS_ACCOUNT_ID?new SqlClaimsStore(process.env.ACCESS_ACCOUNT_ID):undefined;
-const assistant=access?new AssistantService(access,organization,configuredProvider(process.env),claims):undefined;
+const assistant=access?new AssistantService(access,organization,configuredProvider(process.env),claims,usage=>console.info(JSON.stringify({event:'ai.usage',...usage}))):undefined;
 const catalogue=process.env.ACCESS_ACCOUNT_ID?new SqlCatalogueStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const server = createApp(config ? { verify: tokenVerifier(config),access,organization,assistant,catalogue,claims,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
   const id=await access?.resolveIdentity(identity);

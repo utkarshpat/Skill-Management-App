@@ -1,5 +1,9 @@
 # UI design
 
+## AI context optimization — 3 October 2026
+
+The AI drawer sends only the latest message and an opaque conversation reference; it no longer resubmits large rendered replies or quiz cards as history. New AI conversation resets that reference. A 4,041-character synthetic assistant reply followed by another message succeeded in the browser with two rendered replies and no validation errors. Context is bounded on the server; this does not create durable chat history. The verification used an isolated local fixture with no Azure writes. Across the increment, 69 automated tests pass (5 architecture, 56 API, 8 web), with strict types and both builds passing. See AI_INTEGRATION.md for budgets, memory expiry, token accounting and live synthetic Gemini measurements.
+
 The interface prioritizes the laptop workflow and adapts to phones. Sopra Steria's supplied wordmark is preserved. White surfaces, a light grey canvas, charcoal text and restrained brand-red actions use a shared stylesheet, `apps/web/src/ui.css`. Native system fonts avoid third-party font loading. Controls use consistent spacing, neutral borders, readable labels and visible focus states.
 
 ## Current pages
