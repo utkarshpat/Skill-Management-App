@@ -1,7 +1,7 @@
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import { can, type AccessStore } from '../access/index.js';
-import { localRequest, localMutation } from '../../shared/http-security.js';
+
 import { AccessError } from '../../shared/errors.js';
 import { claimChange, claimPage, claimSearch, type ClaimsStore } from './claims.js';
 
@@ -15,7 +15,7 @@ export function registerClaimsRoutes(app:Express, dependencies:ClaimsHttpDepende
     res.setHeader('Cache-Control','no-store');
     let actor:string|undefined;
     if(demo?.subject(req)) {
-      if(!localRequest(req)||(req.method==='POST'&&!localMutation(req))){res.sendStatus(403);return;}
+      if(!demo.requestAllowed(req)||(req.method==='POST'&&!demo!.mutationAllowed(req))){res.sendStatus(403);return;}
       actor=(await demo.person(req))?.id;
     } else {
       let identity:Identity;

@@ -45,7 +45,7 @@ Set environment variables through Vercel project settings. Shared project variab
 
 API runtime variables:
 
-- NODE_ENV=production; DEV_DIRECT_LOGIN=false (or omitted). Local passwordless test-person login remains loopback-only and must not be widened for hosting.
+- NODE_ENV=production; DEV_DIRECT_LOGIN=false (or omitted). Local passwordless test-person login remains loopback-only. The separate gated hosted demo option is described below.
 - ACCESS_ACCOUNT_ID; ENTRA_TENANT_ID, ENTRA_WEB_CLIENT_ID, ENTRA_API_CLIENT_ID.
 - AZURE_SQL_SERVER, AZURE_SQL_DATABASE; AZURE_SQL_RUNTIME_AUTH=client-secret; AZURE_SQL_CLIENT_ID and secret AZURE_SQL_CLIENT_SECRET. Preserve the restricted SQL runtime identity and procedure-only grants. Vercel is not an Azure managed-identity host.
 - GEMINI_API (secret), with optional AI_PROVIDER/AI_MODEL settings. Never prefix model credentials with VITE_. Other provider settings follow AI_INTEGRATION.md.
@@ -55,6 +55,16 @@ Register the stable Vercel HTTPS callback in the Microsoft SPA registration whil
 Azure SQL firewall connectivity must be verified from hosted runtime. Vercel Hobby outbound IPs are dynamic; the current laptop firewall allowance alone does not establish hosted connectivity. Do not open the full SQL IPv4 range, remove current rules or enable paid static-IP features automatically. Agree on the concrete network option if the deployment is blocked.
 
 The API's in-memory AI request counters/concurrency locks are per instance, not shared quotas or a guaranteed monetary cap. SQL conversation storage remains durable and actor-scoped. Shared budgets/locks, operational readiness/monitoring and completion of business workflows remain company production work.
+
+## Temporary hosted demo
+
+Hosted demo is explicitly enabled with HOSTED_DEMO_LOGIN=true, PUBLIC_APP_ORIGIN=https://skill-management-app.vercel.app (no trailing slash), secret DEMO_LOGIN_ACCESS_CODE (at least 24 characters), and secret DEMO_SESSION_SECRET (at least 32 characters). These are production-scoped server variables; never expose them through VITE_* or commit them. The access code for this evaluation is stored locally in ignored .local/hosted-demo-access.txt.
+
+Anonymous discovery exposes only the locked gate, not the people roster. Enter the shared code and select Show test people before choosing an active person. Microsoft-linked people, including the account owner, cannot be impersonated. All application authorization continues to use that person's current permissions and account scope. Requests must match the configured host; mutations also require the exact HTTPS Origin.
+
+Hosted sessions use a signed, Secure, HttpOnly, SameSite=Strict cookie with a 30-minute lifetime so they survive serverless instance changes. Logout clears the browser cookie; a copied token remains valid until expiry or access-code/session-secret rotation. Shared demo identities share their existing business records and actor-scoped chat history. This is temporary personal evaluation access, not company authentication. Set HOSTED_DEMO_LOGIN=false and redeploy to remove it before company rollout.
+
+The theme defaults to light when no valid saved preference exists; explicit dark/system preferences are preserved. Interactive acceptance checks now run on the deployed HTTPS application in the user's Chrome. Automated type, build, architecture and security checks still run before deployment.
 
 ## Verification record
 

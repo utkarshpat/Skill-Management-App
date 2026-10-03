@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
-import { createDevelopmentSessions } from './modules/identity/index.js';
+import { createDevelopmentSessions, type HostedDemoConfig } from './modules/identity/index.js';
 import type { AccessStore } from './modules/access/index.js';
 import { registerRoutes as identityRoutes, type HttpDependencies as IdentityDependencies } from './modules/identity/routes.js';
 import { registerRoutes as accessRoutes, type HttpDependencies as AccessDependencies } from './modules/access/routes.js';
@@ -12,10 +12,10 @@ import { registerClaimsRoutes, type ClaimsHttpDependencies } from './modules/ski
 
 export type AppDependencies = IdentityDependencies & AccessDependencies & OrganizationDependencies & SkillsDependencies & AiDependencies & ClaimsHttpDependencies;
 
-export function createApp(dependencies?: AppDependencies, options: { developmentStore?: AccessStore } = {}) {
+export function createApp(dependencies?: AppDependencies, options: { developmentStore?: AccessStore; hostedDemo?: HostedDemoConfig } = {}) {
   const app = express();
   const store = options.developmentStore;
-  const demo = store ? createDevelopmentSessions(store) : undefined;
+  const demo = store ? createDevelopmentSessions(store, Date.now, options.hostedDemo) : undefined;
   app.disable('x-powered-by');
   app.use(helmet());
   app.use((_req, res, next) => {

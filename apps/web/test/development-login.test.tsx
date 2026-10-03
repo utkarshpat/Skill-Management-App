@@ -1,9 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { discoverDevelopmentLogin } from '../src/development-login';
+import { discoverDevelopmentLogin, parseDemoLogin } from '../src/development-login';
 
 const roster = {mode:'local-demo',signedIn:false,people:[{id:'synthetic-person',displayName:'Test Person',employeeCode:'TEST-001',roles:['Employee']}]};
 const noDelay = async()=>{};
+
+test('hosted login exposes a locked gate without a roster and validates gate metadata',async()=>{
+  const locked={mode:'local-demo',signedIn:false,people:[],requiresAccessCode:true};
+  assert.deepEqual(await discoverDevelopmentLogin((async()=>Response.json(locked)) as typeof fetch,noDelay),{status:'available',people:[],signedIn:false,requiresAccessCode:true});
+  assert.throws(()=>parseDemoLogin({...locked,requiresAccessCode:'yes'}));
+  assert.deepEqual(parseDemoLogin({...roster,requiresAccessCode:true}).people,roster.people);
+});
 
 test('development login recovers from a temporary service failure',async()=>{
   let calls=0;

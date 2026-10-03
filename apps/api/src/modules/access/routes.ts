@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
-import { localMutation, localRequest } from '../../shared/http-security.js';
+
 import { can, type AccessStore } from './local-access-store.js';
 import { AccessError } from '../../shared/errors.js';
 import { rolePresets } from './role-presets.js';
@@ -10,7 +10,7 @@ export interface HttpDependencies { verify: (authorization: string | undefined) 
 export function registerRoutes(app: Express, dependencies: HttpDependencies | undefined, store?: AccessStore, demo?: DevelopmentSessions) {
   app.use('/api/dev-access', async (req,res,next) => {
     res.setHeader('Cache-Control','no-store');
-    if (!demo || !store || !localRequest(req)) { res.sendStatus(404); return; }
+    if (!demo || !store || !demo.requestAllowed(req)) { res.sendStatus(404); return; }
     const state=await store.snapshot(); const person=state.people.find(person=>person.id===demo.subject(req)&&person.active&&!person.entraObjectId);
     if (!person) { res.sendStatus(401); return; }
     if (!can(state,person,'permissions.manage')) { res.sendStatus(403); return; }
@@ -21,7 +21,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     res.json({ ...state, storage:store!.storage, currentPerson:person,authentication:'local-demo',audit:can(state,person,'audit.view') ? state.audit : [], presets:rolePresets, catalogue:permissionCatalogue.map(([code,label]) => ({code,label})), canManageUsers:can(state,person,'users.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage'),canViewAudit:can(state,person,'audit.view') });
   });
   app.post('/api/dev-access', async (req,res) => {
-    if (!localMutation(req)) { res.sendStatus(403); return; }
+    if (!demo!.mutationAllowed(req)) { res.sendStatus(403); return; }
     try { await store!.save(res.locals.demoPersonId,req.body); res.json({saved:true}); }
     catch (error) { if (error instanceof AccessError) { res.status(error.status).json({error:{code:'ACCESS_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}}); return; } throw error; }
   });

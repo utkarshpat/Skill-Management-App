@@ -1,5 +1,5 @@
 import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser';
-import { discoverDevelopmentLogin, type DemoLoginState } from './development-login';
+import { discoverDevelopmentLogin, parseDemoLogin, type DemoLoginState } from './development-login';
 
 const tenant = import.meta.env.VITE_ENTRA_TENANT_ID;
 const web = import.meta.env.VITE_ENTRA_WEB_CLIENT_ID;
@@ -19,8 +19,13 @@ export function refreshDevelopmentLogin(){
   return discovery??=(async()=>{try{const state=await discoverDevelopmentLogin();developmentLoginState=state;demoSession=state.signedIn;return state;}finally{discovery=undefined;}})();
 }
 export function isDemoSession() { return demoSession; }
-export async function directSignIn(personId: string) {
-  const response = await fetch('/api/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personId }),signal:AbortSignal.timeout(45000) });
+export async function unlockDemoPeople(accessCode: string) {
+  const response=await fetch('/api/dev-login/people',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessCode}),signal:AbortSignal.timeout(45000)});
+  if(!response.ok)throw new Error('Check the demo access code and try again.');
+  return parseDemoLogin(await response.json());
+}
+export async function directSignIn(personId: string, accessCode?: string) {
+  const response = await fetch('/api/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personId, accessCode }),signal:AbortSignal.timeout(45000) });
   if (!response.ok) throw new Error('Direct login failed.');
   window.location.assign('/');
 }

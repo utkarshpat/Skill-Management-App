@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
-import { localMutation, localRequest } from '../../shared/http-security.js';
+
 import { can, type AccessStore } from '../access/index.js';
 import { AccessError } from '../../shared/errors.js';
 import { catalogueQuery, type CatalogueStore } from './skill-catalogue.js';
@@ -12,7 +12,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     res.setHeader('Cache-Control','no-store');
     let actor:string|undefined;
     if(demo?.subject(req)){
-      if(!localRequest(req)||(req.method==='POST'&&!localMutation(req))){res.sendStatus(403);return;}
+      if(!demo.requestAllowed(req)||(req.method==='POST'&&!demo!.mutationAllowed(req))){res.sendStatus(403);return;}
       actor=(await demo.person(req))?.id;
     }else{
       let identity:Identity;
