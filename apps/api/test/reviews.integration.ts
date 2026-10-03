@@ -34,5 +34,5 @@ await withDatabase(async pool=>{
   const expected=scenario==='stale'?51009:scenario==='double-decision'?51010:51003;
   await assert.rejects(transition(tx,claim,scenario==='stale'?1:2,'APPROVE',scenario==='foreign'?other:scenario==='self'?people.employee:people.manager),error=>(error as {number:number}).number===expected);
  });
- console.log('SQL reviews verified: submission, assigned queue, changes/resubmission, approval, evidence, audit, notifications, foreign/self review, revocation, manager change and stale/double decisions. All fixtures rolled back.');
+ console.log('SQL reviews verified: submission, assigned queue, changes/resubmission, approval/rejection, evidence, audit, notifications, foreign/self review, revocation, manager change and stale/double decisions. All fixtures rolled back.');
 });
