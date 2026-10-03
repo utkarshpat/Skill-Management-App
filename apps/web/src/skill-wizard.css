@@ -35,3 +35,8 @@
 .skill-wizard .skill-selection-preview .skill-guidance{padding:8px;margin:8px 0;font-size:12px}.skill-wizard .skill-definition{margin:8px 0;font-size:13px}
 .skill-wizard .skill-framework-preview div{padding:8px 3px}.skill-wizard .skill-review-facts{margin:8px 0;gap:8px}.skill-wizard .skill-review-facts div{padding:8px}.skill-wizard .skill-review-selection{padding:8px}.skill-wizard .skill-review-section{padding:3px 0}
 }
+
+@media(min-width:801px) and (max-height:700px){
+.skill-wizard:has(.form-dialog-message) .skill-details-form textarea{height:38px}
+.skill-wizard:has(.form-dialog-message) .skill-details-form #skill-experience-description{height:48px}
+}

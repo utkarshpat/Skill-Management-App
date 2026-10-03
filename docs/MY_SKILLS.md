@@ -8,6 +8,13 @@ Laptop forms use a fixed modal, bounded result pages and a persistent footer. Ph
 
 Migration 013 extends ReadClaimSkills compatibly with category, bounded page-size, definition description/business code and published category counts. Defaults remain 25 results for existing callers. Counts are workspace-scoped and published-only; up to 100 category facets are returned, with search available for any additional categories. SQL/API permissions and save revision checks are unchanged. Types, production builds, 93 automated checks and rollback-only real SQL category/pagination checks pass.
 
+
+### Hosted Chrome acceptance, 3 October 2026
+
+Verified the production wizard in the user's Chrome at its actual 1536 x 639 viewport: Java search and versioned levels, restored edit values, required-description validation, review edit navigation, keep-editing confirmation, and explicit Save changes. Next stops at the review screen; distinct keyed navigation/save buttons prevent a React DOM replacement from triggering an unintended submit. The labelled synthetic Java draft remains DRAFT, not submitted or approved. Refresh/edit restored 24 months, L3 and the QA project/evidence references. Selection, details and review use compact spacing, including inherited footer-margin correction. Query loading retains existing cards rather than blanking them.
+
+The responsive viewport capability accepted 390 x 844 requests but Chrome continued to report 1536px width, including a fresh tab. Mobile stacking/body scrolling is implemented, but a true phone-width visual acceptance check remains outstanding. No mobile screenshot is presented as verified. Temporary viewport overrides were reset.
+
 # My Skills: own self-assessed drafts
 
 ## Delivered scope
