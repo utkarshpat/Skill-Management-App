@@ -18,3 +18,5 @@
 
 .skill-wizard .access-form .skill-level-card.selected{border-color:var(--accent-ink);background:var(--accent-soft)}
 .skill-wizard .access-form .skill-level-card input[type=radio]{width:18px;min-height:18px;height:18px;padding:0;border:0;accent-color:var(--focus)}
+
+.skill-wizard .form-dialog-body form{display:block;min-height:0}.skill-wizard .form-dialog-fields{min-height:0}.skill-discovery{box-sizing:border-box}

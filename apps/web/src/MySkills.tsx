@@ -54,10 +54,10 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
   },[location.key,state?.canClaim]);
   useEffect(()=>{
     if(!draft)return;
-    const controller=new AbortController();setOptionsLoading(true);setOptions(undefined);
+    const controller=new AbortController();setOptionsLoading(true);
     const timer=setTimeout(()=>{authenticatedFetch(`/api/my-skills/catalogue?search=${encodeURIComponent(search)}&page=${optionPage}&category=${encodeURIComponent(category)}&pageSize=3`,{signal:controller.signal})
       .then(body<Options>).then(value=>{if(!controller.signal.aborted)setOptions(value);})
-      .catch(error=>{if(!controller.signal.aborted)setFormError(error.message);})
+      .catch(error=>{if(!controller.signal.aborted){setOptions(undefined);setFormError(error.message);}})
       .finally(()=>{if(!controller.signal.aborted)setOptionsLoading(false);});},200);
     return()=>{clearTimeout(timer);controller.abort();};
   },[draft?.id,search,optionPage,category]);
