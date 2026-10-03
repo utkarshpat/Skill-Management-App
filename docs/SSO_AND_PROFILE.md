@@ -12,6 +12,14 @@ Responses use no-store. Invalid authentication returns 401 with a Bearer challen
 
 ## Configuration and runtime isolation
 
+### Development-login availability and recovery
+
+Local direct login requires the API's existing development-only opt-in and loopback restrictions. Production returns 404 and the selector stays hidden. A network error, timeout, database error or invalid response is different: the welcome page keeps a Development login section with an error and **Retry development login**, instead of silently hiding the selector. Discovery uses a 15-second timeout per attempt and one automatic retry; manual retry rechecks the endpoint without reloading the page. Requests use `no-store`, and only a validated response can restore an existing development session.
+
+An enabled endpoint with no eligible people shows an explicit empty state and refresh action. Microsoft-linked accounts still use Microsoft sign-in. Failed direct sign-in shows an error alongside the selector and allows refreshing the available people. Server authorization, person eligibility, permission checks and session lifetime are unchanged; API restarts invalidate in-memory demo sessions.
+
+Verified on 3 October 2026: six discovery regression tests cover transient and persistent failures, later recovery, disabled endpoints, empty rosters, malformed/network responses and valid session restoration. An isolated browser fixture returned two synthetic 503 responses; the welcome page displayed the error and its Retry button restored the real fixture selector without a page refresh. The fixture uses no Azure database or paid model calls.
+
 Copy apps/web/.env.example into ignored .env.local and apps/api/.env.example into ignored .env. Configure matching tenant, SPA/API IDs and API scope. Register the SPA redirect as a SPA URI. No Microsoft Graph application permission is required by this feature.
 
 The personal development SPA/API registrations exist. The user completed individual first-login Microsoft consent in their browser. Organization-wide consent was not requested by our test automation.

@@ -4,7 +4,8 @@ import { Link, useLocation } from 'react-router';
 import { AccessAdmin } from './AccessAdmin';
 import { AssistantWidget } from './AssistantWidget';
 import { ThemeSwitcher } from './Theme';
-import { initializeAuth, signedIn, signIn, signInConfigured, developmentPeople, directSignIn } from './auth';
+import { initializeAuth, signedIn, signIn, signInConfigured } from './auth';
+import { DevelopmentLogin } from './DevelopmentLogin';
 import { BookOpen, BriefcaseBusiness, Compass, Layers3, ListChecks, Users } from 'lucide-react';
 
 const modules = [
@@ -23,13 +24,11 @@ export function App() {
   if (pathname === '/preview') return <Overview />;
   if (session === 'loading') return <div className="session-loading" role="status">Preparing your workspace…</div>;
   if (pathname === '/access' && session === 'signed-in') return <><AccessAdmin /><AssistantWidget /></>;
-  return session === 'signed-in' ? <><Workspace /><AssistantWidget /></> : <Welcome authError={session === 'error'} />;
+  return session === 'signed-in' ? <><Workspace /><AssistantWidget /></> : <Welcome authError={session === 'error'} onDevelopmentSessionReady={()=>setSession('signed-in')} />;
 }
 
-function Welcome({ authError }: { authError: boolean }) {
+function Welcome({ authError,onDevelopmentSessionReady }: { authError: boolean;onDevelopmentSessionReady:()=>void }) {
   const [error, setError] = useState('');
-  const [person, setPerson] = useState(developmentPeople[0]?.id ?? '');
-  const [busy, setBusy] = useState(false);
   return <div className="welcome-page">
     <a className="skip-link" href="#welcome-main">Skip to content</a>
     <header className="welcome-header"><ThemeSwitcher/><img src="/brand/sopra-steria.svg" alt="Sopra Steria" /></header>
@@ -41,7 +40,7 @@ function Welcome({ authError }: { authError: boolean }) {
         <p className="signin-intro">Sign in to your workspace.</p>
         <button className="microsoft-button" disabled={!signInConfigured || authError} aria-describedby="signin-status" onClick={() => { signIn().catch(() => setError('Sign-in could not start. Please refresh and try again.')); }}><span className="microsoft-symbol" aria-hidden="true"><i /><i /><i /><i /></span>Continue with Microsoft</button>
         <p id="signin-status" className="signin-status" role="status">{error || (authError ? 'Sign-in could not finish. Please return to this page and try again.' : signInConfigured ? 'Use your Microsoft account to access your assigned workspace.' : 'Sign-in is being set up. Access will be available soon.')}</p>
-        {developmentPeople.length > 0 && <div className="demo-login"><p className="demo-label">Development login</p><label htmlFor="demo-person">Test person</label><select id="demo-person" value={person} onChange={event => setPerson(event.target.value)}>{developmentPeople.map(person => <option key={person.id} value={person.id}>{person.displayName} · {person.roles?.join(', ') || person.employeeCode}</option>)}</select><button className="secondary-button" disabled={busy} onClick={() => { setBusy(true); directSignIn(person).catch(() => { setError('Direct login could not finish. Please try again.'); setBusy(false); }); }}>{busy ? 'Opening workspace…' : 'Open demo workspace'}</button></div>}
+        <DevelopmentLogin onSessionReady={onDevelopmentSessionReady}/>
       </section>
     </main>
   </div>;

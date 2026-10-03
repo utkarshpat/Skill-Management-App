@@ -1,4 +1,5 @@
 import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser';
+import { discoverDevelopmentLogin, type DemoLoginState } from './development-login';
 
 const tenant = import.meta.env.VITE_ENTRA_TENANT_ID;
 const web = import.meta.env.VITE_ENTRA_WEB_CLIENT_ID;
@@ -12,22 +13,21 @@ const client = signInConfigured ? new PublicClientApplication({
 const scopes = [`api://${api}/access_as_user`];
 let ready: Promise<void> | undefined;
 let demoSession = false;
-export interface DemoPerson { id: string; displayName: string; employeeCode: string; roles: string[] }
-export let developmentPeople: DemoPerson[] = [];
+export let developmentLoginState:DemoLoginState={status:'error',people:[],signedIn:false};
+let discovery:Promise<DemoLoginState>|undefined;
+export function refreshDevelopmentLogin(){
+  return discovery??=(async()=>{try{const state=await discoverDevelopmentLogin();developmentLoginState=state;demoSession=state.signedIn;return state;}finally{discovery=undefined;}})();
+}
 export function isDemoSession() { return demoSession; }
 export async function directSignIn(personId: string) {
-  const response = await fetch('/api/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personId }) });
+  const response = await fetch('/api/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personId }),signal:AbortSignal.timeout(45000) });
   if (!response.ok) throw new Error('Direct login failed.');
   window.location.assign('/');
 }
 export function initializeAuth() {
   return ready ??= (async () => {
-    const demoResponse = await fetch('/api/dev-login', {signal:AbortSignal.timeout(45000)}).catch(() => undefined);
-    if (demoResponse?.ok) {
-      const data = await demoResponse.json();
-      developmentPeople = data.people; demoSession = data.signedIn === true;
-      if (demoSession) return;
-    }
+    await refreshDevelopmentLogin();
+    if (demoSession) return;
     if (!client) return;
     await client.initialize();
     const result = await client.handleRedirectPromise();
