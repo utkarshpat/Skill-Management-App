@@ -11,7 +11,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     res.setHeader('Cache-Control','no-store');
     const access=dependencies?.access??store;let actor:string|undefined;
     if(demo?.subject(req)){
-      if(!localRequest(req)||(req.method==='POST'&&!localMutation(req))){res.sendStatus(403);return;}
+      if(!localRequest(req)||(!['GET','HEAD'].includes(req.method)&&!localMutation(req))){res.sendStatus(403);return;}
       actor=(await demo.person(req))?.id;
     }else{
       try{if(!dependencies?.resolveAccess)throw new Error();actor=await dependencies.resolveAccess(await dependencies.verify(req.headers.authorization));}
@@ -22,6 +22,14 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     res.locals.assistantActor=person.id;next();
   });
   app.get('/api/assistant',(_req,res)=>res.json(dependencies?.assistant?.status()??{configured:false,provider:null,mode:'read-only'}));
+  const historyHandler:import('express').RequestHandler=async(req,res)=>{
+   try{if(!dependencies?.assistant)throw new AccessError(503,'Assistant history is unavailable.');
+    res.json(await dependencies.assistant.history(res.locals.assistantActor,req.params.id?String(req.params.id):undefined,req.method==='DELETE'));
+   }catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'ASSISTANT_HISTORY_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
+  };
+  app.get('/api/assistant/conversations',historyHandler);
+  app.get('/api/assistant/conversations/:id',historyHandler);
+  app.delete('/api/assistant/conversations/:id',historyHandler);
   app.post('/api/assistant',async(req,res)=>{
     const controller=new AbortController();res.on('close',()=>{if(!res.writableEnded)controller.abort();});
     try{

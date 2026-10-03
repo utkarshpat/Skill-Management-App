@@ -8,6 +8,7 @@ import { presentation, presentationTool } from './output.js';
 import { assistantCapabilities, capabilityGreeting } from './capabilities.js';
 import { ConversationMemory, coreInstructions, taskInstructions, taskSettings } from './context.js';
 import { UsageMeter, type TokenUsage } from './usage.js';
+import { conversationReference, type ConversationsStore, type SavedConversation } from './conversations.js';
 
 export interface Message {role:'system'|'user'|'assistant'|'tool';content:string;tool_call_id?:string;tool_name?:string;tool_calls?:ToolCall[];providerParts?:unknown[]}
 interface ToolCall {id:string;type:'function';function:{name:string;arguments:string}}
@@ -27,7 +28,15 @@ export class AssistantService {
  private limits=new Map<string,{at:number;count:number}>();private active=new Set<string>();private daily={day:'',count:0};
  private registry:ToolRegistry;
  private memory=new ConversationMemory();
- constructor(private store:AccessStore,organization:OrganizationStore|undefined,private provider:Provider|undefined,claims?:ClaimsStore,private usageObserver?:(usage:ReturnType<UsageMeter['snapshot']>)=>void,catalogue?:CatalogueStore) { this.registry=new ToolRegistry(store,organization,claims,catalogue); }
+ constructor(private store:AccessStore,organization:OrganizationStore|undefined,private provider:Provider|undefined,claims?:ClaimsStore,private usageObserver?:(usage:ReturnType<UsageMeter['snapshot']>)=>void,catalogue?:CatalogueStore,private conversations?:ConversationsStore) { this.registry=new ToolRegistry(store,organization,claims,catalogue); }
+ async history(actor:string,id?:string,remove=false){
+  const state=await this.store.snapshot(),person=state.people.find(item=>item.id===actor);
+  if(!person||!this.registry.permits(state,person,'own_profile'))throw new AccessError(403,'Assistant access is not assigned.');
+  if(!this.conversations)throw new AccessError(503,'Durable chat history is not configured.');
+  if(id){conversationReference(id);if(remove){if(this.active.has(actor))throw new AccessError(409,'Wait for the current reply before deleting a chat.');await this.conversations.delete(actor,id);return {deleted:true};}
+   const saved=await this.conversations.read(actor,id);return {id:saved.id,title:saved.title,messages:saved.messages,updatedAt:saved.updatedAt};}
+  return {conversations:await this.conversations.list(actor),retained:2};
+ }
  status(){return {configured:Boolean(this.provider),provider:this.provider?.name??null,mode:'read-only'};}
  async chat(actorId:string,input:unknown,signal=AbortSignal.timeout(35000)) {
   if(this.active.has(actorId))throw new AccessError(429,'A reply is already being generated.');
@@ -35,11 +44,14 @@ export class AssistantService {
   const meter=new UsageMeter();
   try{
    let prepared:ReturnType<ConversationMemory['prepare']>|undefined;
+   let saved:SavedConversation|undefined;
    let request=input;
    if(input&&typeof input==='object'&&!('messages' in input)){
     const state=await this.store.snapshot(),person=state.people.find(item=>item.id===actorId);
     if(!person||!this.registry.permits(state,person,'own_profile'))throw new AccessError(403,'Assistant access is not assigned.');
     const policy=JSON.stringify({capabilities:assistantCapabilities(state,person),tools:this.registry.available(state,person)});
+    const id=(input as {conversationId?:unknown}).conversationId;
+    if(this.conversations&&id!==undefined){saved=await this.conversations.read(actorId,conversationReference(id));this.memory.restore(saved.id,saved.context);}
     prepared=this.memory.prepare(actorId,input,policy);request={messages:prepared.history};
    }
    const result=await this.respond(actorId,request,signal,meter);
@@ -49,8 +61,13 @@ export class AssistantService {
     const artifact=result.artifact;
     const remembered=artifact?JSON.stringify({title:artifact.title,kind:artifact.kind,summary:artifact.summary,body:artifact.body,steps:artifact.steps}):result.reply;
     this.memory.commit(prepared,remembered);
+    if(this.conversations){
+     const messages=[...(saved?.messages??[]),{role:'user' as const,content:prepared.message},{role:'assistant' as const,content:result.reply,sources:result.sources,...(artifact?{artifact}:{})}].slice(-40);
+     while(JSON.stringify(messages).length>200000&&messages.length>2)messages.splice(0,2);
+     await this.conversations.save(actorId,{id:prepared.id,title:saved?.title??prepared.message.replace(/\s+/g,' ').slice(0,80),revision:saved?.revision??0,updatedAt:new Date().toISOString(),messages,context:prepared.previous});
+    }
    }
-   return {...result,...(prepared?{conversationId:prepared.id,context:{compacted:prepared.compacted,memory:'process-local-excerpts'}}:{}),usage:meter.snapshot()};
+   return {...result,...(prepared?{conversationId:prepared.id,context:{compacted:prepared.compacted,memory:this.conversations?'durable-bounded-context':'process-local-excerpts'}}:{}),usage:meter.snapshot()};
   }finally{this.active.delete(actorId);try{this.usageObserver?.(meter.snapshot());}catch{/* Telemetry must not change authorization or a completed response. */}}
  }
  private async respond(actorId:string,input:unknown,signal:AbortSignal,meter:UsageMeter) {

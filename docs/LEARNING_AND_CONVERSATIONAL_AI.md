@@ -36,7 +36,7 @@ Uploaded text is untrusted evidence, not instructions. Private evidence storage,
 
 ## Framework recommendation
 
-The current AssistantService and typed ToolRegistry provide bounded read-only orchestration. Gemini is live and bounded process-local conversational context exists. Durable conversations/proposals and approved writes remain pending.
+The current AssistantService and typed ToolRegistry provide bounded read-only orchestration. Gemini is live. Migration 009 now provides durable, actor-bound history for two recent chats, with bounded model context and resume/delete UI; see AI_INTEGRATION.md. Durable proposals and approved writes remain pending.
 
 Evaluate LangGraph JavaScript for multi-turn state and pause/resume at review cards, keeping the existing authorization gateway and module services authoritative. Its documented interrupts and persistence support these interaction patterns. Use a durable store in production; an in-memory checkpointer is insufficient. Azure SQL checkpoint integration is an implementation task, not an assumed built-in adapter. Introducing the library does not itself implement approval security or transactional idempotency.
 

@@ -47,3 +47,5 @@ Gemini is now connected through the user's ignored GEMINI_API key, with live syn
 ## Next AI vertical slice — 3 October 2026
 
 Build conversational own-skill proposals: published catalogue discovery and exact criteria → collect missing facts → editable, version-bound review card → one authenticated approval → idempotent, audited own-draft save. Catalogue search, claim choices/criteria and permission-based guide tools are now registered; durable proposal persistence/execution is next. The broader learning/review/request/incident/demand tool contracts and their gating dependencies are defined in AI_TOOL_CATALOGUE.md. No planned tool is exposed merely by documenting its name.
+
+Durable conversation foundation delivered: migration 009 retains two recent chats per person in Azure SQL, bounded display/model history, restart resume and recent-chat/delete controls. A third successfully persisted chat removes the oldest; unsuccessful requests preserve existing history. Live SQL tests use rollback-only fixtures. Skill proposal approval/execution remains next; ordinary chat still cannot save or approve a skill.

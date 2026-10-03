@@ -9,6 +9,7 @@ import {can} from './modules/access/index.js';
 import {AssistantService,configuredProvider} from './modules/ai/index.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
 import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
+import { SqlConversationsStore } from './modules/ai/conversations.js';
 
 const port = Number(process.env.PORT ?? 3001);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be between 1 and 65535.');
@@ -18,7 +19,7 @@ const developmentStore = developmentLoginEnabled(process.env) ? access : undefin
 const organization=process.env.ACCESS_ACCOUNT_ID?new SqlOrganizationStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const claims=process.env.ACCESS_ACCOUNT_ID?new SqlClaimsStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const catalogue=process.env.ACCESS_ACCOUNT_ID?new SqlCatalogueStore(process.env.ACCESS_ACCOUNT_ID):undefined;
-const assistant=access?new AssistantService(access,organization,configuredProvider(process.env),claims,usage=>console.info(JSON.stringify({event:'ai.usage',...usage})) ,catalogue):undefined;
+const assistant=access?new AssistantService(access,organization,configuredProvider(process.env),claims,usage=>console.info(JSON.stringify({event:'ai.usage',...usage})) ,catalogue,process.env.ACCESS_ACCOUNT_ID?new SqlConversationsStore(process.env.ACCESS_ACCOUNT_ID):undefined):undefined;
 const server = createApp(config ? { verify: tokenVerifier(config),access,organization,assistant,catalogue,claims,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
   const id=await access?.resolveIdentity(identity);
   if(!id)return ownProfile(identity);

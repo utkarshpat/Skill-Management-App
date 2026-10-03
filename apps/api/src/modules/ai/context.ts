@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { AccessError } from '../../shared/errors.js';
 import type { Message } from './assistant.js';
 
-interface Session {actor:string;policy:string;updated:number;turns:Message[];notes:string[]}
+export interface Session {actor:string;policy:string;updated:number;turns:Message[];notes:string[]}
 export interface PreparedConversation {id:string;message:string;history:Message[];previous:Session;compacted:boolean}
 const shorten=(text:string,limit:number)=>text.length<=limit?text:text.slice(0,limit-100)+'\n[Earlier text shortened]\n'+text.slice(-70);
 
@@ -11,6 +11,7 @@ const shorten=(text:string,limit:number)=>text.length<=limit?text:text.slice(0,l
 export class ConversationMemory {
   private sessions=new Map<string,Session>();
   constructor(private now=()=>Date.now(),private ttl=30*60*1000,private capacity=500){}
+  restore(id:string,session:Session){this.sessions.set(id,{...structuredClone(session),updated:this.now()});}
   prepare(actor:string,input:unknown,policy:string):PreparedConversation {
     if(!input||typeof input!=='object'||Array.isArray(input))throw new AccessError(400,'Enter a message.');
     const body=input as Record<string,unknown>;
