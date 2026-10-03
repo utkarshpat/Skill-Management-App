@@ -58,7 +58,7 @@ The API's in-memory AI request counters/concurrency locks are per instance, not 
 
 ## Temporary hosted demo
 
-Hosted demo is explicitly enabled with HOSTED_DEMO_LOGIN=true, PUBLIC_APP_ORIGIN=https://skill-management-app.vercel.app (no trailing slash), secret DEMO_LOGIN_ACCESS_CODE (at least 5 characters; short evaluation code supported at the owner’s request), and secret DEMO_SESSION_SECRET (at least 32 characters). These are production-scoped server variables; never expose them through VITE_* or commit them. The access code for this evaluation is stored locally in ignored .local/hosted-demo-access.txt.
+Hosted demo is explicitly enabled with HOSTED_DEMO_LOGIN=true, PUBLIC_APP_ORIGIN=https://skill-management-app.vercel.app (no trailing slash), secret DEMO_LOGIN_ACCESS_CODE (at least 4 characters; short evaluation code supported at the owner’s request), and secret DEMO_SESSION_SECRET (at least 32 characters). These are production-scoped server variables; never expose them through VITE_* or commit them. The access code for this evaluation is stored locally in ignored .local/hosted-demo-access.txt.
 
 Anonymous discovery exposes only the locked gate, not the people roster. Enter the shared code and select Show test people before choosing an active person. Microsoft-linked people, including the account owner, cannot be impersonated. All application authorization continues to use that person's current permissions and account scope. Requests must match the configured host; mutations also require the exact HTTPS Origin.
 

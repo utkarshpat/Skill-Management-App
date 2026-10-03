@@ -12,9 +12,9 @@ test('hosted demo is separately opt-in and rejects incomplete or non-HTTPS confi
   assert.throws(()=>hostedDemoConfig({NODE_ENV:'production',HOSTED_DEMO_LOGIN:'true'}));
   assert.throws(()=>hostedDemoConfig({NODE_ENV:'production',HOSTED_DEMO_LOGIN:'true',PUBLIC_APP_ORIGIN:'http://demo.example',DEMO_LOGIN_ACCESS_CODE:hosted.accessCode,DEMO_SESSION_SECRET:hosted.sessionSecret}));
   const config={NODE_ENV:'production',HOSTED_DEMO_LOGIN:'true',PUBLIC_APP_ORIGIN:hosted.origin,DEMO_SESSION_SECRET:hosted.sessionSecret};
-  assert.equal(hostedDemoConfig({...config,DEMO_LOGIN_ACCESS_CODE:'zxcvb'})?.accessCode,'zxcvb');
-  assert.throws(()=>hostedDemoConfig({...config,DEMO_LOGIN_ACCESS_CODE:'abcd'}));
-  assert.throws(()=>hostedDemoConfig({...config,DEMO_LOGIN_ACCESS_CODE:'zxcvb',DEMO_SESSION_SECRET:'short'}));
+  assert.equal(hostedDemoConfig({...config,DEMO_LOGIN_ACCESS_CODE:'1qaz'})?.accessCode,'1qaz');
+  assert.throws(()=>hostedDemoConfig({...config,DEMO_LOGIN_ACCESS_CODE:'abc'}));
+  assert.throws(()=>hostedDemoConfig({...config,DEMO_LOGIN_ACCESS_CODE:'1qaz',DEMO_SESSION_SECRET:'short'}));
   assert.deepEqual(hostedDemoConfig({NODE_ENV:'production',HOSTED_DEMO_LOGIN:'true',PUBLIC_APP_ORIGIN:hosted.origin,DEMO_LOGIN_ACCESS_CODE:hosted.accessCode,DEMO_SESSION_SECRET:hosted.sessionSecret}),hosted);
 });
 
