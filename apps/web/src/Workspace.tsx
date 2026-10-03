@@ -45,9 +45,9 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
     { id: 'overview', label: 'Dashboard', href: '/workspace', icon: LayoutDashboard, visible: true },
     { id: 'profile', label: 'My profile', href: '/profile', icon: UserRound, visible: state?.capabilities.ownProfile },
     { id: 'my-skills', label: 'My skills', href: '/my-skills', icon: Compass, visible: state?.capabilities.ownSkills },
-    { id: 'skills', label: 'Skill catalogue', href: '/skills', icon: BookOpen, visible: state?.capabilities.catalogue },
+    { id: 'skills', label: 'Skill catalogue', href: '/skills', icon: BookOpen, visible: state?.capabilities.catalogue && (state.capabilities.manageCatalogue || state.capabilities.reviewSkills) },
   ];
-  const permitted = view === 'overview' || sections.some(section => section.id === view && section.visible);
+  const permitted = view === 'overview' || (view === 'skills' ? state?.capabilities.catalogue : sections.some(section => section.id === view && section.visible));
   const sidebarContent = (close: () => void = () => {}) => <>
     <Link className="admin-brand" to="/workspace"><img src="/brand/sopra-steria.svg" alt="Sopra Steria" /></Link>
     <p className="nav-caption">MY WORKSPACE</p>
