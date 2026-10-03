@@ -12,7 +12,7 @@ Routing must use configured people/groups and current reporting relationships. A
 
 Use the existing `request.create/view/assign/approve/resolve` and `incident.create/view/assign/resolve` codes with trusted resource scopes. OWN permits a person to view their own records; assignment and approval must resolve the actual recipient and current authority. Department/team/resource scope bindings are still pending and must be implemented before using those scopes for routing. Never substitute an ORGANIZATION grant for an unsupported narrow scope.
 
-Store the requester, recipient/assignee, type, record revision and transition history in account-scoped SQL. Enforce transitions and audit in the same transaction. Comments and attachments inherit the record's current access rules. Notification delivery must use real committed workflow events, with an outbox or equivalent retry-safe process; the current notification bell is an empty UI shell.
+Store the requester, recipient/assignee, type, record revision and transition history in account-scoped SQL. Enforce transitions and audit in the same transaction. Comments and attachments inherit the record's current access rules. Notification delivery must use real committed workflow events, with an outbox or equivalent retry-safe process; the current notification bell shows own access-update events; request/incident event producers and durable receipts remain pending.
 
 An approved access request does not itself authorize an arbitrary role or permission change. Execution must recheck the actual grant authority, permitted scopes, target membership and the exact approved payload. Block self-approval and stale approval execution; use idempotency to prevent duplicate grants. Sensitive approval outcomes remain human decisions.
 
@@ -20,4 +20,4 @@ An approved access request does not itself authorize an arbitrary role or permis
 
 Future tools may read a person's permitted requests/incidents, draft a request/report, or propose an exact action. Add each to the typed registry with explicit permissions and resource resolution. AI cannot invent recipients, expand scope, silently change access, resolve an incident or approve a request. Writes require an expiring, version-bound proposal displayed for human approval, followed by a fresh policy check and transactional execution/audit.
 
-Build after the claim/evidence/review slice, or reprioritize explicitly. Keep notifications, assignment and request approval separate from the existing read-only chat. Provider selection, data retention and live model configuration remain pending.
+Build after the claim/evidence/review slice, or reprioritize explicitly. Keep notifications, assignment and request approval separate from the existing read-only chat. Gemini is connected; production data retention and these workflow services remain pending.

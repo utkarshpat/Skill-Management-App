@@ -1,6 +1,6 @@
 import { AccessError } from '../../shared/errors.js';
 import type { AccessStore } from '../access/index.js';
-import type { ClaimsStore } from '../skills/index.js';
+import type { ClaimsStore, CatalogueStore } from '../skills/index.js';
 import { ToolRegistry, type ToolDefinition } from './tool-registry.js';
 import type { OrganizationStore } from '../organization/index.js';
 import { geminiProvider } from './gemini.js';
@@ -27,7 +27,7 @@ export class AssistantService {
  private limits=new Map<string,{at:number;count:number}>();private active=new Set<string>();private daily={day:'',count:0};
  private registry:ToolRegistry;
  private memory=new ConversationMemory();
- constructor(private store:AccessStore,organization:OrganizationStore|undefined,private provider:Provider|undefined,claims?:ClaimsStore,private usageObserver?:(usage:ReturnType<UsageMeter['snapshot']>)=>void) { this.registry=new ToolRegistry(store,organization,claims); }
+ constructor(private store:AccessStore,organization:OrganizationStore|undefined,private provider:Provider|undefined,claims?:ClaimsStore,private usageObserver?:(usage:ReturnType<UsageMeter['snapshot']>)=>void,catalogue?:CatalogueStore) { this.registry=new ToolRegistry(store,organization,claims,catalogue); }
  status(){return {configured:Boolean(this.provider),provider:this.provider?.name??null,mode:'read-only'};}
  async chat(actorId:string,input:unknown,signal=AbortSignal.timeout(35000)) {
   if(this.active.has(actorId))throw new AccessError(429,'A reply is already being generated.');

@@ -10,9 +10,9 @@ Later user decisions take precedence over the shared chat: roles are editable pe
 
 ## Workspace navigation recommendation
 
-My Skills is currently an unconditional navigation entry in AccessAdmin. Its API still checks own-profile/claim authority and returns only the caller's drafts. Showing it there does not imply administrator access to everyone's personal skills.
+Personal and administration navigation now derive from effective permissions. My Skills is shown in the personal workspace, with current own-profile/skill access; the API returns only the caller's drafts. Administrator access does not automatically grant personal claiming rights.
 
-Recommended UX: Administration contains organization, catalogue, people, roles, assignments and audit. Personal workspace contains own skills and learning. A person with both sets of permissions can switch context using the same Microsoft identity. Derive visible navigation from effective permissions, not role names; do not automatically give an administrator personal claim rights. This separation has not been implemented yet.
+Recommended UX: Administration contains organization, catalogue, people, roles, assignments and audit. Personal workspace contains own skills and learning. A person with both sets of permissions can switch context using the same Microsoft identity. Derive visible navigation from effective permissions, not role names; do not automatically give an administrator personal claim rights. This separation is implemented.
 
 ## Conversational skill entry recommendation
 
@@ -22,7 +22,7 @@ Recommended UX: Administration contains organization, catalogue, people, roles, 
 4. Require explicit approval of the displayed change or batch, rather than confirmation for every field. Persist only supported fields through existing application services; projects, evidence and submission require their own services before enabling those tools.
 5. Save as unverified drafts. Submission to the assigned reviewer is a separate action. AI, training completion and test scores never automatically verify a skill.
 
-Initial tool candidates: search published catalogue, read own draft, propose own skill draft, propose own draft edit. Later: attach permitted evidence, link project, propose claim submission, draft learning plan and propose task rescheduling. Names describe proposed capabilities, not currently registered tools.
+Initial tool candidates: search published catalogue, read own draft, propose own skill draft, propose own draft edit. Later: attach permitted evidence, link project, propose claim submission, draft learning plan and propose task rescheduling. Published catalogue search and eligible own-claim choice/criteria tools are now registered. Durable proposal and approved-write tools remain planned; see AI_TOOL_CATALOGUE.md.
 
 ## Identity and write execution
 
@@ -36,7 +36,7 @@ Uploaded text is untrusted evidence, not instructions. Private evidence storage,
 
 ## Framework recommendation
 
-The current AssistantService and typed ToolRegistry provide bounded read-only orchestration. Live provider configuration, durable conversations and approved writes remain pending.
+The current AssistantService and typed ToolRegistry provide bounded read-only orchestration. Gemini is live and bounded process-local conversational context exists. Durable conversations/proposals and approved writes remain pending.
 
 Evaluate LangGraph JavaScript for multi-turn state and pause/resume at review cards, keeping the existing authorization gateway and module services authoritative. Its documented interrupts and persistence support these interaction patterns. Use a durable store in production; an in-memory checkpointer is insufficient. Azure SQL checkpoint integration is an implementation task, not an assumed built-in adapter. Introducing the library does not itself implement approval security or transactional idempotency.
 
@@ -52,7 +52,7 @@ The following includes explicit requested features and proposed behavior to make
 - Streak: derive from recorded eligible learning activity using the person's timezone. Exact qualifying activity, rest days and correction rules remain to be agreed.
 - Backlog: retain missed work visibly. Offer a recovery proposal with its effect on future workload; apply rescheduling only after consent.
 - Management: pause, resume, edit or retire plans with history; manager visibility depends on effective scoped permissions.
-- Tests: preserve the planned optional ten-question assessment, results and attempt history. Assessment quality, scoring and retake rules need definition. A passing test does not verify a workplace skill.
+- Tests: preserve the planned optional configurable assessment, results and attempt history. Assessment quality, scoring and retake rules need definition. A passing test does not verify a workplace skill.
 - Progress: show goal completion, pending work and assessment results separately from claimed/verified skill status.
 
 ## Delivery order

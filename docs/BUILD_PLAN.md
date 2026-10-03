@@ -18,7 +18,7 @@ Technical skills and workplace evaluations are separate. Claimed, verified, cert
 2. **Identity and data:** organizational SSO, SQL migrations, scoped permissions, reporting hierarchy and audit foundation.
 3. **First vertical slice:** employee profile → published skill → claim → private evidence → N+1 review → verified profile, with history and concurrency checks.
 4. **Credentials and manager evaluation:** certification lifecycle and defined workplace rubrics.
-5. **Learning slice:** goal wizard → AI draft → edit/confirm → deterministic calendar scheduling → today's tasks → completion/backlog → consented recovery → optional ten-question test → progress.
+5. **Learning slice:** goal wizard → AI draft → edit/confirm → deterministic calendar scheduling → today's tasks → completion/backlog → consented recovery → optional configurable practice test → progress.
 6. **Demand and matching:** approved demand → verified supply/capacity → explainable match → human shortlist.
 7. **Requests and incidents:** recipient/routing, approvals, access grant/revoke, IT incident assignment and resolution, comments and timelines.
 8. **Insights and AI assistant:** scoped retrieval with sources, drafts/proposals, exact approval payload, policy/version recheck, idempotent execution and audit.
@@ -31,7 +31,7 @@ Current increment: custom-role/person/individual-permission administration persi
 
 ## Decisions still needed
 
-Skill catalogue is implemented as the start of step 3: migration 007, restricted procedures, independently permission-checked API, search/pagination and editable proficiency definitions. My Skills now saves own self-assessed drafts through migration 008, with published choices, proficiency snapshots, per-record concurrency and atomic auditing. The catalogue remains empty until actual definitions are entered; no integration-test skills are retained. Evidence, submission and reporting-manager review are next; see MY_SKILLS.md. Requests/incidents remain in the plan with their routing/approval requirements preserved in REQUESTS_AND_INCIDENTS.md. AI now has a typed ToolRegistry/policy gateway and a read-only own-skills tool; provider setup and approved writes remain pending.
+Skill catalogue is implemented as the start of step 3: migration 007, restricted procedures, independently permission-checked API, search/pagination and editable proficiency definitions. My Skills now saves own self-assessed drafts through migration 008, with published choices, proficiency snapshots, per-record concurrency and atomic auditing. The catalogue remains empty until actual definitions are entered; no integration-test skills are retained. Evidence, submission and reporting-manager review are next; see MY_SKILLS.md. Requests/incidents remain in the plan with their routing/approval requirements preserved in REQUESTS_AND_INCIDENTS.md. AI now has a typed ToolRegistry/policy gateway and a read-only own-skills tool; Gemini provider setup is complete; approved writes remain pending.
 
 - Company tenant/app configuration and production SQL access. Personal development registrations and restricted profile access exist; see SSO_AND_PROFILE.md.
 - Who can grant each permission, including scopes exceeding an N+1's authority.
@@ -43,3 +43,7 @@ Skill catalogue is implemented as the start of step 3: migration 007, restricted
 These unresolved details are not simulated as completed functionality in the foundation.
 
 Gemini is now connected through the user's ignored GEMINI_API key, with live synthetic answer/tool/draft/learning-practice checks. Typed output cards and the skill-description handoff to the existing reviewed form are implemented. Notifications now show personal access-update events, with device-specific read state. Persisted learning attempts, fully filled approved AI write proposals, review/learning/incident notification producers and cross-device notification receipts remain upcoming work. See AI_INTEGRATION.md and NOTIFICATIONS.md.
+
+## Next AI vertical slice — 3 October 2026
+
+Build conversational own-skill proposals: published catalogue discovery and exact criteria → collect missing facts → editable, version-bound review card → one authenticated approval → idempotent, audited own-draft save. Catalogue search, claim choices/criteria and permission-based guide tools are now registered; durable proposal persistence/execution is next. The broader learning/review/request/incident/demand tool contracts and their gating dependencies are defined in AI_TOOL_CATALOGUE.md. No planned tool is exposed merely by documenting its name.
