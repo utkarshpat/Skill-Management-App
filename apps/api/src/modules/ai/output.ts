@@ -7,7 +7,7 @@ export interface Presentation {
   questions: { prompt: string; options: string[]; correctIndex: number; explanation: string }[];
 }
 export const presentationTool: ToolDefinition = { type: 'function', function: {
-  name: 'present_output', description: 'Display a draft or exactly ten multiple-choice practice questions. This only renders a card; it NEVER saves, executes, verifies, schedules or approves anything. Use empty questions for drafts; empty body/steps for quizzes. Ask for missing personal facts rather than inventing experience.',
+  name: 'present_output', description: 'Display a draft or 1 to 20 multiple-choice practice questions. Follow the requested count; default to 10 only when no count is specified. This only renders a card; it NEVER saves, executes, verifies, schedules or approves anything. Use empty questions for drafts; empty body/steps for quizzes. Ask for missing personal facts rather than inventing experience.',
   parameters: { type: 'object', additionalProperties: false, required: ['kind','title','summary','body','steps','questions'], properties: {
     kind: { type:'string', enum:['task_draft','skill_draft','practice_quiz'] }, title:{type:'string'}, summary:{type:'string'}, body:{type:'string'},
     steps:{type:'array',items:{type:'string'}}, questions:{type:'array',items:{type:'object',additionalProperties:false,required:['prompt','options','correctIndex','explanation'],properties:{prompt:{type:'string'},options:{type:'array',items:{type:'string'}},correctIndex:{type:'integer'},explanation:{type:'string'}}}},
@@ -27,7 +27,7 @@ export function presentation(value: unknown): Presentation {
   if(!['task_draft','skill_draft','practice_quiz'].includes(String(item.kind))) invalid();
   if(!Array.isArray(item.steps)||item.steps.length>12||!Array.isArray(item.questions)) invalid();
   const result: Presentation={kind:item.kind as Presentation['kind'],title:text(item.title,120),summary:text(item.summary,600),body:text(item.body,2000,true),steps:item.steps.map(step=>text(step,300)),questions:[]};
-  if(result.kind==='practice_quiz' ? item.questions.length!==10 : item.questions.length!==0) invalid();
+  if(result.kind==='practice_quiz' ? (item.questions.length<1||item.questions.length>20) : item.questions.length!==0) invalid();
   if(result.kind==='practice_quiz'&&(result.body||result.steps.length)) invalid();
   if(result.kind!=='practice_quiz'&&!result.body&&!result.steps.length) invalid();
   result.questions=item.questions.map(value=>{

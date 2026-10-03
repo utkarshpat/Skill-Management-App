@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { AssistantService, configuredProvider } from '../src/modules/ai/assistant.js';
 import { presentation } from '../src/modules/ai/output.js';
 import { LocalAccessStore, AccessError } from '../src/modules/access/local-access-store.js';
-const quiz=()=>({kind:'practice_quiz',title:'Learning practice',summary:'Practice only.',body:'',steps:[],questions:Array.from({length:10},(_,index)=>({prompt:`Question ${index+1}?`,options:['A','B','C','D'],correctIndex:1,explanation:'Why B is correct.'}))});
+const quiz=(count=10)=>({kind:'practice_quiz',title:'Learning practice',summary:'Practice only.',body:'',steps:[],questions:Array.from({length:count},(_,index)=>({prompt:`Question ${index+1}?`,options:['A','B','C','D'],correctIndex:1,explanation:'Why B is correct.'}))});
 
 test('structured outputs reject executable fields, invalid keys and incomplete practice quizzes',()=>{
-  assert.equal(presentation(quiz()).questions.length,10);
-  for(const bad of [{...quiz(),url:'javascript:alert(1)'},{...quiz(),questions:quiz().questions.slice(1)},{...quiz(),questions:quiz().questions.map(q=>({...q,correctIndex:5}))},{...quiz(),questions:quiz().questions.map(q=>({...q,options:['A','A','C','D']}))},{...quiz(),kind:'execute_sql'},{...quiz(),body:'Pretend saved'}])assert.throws(()=>presentation(bad),AccessError);
+  for(const count of [1,5,10,15,20])assert.equal(presentation(quiz(count)).questions.length,count);
+  assert.throws(()=>presentation(quiz(21)),AccessError);
+  for(const bad of [{...quiz(),url:'javascript:alert(1)'},{...quiz(),questions:[]},{...quiz(),questions:quiz().questions.map(q=>({...q,correctIndex:5}))},{...quiz(),questions:quiz().questions.map(q=>({...q,options:['A','A','C','D']}))},{...quiz(),kind:'execute_sql'},{...quiz(),body:'Pretend saved'}])assert.throws(()=>presentation(bad),AccessError);
   assert.throws(()=>presentation({...quiz(),questions:quiz().questions.map(()=>quiz().questions[0])}),AccessError);
 });
 test('presentation renders suggestions without calling persistence; revoked access prevents output',async()=>{
