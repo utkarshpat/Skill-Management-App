@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BookOpen, Plus, Pencil } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { SkillClaimDialog } from './SkillReviews';
 import { FormDialog } from './FormDialog';
+import {SkillsProfileView} from './SkillsProfileView';
+import './skills-profile.css';
 import {SkillClaimWizard,type SkillChoice,type SkillDraft,type SkillChoices} from './SkillClaimWizard';
 import { useLocation, useNavigate } from 'react-router';
 
@@ -24,18 +26,25 @@ async function body<T>(response:Response):Promise<T> {
 }
 export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTMLElement|null;reviewRequest?:{description:string;onClose:()=>void;onSaved:()=>void}}) {
   const location=useLocation(),navigate=useNavigate();
-  const [state,setState]=useState<State>(),[page,setPage]=useState(1),[loading,setLoading]=useState(true);
+  const [state,setState]=useState<State>(),[loading,setLoading]=useState(true);
   const [inspecting,setInspecting]=useState<Claim>(),[submitting,setSubmitting]=useState(false);
   const [error,setError]=useState(''),[notice,setNotice]=useState('');
   const [draft,setDraft]=useState<Draft>(),[formPage,setFormPage]=useState(0),[busy,setBusy]=useState(false),[formError,setFormError]=useState('');
   const [options,setOptions]=useState<Options>(),[search,setSearch]=useState(''),[category,setCategory]=useState(''),[picked,setPicked]=useState<Option>(),[optionPage,setOptionPage]=useState(1),[optionsLoading,setOptionsLoading]=useState(false);
   async function load(signal?:AbortSignal) {
     setLoading(true);
-    try { const value=await body<State>(await authenticatedFetch(`/api/my-skills?page=${page}`,{signal}));if(!signal?.aborted){setState(value);setError('');} }
+    try { const value=await body<State>(await authenticatedFetch('/api/my-skills?page=1',{signal}));
+      const claims=[...value.claims];
+      // Read every authorized page so summary counts and filters cover the whole profile.
+      for(let next=2;next<=Math.ceil(value.total/value.pageSize);next+=4){
+        const pages=await Promise.all(Array.from({length:Math.min(4,Math.ceil(value.total/value.pageSize)-next+1)},(_,index)=>authenticatedFetch('/api/my-skills?page='+(next+index),{signal}).then(body<State>)));
+        for(const result of pages)claims.push(...result.claims);
+      }
+      if(!signal?.aborted){setState({...value,claims:Array.from(new Map(claims.map(claim=>[claim.id,claim])).values())});setError('');} }
     catch(error){if(!signal?.aborted)setError(error instanceof Error?error.message:'Could not load your skills.');}
     finally {if(!signal?.aborted)setLoading(false);}
   }
-  useEffect(()=>{const controller=new AbortController();void load(controller.signal);const refresh=()=>void load(controller.signal);window.addEventListener('own-skills-updated',refresh);return()=>{controller.abort();window.removeEventListener('own-skills-updated',refresh);};},[page]);
+  useEffect(()=>{const controller=new AbortController();void load(controller.signal);const refresh=()=>void load(controller.signal);window.addEventListener('own-skills-updated',refresh);return()=>{controller.abort();window.removeEventListener('own-skills-updated',refresh);};},[]);
   useEffect(()=>{
     if(!reviewRequest||!state)return;
     if(!state.canClaim){setError('Your account does not have permission to add a skill draft.');return;}
@@ -76,7 +85,7 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
     setBusy(true);setFormError('');
     try {
       await body(await authenticatedFetch('/api/my-skills',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...draft,definitionRevision:selected.definitionRevision})}));
-      setDraft(undefined);setNotice('Skill draft saved. It is self-assessed and has not been submitted for review.');reviewRequest?.onSaved();window.dispatchEvent(new Event('own-skills-updated'));await load();
+      setDraft(undefined);setNotice('Skill draft saved. It is self-assessed and has not been submitted for review.');reviewRequest?.onSaved();window.dispatchEvent(new Event('own-skills-updated'));
     } catch(error){setFormError(error instanceof Error?error.message:'Your draft could not be saved.');}
     finally {setBusy(false);}
   }
@@ -88,16 +97,9 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
     {actionsContainer?createPortal(actions,actionsContainer):actions&&<div className="my-skills-actions">{actions}</div>}
     {error&&<div className="access-message" role="alert">{error}<button className="secondary-button" onClick={()=>void load()}>Retry</button></div>}
     {notice&&<p className="access-message" role="status">{notice}</p>}
-    {loading&&!state?<section className="profile-panel" role="status">Loading your skills…</section>:state&&<section className="profile-panel my-skills-panel" aria-label="Your skill claims">
-      <div className="panel-title"><h2>My skills <span className="my-skills-count">{state.total}</span></h2><span className="claim-status">Skill claims</span></div>
-      {!state.canClaim&&<p className="my-skills-note">You can view your saved skills. Ask your access administrator for permission to add or edit skill drafts.</p>}
-      {state.claims.length?<>
-        <div className="my-skills-table-wrap"><table className="my-skills-table"><thead><tr><th scope="col">Skill</th><th scope="col">Claimed proficiency</th><th scope="col">Experience</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead><tbody>{state.claims.map(claim=><tr key={claim.id}><td><strong>{claim.skillName}</strong><span>{claim.category}</span></td><td>{claim.levelName}<span>Level {claim.rank}</span></td><td>{claim.experienceMonths} months</td><td><span className="claim-status">{claim.status==='APPROVED'?'Approved · Manager reviewed':claim.status==='SUBMITTED'?'Awaiting manager review':claim.status==='CHANGES_REQUESTED'?'Changes requested':claim.status==='REJECTED'?'Rejected':'Draft · Unverified'}</span></td><td><button className="secondary-button" onClick={()=>{setInspecting(claim);setSubmitting(false);}}>View</button>{state.canClaim&&['DRAFT','CHANGES_REQUESTED','REJECTED'].includes(claim.status)&&<button className="secondary-button" aria-label={`Edit ${claim.skillName} draft`} disabled={busy||loading} onClick={()=>edit(claim)}><Pencil size={15}/>Edit</button>}{state.canClaim&&claim.status!=='APPROVED'&&<button className="secondary-button" disabled={busy||loading} onClick={()=>{setInspecting(claim);setSubmitting(true);}}>{claim.status==='SUBMITTED'?'Reroute review':'Submit for review'}</button>}</td></tr>)}</tbody></table></div>
-        <div className="catalogue-pagination"><span>{state.total} skills · Page {state.page}</span><button className="secondary-button" disabled={loading||page===1} onClick={()=>setPage(value=>value-1)}>Previous</button><button className="secondary-button" disabled={loading||page*state.pageSize>=state.total} onClick={()=>setPage(value=>value+1)}>Next</button></div>
-      </>:<div className="catalogue-empty"><BookOpen size={30} aria-hidden="true"/><h3>{state.total?'No skills on this page':'Build your skill profile'}</h3><p>{state.total?'Go back to the previous page.':'Choose a published skill and describe your proficiency and experience.'}</p></div>}
-    </section>}
+    {loading&&!state?<section className="profile-panel" role="status">Loading your skills…</section>:state&&<SkillsProfileView claims={state.claims} canClaim={state.canClaim} loading={loading||busy} onView={claim=>{setInspecting(claim);setSubmitting(false);}} onEdit={edit} onSubmit={claim=>{setInspecting(claim);setSubmitting(true);}}/>}
     </>}
-    {inspecting&&<SkillClaimDialog claim={inspecting} mode={submitting?'submit':'view'} onClose={()=>setInspecting(undefined)} onSaved={()=>{setInspecting(undefined);setNotice('Claim submitted to your assigned reporting manager.');window.dispatchEvent(new Event('own-skills-updated'));void load();}}/>}
+    {inspecting&&<SkillClaimDialog claim={inspecting} mode={submitting?'submit':'view'} onClose={()=>setInspecting(undefined)} onSaved={()=>{setInspecting(undefined);setNotice('Claim submitted to your assigned reporting manager.');window.dispatchEvent(new Event('own-skills-updated'));}}/>}
     {draft&&<SkillClaimWizard draft={draft} onDraft={setDraft} selected={selected} onSelect={skill=>{setPicked(skill);setDraft({...draft,skillId:skill.id,rank:skill.id===draft.skillId?draft.rank:0,definitionRevision:skill.definitionRevision});}} options={options} loading={optionsLoading} busy={busy} error={formError} page={formPage} onPage={setFormPage} search={search} onSearch={value=>{setSearch(value);setOptionPage(1);setFormError('');}} category={category} onCategory={value=>{setCategory(value);setOptionPage(1);setFormError('');}} onResultsPage={setOptionPage} onSave={()=>void save()} onClose={closeDraft} aiDraft={!!reviewRequest}/>}
   </>;
 }

@@ -1,3 +1,11 @@
+## Profile page redesign
+
+My skills now has four interactive status cards, a searchable/filterable table, local row pagination, a status distribution chart, category chart and relevant next actions. Manager-reviewed approval is distinct from learning assessments or independently verified capability. No placeholder learning/assessment tabs or unsupported bulk selection actions are displayed. Edit/submit controls respect canClaim and the claim state; the API continues to enforce current permissions and revision rules.
+
+The page reads all of the authenticated own-profile result pages (four requests maximum concurrently after the first page) before calculating totals, category filters or charts, so results do not misleadingly count only the first 25 claims. Filters combine search, category, status, level and workflow view; a clear action restores the complete list. Row pagination offers 5/10/25 rows. Refreshes preserve the current visible profile while marking it busy; failures retain an explicit retry. Only the authorized actor's existing read endpoint is used. This is a profile-size client aggregation; very large inventories should move summary/filter operations into SQL before expanding the use case.
+
+The layout uses shared light/dark tokens, responsive cards and a horizontal table viewport on phones. Brand and global navigation remain shared with the application. Status totals and mutation visibility have dedicated rendering tests.
+
 ## Guided skill entry (current UI)
 
 Add/edit/AI-prefilled skill entry uses a three-step wizard: Select skill, Proficiency & details, Review & save. Category cards and counts come from published, workspace-scoped SQL discovery, never a static demonstration list. Search and category filters combine; paginated three-item result sets keep the laptop form compact. The selected definition remains visible across result changes. Editing an existing claim cannot change its skill.
