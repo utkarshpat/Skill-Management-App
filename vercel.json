@@ -4,10 +4,10 @@
     "api": {
       "root": "apps/api",
       "framework": "express",
-      "entrypoint": "app.cts",
+      "entrypoint": "app.ts",
       "buildCommand": "npm run build",
       "functions": {
-        "app.cts": { "includeFiles": "package.json" }
+        "app.ts": { "includeFiles": "package.json" }
       }
     },
     "web": {

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { createApp } from '../src/app.js';
+import { createApp } from '../src/create-app.js';
 
 test('health is public; profile, permissions and writes require identity', async () => {
   const server = createApp().listen(0, '127.0.0.1');

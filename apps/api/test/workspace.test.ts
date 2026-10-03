@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { createApp } from '../src/app.js';
+import { createApp } from '../src/create-app.js';
 import { LocalAccessStore, type LocalAccessState } from '../src/modules/access/local-access-store.js';
 import { workspaceFor } from '../src/modules/identity/workspace.js';
 import { rolePresets } from '../src/modules/access/role-presets.js';

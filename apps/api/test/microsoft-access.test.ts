@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { createApp } from '../src/app.js';
+import { createApp } from '../src/create-app.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
 
 test('Microsoft administration trusts verified mapping, rechecks grants and blocks demo bypass', async () => {

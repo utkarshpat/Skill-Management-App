@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { claimChange, claimPage, claimSearch, type ClaimsStore } from '../src/modules/skills/claims.js';
-import { createApp } from '../src/app.js';
+import { createApp } from '../src/create-app.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
 
 const draft=()=>({id:randomUUID(),revision:0,skillId:randomUUID(),definitionRevision:1,rank:1,experienceMonths:12,description:'Delivered a working feature.'});

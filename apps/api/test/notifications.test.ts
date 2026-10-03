@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
 import { notificationsFor } from '../src/modules/identity/notifications.js';
-import { createApp } from '../src/app.js';
+import { createApp } from '../src/create-app.js';
 test('notification feed exposes only own addressed events without workspace audit payloads',async()=>{
   const store=await LocalAccessStore.open(),state=store.snapshot(),person=state.people[0];
   state.audit=[{actorId:'private-admin',targetId:person.id,action:'person.updated',at:new Date().toISOString(),revision:2,after:{...person,displayName:'Private payload'}},{actorId:'private-admin',targetId:'other',action:'person.updated',at:new Date().toISOString(),revision:3},{actorId:person.id,targetId:person.id,action:'person.updated',at:new Date().toISOString(),revision:4}];

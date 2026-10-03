@@ -1,5 +1,5 @@
 import { SqlOrganizationStore } from './modules/organization/sql-store.js';
-import { createApp } from './app.js';
+import { createApp } from './create-app.js';
 import { identityConfig, tokenVerifier } from './modules/identity/index.js';
 import { ownProfile } from './modules/identity/index.js';
 import { closeRuntimeDatabase } from './shared/database.js';
