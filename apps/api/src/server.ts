@@ -20,15 +20,21 @@ const organization=process.env.ACCESS_ACCOUNT_ID?new SqlOrganizationStore(proces
 const claims=process.env.ACCESS_ACCOUNT_ID?new SqlClaimsStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const catalogue=process.env.ACCESS_ACCOUNT_ID?new SqlCatalogueStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const assistant=access?new AssistantService(access,organization,configuredProvider(process.env),claims,usage=>console.info(JSON.stringify({event:'ai.usage',...usage})) ,catalogue,process.env.ACCESS_ACCOUNT_ID?new SqlConversationsStore(process.env.ACCESS_ACCOUNT_ID):undefined):undefined;
-const server = createApp(config ? { verify: tokenVerifier(config),access,organization,assistant,catalogue,claims,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
+const app = createApp(config ? { verify: tokenVerifier(config),access,organization,assistant,catalogue,claims,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
   const id=await access?.resolveIdentity(identity);
   if(!id)return ownProfile(identity);
   const state=await access!.snapshot();const person=state.people.find(person=>person.id===id);
   if(!person||!can(state,person,'profile.view',true))return undefined;
   return {id:person.id,displayName:person.displayName,employeeCode:person.employeeCode,organization:'Development Workspace',status:person.active?'ACTIVE':'SUSPENDED',roles:state.roles.filter(role=>person.roleIds.includes(role.id)).map(role=>role.name),canManageAccess:can(state,person,'permissions.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage')};
-} } : undefined, { developmentStore }).listen(port, '127.0.0.1', () => {
-  console.log(`Capability API: http://127.0.0.1:${port}`);
-});
-for (const signal of ['SIGTERM', 'SIGINT'] as const) {
-  process.once(signal, () => server.close(() => { closeRuntimeDatabase().then(() => process.exit(0)).catch(() => process.exit(1)); }));
+} } : undefined, { developmentStore });
+// Vercel owns the listener and lifecycle; local/Azure Node hosting keeps its server.
+export default app;
+if (process.env.VERCEL !== '1') {
+  const host = process.env.HOST ?? '127.0.0.1';
+  const server = app.listen(port, host, () => {
+    console.log(`Capability API: http://${host}:${port}`);
+  });
+  for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+    process.once(signal, () => server.close(() => { closeRuntimeDatabase().then(() => process.exit(0)).catch(() => process.exit(1)); }));
+  }
 }

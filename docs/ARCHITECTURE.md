@@ -4,7 +4,7 @@
 
 Keep one repository with a React frontend in `apps/web` and one Express backend in `apps/api`. The backend is a modular monolith: its business modules run in one Node process, communicate through explicit TypeScript contracts, and share the existing Azure SQL database. Modules do not require separate services, hosts, network calls or databases.
 
-Frontend/backend separation and backend modularity are complementary decisions. The web app calls `/api/*` through HTTP; it cannot import backend source or database adapters. Deployment packaging can serve both behind the same origin, or host them separately, without changing these module boundaries. Production hosting is still to be configured.
+Frontend/backend separation and backend modularity are complementary decisions. The web app calls `/api/*` through HTTP; it cannot import backend source or database adapters. The root vercel.json configures Vercel Services to build api and web separately behind one origin. The static frontend's calls originate in the browser, so no internal service binding is needed. The backend remains one modular monolith, not separate microservices. See VERCEL_DEPLOYMENT.md for runtime entrypoints, cloud setup and verification limits.
 
 ## Source ownership
 

@@ -1,0 +1,63 @@
+# Vercel Services deployment
+
+## Confirmed configuration
+
+The root vercel.json defines one Vercel project containing two independently built services:
+
+| Service | Root | Framework | Public ingress |
+| --- | --- | --- | --- |
+| api | apps/api | Express | /api and /api/* |
+| web | apps/web | Vite | Remaining paths, including / |
+
+The API retains the original /api prefix. No prefix stripping, cross-origin browser URL or client-selected backend host is needed. The bare /api rule prevents it from falling through to the SPA. The web service rewrites known client routes to index.html, while assets and Vite development modules remain files. Build commands and output settings belong to services, not the top level.
+
+### Call graph and bindings
+
+The web service builds static browser code; its fetch('/api/...') calls originate in the browser and use the deployment's public route table. It has no server-rendered functions that call the API. The API does not call web or another repository service. SQL and Gemini/Microsoft are external integrations, not Vercel services. There are therefore no service-to-service bindings in this configuration. The standalone Vite localhost proxy is only for npm run dev and is disabled under Vercel.
+
+If a server-side caller is added later, declare its binding on that caller with type=service, service=<target>, format=url and env=<generated variable>. Read that variable only in a runtime function. Do not set it manually, expose it as VITE_*, resolve it during the build or use it in middleware. A binding does not replace application authentication/permissions.
+
+## Runtime entrypoint
+
+apps/api/app.ts imports the configured Express app from src/server.ts. Its explicit Express import makes framework detection choose the root entrypoint instead of src/app.ts, which is a dependency-injected factory. src/server.ts exports the app and lets Vercel own the listener/lifecycle when VERCEL=1. Normal Node hosting keeps the listener and graceful shutdown; HOST can be set to 0.0.0.0 for a future Azure container/service. No migrations, seed imports or local file writes run at request startup.
+
+## Local verification
+
+From the repository root, using Node 24:
+
+```powershell
+npm ci
+npx vercel@62.2.0 dev -L --listen 5174
+```
+
+The -L flag runs both services without cloud login. The 5174 port leaves the existing 5173 development app available. Root .vercel/ resources are ignored in Git; .vercelignore also excludes local environment files and build outputs from CLI uploads.
+
+GET /api/health checks the routed Express app, not SQL readiness. /preview checks the frontend and assets; /my-skills checks a direct SPA URL. With no cloud credentials the API must deny protected endpoints. The frontend's local Microsoft redirect may still point to 5173; do not claim a Microsoft login test on 5174 unless that exact callback is registered/configured.
+
+## Cloud setup after configuration confirmation
+
+Import utkarshpat/Skill-Management-App in the user's Chrome as one multi-service project. Keep the project root at the repository root, not apps/api or apps/web. Refresh service configuration after the reviewed config commit reaches main. Stay on the existing Hobby plan for personal evaluation; do not start a paid trial or enable paid networking automatically.
+
+Set environment variables through Vercel project settings. Shared project variables must not be copied into frontend output. Only the following are intended for the web build:
+
+- VITE_ENTRA_TENANT_ID, VITE_ENTRA_WEB_CLIENT_ID, VITE_ENTRA_API_CLIENT_ID.
+- VITE_AUTH_REDIRECT_URI: the exact stable deployed HTTPS origin followed by /, or omit it to use window.location.origin + '/'. Never deploy the local 5173 callback value.
+
+API runtime variables:
+
+- NODE_ENV=production; DEV_DIRECT_LOGIN=false (or omitted). Local passwordless test-person login remains loopback-only and must not be widened for hosting.
+- ACCESS_ACCOUNT_ID; ENTRA_TENANT_ID, ENTRA_WEB_CLIENT_ID, ENTRA_API_CLIENT_ID.
+- AZURE_SQL_SERVER, AZURE_SQL_DATABASE; AZURE_SQL_RUNTIME_AUTH=client-secret; AZURE_SQL_CLIENT_ID and secret AZURE_SQL_CLIENT_SECRET. Preserve the restricted SQL runtime identity and procedure-only grants. Vercel is not an Azure managed-identity host.
+- GEMINI_API (secret), with optional AI_PROVIDER/AI_MODEL settings. Never prefix model credentials with VITE_. Other provider settings follow AI_INTEGRATION.md.
+
+Register the stable Vercel HTTPS callback in the Microsoft SPA registration while retaining the existing local callback. Preview domains are separate callbacks; do not add wildcard redirects or connect arbitrary branch previews to the development database. Use production-scoped runtime secrets initially unless a separately approved preview environment exists.
+
+Azure SQL firewall connectivity must be verified from hosted runtime. Vercel Hobby outbound IPs are dynamic; the current laptop firewall allowance alone does not establish hosted connectivity. Do not open the full SQL IPv4 range, remove current rules or enable paid static-IP features automatically. Agree on the concrete network option if the deployment is blocked.
+
+The API's in-memory AI request counters/concurrency locks are per instance, not shared quotas or a guaranteed monetary cap. SQL conversation storage remains durable and actor-scoped. Shared budgets/locks, operational readiness/monitoring and completion of business workflows remain company production work.
+
+## Verification record
+
+Local Vercel CLI 62.2.0 detects both services. After fixing framework entrypoint detection and limiting SPA rewrites, the API health route returns HTTP 200 and the user's Chrome renders /preview with assets and a direct /my-skills login page. Public API endpoints remain authenticated; the disabled demo endpoint returns 404. All 83 checks (5 architecture, 66 API, 12 web), strict types and builds pass. The user confirmed api/web names, public routes, no bindings and project name skill-management-app before deployment. Cloud deployment, Microsoft callback, hosted SQL and live AI smoke checks must be recorded after they actually succeed.
+
+Official references: [Services](https://vercel.com/docs/services), [routing](https://vercel.com/docs/services/routing), [bindings](https://vercel.com/docs/services/bindings), [configuration](https://vercel.com/docs/services/config-reference), [Express entrypoints](https://vercel.com/docs/frameworks/backend/express), [database IP allowlisting](https://vercel.com/kb/guide/how-to-allowlist-deployment-ip-address).
