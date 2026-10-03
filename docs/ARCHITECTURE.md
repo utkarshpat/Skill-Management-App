@@ -71,3 +71,7 @@ npm.cmd run build
 The refactor was verified with architecture guard tests, API/policy tests, strict frontend/backend types and both builds. Live Azure SQL integration tests were not rerun for this source-only refactor; migrations and SQL procedures were unchanged. The existing opt-in `test:organization`, `test:catalogue` and `test:sql` commands remain available with the updated adapter imports.
 
 Own claim drafts now belong to Skills, with domain validation, SQL adapters and authenticated routes; AI consumes the public ClaimsStore contract. Evidence, submission, review and learning are future workflows. Add owned modules when their behavior and authorization are implemented. Company migration still needs approved tenant/runtime identity, network configuration, monitoring, readiness, operational controls and deployment verification. Modular structure alone does not establish production readiness.
+
+### Learning module
+
+The `learning` module owns personal plans and task completion logs, behind its public index. Identity and current effective access are resolved at the HTTP boundary; restricted SQL procedures repeat account/owner/permission checks within the mutation transaction. AI imports only the LearningStore type and receives the store via composition for compact, read-only own learning retrieval. Plans, claims and learning quiz results are separate domains.

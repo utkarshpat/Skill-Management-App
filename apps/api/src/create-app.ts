@@ -9,8 +9,9 @@ import { registerRoutes as organizationRoutes, type HttpDependencies as Organiza
 import { registerRoutes as skillsRoutes, type HttpDependencies as SkillsDependencies } from './modules/skills/routes.js';
 import { registerRoutes as aiRoutes, type HttpDependencies as AiDependencies } from './modules/ai/routes.js';
 import { registerClaimsRoutes, type ClaimsHttpDependencies } from './modules/skills/claims-routes.js';
+import {registerLearningRoutes,type LearningDependencies} from './modules/learning/index.js';
 
-export type AppDependencies = IdentityDependencies & AccessDependencies & OrganizationDependencies & SkillsDependencies & AiDependencies & ClaimsHttpDependencies;
+export type AppDependencies = IdentityDependencies & AccessDependencies & OrganizationDependencies & SkillsDependencies & AiDependencies & ClaimsHttpDependencies & LearningDependencies;
 
 export function createApp(dependencies?: AppDependencies, options: { developmentStore?: AccessStore; hostedDemo?: HostedDemoConfig } = {}) {
   const app = express();
@@ -30,6 +31,7 @@ export function createApp(dependencies?: AppDependencies, options: { development
   organizationRoutes(app, dependencies);
   skillsRoutes(app, dependencies, store, demo);
   registerClaimsRoutes(app, dependencies, store, demo);
+  registerLearningRoutes(app, dependencies, store, demo);
   aiRoutes(app, dependencies, store, demo);
   // Liveness only: this must never imply SQL or organizational SSO is ready.
   app.get('/api/health', (_req, res) => {

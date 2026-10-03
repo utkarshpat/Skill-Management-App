@@ -1,4 +1,5 @@
 import { AccessError } from '../../shared/errors.js';
+import type {LearningStore} from '../learning/index.js';
 import type { AccessStore } from '../access/index.js';
 import type { ClaimsStore, CatalogueStore } from '../skills/index.js';
 import { ToolRegistry, type ToolDefinition } from './tool-registry.js';
@@ -28,7 +29,7 @@ export class AssistantService {
  private limits=new Map<string,{at:number;count:number}>();private active=new Set<string>();private daily={day:'',count:0};
  private registry:ToolRegistry;
  private memory=new ConversationMemory();
- constructor(private store:AccessStore,organization:OrganizationStore|undefined,private provider:Provider|undefined,claims?:ClaimsStore,private usageObserver?:(usage:ReturnType<UsageMeter['snapshot']>)=>void,catalogue?:CatalogueStore,private conversations?:ConversationsStore) { this.registry=new ToolRegistry(store,organization,claims,catalogue); }
+ constructor(private store:AccessStore,organization:OrganizationStore|undefined,private provider:Provider|undefined,claims?:ClaimsStore,private usageObserver?:(usage:ReturnType<UsageMeter['snapshot']>)=>void,catalogue?:CatalogueStore,private conversations?:ConversationsStore,learning?:LearningStore) { this.registry=new ToolRegistry(store,organization,claims,catalogue,learning); }
  async history(actor:string,id?:string,remove=false){
   const state=await this.store.snapshot(),person=state.people.find(item=>item.id===actor);
   if(!person||!this.registry.permits(state,person,'own_profile'))throw new AccessError(403,'Assistant access is not assigned.');

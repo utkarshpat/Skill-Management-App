@@ -1,6 +1,7 @@
 import { AccessError } from '../../shared/errors.js';
 import { can, canReviewAssigned, type AccessStore, type LocalAccessState, type LocalPerson } from '../access/index.js';
 import type { OrganizationStore } from '../organization/index.js';
+import type {LearningStore} from '../learning/index.js';
 import type { ClaimsStore, CatalogueStore } from '../skills/index.js';
 import { assistantCapabilities } from './capabilities.js';
 
@@ -28,7 +29,7 @@ const searchSchema={type:'object',additionalProperties:false,properties:{search:
 // workspace, SQL query, URL or write action; the authenticated application supplies these.
 export class ToolRegistry {
   private entries=new Map<string,RegisteredTool>();
-  constructor(private access:AccessStore, organization?:OrganizationStore, claims?:ClaimsStore,catalogue?:CatalogueStore) {
+  constructor(private access:AccessStore, organization?:OrganizationStore, claims?:ClaimsStore,catalogue?:CatalogueStore,learning?:LearningStore) {
     this.entries.set('workspace_guide',{
       definition:definition('workspace_guide','Get current permitted pages, action guides and explicitly pending workflows. Role labels never authorize actions.'),
       permission:()=>true,source:{label:'Your permitted workspace actions',url:'/workspace'},
@@ -43,6 +44,11 @@ export class ToolRegistry {
       definition:definition('workspace_summary','Read workspace people, role and department counts, if administration is permitted.'),
       permission:(state,person)=>can(state,person,'permissions.manage')&&can(state,person,'users.manage'),source:{label:'Workspace summary',url:'/access?view=overview'},
       read:async({state})=>{const structure=await organization.snapshot();return {people:state.people.length,activePeople:state.people.filter(item=>item.active).length,roles:state.roles.length,departments:structure.nodes.filter(node=>node.active&&node.kind==='DEPARTMENT').length,source:'Workspace summary'};},
+    });
+    if(learning)this.entries.set('my_learning',{
+      definition:definition('my_learning','Read a compact summary of your own learning plans and pending tasks. Cannot select another person, log completion or save a plan.'),
+      permission:(state,person)=>can(state,person,'learning.view',true),source:{label:'Your learning plans',url:'/learning'},
+      read:async({person})=>{const result=await learning.read(person.id);return {totalPlans:result.plans.length,canManage:result.canManage,plans:result.plans.slice(0,5).map(plan=>({title:plan.title,status:plan.status,timezone:plan.timezone,targetDate:plan.targetDate,dailyMinutes:plan.dailyMinutes,completed:plan.tasks.filter(task=>task.completedAt).length,totalTasks:plan.tasks.length,pendingTasks:plan.tasks.filter(task=>!task.completedAt).slice(0,5).map(task=>({title:task.title,plannedDate:task.plannedDate,estimatedMinutes:task.estimatedMinutes}))})),hasMore:result.plans.length>5,source:'Your learning plans'};},
     });
     if(claims)this.entries.set('my_skills',{
       definition:definition('my_skills','Read the signed-in person’s first page of self-assessed skill drafts. Drafts are unverified; no other person can be selected.'),

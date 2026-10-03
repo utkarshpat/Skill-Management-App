@@ -19,7 +19,8 @@
     "test:claims": "node --env-file-if-exists=.env --import tsx test/claims.integration.ts",
     "test:conversations": "node --env-file-if-exists=.env --import tsx test/conversations.integration.ts",
     "catalogue:seed": "node --env-file-if-exists=.env --import tsx src/catalogue-seed-cli.ts",
-    "test:framework": "node --env-file-if-exists=.env --import tsx test/framework.integration.ts"
+    "test:framework": "node --env-file-if-exists=.env --import tsx test/framework.integration.ts",
+    "test:learning": "node --env-file-if-exists=.env --import tsx test/learning.integration.ts"
   },
   "dependencies": {
     "@azure/identity": "4.13.3",

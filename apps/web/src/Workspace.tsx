@@ -7,16 +7,17 @@ import { NavigationDrawer } from './NavigationDrawer';
 import { NavbarAccount } from './NavbarAccount';
 import {SkillReviews} from './SkillReviews';
 import { MySkills } from './MySkills';
+import {Learning} from './Learning';
 import { SkillCatalogue } from './SkillCatalogue';
 
 export interface WorkspaceState {
   person: { id: string; displayName: string; employeeCode: string; roles: string[] };
   authentication: 'microsoft' | 'local-demo';
-  capabilities: { ownProfile: boolean; ownSkills: boolean; claimSkills: boolean; catalogue: boolean; administration: boolean; manageCatalogue: boolean; reviewSkills?:boolean };
-  upcoming: { id: string; label: string; assigned: boolean; implemented: false }[];
+  capabilities: { ownProfile: boolean; ownSkills: boolean; claimSkills: boolean; catalogue: boolean; administration: boolean; manageCatalogue: boolean; reviewSkills?:boolean; learning?:boolean };
+  upcoming: { id: string; label: string; assigned: boolean; implemented: boolean }[];
 }
-type View = 'overview' | 'profile' | 'my-skills' | 'skills' | 'skill-reviews';
-const currentView = (pathname: string): View => pathname === '/skill-reviews' ? 'skill-reviews' : pathname === '/profile' ? 'profile' : pathname === '/my-skills' ? 'my-skills' : pathname === '/skills' ? 'skills' : 'overview';
+type View = 'learning' | 'overview' | 'profile' | 'my-skills' | 'skills' | 'skill-reviews';
+const currentView = (pathname: string): View => pathname === '/learning' ? 'learning' : pathname === '/skill-reviews' ? 'skill-reviews' : pathname === '/profile' ? 'profile' : pathname === '/my-skills' ? 'my-skills' : pathname === '/skills' ? 'skills' : 'overview';
 
 export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{embedded?:boolean;actionsContainer?:HTMLDivElement|null;initialWorkspace?:WorkspaceState}) {
   const { pathname } = useLocation(), navigate = useNavigate();
@@ -45,6 +46,7 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
     { id: 'overview', label: 'Dashboard', href: '/workspace', icon: LayoutDashboard, visible: true },
     { id: 'profile', label: 'My profile', href: '/profile', icon: UserRound, visible: state?.capabilities.ownProfile },
     { id: 'my-skills', label: 'My skills', href: '/my-skills', icon: Compass, visible: state?.capabilities.ownSkills },
+    {id:'learning',label:'Learning & development',href:'/learning',icon:BookOpen,visible:state?.capabilities.learning},
     { id: 'skills', label: 'Skill catalogue', href: '/skills', icon: BookOpen, visible: state?.capabilities.catalogue && (state.capabilities.manageCatalogue || state.capabilities.reviewSkills) },
   ];
   const permitted = view === 'overview' || (view === 'skills' ? state?.capabilities.catalogue : sections.some(section => section.id === view && section.visible));
@@ -62,6 +64,7 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
       {view==='overview'&&<PersonalDashboard workspace={state}/>}
       {view==='profile'&&<PersonalProfile workspace={state}/>}
       {view==='my-skills'&&<MySkills actionsContainer={actionsContainer??null}/>}
+      {view==='learning'&&<Learning actionsContainer={actionsContainer}/>}
       {view==='skill-reviews'&&<SkillReviews/>}
       {view==='skills'&&<SkillCatalogue actionsContainer={actionsContainer??null}/>}
     </>}
@@ -84,6 +87,7 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
         {view === 'overview' && <PersonalDashboard workspace={state} />}
         {view === 'profile' && <PersonalProfile workspace={state}/>}
         {view === 'my-skills' && <MySkills actionsContainer={actions} />}
+        {view === 'learning' && <Learning actionsContainer={actions}/>}
         {view === 'skill-reviews' && <SkillReviews/>}
         {view === 'skills' && <SkillCatalogue actionsContainer={actions} />}
       </>}
@@ -113,6 +117,14 @@ function PersonalDashboard({ workspace }: { workspace: WorkspaceState }) {
         {skills.claims.length ? <ul className="personal-skill-list">{skills.claims.slice(0, 4).map(skill => <li key={skill.id}><div><strong>{skill.skillName}</strong><span>{skill.levelName}</span></div><span className="claim-status">{skill.status.replaceAll('_',' ')}</span></li>)}</ul> : <p className="workspace-muted">Start with a published skill and describe your experience.</p>}
       </>}
     </section>}
+    {workspace.capabilities.learning&&<LearningOverview/>}
     <section className="profile-panel workspace-identity"><div className="panel-title"><h2>My workspace</h2>{workspace.capabilities.ownProfile && <Link className="admin-text-button" to="/profile">My profile<ChevronRight size={16} /></Link>}</div><p>{workspace.person.roles.join(' · ') || 'No role assigned'}</p>{!workspace.capabilities.ownSkills && <p className="workspace-muted">Personal skill access is not assigned to this account.</p>}{workspace.capabilities.administration && <Link className="secondary-button" to="/access"><ShieldCheck size={17} />Open administration</Link>}</section>
   </div>;
+}
+
+function LearningOverview(){
+ const [summary,setSummary]=useState<{plans:{status:string;tasks:{completedAt?:string;plannedDate:string;title:string}[]}[]}>(),[error,setError]=useState(''),[attempt,setAttempt]=useState(0);
+ useEffect(()=>{const controller=new AbortController();authenticatedFetch('/api/learning',{signal:controller.signal}).then(async response=>{if(!response.ok)throw Error('Learning summary could not be loaded.');return response.json();}).then(value=>{if(!controller.signal.aborted){setSummary(value);setError('');}}).catch(e=>{if(!controller.signal.aborted)setError(e.message);});return()=>controller.abort();},[attempt]);
+ const active=summary?.plans.filter(p=>p.status==='ACTIVE')??[],pending=active.flatMap(p=>p.tasks).filter(t=>!t.completedAt).sort((a,b)=>a.plannedDate.localeCompare(b.plannedDate));
+ return <section className="profile-panel"><div className="panel-title"><h2>My learning</h2><Link className="secondary-button" to="/learning">Open learning<ChevronRight size={16}/></Link></div>{error?<p role="alert">{error} <button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></p>:!summary?<p role="status">Loading learning…</p>:<><p className="personal-skill-total"><strong>{active.length}</strong><span>active {active.length===1?'plan':'plans'}</span></p>{pending.length?<p>Next: <strong>{pending[0].title}</strong> · {pending[0].plannedDate}</p>:<p>Break your next learning goal into daily tasks and track progress.</p>}</>}</section>;
 }

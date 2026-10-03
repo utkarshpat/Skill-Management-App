@@ -64,3 +64,19 @@ The following includes explicit requested features and proposed behavior to make
 5. Build the learning calendar, tracking, streak, backlog/recovery and assessments as one usable workflow.
 
 Requests/incidents remain a separate planned module documented in REQUESTS_AND_INCIDENTS.md: visible recipient, configured routing, approval, need-more-information, assignment, resolution, comments, timelines and real event notifications.
+
+## Implemented employee learning workspace (2026-10-03)
+
+`/learning` now provides Today, a month calendar with date selection, Backlog and Plans. Navigation requires current `learning.view` for the signed-in person; edits independently require `learning.manage`. Role names grant no additional access. Both Microsoft and the approved production demo session use the same actor-bound API.
+
+A three-step modal creates a personal goal with daily available minutes and 1–60 ordered tasks, one task per calendar day, in the browser's IANA timezone. Target date is derived from the last task. This initial scheduler includes weekends; configurable rest days and multiple tasks per day in the creation UI are future work. Missing tasks remain in backlog until explicitly completed or rescheduled. Rescheduling checks the plan's daily remaining capacity and target date. Plans support Pause, Resume and irreversible Archive with a review dialog; archived logs stay readable.
+
+Log completion stores actual minutes (1–480), optional notes (2,000 characters), and a server-owned UTC completion timestamp. A task can be logged once. Streaks use distinct actual completion days in the viewer's browser timezone, continuing through today or yesterday; opening a task, AI output or future scheduling never counts. Days without completion break the streak. Completion is self-reported learning activity and does not verify skills.
+
+Persistence: `learning` module, `GET/POST /api/learning`, migrations 014–015. Plans are restricted to account and authenticated owner; runtime has procedure execution permission, no table access. Current permissions and workspace status are checked again inside a transaction. Record revisions reject stale/double writes; audit and workspace revision changes commit with the record. Audit contains plan ID/status/revision, not private goals or notes. Each person is capped at 50 retained plans, 60 tasks per plan; bounded payload capacity allows all valid completion notes. Creation request is still capped at 64 KiB. There is no delete or automatic history cleanup.
+
+AI `my_learning` is a read-only tool: at most five recent plans and five pending tasks per plan; no actor parameter, raw notes, SQL or write tool. Authority is rechecked before and after retrieval. Permission-specific guides describe the actual UI. AI plan drafting currently remains conversational; no approved-save proposal is connected for learning.
+
+Not implemented: stored quiz/attempt history, weekly calendar, plan-specific timezone selector, rest days, file evidence uploads, automatic recovery/rebalancing, reminder notifications, AI learning write proposals, learning analytics across teams. Requests & Incidents remains a separate planned module; no inactive navigation item is exposed.
+
+Validation: HTTP/unit tests cover forged completion/owner fields, invalid dates, daily capacity and live permission revocation. Calendar tests cover duplicate completion days, gaps, leap/month/year boundaries and timezone conversion. `test/learning.integration.ts` checks live Azure SQL runtime ownership, CAS, transitions, double completion, server timestamps and direct-table denial using rollback-only fixtures.

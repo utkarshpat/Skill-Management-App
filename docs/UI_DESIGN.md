@@ -9,3 +9,7 @@ My Profile uses an identity card with the actual employee ID, sign-in method and
 `workspace-pages.css` applies shared surface, border, accent, success and critical tokens after the theme styles. Directory, catalogue, review, audit and assignment tables use readable 14px body text and 12px column headings. Forms retain the existing paged dialogs, explicit save actions and short-screen/mobile behavior. Organization panels retain visual-tree editing and zoom controls.
 
 At narrow widths, toolbars wrap, profile detail columns stack and tables scroll horizontally without widening the document. Assignment identity columns stay visible while exploring the matrix. Light/dark surfaces share the same layout. No sample figures or unsupported actions are introduced.
+
+### Employee learning workspace
+
+Learning uses the same typography, theme tokens and panel spacing as My Skills. Four views separate scheduled work, dates, missed work and goals. Create a plan opens a three-step desktop modal; completion and rescheduling use short dialogs. No nested desktop form scroll is introduced; shared modal behavior permits scrolling on phones. New plan is a page action in the navbar. Progress, minutes and streaks are calculated from stored data, with no fabricated metrics.

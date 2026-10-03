@@ -13,7 +13,7 @@ test('workspace capabilities use permissions, never role names; every preset get
     assert.equal(workspace.capabilities.ownSkills, true, preset.name);
     assert.equal(workspace.capabilities.claimSkills, true, preset.name);
     assert.equal(workspace.capabilities.administration, false, preset.name);
-    assert.ok(workspace.upcoming.some(item => item.id === 'learning' && !item.implemented));
+    assert.ok(workspace.upcoming.some(item => item.id === 'learning' && item.implemented));
     // Proposed TEAM/DEPARTMENT/CAPABILITY scopes must never become org-wide grants.
     assert.ok(!workspace.upcoming.some(item => item.id === 'assessment'));
     state.roles[0].name = 'Super Admin';
