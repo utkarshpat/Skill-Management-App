@@ -8,7 +8,7 @@ import { NavbarAccount } from './NavbarAccount';
 import { MySkills } from './MySkills';
 import { SkillCatalogue } from './SkillCatalogue';
 
-interface WorkspaceState {
+export interface WorkspaceState {
   person: { id: string; displayName: string; employeeCode: string; roles: string[] };
   authentication: 'microsoft' | 'local-demo';
   capabilities: { ownProfile: boolean; ownSkills: boolean; claimSkills: boolean; catalogue: boolean; administration: boolean; manageCatalogue: boolean };
@@ -17,13 +17,14 @@ interface WorkspaceState {
 type View = 'overview' | 'profile' | 'my-skills' | 'skills';
 const currentView = (pathname: string): View => pathname === '/profile' ? 'profile' : pathname === '/my-skills' ? 'my-skills' : pathname === '/skills' ? 'skills' : 'overview';
 
-export function Workspace() {
+export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{embedded?:boolean;actionsContainer?:HTMLDivElement|null;initialWorkspace?:WorkspaceState}) {
   const { pathname } = useLocation(), navigate = useNavigate();
-  const [state, setState] = useState<WorkspaceState>();
+  const [state, setState] = useState<WorkspaceState|undefined>(initialWorkspace);
   const [error, setError] = useState(''), [attempt, setAttempt] = useState(0);
   const [navigationOpen, setNavigationOpen] = useState(false), [actions, setActions] = useState<HTMLDivElement | null>(null);
   const view = currentView(pathname);
   useEffect(() => {
+    if(initialWorkspace&&attempt===0){setState(initialWorkspace);return;}
     const controller = new AbortController();
     setState(undefined); setError('');
     authenticatedFetch('/api/workspace', { signal: controller.signal }).then(async response => {
@@ -33,7 +34,7 @@ export function Workspace() {
       setState(body);
     }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Your workspace could not be loaded.'); });
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt,initialWorkspace]);
   useEffect(() => { if (pathname === '/' && state?.capabilities.administration) navigate('/access', { replace: true }); }, [pathname, state, navigate]);
   useEffect(() => { setNavigationOpen(false); window.scrollTo({ top: 0 }); }, [pathname]);
   const name = state?.person.displayName ?? 'Workspace member';
@@ -50,6 +51,17 @@ export function Workspace() {
     <p className="nav-caption">MY WORKSPACE</p>
     <nav aria-label="Personal workspace sections">{sections.filter(section => section.visible).map(({ id, label, href, icon: Icon }) => <Link className="workspace-nav-link" key={id} to={href} aria-current={view === id ? 'page' : undefined} onClick={close}><Icon size={19} />{label}{view === id && <ChevronRight size={15} />}</Link>)}</nav>
     {state?.capabilities.administration && <Link className="workspace-context-link" to="/access"><ShieldCheck size={18} />Administration</Link>}
+  </>;
+  if(embedded)return <>
+    {error&&<p role="alert">{error}<button className="secondary-button" onClick={()=>setAttempt(value=>value+1)}>Retry</button></p>}
+    {!state&&!error&&<p role="status">Loading your workspace…</p>}
+    {state&&!permitted&&<section className="profile-panel"><h2>Access is not assigned</h2><p>Your current permissions do not include this page.</p></section>}
+    {state&&permitted&&<>
+      {view==='overview'&&<PersonalDashboard workspace={state}/>}
+      {view==='profile'&&<PersonalProfile workspace={state}/>}
+      {view==='my-skills'&&<MySkills actionsContainer={actionsContainer??null}/>}
+      {view==='skills'&&<SkillCatalogue actionsContainer={actionsContainer??null}/>}
+    </>}
   </>;
   return <div className="admin-shell personal-workspace">
     <a className="skip-link" href="#workspace-main">Skip to content</a>
@@ -68,13 +80,15 @@ export function Workspace() {
       {state && !permitted && <section className="profile-panel"><h2>Access is not assigned</h2><p>Your current permissions do not include this page.</p><Link className="secondary-button" to="/workspace">Return to dashboard</Link></section>}
       {state && permitted && <>
         {view === 'overview' && <PersonalDashboard workspace={state} />}
-        {view === 'profile' && <section className="profile-panel"><div className="panel-title"><h2>{state.person.displayName}</h2><span className="claim-status">Active member</span></div><dl className="profile-details"><div><dt>Employee code</dt><dd>{state.person.employeeCode}</dd></div><div><dt>Assigned roles</dt><dd>{state.person.roles.join(', ') || 'None assigned'}</dd></div><div><dt>Sign-in</dt><dd>{state.authentication === 'local-demo' ? 'Temporary development login' : 'Microsoft'}</dd></div></dl></section>}
+        {view === 'profile' && <PersonalProfile workspace={state}/>}
         {view === 'my-skills' && <MySkills actionsContainer={actions} />}
         {view === 'skills' && <SkillCatalogue actionsContainer={actions} />}
       </>}
     </main></div>
   </div>;
 }
+
+function PersonalProfile({workspace:state}:{workspace:WorkspaceState}){return <section className="profile-panel"><div className="panel-title"><h2>{state.person.displayName}</h2><span className="claim-status">Active member</span></div><dl className="profile-details"><div><dt>Employee code</dt><dd>{state.person.employeeCode}</dd></div><div><dt>Assigned roles</dt><dd>{state.person.roles.join(', ')||'None assigned'}</dd></div><div><dt>Sign-in</dt><dd>{state.authentication==='local-demo'?'Temporary development login':'Microsoft'}</dd></div></dl></section>;}
 
 function PersonalDashboard({ workspace }: { workspace: WorkspaceState }) {
   const [skills, setSkills] = useState<{ total: number; claims: { id: string; skillName: string; levelName: string }[] }>();

@@ -1,10 +1,11 @@
-import { Workspace } from './Workspace';
+import { Workspace, type WorkspaceState } from './Workspace';
+import {administrationShellFor} from './WorkspaceNavigation';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AccessAdmin } from './AccessAdmin';
 import { AssistantWidget } from './AssistantWidget';
 import { ThemeSwitcher } from './Theme';
-import { initializeAuth, signedIn, signIn, signInConfigured, refreshDevelopmentLogin } from './auth';
+import { authenticatedFetch, initializeAuth, signedIn, signIn, signInConfigured, refreshDevelopmentLogin } from './auth';
 import { DevelopmentLogin } from './DevelopmentLogin';
 import { BookOpen, BriefcaseBusiness, Compass, Layers3, ListChecks, Users } from 'lucide-react';
 
@@ -21,12 +22,15 @@ export function App() {
   const { pathname } = useLocation();
   const [session, setSession] = useState<'loading' | 'anonymous' | 'signed-in' | 'error'>('loading');
   const [sessionNotice,setSessionNotice]=useState('');
+  const [workspace,setWorkspace]=useState<WorkspaceState>(),[workspaceError,setWorkspaceError]=useState(''),[workspaceAttempt,setWorkspaceAttempt]=useState(0);
+  useEffect(()=>{setWorkspace(undefined);setWorkspaceError('');if(session!=='signed-in')return;const controller=new AbortController();authenticatedFetch('/api/workspace',{signal:controller.signal}).then(async response=>{if(!response.ok)throw Error('Workspace navigation could not be loaded.');const body=await response.json();if(!controller.signal.aborted)setWorkspace(body);}).catch(error=>{if(!controller.signal.aborted)setWorkspaceError(error.message);});return()=>controller.abort();},[session,workspaceAttempt]);
   useEffect(()=>{let active=true;const expired=()=>{setSessionNotice('Your development session expired or the API restarted. Choose a test person to open a new demo session.');setSession('loading');void refreshDevelopmentLogin().then(()=>{if(active)setSession('anonymous');});};window.addEventListener('development-session-expired',expired);return()=>{active=false;window.removeEventListener('development-session-expired',expired);};},[]);
   useEffect(() => { let active = true; initializeAuth().then(() => { if (active) setSession(signedIn() ? 'signed-in' : 'anonymous'); }).catch(() => { if (active) setSession('error'); }); return () => { active = false; }; }, []);
   if (pathname === '/preview') return <Overview />;
   if (session === 'loading') return <div className="session-loading" role="status">Preparing your workspace…</div>;
-  if (pathname === '/access' && session === 'signed-in') return <><AccessAdmin /><AssistantWidget /></>;
-  return session === 'signed-in' ? <><Workspace /><AssistantWidget /></> : <Welcome authError={session === 'error'} sessionNotice={sessionNotice} onDevelopmentSessionReady={()=>{setSessionNotice('');setSession('signed-in');}} />;
+  if(session==='signed-in'&&!workspace)return <div className="session-loading" role="status">{workspaceError?<>{workspaceError}<button onClick={()=>setWorkspaceAttempt(value=>value+1)}>Retry</button></>:'Preparing workspace navigation…'}</div>;
+  if (session==='signed-in'&&administrationShellFor(pathname,Boolean(workspace?.capabilities.administration)))return <><AccessAdmin personalPath={pathname==='/access'?undefined:pathname} personalCapabilities={workspace?.capabilities} workspaceContext={workspace}/><AssistantWidget /></>;
+  return session === 'signed-in' ? <><Workspace initialWorkspace={workspace}/><AssistantWidget /></> : <Welcome authError={session === 'error'} sessionNotice={sessionNotice} onDevelopmentSessionReady={()=>{setSessionNotice('');setSession('signed-in');}} />;
 }
 
 function Welcome({ authError,sessionNotice,onDevelopmentSessionReady }: { authError: boolean;sessionNotice:string;onDevelopmentSessionReady:()=>void }) {
