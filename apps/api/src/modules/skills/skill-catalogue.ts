@@ -3,7 +3,7 @@ import { AccessError } from '../../shared/errors.js';
 
 export type SkillStatus='DRAFT'|'PUBLISHED'|'ARCHIVED';
 export interface SkillLevel { rank:number; name:string; description:string }
-export interface CatalogueSkill { id:string; name:string; category:string; description:string; status:SkillStatus; levels:SkillLevel[] }
+export interface CatalogueSkill { businessCode?:string|null; definitionRevision?:number; id:string; name:string; category:string; description:string; status:SkillStatus; levels:SkillLevel[] }
 export interface CatalogueQuery { search:string; status:SkillStatus|''; page:number }
 export interface CatalogueState { revision:number; canManage:boolean; total:number; page:number; pageSize:number; skills:CatalogueSkill[] }
 export interface CatalogueStore { read(actorId:string,query:CatalogueQuery):Promise<CatalogueState>; save(actorId:string,input:unknown):Promise<void> }

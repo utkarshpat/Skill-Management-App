@@ -1,0 +1,1995 @@
+{
+  "version": 1,
+  "framework": {
+    "key": "enterprise-v1",
+    "levels": [
+      {
+        "rank": 1,
+        "name": "Awareness",
+        "description": "Understands concepts and terminology; participates in guided work."
+      },
+      {
+        "rank": 2,
+        "name": "Beginner",
+        "description": "Completes simple tasks independently."
+      },
+      {
+        "rank": 3,
+        "name": "Intermediate",
+        "description": "Handles standard professional tasks independently."
+      },
+      {
+        "rank": 4,
+        "name": "Advanced",
+        "description": "Solves complex problems, reviews work and guides others."
+      },
+      {
+        "rank": 5,
+        "name": "Expert",
+        "description": "Leads architecture, standards, strategy and advanced mentoring."
+      }
+    ]
+  },
+  "skills": [
+    {
+      "code": "SKL-001",
+      "name": "Java",
+      "category": "Programming",
+      "description": "Development of applications and services using the Java programming language and JVM ecosystem.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands Java syntax, basic programming concepts and object-oriented terminology."
+        },
+        {
+          "rank": 2,
+          "description": "Can develop simple Java programs using OOP, collections, exceptions and basic debugging."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently develop and maintain standard Java applications and services."
+        },
+        {
+          "rank": 4,
+          "description": "Can solve complex Java problems, optimize applications, review code and mentor developers."
+        },
+        {
+          "rank": 5,
+          "description": "Can define Java architecture, engineering standards and advanced solutions for complex systems."
+        }
+      ]
+    },
+    {
+      "code": "SKL-002",
+      "name": "Python",
+      "category": "Programming",
+      "description": "Development of scripts, applications and automation using Python and its ecosystem.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands Python syntax, data structures, modules and error handling; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving Python syntax, data structures, modules and error handling, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Python applications and automation, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Python applications and automation, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Python applications and automation, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-003",
+      "name": "JavaScript",
+      "category": "Programming",
+      "description": "Development of interactive applications using JavaScript in browser and server environments.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands JavaScript syntax, asynchronous execution, modules and runtime behavior; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving JavaScript syntax, asynchronous execution, modules and runtime behavior, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain JavaScript applications, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in JavaScript applications, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for JavaScript applications, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-004",
+      "name": "TypeScript",
+      "category": "Programming",
+      "description": "Development of maintainable applications using TypeScript's static type system.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands TypeScript types, interfaces, generics and compiler checks; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving TypeScript types, interfaces, generics and compiler checks, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain typed application components, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in typed application components, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for typed application components, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-005",
+      "name": "C++",
+      "category": "Programming",
+      "description": "Development of native software using C++ with explicit attention to memory, performance and correctness.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands C++ object lifetime, pointers, templates and standard containers; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving C++ object lifetime, pointers, templates and standard containers, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain native C++ components, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in native C++ components, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for native C++ components, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-006",
+      "name": "C#",
+      "category": "Programming",
+      "description": "Development of applications and services using C# and the .NET ecosystem.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands C# types, LINQ, asynchronous programming and exception handling; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving C# types, LINQ, asynchronous programming and exception handling, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain C# applications and services, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in C# applications and services, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for C# applications and services, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-007",
+      "name": "Go",
+      "category": "Programming",
+      "description": "Development of applications and services using Go with concurrency and operational reliability.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands Go interfaces, error handling, goroutines and channels; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving Go interfaces, error handling, goroutines and channels, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Go applications and services, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Go applications and services, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Go applications and services, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-008",
+      "name": "Kotlin",
+      "category": "Programming",
+      "description": "Development of applications using Kotlin with safe, maintainable JVM or platform code.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands Kotlin null safety, collections, interoperability and coroutines; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving Kotlin null safety, collections, interoperability and coroutines, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Kotlin application components, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Kotlin application components, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Kotlin application components, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-009",
+      "name": "HTML & CSS",
+      "category": "Frontend Development",
+      "description": "Creation of semantic, accessible web interfaces using HTML and CSS.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands semantic HTML, CSS layout, forms and accessibility; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving semantic HTML, CSS layout, forms and accessibility, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain accessible web interfaces, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in accessible web interfaces, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for accessible web interfaces, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-010",
+      "name": "React",
+      "category": "Frontend Development",
+      "description": "Development of component-based web interfaces using React.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands React components, state, effects and component testing; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving React components, state, effects and component testing, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain React application interfaces, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in React application interfaces, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for React application interfaces, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-011",
+      "name": "Next.js",
+      "category": "Frontend Development",
+      "description": "Development of web applications using Next.js rendering, routing and server capabilities.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands Next.js routing, rendering boundaries, data loading and caching; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving Next.js routing, rendering boundaries, data loading and caching, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Next.js web applications, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Next.js web applications, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Next.js web applications, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-012",
+      "name": "Angular",
+      "category": "Frontend Development",
+      "description": "Development of structured web applications using Angular.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands Angular components, dependency injection, forms and routing; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving Angular components, dependency injection, forms and routing, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Angular application features, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Angular application features, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Angular application features, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-013",
+      "name": "Vue.js",
+      "category": "Frontend Development",
+      "description": "Development of reactive web applications using Vue.js.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands Vue components, reactivity, composition and routing; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving Vue components, reactivity, composition and routing, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Vue application features, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Vue application features, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Vue application features, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-014",
+      "name": "Responsive Web Design",
+      "category": "Frontend Development",
+      "description": "Design and implementation of interfaces that adapt to screen size, input mode and accessibility needs.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands responsive layouts, breakpoints, adaptive navigation and touch targets; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving responsive layouts, breakpoints, adaptive navigation and touch targets, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain responsive interfaces across supported devices, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in responsive interfaces across supported devices, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for responsive interfaces across supported devices, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-015",
+      "name": "Node.js",
+      "category": "Backend & API",
+      "description": "Development of backend applications using the Node.js runtime.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands event-loop behavior, asynchronous I/O, modules and error handling; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving event-loop behavior, asynchronous I/O, modules and error handling, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Node.js backend services, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Node.js backend services, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Node.js backend services, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-016",
+      "name": "Spring Boot",
+      "category": "Backend & API",
+      "description": "Development of Java services using Spring Boot configuration and application capabilities.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands dependency injection, configuration, persistence and service testing; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving dependency injection, configuration, persistence and service testing, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Spring Boot services, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Spring Boot services, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Spring Boot services, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-017",
+      "name": "REST API Development",
+      "category": "Backend & API",
+      "description": "Implementation of HTTP APIs with predictable resource behavior and operational safeguards.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands HTTP methods, status codes, validation and pagination; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving HTTP methods, status codes, validation and pagination, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain tested REST endpoints, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in tested REST endpoints, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for tested REST endpoints, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-018",
+      "name": "API Design",
+      "category": "Backend & API",
+      "description": "Design of consistent API contracts that support consumers and evolve safely.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands resource models, contract schemas, versioning and compatibility; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving resource models, contract schemas, versioning and compatibility, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain documented API contracts, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in documented API contracts, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for documented API contracts, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-019",
+      "name": "Authentication & Authorization",
+      "category": "Backend & API",
+      "description": "Implementation of identity verification and permission enforcement across application boundaries.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands identity protocols, sessions, access control and least privilege; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving identity protocols, sessions, access control and least privilege, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain tested authentication and authorization flows, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in tested authentication and authorization flows, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for tested authentication and authorization flows, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-020",
+      "name": "Microservices Architecture",
+      "category": "Backend & API",
+      "description": "Design of independently deployed services with explicit boundaries and reliable communication.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands service boundaries, distributed failure, contracts and observability; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving service boundaries, distributed failure, contracts and observability, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain coherent service designs, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in coherent service designs, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for coherent service designs, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-021",
+      "name": "API Security",
+      "category": "Backend & API",
+      "description": "Protection of API endpoints, identities and data against abuse and unauthorized access.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands input validation, permission checks, rate limits and secure credentials; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving input validation, permission checks, rate limits and secure credentials, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain API security controls, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in API security controls, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for API security controls, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-022",
+      "name": "SQL",
+      "category": "Database & Data",
+      "description": "Use of relational query languages to retrieve, transform and maintain data correctly.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands joins, aggregation, constraints and transactions; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving joins, aggregation, constraints and transactions, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain correct relational queries, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in correct relational queries, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for correct relational queries, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-023",
+      "name": "PostgreSQL",
+      "category": "Database & Data",
+      "description": "Development and operation of relational data solutions using PostgreSQL.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands PostgreSQL schemas, indexing, transactions and execution plans; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving PostgreSQL schemas, indexing, transactions and execution plans, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain PostgreSQL data solutions, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in PostgreSQL data solutions, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for PostgreSQL data solutions, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-024",
+      "name": "MySQL",
+      "category": "Database & Data",
+      "description": "Development and operation of relational data solutions using MySQL.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands MySQL schema design, indexing, transactions and execution plans; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving MySQL schema design, indexing, transactions and execution plans, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain MySQL data solutions, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in MySQL data solutions, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for MySQL data solutions, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-025",
+      "name": "Azure SQL",
+      "category": "Database & Data",
+      "description": "Development and operation of data solutions using Azure SQL with secure access and resource awareness.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands Azure SQL access, relational queries, deployment and monitoring; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving Azure SQL access, relational queries, deployment and monitoring, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Azure SQL data solutions, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Azure SQL data solutions, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Azure SQL data solutions, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-026",
+      "name": "Database Design",
+      "category": "Database & Data",
+      "description": "Design of data storage structures that preserve integrity and support application requirements.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands normalization, keys, relationships and schema evolution; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving normalization, keys, relationships and schema evolution, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain relational database schemas, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in relational database schemas, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for relational database schemas, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-027",
+      "name": "Query Optimization",
+      "category": "Database & Data",
+      "description": "Analysis and improvement of query performance while preserving correctness.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands execution plans, index design, cardinality and measurement; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving execution plans, index design, cardinality and measurement, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain measured query performance improvements, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in measured query performance improvements, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for measured query performance improvements, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-028",
+      "name": "Data Modeling",
+      "category": "Database & Data",
+      "description": "Creation of conceptual and logical data models that represent business meaning accurately.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands entities, relationships, cardinality and data semantics; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving entities, relationships, cardinality and data semantics, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain validated business data models, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in validated business data models, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for validated business data models, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-029",
+      "name": "Microsoft Azure",
+      "category": "Cloud & DevOps",
+      "description": "Design and operation of cloud solutions using Microsoft Azure services.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands Azure resources, identities, networking and cost controls; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving Azure resources, identities, networking and cost controls, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Azure cloud workloads, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Azure cloud workloads, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Azure cloud workloads, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-030",
+      "name": "Azure App Service",
+      "category": "Cloud & DevOps",
+      "description": "Deployment and operation of web applications using Azure App Service.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands App Service configuration, deployment, scaling and diagnostics; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving App Service configuration, deployment, scaling and diagnostics, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain App Service application deployments, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in App Service application deployments, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for App Service application deployments, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-031",
+      "name": "Azure Functions",
+      "category": "Cloud & DevOps",
+      "description": "Development of event-driven compute using Azure Functions.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands function triggers, bindings, retries and idempotency; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving function triggers, bindings, retries and idempotency, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Azure Functions workflows, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Azure Functions workflows, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Azure Functions workflows, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-032",
+      "name": "Azure Storage",
+      "category": "Cloud & DevOps",
+      "description": "Design and operation of storage solutions using Azure Storage.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands storage services, access controls, lifecycle and resilience; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving storage services, access controls, lifecycle and resilience, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Azure storage integrations, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Azure storage integrations, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Azure storage integrations, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-033",
+      "name": "Docker",
+      "category": "Cloud & DevOps",
+      "description": "Packaging and execution of applications as reproducible containers using Docker.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands container images, layers, networking and least-privilege execution; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving container images, layers, networking and least-privilege execution, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Docker application containers, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Docker application containers, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Docker application containers, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-034",
+      "name": "Kubernetes",
+      "category": "Cloud & DevOps",
+      "description": "Deployment and operation of containerized workloads using Kubernetes.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands workloads, services, configuration and health probes; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving workloads, services, configuration and health probes, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain Kubernetes workload configurations, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in Kubernetes workload configurations, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for Kubernetes workload configurations, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-035",
+      "name": "CI/CD",
+      "category": "Cloud & DevOps",
+      "description": "Design of automated build, test and release pipelines with safe deployment controls.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands build stages, test gates, artifacts and rollback; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving build stages, test gates, artifacts and rollback, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain automated delivery pipelines, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in automated delivery pipelines, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for automated delivery pipelines, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-036",
+      "name": "GitHub Actions",
+      "category": "Cloud & DevOps",
+      "description": "Implementation of repository automation and delivery workflows using GitHub Actions.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands workflow triggers, jobs, permissions and reusable actions; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving workflow triggers, jobs, permissions and reusable actions, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain GitHub Actions automation workflows, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in GitHub Actions automation workflows, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for GitHub Actions automation workflows, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-037",
+      "name": "Object-Oriented Design",
+      "category": "Software Engineering",
+      "description": "Design of maintainable object-oriented systems with clear responsibilities and contracts.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands encapsulation, composition, interfaces and responsibilities; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving encapsulation, composition, interfaces and responsibilities, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain object-oriented component designs, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in object-oriented component designs, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for object-oriented component designs, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-038",
+      "name": "Data Structures & Algorithms",
+      "category": "Software Engineering",
+      "description": "Selection and implementation of algorithms and data structures appropriate to problem constraints.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands complexity, collections, search and algorithm correctness; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving complexity, collections, search and algorithm correctness, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain reasoned algorithmic solutions, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in reasoned algorithmic solutions, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for reasoned algorithmic solutions, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-039",
+      "name": "Design Patterns",
+      "category": "Software Engineering",
+      "description": "Application of established design patterns when they clarify responsibilities and evolution.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands pattern intent, trade-offs, composition and coupling; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving pattern intent, trade-offs, composition and coupling, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain appropriate software design patterns, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in appropriate software design patterns, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for appropriate software design patterns, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-040",
+      "name": "System Design",
+      "category": "Software Engineering",
+      "description": "Design of systems that satisfy functional requirements and quality constraints.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands system boundaries, scalability, resilience and trade-offs; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving system boundaries, scalability, resilience and trade-offs, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain documented system designs, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in documented system designs, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for documented system designs, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-041",
+      "name": "Distributed Systems",
+      "category": "Software Engineering",
+      "description": "Design and operation of systems that coordinate across network and process boundaries.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands consistency, partial failure, messaging and idempotency; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving consistency, partial failure, messaging and idempotency, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain reliable distributed workflows, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in reliable distributed workflows, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for reliable distributed workflows, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-042",
+      "name": "Multithreading & Concurrency",
+      "category": "Software Engineering",
+      "description": "Development of correct and efficient concurrent software.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands synchronization, shared state, race conditions and cancellation; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving synchronization, shared state, race conditions and cancellation, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain tested concurrent components, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in tested concurrent components, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for tested concurrent components, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-043",
+      "name": "Software Testing",
+      "category": "Software Engineering",
+      "description": "Design and execution of tests that provide meaningful evidence of software behavior.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands test levels, assertions, fixtures and risk-based coverage; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving test levels, assertions, fixtures and risk-based coverage, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain maintainable test suites, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in maintainable test suites, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for maintainable test suites, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-044",
+      "name": "Code Review",
+      "category": "Software Engineering",
+      "description": "Review of software changes for correctness, maintainability and relevant risks.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands change intent, defect detection, feedback and validation; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving change intent, defect detection, feedback and validation, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain actionable engineering code reviews, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in actionable engineering code reviews, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for actionable engineering code reviews, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-045",
+      "name": "Data Analysis",
+      "category": "Data / AI / ML",
+      "description": "Investigation of data to answer defined questions with transparent assumptions.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands data quality, statistical summaries, exploration and uncertainty; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving data quality, statistical summaries, exploration and uncertainty, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain reproducible analytical findings, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in reproducible analytical findings, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for reproducible analytical findings, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-046",
+      "name": "Data Visualization",
+      "category": "Data / AI / ML",
+      "description": "Creation of visual representations that communicate data accurately and accessibly.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands chart selection, scales, accessibility and interpretation; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving chart selection, scales, accessibility and interpretation, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain clear data visualizations, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in clear data visualizations, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for clear data visualizations, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-047",
+      "name": "Machine Learning",
+      "category": "Data / AI / ML",
+      "description": "Development and evaluation of predictive models for suitable use cases.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands features, training, validation and model performance; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving features, training, validation and model performance, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain evaluated machine-learning models, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in evaluated machine-learning models, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for evaluated machine-learning models, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-048",
+      "name": "Generative AI",
+      "category": "Data / AI / ML",
+      "description": "Application of generative models with explicit quality, privacy and safety controls.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands model capabilities, grounding, limitations and output evaluation; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving model capabilities, grounding, limitations and output evaluation, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain controlled generative-AI applications, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in controlled generative-AI applications, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for controlled generative-AI applications, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-049",
+      "name": "Prompt Engineering",
+      "category": "Data / AI / ML",
+      "description": "Design and evaluation of model instructions and context for reliable task outcomes.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands instruction structure, examples, context and reproducibility; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving instruction structure, examples, context and reproducibility, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain evaluated prompt configurations, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in evaluated prompt configurations, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for evaluated prompt configurations, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-050",
+      "name": "LLM Application Development",
+      "category": "Data / AI / ML",
+      "description": "Development of language-model applications with tools, retrieval and application authorization.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands tool contracts, retrieval, context budgets and authorization; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving tool contracts, retrieval, context budgets and authorization, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain reliable LLM application workflows, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in reliable LLM application workflows, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for reliable LLM application workflows, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-051",
+      "name": "AI Evaluation",
+      "category": "Data / AI / ML",
+      "description": "Measurement of AI behavior against defined quality, safety and operational requirements.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands evaluation datasets, metrics, failure analysis and regression checks; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving evaluation datasets, metrics, failure analysis and regression checks, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain repeatable AI evaluation suites, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in repeatable AI evaluation suites, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for repeatable AI evaluation suites, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-052",
+      "name": "AI Governance",
+      "category": "Data / AI / ML",
+      "description": "Definition and operation of controls for accountable AI use throughout its lifecycle.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands accountability, risk assessment, policy and lifecycle controls; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving accountability, risk assessment, policy and lifecycle controls, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain documented AI governance processes, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in documented AI governance processes, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for documented AI governance processes, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-053",
+      "name": "Cybersecurity Fundamentals",
+      "category": "Cybersecurity",
+      "description": "Application of foundational security principles to protect systems and information.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands threats, vulnerabilities, defense in depth and incident basics; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving threats, vulnerabilities, defense in depth and incident basics, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain basic cybersecurity safeguards, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in basic cybersecurity safeguards, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for basic cybersecurity safeguards, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-054",
+      "name": "Application Security",
+      "category": "Cybersecurity",
+      "description": "Integration of security controls into software design, implementation and maintenance.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands threat modeling, secure coding, dependencies and verification; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving threat modeling, secure coding, dependencies and verification, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain application security improvements, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in application security improvements, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for application security improvements, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-055",
+      "name": "Identity & Access Management",
+      "category": "Cybersecurity",
+      "description": "Administration and design of identity lifecycle and controlled resource access.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands identity lifecycle, federation, least privilege and access reviews; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving identity lifecycle, federation, least privilege and access reviews, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain identity and access controls, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in identity and access controls, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for identity and access controls, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-056",
+      "name": "Network Security",
+      "category": "Cybersecurity",
+      "description": "Design and operation of controls that protect network communication and access.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands segmentation, secure protocols, filtering and monitoring; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving segmentation, secure protocols, filtering and monitoring, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain network security controls, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in network security controls, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for network security controls, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-057",
+      "name": "Security Testing",
+      "category": "Cybersecurity",
+      "description": "Authorized testing of systems to identify and validate security weaknesses.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands test scope, security cases, vulnerability validation and reporting; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving test scope, security cases, vulnerability validation and reporting, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain authorized security test findings, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in authorized security test findings, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for authorized security test findings, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-058",
+      "name": "Vulnerability Management",
+      "category": "Cybersecurity",
+      "description": "Identification, prioritization and remediation tracking of security vulnerabilities.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands asset coverage, severity, remediation and verification; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving asset coverage, severity, remediation and verification, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain prioritized vulnerability remediation plans, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in prioritized vulnerability remediation plans, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for prioritized vulnerability remediation plans, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-059",
+      "name": "Agile/Scrum",
+      "category": "Project & Delivery",
+      "description": "Delivery of iterative work using agile principles and appropriate Scrum practices.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands backlog refinement, iterative planning, reviews and retrospectives; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving backlog refinement, iterative planning, reviews and retrospectives, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain iterative delivery practices, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in iterative delivery practices, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for iterative delivery practices, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-060",
+      "name": "Project Management",
+      "category": "Project & Delivery",
+      "description": "Planning and coordination of project scope, schedule, resources and outcomes.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands scope, milestones, dependencies and delivery controls; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving scope, milestones, dependencies and delivery controls, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain managed project delivery plans, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in managed project delivery plans, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for managed project delivery plans, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-061",
+      "name": "Requirements Engineering",
+      "category": "Project & Delivery",
+      "description": "Elicitation, analysis and validation of testable requirements.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands elicitation, acceptance criteria, traceability and change control; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving elicitation, acceptance criteria, traceability and change control, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain validated requirements specifications, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in validated requirements specifications, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for validated requirements specifications, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-062",
+      "name": "Stakeholder Management",
+      "category": "Project & Delivery",
+      "description": "Coordination of stakeholder expectations, decisions and communication.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands stakeholder analysis, engagement, alignment and escalation; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving stakeholder analysis, engagement, alignment and escalation, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain stakeholder engagement plans, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in stakeholder engagement plans, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for stakeholder engagement plans, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-063",
+      "name": "Risk Management",
+      "category": "Project & Delivery",
+      "description": "Identification, assessment and treatment of delivery and operational risks.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands risk identification, impact, mitigation and monitoring; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving risk identification, impact, mitigation and monitoring, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain tracked risk treatment plans, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in tracked risk treatment plans, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for tracked risk treatment plans, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-064",
+      "name": "Technical Documentation",
+      "category": "Project & Delivery",
+      "description": "Creation and maintenance of accurate, usable technical information.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands audience needs, structure, examples and maintenance; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving audience needs, structure, examples and maintenance, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain reviewed technical documentation, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in reviewed technical documentation, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for reviewed technical documentation, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-065",
+      "name": "Communication",
+      "category": "Professional / Collaboration",
+      "description": "Clear exchange of information adapted to audience, purpose and context.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands active listening, clear writing, presentation and feedback; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving active listening, clear writing, presentation and feedback, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain effective professional communications, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in effective professional communications, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for effective professional communications, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-066",
+      "name": "Problem Solving",
+      "category": "Professional / Collaboration",
+      "description": "Structured analysis and resolution of problems using evidence and explicit reasoning.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands problem framing, root-cause analysis, options and validation; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving problem framing, root-cause analysis, options and validation, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain validated problem resolutions, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in validated problem resolutions, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for validated problem resolutions, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-067",
+      "name": "Collaboration",
+      "category": "Professional / Collaboration",
+      "description": "Effective joint work across people and disciplines toward shared outcomes.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands shared goals, coordination, conflict resolution and accountability; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving shared goals, coordination, conflict resolution and accountability, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain coordinated team outcomes, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in coordinated team outcomes, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for coordinated team outcomes, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-068",
+      "name": "Leadership",
+      "category": "Professional / Collaboration",
+      "description": "Guidance of people and decisions toward accountable, sustainable outcomes.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands direction setting, decision-making, inclusion and accountability; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving direction setting, decision-making, inclusion and accountability, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain responsible leadership practices, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in responsible leadership practices, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for responsible leadership practices, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-069",
+      "name": "Mentoring",
+      "category": "Professional / Collaboration",
+      "description": "Support of others' development through structured guidance and feedback.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands development goals, coaching, feedback and progress review; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving development goals, coaching, feedback and progress review, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain mentoring plans and development feedback, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in mentoring plans and development feedback, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for mentoring plans and development feedback, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    },
+    {
+      "code": "SKL-070",
+      "name": "Learning Agility",
+      "category": "Professional / Collaboration",
+      "description": "Acquisition and application of new knowledge through reflection and adaptive practice.",
+      "criteria": [
+        {
+          "rank": 1,
+          "description": "Understands learning goals, experimentation, reflection and knowledge transfer; can explain core concepts and participate in guided work."
+        },
+        {
+          "rank": 2,
+          "description": "Can complete simple tasks involving learning goals, experimentation, reflection and knowledge transfer, using established examples and checking results."
+        },
+        {
+          "rank": 3,
+          "description": "Can independently produce and maintain demonstrated learning and adaptation, applying relevant quality checks and documenting decisions."
+        },
+        {
+          "rank": 4,
+          "description": "Can resolve complex issues in demonstrated learning and adaptation, evaluate trade-offs, review others' work and guide colleagues."
+        },
+        {
+          "rank": 5,
+          "description": "Can define organization-wide standards and strategy for demonstrated learning and adaptation, justify architecture or operating approaches and mentor experienced practitioners."
+        }
+      ]
+    }
+  ]
+}
