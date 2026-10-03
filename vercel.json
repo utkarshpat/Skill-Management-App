@@ -4,7 +4,7 @@
     "api": {
       "root": "apps/api",
       "framework": "express",
-      "entrypoint": "app.ts",
+      "entrypoint": "app.mts",
       "buildCommand": "npm run build"
     },
     "web": {

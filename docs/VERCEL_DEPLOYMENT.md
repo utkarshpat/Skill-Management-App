@@ -19,7 +19,7 @@ If a server-side caller is added later, declare its binding on that caller with 
 
 ## Runtime entrypoint
 
-apps/api/app.ts imports the configured Express app from src/server.ts. Its explicit Express import makes framework detection choose the root entrypoint instead of src/app.ts, which is a dependency-injected factory. src/server.ts exports the app and lets Vercel own the listener/lifecycle when VERCEL=1. Normal Node hosting keeps the listener and graceful shutdown; HOST can be set to 0.0.0.0 for a future Azure container/service. No migrations, seed imports or local file writes run at request startup.
+apps/api/app.mts imports the configured Express app from src/server.ts. The explicit .mts extension preserves ESM output even when the service bundle does not retain package.json module metadata. Its explicit Express import makes framework detection choose the root entrypoint instead of src/app.ts, which is a dependency-injected factory. src/server.ts exports the app and lets Vercel own the listener/lifecycle when VERCEL=1. Normal Node hosting keeps the listener and graceful shutdown; HOST can be set to 0.0.0.0 for a future Azure container/service. No migrations, seed imports or local file writes run at request startup.
 
 ## Local verification
 
