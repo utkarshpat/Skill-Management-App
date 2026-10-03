@@ -9,8 +9,8 @@ export function hostedDemoConfig(env: NodeJS.ProcessEnv): HostedDemoConfig | und
   const origin = env.PUBLIC_APP_ORIGIN ?? '';
   const url = new URL(origin);
   if (env.NODE_ENV !== 'production' || url.protocol !== 'https:' || url.origin !== origin ||
-      (env.DEMO_LOGIN_ACCESS_CODE?.length ?? 0) < 24 || (env.DEMO_SESSION_SECRET?.length ?? 0) < 32) {
-    throw new Error('Hosted demo requires a production HTTPS origin and strong server-side credentials.');
+      (env.DEMO_LOGIN_ACCESS_CODE?.length ?? 0) < 5 || (env.DEMO_SESSION_SECRET?.length ?? 0) < 32) {
+    throw new Error('Hosted demo requires a production HTTPS origin, an access code of at least 5 characters and a signing secret of at least 32 characters.');
   }
   return { origin, accessCode: env.DEMO_LOGIN_ACCESS_CODE!, sessionSecret: env.DEMO_SESSION_SECRET! };
 }
