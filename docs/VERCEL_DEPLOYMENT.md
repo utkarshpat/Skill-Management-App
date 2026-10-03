@@ -19,7 +19,7 @@ If a server-side caller is added later, declare its binding on that caller with 
 
 ## Runtime entrypoint
 
-apps/api/app.mts imports the configured Express app from src/server.ts. The explicit .mts extension preserves ESM output even when the service bundle does not retain package.json module metadata. Its explicit Express import makes framework detection choose the root entrypoint instead of src/app.ts, which is a dependency-injected factory. src/server.ts exports the app and lets Vercel own the listener/lifecycle when VERCEL=1. Normal Node hosting keeps the listener and graceful shutdown; HOST can be set to 0.0.0.0 for a future Azure container/service. No migrations, seed imports or local file writes run at request startup.
+apps/api/app.cts imports the configured Express app from src/server.ts. The deployment adapter uses an explicit CommonJS export to match the hosted function loader; the application modules remain ESM. Its explicit Express import makes framework detection choose the root entrypoint instead of src/app.ts, which is a dependency-injected factory. src/server.ts exports the app and lets Vercel own the listener/lifecycle when VERCEL=1. Normal Node hosting keeps the listener and graceful shutdown; HOST can be set to 0.0.0.0 for a future Azure container/service. No migrations, seed imports or local file writes run at request startup.
 
 ## Local verification
 
@@ -57,6 +57,8 @@ Azure SQL firewall connectivity must be verified from hosted runtime. Vercel Hob
 The API's in-memory AI request counters/concurrency locks are per instance, not shared quotas or a guaranteed monetary cap. SQL conversation storage remains durable and actor-scoped. Shared budgets/locks, operational readiness/monitoring and completion of business workflows remain company production work.
 
 ## Verification record
+
+The project was created on the existing Hobby plan at https://skill-management-app.vercel.app through the user's Chrome. The 15 allowlisted variables are production-scoped; preview deployments do not receive the runtime secrets. Microsoft SPA redirects include the stable HTTPS origin and retain http://localhost:5173/. The existing Azure SQL firewall was inspected and left unchanged. The initial cloud API bundle failed with an ESM/CommonJS startup mismatch; cloud health, SQL and AI verification is required after the corrected entrypoint is deployed. Microsoft account selection and the HTTPS callback have completed in Chrome.
 
 Local Vercel CLI 62.2.0 detects both services. After fixing framework entrypoint detection and limiting SPA rewrites, the API health route returns HTTP 200 and the user's Chrome renders /preview with assets and a direct /my-skills login page. Public API endpoints remain authenticated; the disabled demo endpoint returns 404. All 83 checks (5 architecture, 66 API, 12 web), strict types and builds pass. The user confirmed api/web names, public routes, no bindings and project name skill-management-app before deployment. Cloud deployment, Microsoft callback, hosted SQL and live AI smoke checks must be recorded after they actually succeed.
 

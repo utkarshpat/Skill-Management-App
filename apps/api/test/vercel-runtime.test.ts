@@ -6,7 +6,7 @@ test('Vercel entrypoint exports the configured app and public routing retains AP
   process.env.VERCEL = '1';
   process.env.NODE_ENV = 'production';
   process.env.DEV_DIRECT_LOGIN = 'false';
-    const { default: app } = await import('../app.mjs');
+    const { default: app } = await import('../app.cjs');
   assert.equal(typeof app, 'function');
   const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
