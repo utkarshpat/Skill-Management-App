@@ -38,6 +38,18 @@ export class AssistantService {
   return {conversations:await this.conversations.list(actor),retained:2};
  }
  status(){return {configured:Boolean(this.provider),provider:this.provider?.name??null,mode:'read-only'};}
+ async navigation(actor:string,input?:unknown){
+  const state=await this.store.snapshot(),person=state.people.find(item=>item.id===actor);
+  if(!person||!this.registry.permits(state,person,'own_profile'))throw new AccessError(403,'Assistant access is not assigned.');
+  const capabilities=assistantCapabilities(state,person);
+  if(input===undefined)return {pages:capabilities.pages,canReviewOwnSkill:capabilities.canDraftOwnSkill};
+  if(!input||typeof input!=='object'||Array.isArray(input))throw new AccessError(400,'Invalid assistant action.');
+  const body=input as Record<string,unknown>;
+  if(Object.keys(body).some(key=>!['destination','action'].includes(key))||typeof body.destination!=='string'||!['open_page','review_own_skill'].includes(String(body.action)))throw new AccessError(400,'Invalid assistant action.');
+  const page=capabilities.pages.find(page=>page.url===body.destination);
+  if(!page||body.action==='review_own_skill'&&(page.url!=='/my-skills'||!capabilities.canDraftOwnSkill))throw new AccessError(403,'Your current permissions do not allow this assistant action.');
+  return {destination:page.url,label:page.label};
+ }
  async chat(actorId:string,input:unknown,signal=AbortSignal.timeout(35000)) {
   if(this.active.has(actorId))throw new AccessError(429,'A reply is already being generated.');
   this.active.add(actorId);

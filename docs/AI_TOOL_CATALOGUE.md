@@ -30,7 +30,9 @@ Build one complete vertical slice before introducing many executors:
 6. Execute through the Claims service using the authenticated approving human, fresh policy/version checks and an idempotency key. Save and audit atomically; reconcile uncertain network outcomes. No partial batch success should be hidden.
 7. Save as an unverified draft. Evidence submission and manager verification are separate, future workflow actions.
 
-The current description handoff to the existing My Skills form remains available. Durable proposals and the approved executor are not implemented by this catalogue increment.
+The current description review opens the existing My Skills form in place, without navigation, after a fresh permission check. The human still selects published criteria and presses Save through the existing claim API. Durable proposals and the approved executor are not implemented by this increment.
+
+Assistant navigation is a separate authenticated UI action gate: GET /api/assistant/navigation lists current allowed pages and own-skill review capability; POST validates one explicit open_page or review_own_skill request against fresh permissions. It accepts only destination and action, derives the actor from authentication and returns the server's canonical label/destination. This is not a model tool or a grant of record access. Model Markdown and source labels are inert; the user must press a separate Open button or Review skill draft. Record endpoints independently enforce current resource access.
 
 ## Planned read and preparation contracts
 

@@ -22,6 +22,12 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     res.locals.assistantActor=person.id;next();
   });
   app.get('/api/assistant',(_req,res)=>res.json(dependencies?.assistant?.status()??{configured:false,provider:null,mode:'read-only'}));
+  const navigationHandler:import('express').RequestHandler=async(req,res)=>{
+   try{if(!dependencies?.assistant)throw new AccessError(503,'Assistant is unavailable.');res.json(await dependencies.assistant.navigation(res.locals.assistantActor,req.method==='POST'?req.body:undefined));}
+   catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'ASSISTANT_ACTION_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
+  };
+  app.get('/api/assistant/navigation',navigationHandler);
+  app.post('/api/assistant/navigation',navigationHandler);
   const historyHandler:import('express').RequestHandler=async(req,res)=>{
    try{if(!dependencies?.assistant)throw new AccessError(503,'Assistant history is unavailable.');
     res.json(await dependencies.assistant.history(res.locals.assistantActor,req.params.id?String(req.params.id):undefined,req.method==='DELETE'));

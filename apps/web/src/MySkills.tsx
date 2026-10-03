@@ -20,7 +20,7 @@ async function body<T>(response:Response):Promise<T> {
   if(!response.ok)throw new Error(value?.error?.message??(response.status===403?'Your account does not have access to this skill action.':'Could not load your skills. Please try again.'));
   return value;
 }
-export function MySkills({actionsContainer}:{actionsContainer?:HTMLElement|null}) {
+export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTMLElement|null;reviewRequest?:{description:string;onClose:()=>void;onSaved:()=>void}}) {
   const location=useLocation(),navigate=useNavigate();
   const [state,setState]=useState<State>(),[page,setPage]=useState(1),[loading,setLoading]=useState(true);
   const [error,setError]=useState(''),[notice,setNotice]=useState('');
@@ -32,9 +32,16 @@ export function MySkills({actionsContainer}:{actionsContainer?:HTMLElement|null}
     catch(error){if(!signal?.aborted)setError(error instanceof Error?error.message:'Could not load your skills.');}
     finally {if(!signal?.aborted)setLoading(false);}
   }
-  useEffect(()=>{const controller=new AbortController();void load(controller.signal);return()=>controller.abort();},[page]);
+  useEffect(()=>{const controller=new AbortController();void load(controller.signal);const refresh=()=>void load(controller.signal);window.addEventListener('own-skills-updated',refresh);return()=>{controller.abort();window.removeEventListener('own-skills-updated',refresh);};},[page]);
+  useEffect(()=>{
+    if(!reviewRequest||!state)return;
+    if(!state.canClaim){setError('Your account does not have permission to add a skill draft.');return;}
+    if(!reviewRequest.description.trim()||reviewRequest.description.length>2000){setError('The suggested experience text is invalid.');return;}
+    setDraft({...emptyDraft(),description:reviewRequest.description});setFormPage(0);setFormError('');
+  },[reviewRequest?.description,state?.canClaim]);
   useEffect(()=>{
     const suggested=location.state?.aiDraft?.description;
+    if(reviewRequest)return;
     if(typeof suggested!=='string'||!state)return;
     navigate(location.pathname+location.search,{replace:true,state:null});
     if(!state.canClaim){setError('Your account does not have permission to add a skill draft.');return;}
@@ -64,12 +71,15 @@ export function MySkills({actionsContainer}:{actionsContainer?:HTMLElement|null}
     setBusy(true);setFormError('');
     try {
       await body(await authenticatedFetch('/api/my-skills',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...draft,definitionRevision:selected.definitionRevision})}));
-      setDraft(undefined);setNotice('Skill draft saved. It is self-assessed and has not been submitted for review.');await load();
+      setDraft(undefined);setNotice('Skill draft saved. It is self-assessed and has not been submitted for review.');reviewRequest?.onSaved();window.dispatchEvent(new Event('own-skills-updated'));await load();
     } catch(error){setFormError(error instanceof Error?error.message:'Your draft could not be saved.');}
     finally {setBusy(false);}
   }
   const actions=state?.canClaim&&<button className="admin-primary" disabled={busy||loading} onClick={()=>edit()}><Plus size={17}/>Add skill</button>;
+  function closeDraft(){setDraft(undefined);reviewRequest?.onClose();}
+  if(reviewRequest&&!draft)return <FormDialog title="Review skill draft" onClose={reviewRequest.onClose} pages={[{label:'Prepare',content:<p role={error?'alert':'status'}>{error||'Checking your current skill access…'}</p>}]} footer={<button type="button" className="secondary-button" onClick={reviewRequest.onClose}>Cancel</button>}/>;
   return <>
+    {!reviewRequest&&<>
     {actionsContainer?createPortal(actions,actionsContainer):actions&&<div className="my-skills-actions">{actions}</div>}
     {error&&<div className="access-message" role="alert">{error}<button className="secondary-button" onClick={()=>void load()}>Retry</button></div>}
     {notice&&<p className="access-message" role="status">{notice}</p>}
@@ -81,7 +91,8 @@ export function MySkills({actionsContainer}:{actionsContainer?:HTMLElement|null}
         <div className="catalogue-pagination"><span>{state.total} skills · Page {state.page}</span><button className="secondary-button" disabled={loading||page===1} onClick={()=>setPage(value=>value-1)}>Previous</button><button className="secondary-button" disabled={loading||page*state.pageSize>=state.total} onClick={()=>setPage(value=>value+1)}>Next</button></div>
       </>:<div className="catalogue-empty"><BookOpen size={30} aria-hidden="true"/><h3>{state.total?'No skills on this page':'Build your skill profile'}</h3><p>{state.total?'Go back to the previous page.':'Choose a published skill and describe your proficiency and experience.'}</p></div>}
     </section>}
-    {draft&&<FormDialog title={draft.revision?'Edit skill draft':'Add skill'} busy={busy} onClose={()=>setDraft(undefined)} page={formPage} onPageChange={setFormPage} formId="skill-claim-form" onSubmit={()=>void save()} message={formError&&<p role="alert">{formError}</p>}
+    </>}
+    {draft&&<FormDialog title={reviewRequest?'Review skill draft':draft.revision?'Edit skill draft':'Add skill'} busy={busy} onClose={closeDraft} page={formPage} onPageChange={setFormPage} formId="skill-claim-form" onSubmit={()=>void save()} message={formError&&<p role="alert">{formError}</p>}
       pages={[
         {label:'Skill & proficiency',content:<>
           <label>Find a skill<span className="claim-search"><Search size={16} aria-hidden="true"/><input maxLength={100} value={search} onChange={event=>{setSearch(event.target.value);setOptionPage(1);setFormError('');}} placeholder="Search published skills…"/></span></label>
@@ -94,7 +105,7 @@ export function MySkills({actionsContainer}:{actionsContainer?:HTMLElement|null}
         {label:'Level criteria',content:<><h3>{selected?.levels.find(level=>level.rank===draft.rank)?.name??'Select a proficiency level'}</h3><p className="claim-level-description">{selected?.levels.find(level=>level.rank===draft.rank)?.description??'Choose a skill and level in the first step.'}</p></>},
         {label:'Experience',content:<><label>Describe your experience<textarea maxLength={2000} rows={5} value={draft.description} onChange={event=>setDraft({...draft,description:event.target.value})} placeholder="What have you worked on, and how have you used this skill?"/></label><p className="my-skills-note">Your proficiency remains unverified while this is a draft.</p></>},
       ]}
-      footer={<><button type="button" className="secondary-button" disabled={busy} onClick={()=>setDraft(undefined)}>Cancel</button>{formPage<2?<button type="button" className="admin-primary" disabled={optionsLoading||!selected||!selected.levels.some(level=>level.rank===draft.rank)} onClick={()=>setFormPage(value=>value+1)}>Continue</button>:<button type="submit" form="skill-claim-form" className="admin-primary" disabled={busy||optionsLoading}>{busy?'Saving…':'Save draft'}</button>}</>}/>
+      footer={<><button type="button" className="secondary-button" disabled={busy} onClick={closeDraft}>Cancel</button>{formPage<2?<button type="button" className="admin-primary" disabled={optionsLoading||!selected||!selected.levels.some(level=>level.rank===draft.rank)} onClick={()=>setFormPage(value=>value+1)}>Continue</button>:<button type="submit" form="skill-claim-form" className="admin-primary" disabled={busy||optionsLoading}>{busy?'Saving…':'Save draft'}</button>}</>}/>
     }
   </>;
 }

@@ -1,12 +1,11 @@
 import { useId, useState } from 'react';
-import { useNavigate } from 'react-router';
 import { AssistantRichText } from './AssistantRichText';
 export interface Artifact {
   kind:'task_draft'|'skill_draft'|'practice_quiz';title:string;summary:string;body:string;steps:string[];
   questions:{prompt:string;options:string[];correctIndex:number;explanation:string}[];
 }
-export function AssistantOutput({artifact,onReview,onDocument}:{artifact:Artifact;onReview?:()=>void;onDocument?:(content:string)=>void}) {
-  const navigate=useNavigate(),id=useId();
+export function AssistantOutput({artifact,onReview,onDocument}:{artifact:Artifact;onReview?:(description:string)=>void;onDocument?:(content:string)=>void}) {
+  const id=useId();
   const [page,setPage]=useState(0),[answers,setAnswers]=useState<Record<number,number>>({}),[finished,setFinished]=useState(false),[copied,setCopied]=useState(false),[copyError,setCopyError]=useState(false);
   const [body,setBody]=useState(artifact.body),[editing,setEditing]=useState(false);
   const quiz=artifact.kind==='practice_quiz',question=artifact.questions[page];
@@ -22,7 +21,7 @@ export function AssistantOutput({artifact,onReview,onDocument}:{artifact:Artifac
       {artifact.body&&<>{editing?<textarea className="assistant-draft-text" aria-label="Draft text" value={body} onChange={event=>{setBody(event.target.value);setCopied(false);}} rows={5} maxLength={2000}/>:<AssistantRichText>{body}</AssistantRichText>}<button className="assistant-document-button" onClick={()=>setEditing(!editing)}>{editing?'Preview draft':'Edit draft'}</button></>}
       {artifact.steps.length>0&&<AssistantRichText>{artifact.steps.map((step,index)=>`${index+1}. ${step}`).join('\n')}</AssistantRichText>}
       {onDocument&&<button className="assistant-document-button" onClick={()=>onDocument(`# ${artifact.title}\n\n${body}\n\n${artifact.steps.map((step,index)=>`${index+1}. ${step}`).join('\n')}`)}>Open draft document</button>}
-      {artifact.kind==='skill_draft'&&<button className="admin-primary" onClick={()=>{navigate('/my-skills',{state:{aiDraft:{description:body}}});onReview?.();}}>Review in My Skills</button>}
+      {artifact.kind==='skill_draft'&&onReview&&<button className="admin-primary" onClick={()=>onReview(body)}>Review skill draft</button>}
       <button className="secondary-button" onClick={async()=>{try{await navigator.clipboard.writeText([artifact.title,body,...artifact.steps].filter(Boolean).join('\n'));setCopied(true);setCopyError(false);}catch{setCopyError(true);}}}>{copied?'Copied':'Copy draft'}</button>
       {copyError&&<p role="alert">Copy is unavailable. Select and copy the draft text.</p>}<p>Review this suggestion before using it. No records have been changed.</p>
     </>}

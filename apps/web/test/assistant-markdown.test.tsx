@@ -12,6 +12,6 @@ test('assistant renders semantic emphasis, ordered and unordered lists, code and
 test('model content cannot load tracking images, execute raw HTML or navigate to arbitrary destinations',()=>{
   const html=render('<script>alert(1)</script>\n\n<img src="https://tracking.invalid/pixel" onerror="alert(1)">\n\n![Remote](https://tracking.invalid/image)\n\n[Unsafe](javascript:alert%281%29) [External](https://tracking.invalid) [API](/api/access) [Skills](/my-skills)');
   assert.doesNotMatch(html,/<script|<img|onerror=|href="(?:javascript:|https:|\/api)/);
-  assert.ok(html.includes('href="/my-skills"'));
+  assert.doesNotMatch(html,/<a\b|href=/);assert.ok(html.includes('Skills'));
   for(const url of ['//evil.invalid','/\\evil.invalid','data:text/html,bad','/api/access','https://example.com'])assert.equal(assistantUrl(url),'');
 });
