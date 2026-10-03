@@ -2,18 +2,19 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BookOpen, Plus, Pencil, Search } from 'lucide-react';
 import { authenticatedFetch } from './auth';
+import { SkillClaimDialog } from './SkillReviews';
 import { FormDialog } from './FormDialog';
 import { useLocation, useNavigate } from 'react-router';
 
-interface Claim {
+export interface Claim {
   id:string; revision:number; skillId:string; skillName:string; category:string;
   definitionRevision:number; rank:number; levelName:string; experienceMonths:number;
-  description:string; status:'DRAFT'; updatedAt:string;
+  description:string; status:'DRAFT'|'SUBMITTED'|'CHANGES_REQUESTED'|'APPROVED'|'REJECTED'; updatedAt:string; projects?:string; evidence?:string; feedback?:string; personName?:string; levelDescription?:string;
 }
 interface Option { id:string; name:string; category:string; definitionRevision:number; levels:{rank:number;name:string;description:string}[] }
 interface State { claims:Claim[]; total:number; page:number; pageSize:number; canClaim:boolean }
 interface Options { skills:Option[]; total:number; page:number; pageSize:number }
-interface Draft { id:string; revision:number; skillId:string; definitionRevision:number; rank:number; experienceMonths:number; description:string }
+interface Draft { id:string; revision:number; skillId:string; definitionRevision:number; rank:number; experienceMonths:number; description:string; projects?:string; evidence?:string }
 const emptyDraft=():Draft=>({id:crypto.randomUUID(),revision:0,skillId:'',definitionRevision:0,rank:0,experienceMonths:0,description:''});
 async function body<T>(response:Response):Promise<T> {
   const value=await response.json().catch(()=>undefined);
@@ -23,6 +24,7 @@ async function body<T>(response:Response):Promise<T> {
 export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTMLElement|null;reviewRequest?:{description:string;onClose:()=>void;onSaved:()=>void}}) {
   const location=useLocation(),navigate=useNavigate();
   const [state,setState]=useState<State>(),[page,setPage]=useState(1),[loading,setLoading]=useState(true);
+  const [inspecting,setInspecting]=useState<Claim>(),[submitting,setSubmitting]=useState(false);
   const [error,setError]=useState(''),[notice,setNotice]=useState('');
   const [draft,setDraft]=useState<Draft>(),[formPage,setFormPage]=useState(0),[busy,setBusy]=useState(false),[formError,setFormError]=useState('');
   const [options,setOptions]=useState<Options>(),[search,setSearch]=useState(''),[optionPage,setOptionPage]=useState(1),[optionsLoading,setOptionsLoading]=useState(false);
@@ -61,12 +63,13 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
   const selected=options?.skills.find(item=>item.id===draft?.skillId);
   function edit(claim?:Claim) {
     setNotice('');setFormError('');setFormPage(0);setOptionPage(1);setSearch(claim?.skillName??'');
-    setDraft(claim?{id:claim.id,revision:claim.revision,skillId:claim.skillId,definitionRevision:claim.definitionRevision,rank:claim.rank,experienceMonths:claim.experienceMonths,description:claim.description}:emptyDraft());
+    setDraft(claim?{id:claim.id,revision:claim.revision,skillId:claim.skillId,definitionRevision:claim.definitionRevision,rank:claim.rank,experienceMonths:claim.experienceMonths,description:claim.description,projects:claim.projects??'',evidence:claim.evidence??''}:emptyDraft());
   }
   async function save() {
     if(!draft||busy)return;
     if(!selected||!selected.levels.some(level=>level.rank===draft.rank)){setFormPage(0);setFormError('Select a published skill and its proficiency level.');return;}
     if(!Number.isSafeInteger(draft.experienceMonths)||draft.experienceMonths<0||draft.experienceMonths>600){setFormPage(0);setFormError('Experience must be between 0 and 600 months.');return;}
+    if((draft.projects?.length??0)>2000||(draft.evidence?.length??0)>2000){setFormPage(3);setFormError('Use up to 2,000 characters for projects and evidence.');return;}
     if(!draft.description.trim()||draft.description.trim().length>2000){setFormPage(2);setFormError('Describe your experience using up to 2,000 characters.');return;}
     setBusy(true);setFormError('');
     try {
@@ -84,14 +87,15 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
     {error&&<div className="access-message" role="alert">{error}<button className="secondary-button" onClick={()=>void load()}>Retry</button></div>}
     {notice&&<p className="access-message" role="status">{notice}</p>}
     {loading&&!state?<section className="profile-panel" role="status">Loading your skills…</section>:state&&<section className="profile-panel my-skills-panel" aria-label="Your skill drafts">
-      <div className="panel-title"><h2>My skills <span className="my-skills-count">{state.total}</span></h2><span className="claim-status">Self-assessed drafts</span></div>
+      <div className="panel-title"><h2>My skills <span className="my-skills-count">{state.total}</span></h2><span className="claim-status">Skill claims</span></div>
       {!state.canClaim&&<p className="my-skills-note">You can view your saved skills. Ask your access administrator for permission to add or edit skill drafts.</p>}
       {state.claims.length?<>
-        <div className="my-skills-table-wrap"><table className="my-skills-table"><thead><tr><th scope="col">Skill</th><th scope="col">Claimed proficiency</th><th scope="col">Experience</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead><tbody>{state.claims.map(claim=><tr key={claim.id}><td><strong>{claim.skillName}</strong><span>{claim.category}</span></td><td>{claim.levelName}<span>Level {claim.rank}</span></td><td>{claim.experienceMonths} months</td><td><span className="claim-status">Draft · Unverified</span></td><td>{state.canClaim&&<button className="secondary-button" aria-label={`Edit ${claim.skillName} draft`} disabled={busy||loading} onClick={()=>edit(claim)}><Pencil size={15}/>Edit</button>}</td></tr>)}</tbody></table></div>
+        <div className="my-skills-table-wrap"><table className="my-skills-table"><thead><tr><th scope="col">Skill</th><th scope="col">Claimed proficiency</th><th scope="col">Experience</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead><tbody>{state.claims.map(claim=><tr key={claim.id}><td><strong>{claim.skillName}</strong><span>{claim.category}</span></td><td>{claim.levelName}<span>Level {claim.rank}</span></td><td>{claim.experienceMonths} months</td><td><span className="claim-status">Draft · Unverified</span></td><td><button className="secondary-button" onClick={()=>{setInspecting(claim);setSubmitting(false);}}>View</button>{state.canClaim&&['DRAFT','CHANGES_REQUESTED','REJECTED'].includes(claim.status)&&<button className="secondary-button" aria-label={`Edit ${claim.skillName} draft`} disabled={busy||loading} onClick={()=>edit(claim)}><Pencil size={15}/>Edit</button>}{state.canClaim&&claim.status!=='APPROVED'&&<button className="secondary-button" disabled={busy||loading} onClick={()=>{setInspecting(claim);setSubmitting(true);}}>{claim.status==='SUBMITTED'?'Reroute review':'Submit for review'}</button>}</td></tr>)}</tbody></table></div>
         <div className="catalogue-pagination"><span>{state.total} skills · Page {state.page}</span><button className="secondary-button" disabled={loading||page===1} onClick={()=>setPage(value=>value-1)}>Previous</button><button className="secondary-button" disabled={loading||page*state.pageSize>=state.total} onClick={()=>setPage(value=>value+1)}>Next</button></div>
       </>:<div className="catalogue-empty"><BookOpen size={30} aria-hidden="true"/><h3>{state.total?'No skills on this page':'Build your skill profile'}</h3><p>{state.total?'Go back to the previous page.':'Choose a published skill and describe your proficiency and experience.'}</p></div>}
     </section>}
     </>}
+    {inspecting&&<SkillClaimDialog claim={inspecting} mode={submitting?'submit':'view'} onClose={()=>setInspecting(undefined)} onSaved={()=>{setInspecting(undefined);setNotice('Claim submitted to your assigned reporting manager.');window.dispatchEvent(new Event('own-skills-updated'));void load();}}/>}
     {draft&&<FormDialog title={reviewRequest?'Review skill draft':draft.revision?'Edit skill draft':'Add skill'} busy={busy} onClose={closeDraft} page={formPage} onPageChange={setFormPage} formId="skill-claim-form" onSubmit={()=>void save()} message={formError&&<p role="alert">{formError}</p>}
       pages={[
         {label:'Skill & proficiency',content:<>
@@ -103,9 +107,10 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
 
         </>},
         {label:'Level criteria',content:<><h3>{selected?.levels.find(level=>level.rank===draft.rank)?.name??'Select a proficiency level'}</h3><p className="claim-level-description">{selected?.levels.find(level=>level.rank===draft.rank)?.description??'Choose a skill and level in the first step.'}</p></>},
-        {label:'Experience',content:<><label>Describe your experience<textarea maxLength={2000} rows={5} value={draft.description} onChange={event=>setDraft({...draft,description:event.target.value})} placeholder="What have you worked on, and how have you used this skill?"/></label><p className="my-skills-note">Your proficiency remains unverified while this is a draft.</p></>},
+        {label:'Experience',content:<><label>Describe your experience<textarea maxLength={2000} rows={5} value={draft.description} onChange={event=>setDraft({...draft,description:event.target.value})} placeholder="What have you worked on, and how have you used this skill?"/></label><p className="my-skills-note">Your proficiency remains unverified until your reporting manager approves the submission.</p></>},
+        {label:'Projects & evidence',content:<><label>Projects<textarea rows={4} maxLength={2000} value={draft.projects??''} onChange={event=>setDraft({...draft,projects:event.target.value})} placeholder="Project names, your contribution and outcomes"/></label><label>Evidence references<textarea rows={4} maxLength={2000} value={draft.evidence??''} onChange={event=>setDraft({...draft,evidence:event.target.value})} placeholder="Links to approved project evidence or certificates, with a short explanation"/></label><p className="my-skills-note">Use references accessible to your reviewer. Do not paste passwords or confidential customer data.</p></>},
       ]}
-      footer={<><button type="button" className="secondary-button" disabled={busy} onClick={closeDraft}>Cancel</button>{formPage<2?<button type="button" className="admin-primary" disabled={optionsLoading||!selected||!selected.levels.some(level=>level.rank===draft.rank)} onClick={()=>setFormPage(value=>value+1)}>Continue</button>:<button type="submit" form="skill-claim-form" className="admin-primary" disabled={busy||optionsLoading}>{busy?'Saving…':'Save draft'}</button>}</>}/>
+      footer={<><button type="button" className="secondary-button" disabled={busy} onClick={closeDraft}>Cancel</button>{formPage<3?<button type="button" className="admin-primary" disabled={optionsLoading||!selected||!selected.levels.some(level=>level.rank===draft.rank)} onClick={()=>setFormPage(value=>value+1)}>Continue</button>:<button type="submit" form="skill-claim-form" className="admin-primary" disabled={busy||optionsLoading}>{busy?'Saving…':'Save draft'}</button>}</>}/>
     }
   </>;
 }

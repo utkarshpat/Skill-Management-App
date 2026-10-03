@@ -24,7 +24,7 @@ export function createApp(dependencies?: AppDependencies, options: { development
     next();
   });
   app.use(express.json({ limit: '128kb' }));
-  identityRoutes(app, dependencies, store, demo);
+  identityRoutes(app, dependencies ? {...dependencies,skillNotifications:dependencies.claims?.notifications?.bind(dependencies.claims)} : undefined, store, demo);
   // Access middleware authenticates /api/access before organization routes run.
   accessRoutes(app, dependencies, store, demo);
   organizationRoutes(app, dependencies);

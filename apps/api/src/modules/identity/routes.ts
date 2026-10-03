@@ -8,7 +8,7 @@ import { workspaceFor } from './workspace.js';
 import { notificationsFor } from './notifications.js';
 import { can } from '../access/index.js';
 type DevelopmentSessions = ReturnType<typeof createDevelopmentSessions>;
-export interface HttpDependencies { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; resolveAccess?: (identity: Identity) => Promise<string | undefined>; access?: AccessStore; }
+export interface HttpDependencies { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; resolveAccess?: (identity: Identity) => Promise<string | undefined>; access?: AccessStore; skillNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; }
 export function registerRoutes(app: Express, dependencies: HttpDependencies | undefined, store?: AccessStore, demo?: DevelopmentSessions) {
   app.use('/api/dev-login', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -63,7 +63,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     }
     if(req.path==='/api/notifications'){
       if(!can(state,person,'profile.view',true)){res.sendStatus(403);return;}
-      res.json(notificationsFor(state,person));return;
+      const feed=notificationsFor(state,person); const claims=await dependencies?.skillNotifications?.(person.id)??[];res.json({...feed,items:[...feed.items,...claims].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,30)});return;
     }
     res.json({ ...workspaceFor(state, person), authentication: demo?.subject(req) ? 'local-demo' : 'microsoft' });
   });

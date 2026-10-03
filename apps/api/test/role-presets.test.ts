@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { rolePresets } from '../src/modules/access/role-presets.js';
 import { permissionCatalogue } from '../src/modules/access/access-catalogue.js';
-import { LocalAccessStore, can } from '../src/modules/access/local-access-store.js';
+import { LocalAccessStore, can, canReviewAssigned } from '../src/modules/access/local-access-store.js';
 
 test('six editable presets never widen pending scopes or grant administrative access', async () => {
   const store=await LocalAccessStore.open();
@@ -21,6 +21,7 @@ test('six editable presets never widen pending scopes or grant administrative ac
     assert.equal(can(created,person,'profile.view',true),true);
     assert.equal(can(created,person,'profile.view'),false);
     assert.equal(can(created,person,'permissions.manage'),false);
-    assert.equal(can(created,person,'skill.verify'),false,'Team review must remain blocked until scoped bindings exist.');
+    assert.equal(canReviewAssigned(created,person),preset.key==='manager');
+    assert.equal(can(created,person,'skill.verify'),false,'No claim can be approved without assignment.');
   }
 });

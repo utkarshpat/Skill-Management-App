@@ -20,12 +20,12 @@ export function refreshDevelopmentLogin(){
 }
 export function isDemoSession() { return demoSession; }
 export async function unlockDemoPeople(accessCode: string) {
-  const response=await fetch('/api/dev-login/people',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessCode}),signal:AbortSignal.timeout(45000)});
+  const response=await fetch('/api/dev-login/people',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessCode}),signal:AbortSignal.timeout(90000)});
   if(!response.ok)throw new Error('Check the demo access code and try again.');
   return parseDemoLogin(await response.json());
 }
 export async function directSignIn(personId: string, accessCode?: string) {
-  const response = await fetch('/api/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personId, accessCode }),signal:AbortSignal.timeout(45000) });
+  const response = await fetch('/api/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personId, accessCode }),signal:AbortSignal.timeout(90000) });
   if (!response.ok) throw new Error('Direct login failed.');
   window.location.assign('/');
 }
@@ -65,7 +65,7 @@ export async function authenticatedFetch(path:string,init:RequestInit={}) {
   const headers=new Headers(init.headers);
   if(!isDemoSession())headers.set('Authorization',`Bearer ${await profileToken()}`);
   const wasDemo=isDemoSession();
-  const response=await fetch(path,{...init,headers,signal:init.signal?AbortSignal.any([init.signal,AbortSignal.timeout(45000)]):AbortSignal.timeout(45000)});
+  const response=await fetch(path,{...init,headers,signal:init.signal?AbortSignal.any([init.signal,AbortSignal.timeout(90000)]):AbortSignal.timeout(90000)});
   if(wasDemo&&response.status===401){demoSession=false;window.dispatchEvent(new Event('development-session-expired'));}
   return response;
 }

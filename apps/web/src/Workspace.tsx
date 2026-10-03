@@ -5,17 +5,18 @@ import { authenticatedFetch, isDemoSession } from './auth';
 import { Sidebar } from './Sidebar';
 import { NavigationDrawer } from './NavigationDrawer';
 import { NavbarAccount } from './NavbarAccount';
+import {SkillReviews} from './SkillReviews';
 import { MySkills } from './MySkills';
 import { SkillCatalogue } from './SkillCatalogue';
 
 export interface WorkspaceState {
   person: { id: string; displayName: string; employeeCode: string; roles: string[] };
   authentication: 'microsoft' | 'local-demo';
-  capabilities: { ownProfile: boolean; ownSkills: boolean; claimSkills: boolean; catalogue: boolean; administration: boolean; manageCatalogue: boolean };
+  capabilities: { ownProfile: boolean; ownSkills: boolean; claimSkills: boolean; catalogue: boolean; administration: boolean; manageCatalogue: boolean; reviewSkills?:boolean };
   upcoming: { id: string; label: string; assigned: boolean; implemented: false }[];
 }
-type View = 'overview' | 'profile' | 'my-skills' | 'skills';
-const currentView = (pathname: string): View => pathname === '/profile' ? 'profile' : pathname === '/my-skills' ? 'my-skills' : pathname === '/skills' ? 'skills' : 'overview';
+type View = 'overview' | 'profile' | 'my-skills' | 'skills' | 'skill-reviews';
+const currentView = (pathname: string): View => pathname === '/skill-reviews' ? 'skill-reviews' : pathname === '/profile' ? 'profile' : pathname === '/my-skills' ? 'my-skills' : pathname === '/skills' ? 'skills' : 'overview';
 
 export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{embedded?:boolean;actionsContainer?:HTMLDivElement|null;initialWorkspace?:WorkspaceState}) {
   const { pathname } = useLocation(), navigate = useNavigate();
@@ -40,6 +41,7 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
   const name = state?.person.displayName ?? 'Workspace member';
   const firstName = state ? name.trim().split(/\s+/)[0] || 'there' : 'there';
   const sections = [
+    {id:'skill-reviews',label:'Skill reviews',href:'/skill-reviews',icon:ShieldCheck,visible:state?.capabilities.reviewSkills},
     { id: 'overview', label: 'Dashboard', href: '/workspace', icon: LayoutDashboard, visible: true },
     { id: 'profile', label: 'My profile', href: '/profile', icon: UserRound, visible: state?.capabilities.ownProfile },
     { id: 'my-skills', label: 'My skills', href: '/my-skills', icon: Compass, visible: state?.capabilities.ownSkills },
@@ -60,6 +62,7 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
       {view==='overview'&&<PersonalDashboard workspace={state}/>}
       {view==='profile'&&<PersonalProfile workspace={state}/>}
       {view==='my-skills'&&<MySkills actionsContainer={actionsContainer??null}/>}
+      {view==='skill-reviews'&&<SkillReviews/>}
       {view==='skills'&&<SkillCatalogue actionsContainer={actionsContainer??null}/>}
     </>}
   </>;
@@ -82,6 +85,7 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
         {view === 'overview' && <PersonalDashboard workspace={state} />}
         {view === 'profile' && <PersonalProfile workspace={state}/>}
         {view === 'my-skills' && <MySkills actionsContainer={actions} />}
+        {view === 'skill-reviews' && <SkillReviews/>}
         {view === 'skills' && <SkillCatalogue actionsContainer={actions} />}
       </>}
     </main></div>

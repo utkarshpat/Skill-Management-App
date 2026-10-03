@@ -1,4 +1,4 @@
-import { can, type LocalAccessState, type LocalPerson } from './local-access-store.js';
+import { can, canReviewAssigned, type LocalAccessState, type LocalPerson } from './local-access-store.js';
 
 // Navigation describes effective authority; it never grants that authority.
 // Future workflows remain explicitly unavailable until their services exist.
@@ -13,10 +13,10 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
       roles: state.roles.filter(role => person.roleIds.includes(role.id)).map(role => role.name) },
     capabilities: {
       ownProfile, ownSkills, claimSkills: ownSkills && can(state, person, 'skill.claim', true) && can(state, person, 'skill.view'),
-      catalogue, administration, manageCatalogue: can(state, person, 'skill.catalogue.manage'),
+      reviewSkills:ownProfile&&canReviewAssigned(state,person), catalogue, administration, manageCatalogue: can(state, person, 'skill.catalogue.manage'),
     },
     upcoming: [
-      { id: 'assessment', label: 'Team & assessment', assigned: available('assessment.view') || available('skill.verify'), implemented: false },
+      { id: 'assessment', label: 'Team & assessment', assigned: available('assessment.view'), implemented: false },
       { id: 'learning', label: 'Learning & development', assigned: available('learning.view'), implemented: false },
       { id: 'requests', label: 'Requests & incidents', assigned: available('request.view') || available('incident.view') || available('request.create') || available('incident.create'), implemented: false },
       { id: 'demand', label: 'Projects & demand', assigned: available('demand.view') || available('demand.create'), implemented: false },

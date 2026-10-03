@@ -6,6 +6,7 @@ export function assistantCapabilities(state:LocalAccessState, person:LocalPerson
   const pages=[{label:'Dashboard',url:'/workspace'}];
   if(capabilities.ownProfile)pages.push({label:'My profile',url:'/profile'});
   if(capabilities.ownSkills)pages.push({label:'My skills',url:'/my-skills'});
+  if(capabilities.reviewSkills)pages.push({label:'Skill reviews',url:'/skill-reviews'});
   if(capabilities.catalogue)pages.push({label:'Skill catalogue',url:'/skills'});
   if(capabilities.administration){
     pages.push({label:'Administration dashboard',url:'/access?view=overview'},{label:'Roles & permissions',url:'/access?view=roles'});
@@ -13,8 +14,9 @@ export function assistantCapabilities(state:LocalAccessState, person:LocalPerson
     if(can(state,person,'audit.view'))pages.push({label:'Activity log',url:'/access?view=audit'});
   }
   const guidance=[{action:'View own profile',url:'/profile',steps:['Open My profile.','Review your profile and assigned workspace information.']}];
-  if(capabilities.ownSkills)guidance.push({action:'View own skill drafts',url:'/my-skills',steps:['Open My skills.','Review the table of self-assessed, unverified drafts.']});
-  if(capabilities.claimSkills)guidance.push({action:'Add or edit an own skill draft',url:'/my-skills',steps:['Open My skills and choose Add skill, or edit an existing draft.','Choose a published skill and its proficiency level.','Describe your experience; an AI draft can prefill the description for your review.','Review and Save. Saving a draft does not verify the skill.']});
+  if(capabilities.ownSkills)guidance.push({action:'View own skill drafts',url:'/my-skills',steps:['Open My skills.','Review your claim status and manager feedback. Drafts are unverified; approved entries are manager-reviewed claims.']});
+  if(capabilities.claimSkills)guidance.push({action:'Add or edit an own skill draft',url:'/my-skills',steps:['Open My skills and choose Add skill, or edit an existing draft.','Choose a published skill and its proficiency level.','Describe your experience, project contributions and evidence references; an AI draft can prefill the description for your review.','Review and Save draft, then choose Submit for review and confirm. Your current reporting manager must have review permission. Saving alone does not submit or verify the skill.']});
+  if(capabilities.reviewSkills)guidance.push({action:'Review assigned skill submissions',url:'/skill-reviews',steps:['Open Skill reviews to see pending submissions assigned to you from current direct reports.','Review proficiency criteria, experience, projects and evidence.','Choose Approve, Request changes or Reject, enter feedback, and confirm the decision.','You cannot review your own claim or a claim outside your assignment. Learning quizzes do not verify a claim.']});
   if(capabilities.catalogue)guidance.push({action:'Browse published skills',url:'/skills',steps:['Open Skill catalogue.','Search by skill or category.','Read the proficiency criteria before choosing a level.']});
   if(capabilities.manageCatalogue)guidance.push({action:'Create or edit a catalogue skill',url:'/skills',steps:['Open Skill catalogue and choose New skill, or open an existing skill.','Enter the skill details and define proficiency levels.','Review publication requirements and Save skill.']});
   if(capabilities.administration){

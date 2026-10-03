@@ -35,3 +35,7 @@ npm.cmd run test:claims -w apps/api
 ```
 
 This opt-in test requires two already-permitted test people and a catalogue/access administrator. It does not add permanent people, grants or skill definitions.
+# Current submission and review flow
+
+Migration 010 adds projects, evidence references, employee submission, assigned reporting-manager review, feedback and SQL notifications. See [SKILL_REVIEWS.md](SKILL_REVIEWS.md) for current status rules and security boundaries. The draft-only behavior described below is the original phase and is now extended by this flow.
+

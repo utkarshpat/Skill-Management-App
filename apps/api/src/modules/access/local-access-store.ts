@@ -34,6 +34,13 @@ export function can(state: LocalAccessState, person: LocalPerson, permission: st
   return authorize({ id: person.id, accountId, active: person.active }, permission,
     { id: own ? person.id : accountId, type: own ? 'profile' : 'workspace', accountId, ownerUserId: own ? person.id : undefined }, grantsFor(state, person), new Date()).allowed;
 }
+// Capability discovery only. Claim assignment, ownership and reporting scope are
+// enforced again by the review procedures before any records are exposed or changed.
+export function canReviewAssigned(state:LocalAccessState,person:LocalPerson){
+  if(!person.active)return false;
+  const now=Date.now(),grants=grantsFor(state,person).filter(grant=>grant.permission==='skill.verify'&&grant.scope.kind==='ORGANIZATION'&&(!grant.validUntil||now<Date.parse(grant.validUntil)));
+  return grants.some(grant=>grant.effect==='ALLOW')&&!grants.some(grant=>grant.effect==='DENY');
+}
 function text(value: unknown, max: number): string {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max) throw new AccessError(400,'A required text field is invalid.');
   return value.trim();

@@ -1,5 +1,5 @@
 import { AccessError } from '../../shared/errors.js';
-import { can, type AccessStore, type LocalAccessState, type LocalPerson } from '../access/index.js';
+import { can, canReviewAssigned, type AccessStore, type LocalAccessState, type LocalPerson } from '../access/index.js';
 import type { OrganizationStore } from '../organization/index.js';
 import type { ClaimsStore, CatalogueStore } from '../skills/index.js';
 import { assistantCapabilities } from './capabilities.js';
@@ -47,7 +47,12 @@ export class ToolRegistry {
     if(claims)this.entries.set('my_skills',{
       definition:definition('my_skills','Read the signed-in person’s first page of self-assessed skill drafts. Drafts are unverified; no other person can be selected.'),
       permission:(state,person)=>can(state,person,'skill.view',true),source:{label:'My skills · Self-assessed drafts',url:'/my-skills'},
-      read:async({person})=>{const own=await claims.read(person.id,1);return {total:own.total,page:own.page,pageSize:own.pageSize,hasMore:own.total>own.pageSize,skills:own.claims.map(claim=>({skill:claim.skillName,proficiency:claim.levelName,status:'DRAFT',verification:'UNVERIFIED'})),source:'My skills · Self-assessed drafts'};},
+      read:async({person})=>{const own=await claims.read(person.id,1);return {total:own.total,page:own.page,pageSize:own.pageSize,hasMore:own.total>own.pageSize,skills:own.claims.map(claim=>({skill:claim.skillName,proficiency:claim.levelName,status:claim.status,verification:claim.status==='APPROVED'?'MANAGER_REVIEWED':'UNVERIFIED'})),source:'My skills · Self-assessed drafts'};},
+    });
+    if(claims?.reviews)this.entries.set('assigned_skill_reviews',{
+      definition:definition('assigned_skill_reviews','Read a compact summary of your pending assigned skill reviews, limited to your current direct reports. Cannot choose another reviewer or approve anything.'),
+      permission:(state,person)=>canReviewAssigned(state,person),source:{label:'Assigned skill reviews',url:'/skill-reviews'},
+      read:async({person})=>{const queue=await claims.reviews!(person.id,1);return {total:queue.total,page:queue.page,hasMore:queue.total>queue.pageSize,claims:queue.claims.slice(0,10).map(claim=>({skill:claim.skillName,person:claim.personName,proficiency:claim.levelName,status:claim.status})),source:'Assigned skill reviews'};},
     });
     if(catalogue)this.entries.set('catalogue_search',{
       definition:{type:'function',function:{name:'catalogue_search',description:'Search published skills by name/category, 25 compact results per page. No drafts/archived skills or arbitrary people. Use full proficiency criteria before suggesting a level.',parameters:searchSchema}},

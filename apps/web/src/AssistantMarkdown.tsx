@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 // using server-provided destinations and a fresh permission check.
 export function assistantUrl(url:string):string {
   if(!/^\/(?!\/)/.test(url)||url.includes('\\'))return '';
-  try{const parsed=new URL(url,'https://workspace.invalid');return ['/workspace','/profile','/my-skills','/skills','/access'].includes(parsed.pathname)&&parsed.origin==='https://workspace.invalid'?parsed.pathname+parsed.search+parsed.hash:'';}catch{return '';}
+  try{const parsed=new URL(url,'https://workspace.invalid');return ['/workspace','/profile','/my-skills','/skills','/skill-reviews','/access'].includes(parsed.pathname)&&parsed.origin==='https://workspace.invalid'?parsed.pathname+parsed.search+parsed.hash:'';}catch{return '';}
 }
 export default function AssistantMarkdown({children}:{children:string}) {
   return <div className="assistant-markdown"><Markdown remarkPlugins={[remarkGfm]} skipHtml disallowedElements={['img']} urlTransform={assistantUrl} components={{

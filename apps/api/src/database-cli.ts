@@ -18,7 +18,7 @@ if (command !== 'check' && command !== 'migrate') {
           await pool.request().query(await readFile(new URL('../../../database/migrations/001_identity_authorization.sql', import.meta.url), 'utf8'));
           console.log('Migration 001 applied.');
         }
-        for (const [version,filename] of [[2,'002_own_profile.sql'],[3,'003_custom_access.sql'],[4,'004_microsoft_access.sql'],[5,'005_organization_setup.sql'],[6,'006_department_membership.sql'],[7,'007_skill_catalogue.sql'],[8,'008_skill_claim_drafts.sql'],[9,'009_ai_conversations.sql']] as const) {
+        for (const [version,filename] of [[2,'002_own_profile.sql'],[3,'003_custom_access.sql'],[4,'004_microsoft_access.sql'],[5,'005_organization_setup.sql'],[6,'006_department_membership.sql'],[7,'007_skill_catalogue.sql'],[8,'008_skill_claim_drafts.sql'],[9,'009_ai_conversations.sql'],[10,'010_skill_claim_reviews.sql']] as const) {
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
         try {
@@ -30,7 +30,7 @@ if (command !== 'check' && command !== 'migrate') {
             console.log(`Migration ${version} applied.`);
           }
           await transaction.commit();
-        } catch (error) { await transaction.rollback(); throw error; }
+        } catch (error) { await transaction.rollback();const detail=error as {number?:number;lineNumber?:number;message?:string};if(detail.number)console.error(`Migration ${version} failed: SQL ${detail.number}, line ${detail.lineNumber??'unknown'}: ${detail.message?.slice(0,300)??'Statement rejected.'}`);throw error; }
         }
       }
       const exists = await pool.request().query("SELECT CASE WHEN OBJECT_ID(N'dbo.SchemaMigration', N'U') IS NULL THEN 0 ELSE 1 END AS has_migrations;");
