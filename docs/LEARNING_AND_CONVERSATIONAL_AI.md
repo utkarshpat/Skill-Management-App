@@ -1,6 +1,6 @@
 # Learning and conversational AI requirements
 
-Status: requirements and proposed design, not delivered functionality. Updated 3 October 2026.
+Status: employee learning plans, calendar, backlog, completion logging and streaks are implemented. Advanced learning tests and AI write proposals remain planned. See the implementation and production QA sections below. Updated 3 October 2026.
 
 ## Sources and precedence
 
