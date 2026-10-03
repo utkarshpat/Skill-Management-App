@@ -31,6 +31,10 @@ try {
     await fixture(async(tx,skill,claim)=>{
       const options=await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,owner.id).input('query',sql.NVarChar(100),prefix).execute('dbo.ReadClaimSkills');
       const optionSets=options.recordsets as sql.IRecordSet<{id:string;total:number}>[];assert.equal(optionSets[0][0].total,1);assert.equal(optionSets[2].length,2);
+      const discovery=await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,owner.id).input('query',sql.NVarChar(100),prefix).input('category',sql.NVarChar(80),'Rollback-only test').input('page_size',sql.Int,1).execute('dbo.ReadClaimSkills');
+      const discovered=discovery.recordsets as sql.IRecordSet<{total:number;description:string;name:string;count:number}>[];
+      assert.equal(discovered[0][0].total,1);assert.equal(discovered[1].length,1);assert.equal(discovered[1][0].description,'Definition');assert.ok(discovered[3].some(row=>row.name==='Rollback-only test'&&row.count>=1));
+      const wrongCategory=await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,owner.id).input('query',sql.NVarChar(100),prefix).input('category',sql.NVarChar(80),'Missing test category').execute('dbo.ReadClaimSkills');assert.equal((wrongCategory.recordsets as sql.IRecordSet<{total:number}>[])[0][0].total,0);
       await save(tx,skill,claim);await save(tx,skill,claim,1,owner.id,{rank:2});
       const mine=(await read(tx)).recordsets as sql.IRecordSet<{id:string;status:string;revision:number;rank:number}>[];
       assert.ok(mine[1].some(row=>row.id.toLowerCase()===claim&&row.revision===2&&row.rank===2&&row.status==='DRAFT'));

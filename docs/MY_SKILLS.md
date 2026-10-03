@@ -1,3 +1,13 @@
+## Guided skill entry (current UI)
+
+Add/edit/AI-prefilled skill entry uses a three-step wizard: Select skill, Proficiency & details, Review & save. Category cards and counts come from published, workspace-scoped SQL discovery, never a static demonstration list. Search and category filters combine; paginated three-item result sets keep the laptop form compact. The selected definition remains visible across result changes. Editing an existing claim cannot change its skill.
+
+Proficiency radio cards use the selected skill's actual versioned levels (including custom frameworks). Experience months and description are required; project/evidence references are optional. The final screen previews a self-assessed draft and links back to edit source details. It does not submit a manager review or mark the claim verified. AI suggestions follow the same explicit review/save flow. File uploads, primary-usage/last-used fields and expertise subskills shown in the design reference are not presented as supported controls: they need their own persistence/storage increment.
+
+Laptop forms use a fixed modal, bounded result pages and a persistent footer. Phone/tablet widths up to 800px stack the panels and scroll the modal body; controls remain reachable. Shared tokens support light/dark themes. Native buttons, labelled radios, keyboard focus, Escape, unsaved-change confirmation, loading/error states and repeat-save prevention are included.
+
+Migration 013 extends ReadClaimSkills compatibly with category, bounded page-size, definition description/business code and published category counts. Defaults remain 25 results for existing callers. Counts are workspace-scoped and published-only; up to 100 category facets are returned, with search available for any additional categories. SQL/API permissions and save revision checks are unchanged. Types, production builds, 93 automated checks and rollback-only real SQL category/pagination checks pass.
+
 # My Skills: own self-assessed drafts
 
 ## Delivered scope

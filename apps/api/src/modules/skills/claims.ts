@@ -7,6 +7,7 @@ export interface SkillClaim {
   projects?: string; evidence?: string; feedback?: string; reviewerId?: string; personName?: string;
 }
 export interface ClaimOption {
+  description?:string; businessCode?:string|null;
   id: string; name: string; category: string; definitionRevision: number;
   levels: { rank: number; name: string; description: string }[];
 }
@@ -14,7 +15,7 @@ export interface ClaimState { claims: SkillClaim[]; total: number; page: number;
 export interface ClaimOptions { skills: ClaimOption[]; total: number; page: number; pageSize: number }
 export interface ClaimsStore {
   read(actorId: string, page: number): Promise<ClaimState>;
-  options(actorId: string, search: string, page: number): Promise<ClaimOptions>;
+  options(actorId: string, search: string, page: number, category?:string,pageSize?:number): Promise<ClaimOptions>;
   save(actorId: string, input: unknown): Promise<void>;
   transition?(actorId: string, input: ReturnType<typeof claimTransition>): Promise<void>;
   reviews?(actorId: string, page: number): Promise<ClaimState>;
@@ -27,6 +28,8 @@ export function claimPage(value: unknown): number {
   if (!Number.isSafeInteger(page) || page < 1 || page > 100000) throw new AccessError(400, 'Choose a valid page.');
   return page;
 }
+export function claimResultSize(value:unknown):number {const size=value===undefined?25:Number(value);if((value!==undefined&&typeof value!=='string'&&typeof value!=='number')||!Number.isInteger(size)||size<1||size>25)throw new AccessError(400,'Choose a valid result size.');return size;}
+export function claimCategory(value:unknown):string {if(value===undefined)return '';if(typeof value!=='string'||value.length>80)throw new AccessError(400,'Choose a valid category.');return value.trim();}
 export function claimSearch(value: unknown): string {
   if (value === undefined) return '';
   if (typeof value !== 'string' || value.length > 100) throw new AccessError(400, 'Search using up to 100 characters.');

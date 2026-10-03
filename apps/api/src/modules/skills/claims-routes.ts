@@ -3,7 +3,7 @@ import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import { can, canReviewAssigned, type AccessStore } from '../access/index.js';
 
 import { AccessError } from '../../shared/errors.js';
-import { claimChange, claimPage, claimSearch, claimTransition, type ClaimsStore } from './claims.js';
+import { claimChange, claimCategory, claimResultSize, claimPage, claimSearch, claimTransition, type ClaimsStore } from './claims.js';
 
 export interface ClaimsHttpDependencies {
   verify:(authorization:string|undefined)=>Promise<Identity>;
@@ -33,7 +33,7 @@ export function registerClaimsRoutes(app:Express, dependencies:ClaimsHttpDepende
     catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'SKILL_DRAFT_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
   app.get('/api/my-skills/catalogue',async(req,res)=>{
-    try { if(!dependencies?.claims)throw new AccessError(503,'My Skills is not configured.');res.json(await dependencies.claims.options(res.locals.claimActor,claimSearch(req.query.search),claimPage(req.query.page))); }
+    try { if(!dependencies?.claims)throw new AccessError(503,'My Skills is not configured.');res.json(await dependencies.claims.options(res.locals.claimActor,claimSearch(req.query.search),claimPage(req.query.page),claimCategory(req.query.category),claimResultSize(req.query.pageSize))); }
     catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'SKILL_DRAFT_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
   app.post('/api/my-skills',async(req,res)=>{

@@ -16,12 +16,12 @@ export class SqlClaimsStore implements ClaimsStore {
       });
     } catch(error) { throw claimError(error); }
   }
-  async options(actorId: string, search: string, page: number): Promise<ClaimOptions> {
+  async options(actorId: string, search: string, page: number, category='',pageSize=25) : Promise<ClaimOptions> {
     try {
       return await withRuntimeDatabase(async pool => {
-        const result = await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId).input('query',sql.NVarChar(100),search).input('page',sql.Int,page).execute('dbo.ReadClaimSkills');
-        const sets = result.recordsets as unknown as [sql.IRecordSet<{total:number}>,sql.IRecordSet<Omit<ClaimOption,'levels'>>,sql.IRecordSet<ClaimOption['levels'][number] & {skillId:string}>];
-        return {total:sets[0][0].total,page,pageSize:25,skills:sets[1].map(item=>({...item,id:item.id.toLowerCase(),levels:sets[2].filter(level=>level.skillId===item.id).map(({rank,name,description})=>({rank,name,description}))}))};
+        const result = await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId).input('query',sql.NVarChar(100),search).input('category',sql.NVarChar(80),category).input('page_size',sql.Int,pageSize).input('page',sql.Int,page).execute('dbo.ReadClaimSkills');
+        const sets = result.recordsets as unknown as [sql.IRecordSet<{total:number}>,sql.IRecordSet<Omit<ClaimOption,'levels'>>,sql.IRecordSet<ClaimOption['levels'][number] & {skillId:string}>,sql.IRecordSet<{name:string;count:number}>];
+        return {total:sets[0][0].total,page,pageSize,categories:sets[3]??[],skills:sets[1].map(item=>({...item,id:item.id.toLowerCase(),levels:sets[2].filter(level=>level.skillId===item.id).map(({rank,name,description})=>({rank,name,description}))}))};
       });
     } catch(error) { throw claimError(error); }
   }

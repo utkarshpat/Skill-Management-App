@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BookOpen, Plus, Pencil, Search } from 'lucide-react';
+import { BookOpen, Plus, Pencil } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { SkillClaimDialog } from './SkillReviews';
 import { FormDialog } from './FormDialog';
+import {SkillClaimWizard,type SkillChoice,type SkillDraft,type SkillChoices} from './SkillClaimWizard';
 import { useLocation, useNavigate } from 'react-router';
 
 export interface Claim {
@@ -11,10 +12,10 @@ export interface Claim {
   definitionRevision:number; rank:number; levelName:string; experienceMonths:number;
   description:string; status:'DRAFT'|'SUBMITTED'|'CHANGES_REQUESTED'|'APPROVED'|'REJECTED'; updatedAt:string; projects?:string; evidence?:string; feedback?:string; personName?:string; levelDescription?:string;
 }
-interface Option { id:string; name:string; category:string; definitionRevision:number; levels:{rank:number;name:string;description:string}[] }
+type Option=SkillChoice;
 interface State { claims:Claim[]; total:number; page:number; pageSize:number; canClaim:boolean }
-interface Options { skills:Option[]; total:number; page:number; pageSize:number }
-interface Draft { id:string; revision:number; skillId:string; definitionRevision:number; rank:number; experienceMonths:number; description:string; projects?:string; evidence?:string }
+type Options=SkillChoices;
+type Draft=SkillDraft;
 const emptyDraft=():Draft=>({id:crypto.randomUUID(),revision:0,skillId:'',definitionRevision:0,rank:0,experienceMonths:0,description:''});
 async function body<T>(response:Response):Promise<T> {
   const value=await response.json().catch(()=>undefined);
@@ -27,7 +28,7 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
   const [inspecting,setInspecting]=useState<Claim>(),[submitting,setSubmitting]=useState(false);
   const [error,setError]=useState(''),[notice,setNotice]=useState('');
   const [draft,setDraft]=useState<Draft>(),[formPage,setFormPage]=useState(0),[busy,setBusy]=useState(false),[formError,setFormError]=useState('');
-  const [options,setOptions]=useState<Options>(),[search,setSearch]=useState(''),[optionPage,setOptionPage]=useState(1),[optionsLoading,setOptionsLoading]=useState(false);
+  const [options,setOptions]=useState<Options>(),[search,setSearch]=useState(''),[category,setCategory]=useState(''),[picked,setPicked]=useState<Option>(),[optionPage,setOptionPage]=useState(1),[optionsLoading,setOptionsLoading]=useState(false);
   async function load(signal?:AbortSignal) {
     setLoading(true);
     try { const value=await body<State>(await authenticatedFetch(`/api/my-skills?page=${page}`,{signal}));if(!signal?.aborted){setState(value);setError('');} }
@@ -39,7 +40,7 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
     if(!reviewRequest||!state)return;
     if(!state.canClaim){setError('Your account does not have permission to add a skill draft.');return;}
     if(!reviewRequest.description.trim()||reviewRequest.description.length>2000){setError('The suggested experience text is invalid.');return;}
-    setDraft({...emptyDraft(),description:reviewRequest.description});setFormPage(0);setFormError('');
+    setPicked(undefined);setCategory('');setSearch('');setOptionPage(1);setDraft({...emptyDraft(),description:reviewRequest.description});setFormPage(0);setFormError('');
   },[reviewRequest?.description,state?.canClaim]);
   useEffect(()=>{
     const suggested=location.state?.aiDraft?.description;
@@ -48,29 +49,30 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
     navigate(location.pathname+location.search,{replace:true,state:null});
     if(!state.canClaim){setError('Your account does not have permission to add a skill draft.');return;}
     if(!suggested.trim()||suggested.length>2000){setError('The suggested experience text is invalid.');return;}
-    setDraft({...emptyDraft(),description:suggested});setFormPage(0);setSearch('');setOptionPage(1);setFormError('');
+    setPicked(undefined);setCategory('');setDraft({...emptyDraft(),description:suggested});setFormPage(0);setSearch('');setOptionPage(1);setFormError('');
     setNotice('AI suggestion loaded. Review the skill, proficiency, experience and description before saving.');
   },[location.key,state?.canClaim]);
   useEffect(()=>{
     if(!draft)return;
     const controller=new AbortController();setOptionsLoading(true);setOptions(undefined);
-    const timer=setTimeout(()=>{authenticatedFetch(`/api/my-skills/catalogue?search=${encodeURIComponent(search)}&page=${optionPage}`,{signal:controller.signal})
+    const timer=setTimeout(()=>{authenticatedFetch(`/api/my-skills/catalogue?search=${encodeURIComponent(search)}&page=${optionPage}&category=${encodeURIComponent(category)}&pageSize=3`,{signal:controller.signal})
       .then(body<Options>).then(value=>{if(!controller.signal.aborted)setOptions(value);})
       .catch(error=>{if(!controller.signal.aborted)setFormError(error.message);})
       .finally(()=>{if(!controller.signal.aborted)setOptionsLoading(false);});},200);
     return()=>{clearTimeout(timer);controller.abort();};
-  },[draft?.id,search,optionPage]);
-  const selected=options?.skills.find(item=>item.id===draft?.skillId);
+  },[draft?.id,search,optionPage,category]);
+  const selected=options?.skills.find(item=>item.id===draft?.skillId)??picked;
+  useEffect(()=>{const current=options?.skills.find(item=>item.id===draft?.skillId);if(current)setPicked(current);},[options,draft?.skillId]);
   function edit(claim?:Claim) {
-    setNotice('');setFormError('');setFormPage(0);setOptionPage(1);setSearch(claim?.skillName??'');
+    setPicked(undefined);setCategory('');setNotice('');setFormError('');setFormPage(0);setOptionPage(1);setSearch(claim?.skillName??'');
     setDraft(claim?{id:claim.id,revision:claim.revision,skillId:claim.skillId,definitionRevision:claim.definitionRevision,rank:claim.rank,experienceMonths:claim.experienceMonths,description:claim.description,projects:claim.projects??'',evidence:claim.evidence??''}:emptyDraft());
   }
   async function save() {
     if(!draft||busy)return;
     if(!selected||!selected.levels.some(level=>level.rank===draft.rank)){setFormPage(0);setFormError('Select a published skill and its proficiency level.');return;}
     if(!Number.isSafeInteger(draft.experienceMonths)||draft.experienceMonths<0||draft.experienceMonths>600){setFormPage(0);setFormError('Experience must be between 0 and 600 months.');return;}
-    if((draft.projects?.length??0)>2000||(draft.evidence?.length??0)>2000){setFormPage(3);setFormError('Use up to 2,000 characters for projects and evidence.');return;}
-    if(!draft.description.trim()||draft.description.trim().length>2000){setFormPage(2);setFormError('Describe your experience using up to 2,000 characters.');return;}
+    if((draft.projects?.length??0)>2000||(draft.evidence?.length??0)>2000){setFormPage(1);setFormError('Use up to 2,000 characters for projects and evidence.');return;}
+    if(!draft.description.trim()||draft.description.trim().length>2000){setFormPage(1);setFormError('Describe your experience using up to 2,000 characters.');return;}
     setBusy(true);setFormError('');
     try {
       await body(await authenticatedFetch('/api/my-skills',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...draft,definitionRevision:selected.definitionRevision})}));
@@ -96,21 +98,6 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
     </section>}
     </>}
     {inspecting&&<SkillClaimDialog claim={inspecting} mode={submitting?'submit':'view'} onClose={()=>setInspecting(undefined)} onSaved={()=>{setInspecting(undefined);setNotice('Claim submitted to your assigned reporting manager.');window.dispatchEvent(new Event('own-skills-updated'));void load();}}/>}
-    {draft&&<FormDialog title={reviewRequest?'Review skill draft':draft.revision?'Edit skill draft':'Add skill'} busy={busy} onClose={closeDraft} page={formPage} onPageChange={setFormPage} formId="skill-claim-form" onSubmit={()=>void save()} message={formError&&<p role="alert">{formError}</p>}
-      pages={[
-        {label:'Skill & proficiency',content:<>
-          <label>Find a skill<span className="claim-search"><Search size={16} aria-hidden="true"/><input maxLength={100} value={search} onChange={event=>{setSearch(event.target.value);setOptionPage(1);setFormError('');}} placeholder="Search published skills…"/></span></label>
-          <label>Skill<select value={draft.skillId} disabled={draft.revision>0||optionsLoading} onChange={event=>setDraft({...draft,skillId:event.target.value,rank:0})}><option value="">{optionsLoading?'Loading skills…':'Select a skill'}</option>{options?.skills.map(skill=><option value={skill.id} key={skill.id}>{skill.name} · {skill.category}</option>)}</select></label>
-          {options&&!options.skills.length&&<p className="my-skills-note">No published skills match. Your catalogue administrator can publish skill definitions.</p>}
-          {options&&options.total>25&&<div className="claim-option-pages"><span>Page {optionPage}</span><button type="button" className="secondary-button" disabled={optionPage===1||optionsLoading} onClick={()=>setOptionPage(value=>value-1)}>Previous</button><button type="button" className="secondary-button" disabled={optionPage*25>=options.total||optionsLoading} onClick={()=>setOptionPage(value=>value+1)}>Next</button></div>}
-          <div className="claim-field-pair"><label>Proficiency<select disabled={!selected||optionsLoading} value={draft.rank} onChange={event=>setDraft({...draft,rank:Number(event.target.value)})}><option value={0}>Select a level</option>{selected?.levels.map(level=><option key={level.rank} value={level.rank}>{level.rank}. {level.name}</option>)}</select></label><label>Experience (months)<input type="number" min={0} max={600} step={1} value={Number.isNaN(draft.experienceMonths)?'':draft.experienceMonths} onChange={event=>setDraft({...draft,experienceMonths:event.target.value===''?NaN:Number(event.target.value)})}/></label></div>
-
-        </>},
-        {label:'Level criteria',content:<><h3>{selected?.levels.find(level=>level.rank===draft.rank)?.name??'Select a proficiency level'}</h3><p className="claim-level-description">{selected?.levels.find(level=>level.rank===draft.rank)?.description??'Choose a skill and level in the first step.'}</p></>},
-        {label:'Experience',content:<><label>Describe your experience<textarea maxLength={2000} rows={5} value={draft.description} onChange={event=>setDraft({...draft,description:event.target.value})} placeholder="What have you worked on, and how have you used this skill?"/></label><p className="my-skills-note">Your proficiency remains unverified until your reporting manager approves the submission.</p></>},
-        {label:'Projects & evidence',content:<><label>Projects<textarea rows={4} maxLength={2000} value={draft.projects??''} onChange={event=>setDraft({...draft,projects:event.target.value})} placeholder="Project names, your contribution and outcomes"/></label><label>Evidence references<textarea rows={4} maxLength={2000} value={draft.evidence??''} onChange={event=>setDraft({...draft,evidence:event.target.value})} placeholder="Links to approved project evidence or certificates, with a short explanation"/></label><p className="my-skills-note">Use references accessible to your reviewer. Do not paste passwords or confidential customer data.</p></>},
-      ]}
-      footer={<><button type="button" className="secondary-button" disabled={busy} onClick={closeDraft}>Cancel</button>{formPage<3?<button type="button" className="admin-primary" disabled={optionsLoading||!selected||!selected.levels.some(level=>level.rank===draft.rank)} onClick={()=>setFormPage(value=>value+1)}>Continue</button>:<button type="submit" form="skill-claim-form" className="admin-primary" disabled={busy||optionsLoading}>{busy?'Saving…':'Save draft'}</button>}</>}/>
-    }
+    {draft&&<SkillClaimWizard draft={draft} onDraft={setDraft} selected={selected} onSelect={skill=>{setPicked(skill);setDraft({...draft,skillId:skill.id,rank:skill.id===draft.skillId?draft.rank:0,definitionRevision:skill.definitionRevision});}} options={options} loading={optionsLoading} busy={busy} error={formError} page={formPage} onPage={setFormPage} search={search} onSearch={value=>{setSearch(value);setOptionPage(1);setFormError('');}} category={category} onCategory={value=>{setCategory(value);setOptionPage(1);setFormError('');}} onResultsPage={setOptionPage} onSave={()=>void save()} onClose={closeDraft} aiDraft={!!reviewRequest}/>}
   </>;
 }
