@@ -6,5 +6,6 @@ import { BrowserRouter } from 'react-router';
 import './styles.css';
 import './ui.css';
 import './theme.css';
+import './workspace-pages.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><BrowserRouter><ThemeProvider><App /></ThemeProvider></BrowserRouter></React.StrictMode>);

@@ -91,7 +91,7 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
   </div>;
 }
 
-function PersonalProfile({workspace:state}:{workspace:WorkspaceState}){return <section className="profile-panel"><div className="panel-title"><h2>{state.person.displayName}</h2><span className="claim-status">Active member</span></div><dl className="profile-details"><div><dt>Employee code</dt><dd>{state.person.employeeCode}</dd></div><div><dt>Assigned roles</dt><dd>{state.person.roles.join(', ')||'None assigned'}</dd></div><div><dt>Sign-in</dt><dd>{state.authentication==='local-demo'?'Temporary development login':'Microsoft'}</dd></div></dl></section>;}
+function PersonalProfile({workspace:state}:{workspace:WorkspaceState}){return <section className="profile-panel member-profile"><div className="member-profile-header"><span className="member-avatar" aria-hidden="true">{state.person.displayName.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join('')}</span><div><h2>{state.person.displayName}</h2><p>{state.person.employeeCode}</p></div><span className="member-auth"><ShieldCheck size={16}/>{state.authentication==='local-demo'?'Demo account':'Microsoft account'}</span></div><dl className="profile-details member-details"><div><dt>Employee ID</dt><dd>{state.person.employeeCode}</dd></div><div><dt>Sign-in method</dt><dd>{state.authentication==='local-demo'?'Temporary demo login':'Microsoft'}</dd></div><div><dt>Assigned roles</dt><dd><span className="directory-tags">{state.person.roles.length?state.person.roles.map(role=><span key={role}>{role}</span>):'None assigned'}</span></dd></div></dl></section>;}
 
 function PersonalDashboard({ workspace }: { workspace: WorkspaceState }) {
   const [skills, setSkills] = useState<{ total: number; claims: { id: string; skillName: string; levelName: string;status:string }[] }>();
@@ -107,13 +107,12 @@ function PersonalDashboard({ workspace }: { workspace: WorkspaceState }) {
   }, [workspace, attempt]);
   return <div className="personal-dashboard">
     {workspace.capabilities.ownSkills && <section className="profile-panel personal-skills-summary">
-      <div className="panel-title"><div><p className="workspace-eyebrow">MY CAPABILITY</p><h2>Your skills</h2></div><Link className="secondary-button" to="/my-skills">{workspace.capabilities.claimSkills ? 'Manage skills' : 'View skills'}<ChevronRight size={16} /></Link></div>
+      <div className="panel-title"><h2>Your skills</h2><Link className="secondary-button" to="/my-skills">{workspace.capabilities.claimSkills ? 'Manage skills' : 'View skills'}<ChevronRight size={16} /></Link></div>
       {error ? <div><p role="alert">{error}</p><button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>Retry</button></div> : !skills ? <p role="status">Loading your skills…</p> : <>
         <p className="personal-skill-total"><strong>{skills.total}</strong><span>{skills.total === 1 ? 'skill claim' : 'skill claims'}</span></p>
         {skills.claims.length ? <ul className="personal-skill-list">{skills.claims.slice(0, 4).map(skill => <li key={skill.id}><div><strong>{skill.skillName}</strong><span>{skill.levelName}</span></div><span className="claim-status">{skill.status.replaceAll('_',' ')}</span></li>)}</ul> : <p className="workspace-muted">Start with a published skill and describe your experience.</p>}
       </>}
     </section>}
     <section className="profile-panel workspace-identity"><div className="panel-title"><h2>My workspace</h2>{workspace.capabilities.ownProfile && <Link className="admin-text-button" to="/profile">My profile<ChevronRight size={16} /></Link>}</div><p>{workspace.person.roles.join(' · ') || 'No role assigned'}</p>{!workspace.capabilities.ownSkills && <p className="workspace-muted">Personal skill access is not assigned to this account.</p>}{workspace.capabilities.administration && <Link className="secondary-button" to="/access"><ShieldCheck size={17} />Open administration</Link>}</section>
-    {workspace.upcoming.length > 0 && <details className="profile-panel workspace-upcoming"><summary>Upcoming workflows</summary><p>Your permission sets include these workflows. Their pages and actions are still being built.</p><ul>{workspace.upcoming.map(item => <li key={item.id}>{item.label}<span>In development</span></li>)}</ul></details>}
   </div>;
 }
