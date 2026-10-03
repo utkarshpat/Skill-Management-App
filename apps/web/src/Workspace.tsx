@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { BookOpen, ChevronRight, Compass, LayoutDashboard, Menu, ShieldCheck, UserRound } from 'lucide-react';
-import { authenticatedFetch, isDemoSession } from './auth';
+import { authenticatedFetch } from './auth';
 import { Sidebar } from './Sidebar';
 import { NavigationDrawer } from './NavigationDrawer';
 import { NavbarAccount } from './NavbarAccount';
@@ -77,7 +77,6 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
       <NavbarAccount name={name} identity={state?.authentication === 'local-demo' ? 'Development session' : 'Microsoft account'} workspaceLink={state?.capabilities.administration ? { href: '/access', label: 'Administration' } : undefined} />
     </header>
     <main id="workspace-main" className="access-main" tabIndex={-1}>
-      {isDemoSession() && <p className="workspace-demo" role="status">Development session · {state?.person.employeeCode ?? 'Loading person…'}</p>}
       {error && <section className="profile-panel"><h2>Workspace access</h2><p role="alert">{error}</p><button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>Retry</button></section>}
       {!state && !error && <p role="status">Loading your workspace…</p>}
       {state && !permitted && <section className="profile-panel"><h2>Access is not assigned</h2><p>Your current permissions do not include this page.</p><Link className="secondary-button" to="/workspace">Return to dashboard</Link></section>}

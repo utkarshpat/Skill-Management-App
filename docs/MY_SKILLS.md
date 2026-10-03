@@ -4,7 +4,7 @@ My skills now has four interactive status cards, a searchable/filterable table, 
 
 The page reads all of the authenticated own-profile result pages (four requests maximum concurrently after the first page) before calculating totals, category filters or charts, so results do not misleadingly count only the first 25 claims. Filters combine search, category, status, level and workflow view; a clear action restores the complete list. Row pagination offers 5/10/25 rows. Refreshes preserve the current visible profile while marking it busy; failures retain an explicit retry. Only the authorized actor's existing read endpoint is used. This is a profile-size client aggregation; very large inventories should move summary/filter operations into SQL before expanding the use case.
 
-The layout uses shared light/dark tokens, responsive cards and a horizontal table viewport on phones. Brand and global navigation remain shared with the application. Status totals and mutation visibility have dedicated rendering tests.
+The layout uses shared light/dark tokens, responsive cards and a horizontal table viewport on phones. Brand and global navigation remain shared with the application. The navbar supplies the page identity; the duplicate introductory heading/profile badge and workspace development-session banner are removed. Table content and controls use 13–14px text, supporting labels at least 12px, and overview headings 16px for laptop readability. Demo identity remains available in the account menu. Status totals and mutation visibility have dedicated rendering tests.
 
 ## Guided skill entry (current UI)
 
