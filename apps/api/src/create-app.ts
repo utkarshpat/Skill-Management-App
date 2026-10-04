@@ -13,8 +13,9 @@ import {registerLearningRoutes,type LearningDependencies} from './modules/learni
 import {registerWorkflowRoutes,type WorkflowDependencies} from './modules/workflows/index.js';
 import {registerRecommendationRoutes,type RecommendationDependencies} from './modules/recommendations/index.js';
 import {registerDashboardRoutes} from './modules/dashboard/index.js';
+import {registerKnowledgeRoutes,type KnowledgeDependencies} from './modules/knowledge-transfer/index.js';
 
-export type AppDependencies = IdentityDependencies & AccessDependencies & OrganizationDependencies & SkillsDependencies & AiDependencies & ClaimsHttpDependencies & LearningDependencies & WorkflowDependencies & RecommendationDependencies;
+export type AppDependencies = IdentityDependencies & AccessDependencies & OrganizationDependencies & SkillsDependencies & AiDependencies & ClaimsHttpDependencies & LearningDependencies & WorkflowDependencies & RecommendationDependencies & KnowledgeDependencies;
 
 export function createApp(dependencies?: AppDependencies, options: { developmentStore?: AccessStore; hostedDemo?: HostedDemoConfig } = {}) {
   const app = express();
@@ -39,6 +40,8 @@ export function createApp(dependencies?: AppDependencies, options: { development
   registerWorkflowRoutes(app, dependencies, store, demo);
   registerDashboardRoutes(app, dependencies?{...dependencies,aiConfigured:dependencies.assistant?.status().configured}:undefined, store, demo);
   aiRoutes(app, dependencies, store, demo);
+  // Temporary KT feature: no business persistence or changes to core policy.
+  registerKnowledgeRoutes(app, dependencies, demo);
   // Liveness only: this must never imply SQL or organizational SSO is ready.
   app.get('/api/health', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');

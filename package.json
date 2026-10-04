@@ -15,7 +15,9 @@
     "build": "npm run build --workspaces",
     "typecheck": "npm run typecheck --workspaces",
     "test": "node --test scripts/architecture.test.mjs && npm run test -w apps/api && npm run test -w apps/web",
-    "architecture:check": "node scripts/check-architecture.mjs"
+    "architecture:check": "node scripts/check-architecture.mjs",
+    "docs:generate": "python scripts/generate-handover.py",
+    "docs:check": "python scripts/generate-handover.py --check"
   },
   "devDependencies": {
     "concurrently": "10.0.5"

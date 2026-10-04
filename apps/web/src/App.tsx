@@ -9,6 +9,7 @@ import { authenticatedFetch, initializeAuth, signedIn, signIn, signInConfigured,
 import { DevelopmentLogin } from './DevelopmentLogin';
 import { BookOpen, BriefcaseBusiness, Compass, Layers3, ListChecks, Users } from 'lucide-react';
 
+const KnowledgeTransfer=lazy(()=>import('./knowledge-transfer/KnowledgeTransfer').then(module=>({default:module.KnowledgeTransfer})));
 const Workspace=lazy(()=>import('./Workspace').then(module=>({default:module.Workspace})));
 const AccessAdmin=lazy(()=>import('./AccessAdmin').then(module=>({default:module.AccessAdmin})));
 const AssistantWidget=lazy(()=>import('./AssistantWidget').then(module=>({default:module.AssistantWidget})));
@@ -23,22 +24,24 @@ const modules = [
 
 export function App() {
   const { pathname } = useLocation();
+  const isKnowledgeTransfer=pathname==='/knowledgetransfer';
   const [session, setSession] = useState<'loading' | 'anonymous' | 'signed-in' | 'error'>('loading');
   const [sessionNotice,setSessionNotice]=useState('');
   const [workspace,setWorkspace]=useState<WorkspaceState>(),[workspaceError,setWorkspaceError]=useState(''),[workspaceAttempt,setWorkspaceAttempt]=useState(0);
   useEffect(()=>{
-    setWorkspaceError('');if(session!=='signed-in'){setWorkspace(undefined);return;}
+    setWorkspaceError('');if(isKnowledgeTransfer)return;if(session!=='signed-in'){setWorkspace(undefined);return;}
     const controller=new AbortController();let generation=0,lastLoad=0;
     const load=()=>{lastLoad=Date.now();const request=++generation;authenticatedFetch('/api/workspace',{signal:controller.signal}).then(async response=>{if(!response.ok)throw Object.assign(Error('Workspace navigation could not be refreshed.'),{status:response.status});const body=await response.json();if(!controller.signal.aborted&&request===generation){setWorkspace(body);setWorkspaceError('');}}).catch(error=>{if(!controller.signal.aborted&&request===generation){if([401,403].includes(error.status))setWorkspace(undefined);setWorkspaceError(error.message);}});};
     const focus=()=>{if(document.visibilityState==='visible'&&Date.now()-lastLoad>15000)load();};
     load();const timer=setInterval(()=>{if(document.visibilityState==='visible')load();},60000);
     window.addEventListener('workspace-access-updated',load);window.addEventListener('focus',focus);document.addEventListener('visibilitychange',focus);
     return()=>{controller.abort();clearInterval(timer);window.removeEventListener('workspace-access-updated',load);window.removeEventListener('focus',focus);document.removeEventListener('visibilitychange',focus);};
-  },[session,workspaceAttempt]);
+  },[session,workspaceAttempt,isKnowledgeTransfer]);
   useEffect(()=>{let active=true;const expired=()=>{setSessionNotice('Your development session expired or the API restarted. Choose a test person to open a new demo session.');setSession('loading');void refreshDevelopmentLogin().then(()=>{if(active)setSession('anonymous');});};window.addEventListener('development-session-expired',expired);return()=>{active=false;window.removeEventListener('development-session-expired',expired);};},[]);
   useEffect(() => { let active = true; initializeAuth().then(() => { if (active) setSession(signedIn() ? 'signed-in' : 'anonymous'); }).catch(() => { if (active) setSession('error'); }); return () => { active = false; }; }, []);
   if (pathname === '/preview') return <Overview />;
   if (session === 'loading') return <div className="session-loading" role="status">Preparing your workspace…</div>;
+  if(session==='signed-in'&&isKnowledgeTransfer)return <Suspense fallback={<div className="session-loading" role="status">Opening project handover…</div>}><KnowledgeTransfer/></Suspense>;
   if(session==='signed-in'&&!workspace)return <div className="session-loading" role="status">{workspaceError?<>{workspaceError}<button onClick={()=>setWorkspaceAttempt(value=>value+1)}>Retry</button></>:'Preparing workspace navigation…'}</div>;
   const refreshWarning=workspace&&workspaceError?<div className="workspace-refresh-warning" role="alert">{workspaceError} <button onClick={()=>setWorkspaceAttempt(n=>n+1)}>Retry</button></div>:null;
   if (session==='signed-in'&&administrationShellFor(pathname,Boolean(workspace?.capabilities.administration)))return <>{refreshWarning}<Suspense fallback={<div className="session-loading" role="status">Opening your workspace…</div>}><AccessAdmin personalPath={pathname==='/access'?undefined:pathname} personalCapabilities={workspace?.capabilities} workspaceContext={workspace}/><Suspense fallback={null}><AssistantWidget /></Suspense></Suspense></>;

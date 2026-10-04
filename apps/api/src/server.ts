@@ -1,4 +1,5 @@
 import {SqlAiBudget} from './modules/ai/budget.js';
+import {KnowledgeTransferService} from './modules/knowledge-transfer/index.js';
 import {SqlRecommendationStore} from './modules/recommendations/index.js';
 import { SqlOrganizationStore } from './modules/organization/sql-store.js';
 import { createApp } from './create-app.js';
@@ -27,12 +28,14 @@ const catalogue=process.env.ACCESS_ACCOUNT_ID?new SqlCatalogueStore(process.env.
 const learning=process.env.ACCESS_ACCOUNT_ID?new SqlLearningStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const recommendations=process.env.ACCESS_ACCOUNT_ID?new SqlRecommendationStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const workflows=process.env.ACCESS_ACCOUNT_ID?new SqlWorkflowStore(process.env.ACCESS_ACCOUNT_ID):undefined;
-const assistant=access?new AssistantService(access,organization,configuredProvider(process.env),claims,usage=>console.info(JSON.stringify({event:'ai.usage',...usage})) ,catalogue,process.env.ACCESS_ACCOUNT_ID?new SqlConversationsStore(process.env.ACCESS_ACCOUNT_ID):undefined,learning,workflows,new SqlAiBudget(process.env.ACCESS_ACCOUNT_ID!)):undefined;
+const provider=configuredProvider(process.env),aiBudget=access?new SqlAiBudget(process.env.ACCESS_ACCOUNT_ID!):undefined;
+const knowledgeTransfer=access&&aiBudget&&process.env.KNOWLEDGE_TRANSFER_ENABLED!=='false'?new KnowledgeTransferService(access,aiBudget,provider):undefined;
+const assistant=access?new AssistantService(access,organization,provider,claims,usage=>console.info(JSON.stringify({event:'ai.usage',...usage})) ,catalogue,process.env.ACCESS_ACCOUNT_ID?new SqlConversationsStore(process.env.ACCESS_ACCOUNT_ID):undefined,learning,workflows,aiBudget!):undefined;
 const learningGenerator:QuizGenerator|undefined=assistant?async(actor,prompt,signal)=>{const result=await assistant.chat(actor,{messages:[{role:'user',content:prompt}]},signal);return {artifact:result.artifact,reply:result.reply,provider:assistant.status().provider??'AI'};}:undefined;
 const practice=learning&&process.env.ACCESS_ACCOUNT_ID?new LearningPracticeService(learning,new SqlPracticeStore(process.env.ACCESS_ACCOUNT_ID),learningGenerator):undefined;
 const planner=learning?new LearningPlannerService(learning,learningGenerator):undefined;
 const recovery=learning&&process.env.ACCESS_ACCOUNT_ID?new LearningRecoveryService(learning,new SqlRecoveryStore(process.env.ACCESS_ACCOUNT_ID),learningGenerator):undefined;
-const app = createApp(config ? { verify: tokenVerifier(config),access,organization,assistant,catalogue,claims,learning,practice,planner,recovery,workflows,recommendations,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
+const app = createApp(config ? { verify: tokenVerifier(config),access,organization,assistant,knowledgeTransfer,catalogue,claims,learning,practice,planner,recovery,workflows,recommendations,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
   const id=await access?.resolveIdentity(identity);
   if(!id)return ownProfile(identity);
   const state=await access!.snapshot({includeAudit:false});const person=state.people.find(person=>person.id===id);

@@ -1,0 +1,4561 @@
+{
+  "version": "2026-10-05",
+  "revision": "697832df2392f8de",
+  "basis": "Repository source and migrations; not live introspection",
+  "schema": {
+    "migrations": [
+      "001_identity_authorization.sql",
+      "002_own_profile.sql",
+      "003_custom_access.sql",
+      "004_microsoft_access.sql",
+      "005_organization_setup.sql",
+      "006_department_membership.sql",
+      "007_skill_catalogue.sql",
+      "008_skill_claim_drafts.sql",
+      "009_ai_conversations.sql",
+      "010_skill_claim_reviews.sql",
+      "011_empty_skill_search.sql",
+      "012_versioned_skill_framework.sql",
+      "013_claim_catalogue_discovery.sql",
+      "014_employee_learning.sql",
+      "015_learning_log_capacity.sql",
+      "016_learning_skill_mapping.sql",
+      "017_learning_practice.sql",
+      "018_learning_recovery.sql",
+      "019_requests_incidents.sql",
+      "020_workflow_recipient_search.sql",
+      "021_workflow_workbench.sql",
+      "022_workflow_list.sql",
+      "023_workflow_lifecycle.sql",
+      "024_workflow_participant_assignment.sql",
+      "025_workflow_timeline_text.sql",
+      "026_dashboard_skill_summary.sql",
+      "027_direct_report_capability.sql",
+      "028_skill_review_workbench.sql",
+      "029_notification_destinations.sql",
+      "030_reporting_review_access.sql",
+      "031_effective_access_baseline.sql",
+      "032_access_reporting_snapshot.sql",
+      "033_reporting_scope_integrity.sql",
+      "034_exact_claim_review_access.sql",
+      "035_team_capability_analytics.sql",
+      "036_learning_recommendations.sql",
+      "037_recommendation_permission_contract.sql",
+      "038_recommendation_recipient_discovery.sql",
+      "039_access_read_optimization.sql",
+      "040_shared_ai_budget.sql"
+    ],
+    "tables": {
+      "SchemaMigration": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "version": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "version int NOT NULL PRIMARY KEY",
+            "source": "001_identity_authorization.sql"
+          },
+          "applied_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "applied_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "version"
+        ],
+        "unique": [],
+        "fks": [],
+        "constraints": [],
+        "indexes": [],
+        "domain": "Identity foundation"
+      },
+      "Account": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID() PRIMARY KEY",
+            "source": "001_identity_authorization.sql"
+          },
+          "account_code": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "account_code nvarchar(100) NOT NULL UNIQUE",
+            "source": "001_identity_authorization.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(200)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(200) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "entra_tenant_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "entra_tenant_id uniqueidentifier NOT NULL UNIQUE",
+            "source": "001_identity_authorization.sql"
+          },
+          "status": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "status varchar(20) NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','SUSPENDED','CLOSED'))",
+            "source": "001_identity_authorization.sql"
+          },
+          "created_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "created_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "001_identity_authorization.sql"
+          },
+          "record_version": {
+            "type": "rowversion",
+            "nullable": false,
+            "declaration": "record_version rowversion NOT NULL",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "account_id"
+        ],
+        "unique": [
+          [
+            "account_code"
+          ],
+          [
+            "entra_tenant_id"
+          ]
+        ],
+        "fks": [],
+        "constraints": [],
+        "indexes": [],
+        "domain": "Identity foundation"
+      },
+      "DeliveryUnit": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL REFERENCES dbo.Account(account_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          "delivery_unit_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "delivery_unit_id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+            "source": "001_identity_authorization.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(200)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(200) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "delivery_unit_id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "display_name"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "Account",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id, delivery_unit_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id, display_name)",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Identity foundation"
+      },
+      "Department": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "department_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "department_id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+            "source": "001_identity_authorization.sql"
+          },
+          "delivery_unit_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "delivery_unit_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(200)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(200) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "department_id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "delivery_unit_id",
+            "display_name"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "delivery_unit_id"
+            ],
+            "target": "DeliveryUnit",
+            "targetColumns": [
+              "account_id",
+              "delivery_unit_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id, department_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, delivery_unit_id) REFERENCES dbo.DeliveryUnit(account_id, delivery_unit_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id, delivery_unit_id, display_name)",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Identity foundation"
+      },
+      "Team": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "team_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "team_id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+            "source": "001_identity_authorization.sql"
+          },
+          "department_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "department_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(200)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(200) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "team_id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "department_id",
+            "display_name"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "department_id"
+            ],
+            "target": "Department",
+            "targetColumns": [
+              "account_id",
+              "department_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id, team_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, department_id) REFERENCES dbo.Department(account_id, department_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id, department_id, display_name)",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Identity foundation"
+      },
+      "AppUser": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL REFERENCES dbo.Account(account_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          "user_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "user_id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+            "source": "001_identity_authorization.sql"
+          },
+          "entra_object_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "entra_object_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "employee_code": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "employee_code nvarchar(100) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(200)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(200) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "status": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "status varchar(20) NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','SUSPENDED','LEFT'))",
+            "source": "001_identity_authorization.sql"
+          },
+          "created_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "created_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "001_identity_authorization.sql"
+          },
+          "updated_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "updated_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "001_identity_authorization.sql"
+          },
+          "record_version": {
+            "type": "rowversion",
+            "nullable": false,
+            "declaration": "record_version rowversion NOT NULL",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "user_id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "entra_object_id"
+          ],
+          [
+            "account_id",
+            "employee_code"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "Account",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id, user_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id, entra_object_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id, employee_code)",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Identity foundation"
+      },
+      "TeamMembership": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "membership_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "membership_id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+            "source": "001_identity_authorization.sql"
+          },
+          "user_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "user_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "team_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "team_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "valid_from": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "valid_from datetime2(7) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "valid_until": {
+            "type": "datetime2(7)",
+            "nullable": true,
+            "declaration": "valid_until datetime2(7) NULL",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "membership_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "user_id"
+            ],
+            "target": "AppUser",
+            "targetColumns": [
+              "account_id",
+              "user_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "team_id"
+            ],
+            "target": "Team",
+            "targetColumns": [
+              "account_id",
+              "team_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id, membership_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, user_id) REFERENCES dbo.AppUser(account_id, user_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, team_id) REFERENCES dbo.Team(account_id, team_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "CHECK(valid_until IS NULL OR valid_until > valid_from)",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Identity foundation"
+      },
+      "ReportingRelationship": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "relationship_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "relationship_id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+            "source": "001_identity_authorization.sql"
+          },
+          "employee_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "employee_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "manager_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "manager_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "valid_from": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "valid_from datetime2(7) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "valid_until": {
+            "type": "datetime2(7)",
+            "nullable": true,
+            "declaration": "valid_until datetime2(7) NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "created_by": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "created_by uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "created_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "created_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "001_identity_authorization.sql"
+          },
+          "record_version": {
+            "type": "rowversion",
+            "nullable": false,
+            "declaration": "record_version rowversion NOT NULL",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "relationship_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "employee_id"
+            ],
+            "target": "AppUser",
+            "targetColumns": [
+              "account_id",
+              "user_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "manager_id"
+            ],
+            "target": "AppUser",
+            "targetColumns": [
+              "account_id",
+              "user_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "created_by"
+            ],
+            "target": "AppUser",
+            "targetColumns": [
+              "account_id",
+              "user_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id, relationship_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, employee_id) REFERENCES dbo.AppUser(account_id, user_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, manager_id) REFERENCES dbo.AppUser(account_id, user_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, created_by) REFERENCES dbo.AppUser(account_id, user_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "CHECK(employee_id <> manager_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "CHECK(valid_until IS NULL OR valid_until > valid_from)",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "UX_Reporting_Open",
+            "unique": true,
+            "columns": [
+              "account_id",
+              "employee_id"
+            ],
+            "filter": "WHERE valid_until IS NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "name": "IX_Reporting_Manager",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "manager_id",
+              "valid_from",
+              "valid_until"
+            ],
+            "filter": "",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "domain": "Identity foundation"
+      },
+      "AppRole": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "role_code": {
+            "type": "varchar(40)",
+            "nullable": false,
+            "declaration": "role_code varchar(40) NOT NULL PRIMARY KEY",
+            "source": "001_identity_authorization.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(100) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "role_code"
+        ],
+        "unique": [],
+        "fks": [],
+        "constraints": [],
+        "indexes": [],
+        "domain": "Identity foundation"
+      },
+      "Permission": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "permission_code": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "permission_code varchar(100) NOT NULL PRIMARY KEY",
+            "source": "001_identity_authorization.sql"
+          },
+          "description": {
+            "type": "nvarchar(300)",
+            "nullable": false,
+            "declaration": "description nvarchar(300) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "permission_code"
+        ],
+        "unique": [],
+        "fks": [],
+        "constraints": [],
+        "indexes": [],
+        "domain": "Identity foundation"
+      },
+      "UserRole": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "assignment_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "assignment_id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+            "source": "001_identity_authorization.sql"
+          },
+          "user_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "user_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "role_code": {
+            "type": "varchar(40)",
+            "nullable": false,
+            "declaration": "role_code varchar(40) NOT NULL REFERENCES dbo.AppRole(role_code)",
+            "source": "001_identity_authorization.sql"
+          },
+          "valid_from": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "valid_from datetime2(7) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "valid_until": {
+            "type": "datetime2(7)",
+            "nullable": true,
+            "declaration": "valid_until datetime2(7) NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "revoked_at": {
+            "type": "datetime2(7)",
+            "nullable": true,
+            "declaration": "revoked_at datetime2(7) NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "granted_by": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "granted_by uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "assignment_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "role_code"
+            ],
+            "target": "AppRole",
+            "targetColumns": [
+              "role_code"
+            ],
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "user_id"
+            ],
+            "target": "AppUser",
+            "targetColumns": [
+              "account_id",
+              "user_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "granted_by"
+            ],
+            "target": "AppUser",
+            "targetColumns": [
+              "account_id",
+              "user_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id, assignment_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, user_id) REFERENCES dbo.AppUser(account_id, user_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, granted_by) REFERENCES dbo.AppUser(account_id, user_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "CHECK(valid_until IS NULL OR valid_until > valid_from)",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Identity foundation"
+      },
+      "RolePermission": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "role_code": {
+            "type": "varchar(40)",
+            "nullable": false,
+            "declaration": "role_code varchar(40) NOT NULL REFERENCES dbo.AppRole(role_code)",
+            "source": "001_identity_authorization.sql"
+          },
+          "permission_code": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "permission_code varchar(100) NOT NULL REFERENCES dbo.Permission(permission_code)",
+            "source": "001_identity_authorization.sql"
+          },
+          "default_scope": {
+            "type": "varchar(30)",
+            "nullable": false,
+            "declaration": "default_scope varchar(30) NOT NULL CHECK(default_scope IN ('OWN','TEAM','DEPARTMENT','DELIVERY_UNIT','ORGANIZATION','CAPABILITY'))",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "role_code",
+          "permission_code",
+          "default_scope"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "role_code"
+            ],
+            "target": "AppRole",
+            "targetColumns": [
+              "role_code"
+            ],
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "columns": [
+              "permission_code"
+            ],
+            "target": "Permission",
+            "targetColumns": [
+              "permission_code"
+            ],
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(role_code, permission_code, default_scope)",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Identity foundation"
+      },
+      "UserPermission": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "grant_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "grant_id uniqueidentifier NOT NULL DEFAULT NEWSEQUENTIALID()",
+            "source": "001_identity_authorization.sql"
+          },
+          "user_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "user_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "permission_code": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "permission_code varchar(100) NOT NULL REFERENCES dbo.Permission(permission_code)",
+            "source": "001_identity_authorization.sql"
+          },
+          "effect": {
+            "type": "varchar(5)",
+            "nullable": false,
+            "declaration": "effect varchar(5) NOT NULL CHECK(effect IN ('ALLOW','DENY'))",
+            "source": "001_identity_authorization.sql"
+          },
+          "scope_kind": {
+            "type": "varchar(30)",
+            "nullable": false,
+            "declaration": "scope_kind varchar(30) NOT NULL CHECK(scope_kind IN ('OWN','TEAM','DEPARTMENT','DELIVERY_UNIT','ORGANIZATION','CAPABILITY','SPECIFIC_RESOURCE'))",
+            "source": "001_identity_authorization.sql"
+          },
+          "scope_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "scope_id uniqueidentifier NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "resource_type": {
+            "type": "varchar(100)",
+            "nullable": true,
+            "declaration": "resource_type varchar(100) NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "valid_from": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "valid_from datetime2(7) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "valid_until": {
+            "type": "datetime2(7)",
+            "nullable": true,
+            "declaration": "valid_until datetime2(7) NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "reason": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "reason nvarchar(1000) NOT NULL CHECK(LEN(LTRIM(RTRIM(reason))) > 0)",
+            "source": "001_identity_authorization.sql"
+          },
+          "granted_by": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "granted_by uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "revoked_at": {
+            "type": "datetime2(7)",
+            "nullable": true,
+            "declaration": "revoked_at datetime2(7) NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "revoked_by": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "revoked_by uniqueidentifier NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "revoke_reason": {
+            "type": "nvarchar(1000)",
+            "nullable": true,
+            "declaration": "revoke_reason nvarchar(1000) NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "created_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "created_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "001_identity_authorization.sql"
+          },
+          "record_version": {
+            "type": "rowversion",
+            "nullable": false,
+            "declaration": "record_version rowversion NOT NULL",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "grant_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "permission_code"
+            ],
+            "target": "Permission",
+            "targetColumns": [
+              "permission_code"
+            ],
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "user_id"
+            ],
+            "target": "AppUser",
+            "targetColumns": [
+              "account_id",
+              "user_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "granted_by"
+            ],
+            "target": "AppUser",
+            "targetColumns": [
+              "account_id",
+              "user_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "revoked_by"
+            ],
+            "target": "AppUser",
+            "targetColumns": [
+              "account_id",
+              "user_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id, grant_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, user_id) REFERENCES dbo.AppUser(account_id, user_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, granted_by) REFERENCES dbo.AppUser(account_id, user_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, revoked_by) REFERENCES dbo.AppUser(account_id, user_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "CHECK(valid_until IS NULL OR valid_until > valid_from)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "CHECK((scope_kind IN ('OWN','ORGANIZATION','CAPABILITY') AND scope_id IS NULL AND resource_type IS NULL) OR (scope_kind IN ('TEAM','DEPARTMENT','DELIVERY_UNIT') AND scope_id IS NOT NULL AND resource_type IS NULL) OR (scope_kind = 'SPECIFIC_RESOURCE' AND scope_id IS NOT NULL AND resource_type IS NOT NULL AND LEN(LTRIM(RTRIM(resource_type))) > 0))",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "CHECK((revoked_at IS NULL AND revoked_by IS NULL AND revoke_reason IS NULL) OR (revoked_at IS NOT NULL AND revoked_by IS NOT NULL AND revoke_reason IS NOT NULL AND LEN(LTRIM(RTRIM(revoke_reason))) > 0))",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_Permission_User",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "user_id",
+              "permission_code",
+              "valid_from",
+              "valid_until"
+            ],
+            "filter": "",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "domain": "Identity foundation"
+      },
+      "AuditEvent": {
+        "source": "001_identity_authorization.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL REFERENCES dbo.Account(account_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          "event_id": {
+            "type": "bigint",
+            "nullable": false,
+            "declaration": "event_id bigint IDENTITY(1,1) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "actor_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "actor_id uniqueidentifier NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "action_code": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "action_code varchar(100) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "resource_type": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "resource_type varchar(100) NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "resource_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "resource_id uniqueidentifier NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "outcome": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "outcome varchar(20) NOT NULL CHECK(outcome IN ('SUCCESS','DENIED','FAILED'))",
+            "source": "001_identity_authorization.sql"
+          },
+          "request_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "request_id uniqueidentifier NOT NULL",
+            "source": "001_identity_authorization.sql"
+          },
+          "occurred_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "occurred_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "001_identity_authorization.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "event_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "Account",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "actor_id"
+            ],
+            "target": "AppUser",
+            "targetColumns": [
+              "account_id",
+              "user_id"
+            ],
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id, event_id)",
+            "source": "001_identity_authorization.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id, actor_id) REFERENCES dbo.AppUser(account_id, user_id)",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_Audit_Time",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "occurred_at"
+            ],
+            "filter": "",
+            "source": "001_identity_authorization.sql"
+          }
+        ],
+        "domain": "Identity foundation"
+      },
+      "AccessWorkspace": {
+        "source": "003_custom_access.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL PRIMARY KEY REFERENCES dbo.Account(account_id)",
+            "source": "003_custom_access.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL CHECK(revision>0)",
+            "source": "003_custom_access.sql"
+          }
+        },
+        "pk": [
+          "account_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "Account",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "constraints": [],
+        "indexes": [],
+        "domain": "Access & organization"
+      },
+      "AccessRuntimeAccount": {
+        "source": "003_custom_access.sql",
+        "columns": {
+          "principal_id": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "principal_id int NOT NULL PRIMARY KEY",
+            "source": "003_custom_access.sql"
+          },
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL REFERENCES dbo.AccessWorkspace(account_id)",
+            "source": "003_custom_access.sql"
+          }
+        },
+        "pk": [
+          "principal_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "AccessWorkspace",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "constraints": [],
+        "indexes": [],
+        "domain": "Access & organization"
+      },
+      "AccountRole": {
+        "source": "003_custom_access.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL REFERENCES dbo.AccessWorkspace(account_id)",
+            "source": "003_custom_access.sql"
+          },
+          "role_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "role_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(100) NOT NULL",
+            "source": "003_custom_access.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "role_id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "display_name"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "AccessWorkspace",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,role_id)",
+            "source": "003_custom_access.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id,display_name)",
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Access & organization"
+      },
+      "AccessPerson": {
+        "source": "003_custom_access.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL REFERENCES dbo.AccessWorkspace(account_id)",
+            "source": "003_custom_access.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(100) NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "employee_code": {
+            "type": "nvarchar(40)",
+            "nullable": false,
+            "declaration": "employee_code nvarchar(40) NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "active": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "active bit NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "entra_object_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "entra_object_id uniqueidentifier NULL",
+            "source": "003_custom_access.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "person_id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "employee_code"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "AccessWorkspace",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,person_id)",
+            "source": "003_custom_access.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id,employee_code)",
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "UX_AccessPerson_Entra",
+            "unique": true,
+            "columns": [
+              "account_id",
+              "entra_object_id"
+            ],
+            "filter": "WHERE entra_object_id IS NOT NULL",
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "domain": "Access & organization"
+      },
+      "AccountRolePermission": {
+        "source": "003_custom_access.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "role_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "role_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "permission_code": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "permission_code varchar(100) NOT NULL REFERENCES dbo.Permission(permission_code)",
+            "source": "003_custom_access.sql"
+          },
+          "scope_kind": {
+            "type": "varchar(30)",
+            "nullable": false,
+            "declaration": "scope_kind varchar(30) NOT NULL CHECK(scope_kind IN ('OWN','ORGANIZATION'))",
+            "source": "003_custom_access.sql"
+          },
+          "effect": {
+            "type": "varchar(5)",
+            "nullable": false,
+            "declaration": "effect varchar(5) NOT NULL CHECK(effect IN ('ALLOW','DENY'))",
+            "source": "003_custom_access.sql"
+          },
+          "valid_until": {
+            "type": "datetime2(7)",
+            "nullable": true,
+            "declaration": "valid_until datetime2(7) NULL",
+            "source": "003_custom_access.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "role_id",
+          "permission_code",
+          "scope_kind"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "permission_code"
+            ],
+            "target": "Permission",
+            "targetColumns": [
+              "permission_code"
+            ],
+            "source": "003_custom_access.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "role_id"
+            ],
+            "target": "AccountRole",
+            "targetColumns": [
+              "account_id",
+              "role_id"
+            ],
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,role_id,permission_code,scope_kind)",
+            "source": "003_custom_access.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,role_id) REFERENCES dbo.AccountRole(account_id,role_id)",
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Access & organization"
+      },
+      "AccessPersonRole": {
+        "source": "003_custom_access.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "role_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "role_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "person_id",
+          "role_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "003_custom_access.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "role_id"
+            ],
+            "target": "AccountRole",
+            "targetColumns": [
+              "account_id",
+              "role_id"
+            ],
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,person_id,role_id)",
+            "source": "003_custom_access.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "003_custom_access.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,role_id) REFERENCES dbo.AccountRole(account_id,role_id)",
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Access & organization"
+      },
+      "AccessPersonOverride": {
+        "source": "003_custom_access.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "permission_code": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "permission_code varchar(100) NOT NULL REFERENCES dbo.Permission(permission_code)",
+            "source": "003_custom_access.sql"
+          },
+          "scope_kind": {
+            "type": "varchar(30)",
+            "nullable": false,
+            "declaration": "scope_kind varchar(30) NOT NULL CHECK(scope_kind IN ('OWN','ORGANIZATION'))",
+            "source": "003_custom_access.sql"
+          },
+          "effect": {
+            "type": "varchar(5)",
+            "nullable": false,
+            "declaration": "effect varchar(5) NOT NULL CHECK(effect IN ('ALLOW','DENY'))",
+            "source": "003_custom_access.sql"
+          },
+          "valid_until": {
+            "type": "datetime2(7)",
+            "nullable": true,
+            "declaration": "valid_until datetime2(7) NULL",
+            "source": "003_custom_access.sql"
+          },
+          "reason": {
+            "type": "nvarchar(500)",
+            "nullable": true,
+            "declaration": "reason nvarchar(500) NULL",
+            "source": "031_effective_access_baseline.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "person_id",
+          "permission_code",
+          "scope_kind"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "permission_code"
+            ],
+            "target": "Permission",
+            "targetColumns": [
+              "permission_code"
+            ],
+            "source": "003_custom_access.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,person_id,permission_code,scope_kind)",
+            "source": "003_custom_access.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Access & organization"
+      },
+      "AccessAudit": {
+        "source": "003_custom_access.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "actor_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "actor_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "action": {
+            "type": "varchar(50)",
+            "nullable": false,
+            "declaration": "action varchar(50) NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "target_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "target_id uniqueidentifier NOT NULL",
+            "source": "003_custom_access.sql"
+          },
+          "occurred_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "occurred_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "003_custom_access.sql"
+          },
+          "before_json": {
+            "type": "nvarchar(max)",
+            "nullable": true,
+            "declaration": "before_json nvarchar(max) NULL CHECK(before_json IS NULL OR ISJSON(before_json)=1)",
+            "source": "003_custom_access.sql"
+          },
+          "after_json": {
+            "type": "nvarchar(max)",
+            "nullable": false,
+            "declaration": "after_json nvarchar(max) NOT NULL CHECK(ISJSON(after_json)=1)",
+            "source": "003_custom_access.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "revision"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "actor_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,revision)",
+            "source": "003_custom_access.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,actor_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "003_custom_access.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Access & organization"
+      },
+      "AccessOrgNode": {
+        "source": "005_organization_setup.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "005_organization_setup.sql"
+          },
+          "node_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "node_id uniqueidentifier NOT NULL",
+            "source": "005_organization_setup.sql"
+          },
+          "kind": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "kind varchar(20) NOT NULL CHECK(kind IN ('DELIVERY_UNIT','DEPARTMENT','TEAM'))",
+            "source": "005_organization_setup.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(100) NOT NULL",
+            "source": "005_organization_setup.sql"
+          },
+          "parent_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "parent_id uniqueidentifier NULL",
+            "source": "005_organization_setup.sql"
+          },
+          "active": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "active bit NOT NULL",
+            "source": "005_organization_setup.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "node_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "AccessWorkspace",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "parent_id"
+            ],
+            "target": "AccessOrgNode",
+            "targetColumns": [
+              "account_id",
+              "node_id"
+            ],
+            "source": "005_organization_setup.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,node_id)",
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id) REFERENCES dbo.AccessWorkspace(account_id)",
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,parent_id) REFERENCES dbo.AccessOrgNode(account_id,node_id)",
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "sql": "CHECK(parent_id IS NULL OR parent_id<>node_id)",
+            "source": "005_organization_setup.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "UX_AccessOrg_Root",
+            "unique": true,
+            "columns": [
+              "account_id",
+              "display_name"
+            ],
+            "filter": "WHERE parent_id IS NULL",
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "name": "UX_AccessOrg_Sibling",
+            "unique": true,
+            "columns": [
+              "account_id",
+              "parent_id",
+              "display_name"
+            ],
+            "filter": "WHERE parent_id IS NOT NULL",
+            "source": "005_organization_setup.sql"
+          }
+        ],
+        "domain": "Access & organization"
+      },
+      "AccessOrgAssignment": {
+        "source": "005_organization_setup.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "005_organization_setup.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "005_organization_setup.sql"
+          },
+          "team_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "team_id uniqueidentifier NULL",
+            "source": "005_organization_setup.sql"
+          },
+          "manager_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "manager_id uniqueidentifier NULL",
+            "source": "005_organization_setup.sql"
+          },
+          "department_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "department_id uniqueidentifier NULL",
+            "source": "006_department_membership.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "person_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "team_id"
+            ],
+            "target": "AccessOrgNode",
+            "targetColumns": [
+              "account_id",
+              "node_id"
+            ],
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "manager_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "department_id"
+            ],
+            "target": "AccessOrgNode",
+            "targetColumns": [
+              "account_id",
+              "node_id"
+            ],
+            "source": "006_department_membership.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,person_id)",
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,team_id) REFERENCES dbo.AccessOrgNode(account_id,node_id)",
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,manager_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "sql": "CHECK(manager_id IS NULL OR manager_id<>person_id)",
+            "source": "005_organization_setup.sql"
+          },
+          {
+            "sql": "CONSTRAINT FK_AccessOrgAssignment_Department FOREIGN KEY(account_id,department_id) REFERENCES dbo.AccessOrgNode(account_id,node_id)",
+            "source": "006_department_membership.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_AccessOrgAssignment_Placement CHECK(team_id IS NULL OR department_id IS NULL)",
+            "source": "006_department_membership.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Access & organization"
+      },
+      "SkillCatalogue": {
+        "source": "007_skill_catalogue.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL REFERENCES dbo.AccessWorkspace(account_id)",
+            "source": "007_skill_catalogue.sql"
+          },
+          "skill_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "skill_id uniqueidentifier NOT NULL",
+            "source": "007_skill_catalogue.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(100) COLLATE Latin1_General_100_CI_AS NOT NULL",
+            "source": "007_skill_catalogue.sql"
+          },
+          "category": {
+            "type": "nvarchar(80)",
+            "nullable": false,
+            "declaration": "category nvarchar(80) NOT NULL",
+            "source": "007_skill_catalogue.sql"
+          },
+          "description": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "description nvarchar(2000) NOT NULL",
+            "source": "007_skill_catalogue.sql"
+          },
+          "status": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "status varchar(20) NOT NULL CHECK(status IN ('DRAFT','PUBLISHED','ARCHIVED'))",
+            "source": "007_skill_catalogue.sql"
+          },
+          "definition_revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "definition_revision int NOT NULL CHECK(definition_revision>0)",
+            "source": "007_skill_catalogue.sql"
+          },
+          "business_code": {
+            "type": "varchar(20)",
+            "nullable": true,
+            "declaration": "business_code varchar(20) NULL",
+            "source": "012_versioned_skill_framework.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "skill_id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "display_name"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "AccessWorkspace",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "007_skill_catalogue.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,skill_id)",
+            "source": "007_skill_catalogue.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id,display_name)",
+            "source": "007_skill_catalogue.sql"
+          },
+          {
+            "sql": "CHECK(LEN(LTRIM(RTRIM(display_name)))>0 AND LEN(LTRIM(RTRIM(category)))>0)",
+            "source": "007_skill_catalogue.sql"
+          },
+          {
+            "sql": "CHECK(status<>'PUBLISHED' OR LEN(LTRIM(RTRIM(description)))>0)",
+            "source": "007_skill_catalogue.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_SkillCatalogue_Status",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "status",
+              "display_name"
+            ],
+            "filter": "",
+            "source": "007_skill_catalogue.sql"
+          },
+          {
+            "name": "UX_SkillCatalogue_Code",
+            "unique": true,
+            "columns": [
+              "account_id",
+              "business_code"
+            ],
+            "filter": "WHERE business_code IS NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          }
+        ],
+        "domain": "Skills & claims"
+      },
+      "SkillClaimDraft": {
+        "source": "008_skill_claim_drafts.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "claim_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "claim_id uniqueidentifier NOT NULL",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "skill_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "skill_id uniqueidentifier NOT NULL",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL CHECK(revision>0)",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "definition_revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "definition_revision int NOT NULL CHECK(definition_revision>0)",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "skill_name": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "skill_name nvarchar(100) NOT NULL",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "category": {
+            "type": "nvarchar(80)",
+            "nullable": false,
+            "declaration": "category nvarchar(80) NOT NULL",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "claimed_rank": {
+            "type": "tinyint",
+            "nullable": false,
+            "declaration": "claimed_rank tinyint NOT NULL CHECK(claimed_rank BETWEEN 1 AND 8)",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "level_name": {
+            "type": "nvarchar(60)",
+            "nullable": false,
+            "declaration": "level_name nvarchar(60) NOT NULL",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "level_description": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "level_description nvarchar(1000) NOT NULL",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "experience_months": {
+            "type": "smallint",
+            "nullable": false,
+            "declaration": "experience_months smallint NOT NULL CHECK(experience_months BETWEEN 0 AND 600)",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "description": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "description nvarchar(2000) NOT NULL CHECK(LEN(LTRIM(RTRIM(description)))>0)",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "status": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "status varchar(20) NOT NULL DEFAULT 'DRAFT'",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "updated_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "updated_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          "projects": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "projects nvarchar(2000) NOT NULL DEFAULT N''",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "evidence": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "evidence nvarchar(2000) NOT NULL DEFAULT N''",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "feedback": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "feedback nvarchar(2000) NOT NULL DEFAULT N''",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "reviewer_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "reviewer_id uniqueidentifier NULL",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "submitted_at": {
+            "type": "datetime2(7)",
+            "nullable": true,
+            "declaration": "submitted_at datetime2(7) NULL",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "reviewed_at": {
+            "type": "datetime2(7)",
+            "nullable": true,
+            "declaration": "reviewed_at datetime2(7) NULL",
+            "source": "010_skill_claim_reviews.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "claim_id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "person_id",
+            "skill_id"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "008_skill_claim_drafts.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "skill_id"
+            ],
+            "target": "SkillCatalogue",
+            "targetColumns": [
+              "account_id",
+              "skill_id"
+            ],
+            "source": "008_skill_claim_drafts.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "reviewer_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "010_skill_claim_reviews.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,claim_id)",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id,person_id,skill_id)",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,skill_id) REFERENCES dbo.SkillCatalogue(account_id,skill_id)",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_SkillClaim_Status CHECK(status IN ('DRAFT','SUBMITTED','CHANGES_REQUESTED','APPROVED','REJECTED'))",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,reviewer_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "010_skill_claim_reviews.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_SkillClaimDraft_Person",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "person_id",
+              "updated_at"
+            ],
+            "filter": "",
+            "source": "008_skill_claim_drafts.sql"
+          },
+          {
+            "name": "IX_SkillClaim_Review",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "reviewer_id",
+              "status",
+              "submitted_at"
+            ],
+            "filter": "",
+            "source": "010_skill_claim_reviews.sql"
+          }
+        ],
+        "domain": "Skills & claims"
+      },
+      "AiConversation": {
+        "source": "009_ai_conversations.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "009_ai_conversations.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "009_ai_conversations.sql"
+          },
+          "conversation_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "conversation_id uniqueidentifier NOT NULL",
+            "source": "009_ai_conversations.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL",
+            "source": "009_ai_conversations.sql"
+          },
+          "title": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "title nvarchar(100) NOT NULL",
+            "source": "009_ai_conversations.sql"
+          },
+          "payload": {
+            "type": "nvarchar(max)",
+            "nullable": false,
+            "declaration": "payload nvarchar(max) NOT NULL",
+            "source": "009_ai_conversations.sql"
+          },
+          "updated_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "updated_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "009_ai_conversations.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "person_id",
+          "conversation_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "009_ai_conversations.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "CONSTRAINT PK_AiConversation PRIMARY KEY(account_id,person_id,conversation_id)",
+            "source": "009_ai_conversations.sql"
+          },
+          {
+            "sql": "CONSTRAINT FK_AiConversation_Person FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "009_ai_conversations.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_AiConversation_Json CHECK(ISJSON(payload)=1 AND DATALENGTH(payload)<=524288)",
+            "source": "009_ai_conversations.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_AiConversation_Revision CHECK(revision>0)",
+            "source": "009_ai_conversations.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "AI & budget"
+      },
+      "SkillClaimNotification": {
+        "source": "010_skill_claim_reviews.sql",
+        "columns": {
+          "notification_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "notification_id uniqueidentifier NOT NULL DEFAULT NEWID()",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "claim_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "claim_id uniqueidentifier NOT NULL",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "title": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "title nvarchar(100) NOT NULL",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "body": {
+            "type": "nvarchar(300)",
+            "nullable": false,
+            "declaration": "body nvarchar(300) NOT NULL",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "href": {
+            "type": "varchar(30)",
+            "nullable": false,
+            "declaration": "href varchar(30) NOT NULL",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          "created_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "created_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "010_skill_claim_reviews.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "notification_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "010_skill_claim_reviews.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "claim_id"
+            ],
+            "target": "SkillClaimDraft",
+            "targetColumns": [
+              "account_id",
+              "claim_id"
+            ],
+            "source": "010_skill_claim_reviews.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,notification_id)",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "010_skill_claim_reviews.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,claim_id) REFERENCES dbo.SkillClaimDraft(account_id,claim_id)",
+            "source": "010_skill_claim_reviews.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_SkillClaimNotification_Person",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "person_id",
+              "created_at"
+            ],
+            "filter": "",
+            "source": "010_skill_claim_reviews.sql"
+          }
+        ],
+        "domain": "Skills & claims"
+      },
+      "ProficiencyFramework": {
+        "source": "012_versioned_skill_framework.sql",
+        "columns": {
+          "framework_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "framework_id uniqueidentifier NOT NULL PRIMARY KEY",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "account_id uniqueidentifier NULL REFERENCES dbo.AccessWorkspace(account_id)",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "framework_key": {
+            "type": "varchar(60)",
+            "nullable": true,
+            "declaration": "framework_key varchar(60) NULL",
+            "source": "012_versioned_skill_framework.sql"
+          }
+        },
+        "pk": [
+          "framework_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "AccessWorkspace",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "012_versioned_skill_framework.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "CHECK(account_id IS NOT NULL OR framework_key='enterprise-v1')",
+            "source": "012_versioned_skill_framework.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "UX_ProficiencyFramework_Common",
+            "unique": true,
+            "columns": [
+              "framework_key"
+            ],
+            "filter": "WHERE account_id IS NULL",
+            "source": "012_versioned_skill_framework.sql"
+          }
+        ],
+        "domain": "Skills & claims"
+      },
+      "ProficiencyLevel": {
+        "source": "012_versioned_skill_framework.sql",
+        "columns": {
+          "framework_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "framework_id uniqueidentifier NOT NULL REFERENCES dbo.ProficiencyFramework(framework_id)",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "rank": {
+            "type": "tinyint",
+            "nullable": false,
+            "declaration": "rank tinyint NOT NULL CHECK(rank BETWEEN 1 AND 8)",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(60)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(60) COLLATE Latin1_General_100_CI_AS NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "description": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "description nvarchar(1000) NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          }
+        },
+        "pk": [
+          "framework_id",
+          "rank"
+        ],
+        "unique": [
+          [
+            "framework_id",
+            "display_name"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "framework_id"
+            ],
+            "target": "ProficiencyFramework",
+            "targetColumns": [
+              "framework_id"
+            ],
+            "source": "012_versioned_skill_framework.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(framework_id,rank)",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          {
+            "sql": "UNIQUE(framework_id,display_name)",
+            "source": "012_versioned_skill_framework.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Skills & claims"
+      },
+      "SkillDefinitionVersion": {
+        "source": "012_versioned_skill_framework.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "skill_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "skill_id uniqueidentifier NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "definition_revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "definition_revision int NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "framework_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "framework_id uniqueidentifier NOT NULL REFERENCES dbo.ProficiencyFramework(framework_id)",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "display_name": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "display_name nvarchar(100) NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "category": {
+            "type": "nvarchar(80)",
+            "nullable": false,
+            "declaration": "category nvarchar(80) NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "description": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "description nvarchar(2000) NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "status": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "status varchar(20) NOT NULL CHECK(status IN ('DRAFT','PUBLISHED','ARCHIVED'))",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "created_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "created_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "012_versioned_skill_framework.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "skill_id",
+          "definition_revision"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "skill_id",
+            "definition_revision",
+            "framework_id"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "framework_id"
+            ],
+            "target": "ProficiencyFramework",
+            "targetColumns": [
+              "framework_id"
+            ],
+            "source": "012_versioned_skill_framework.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "skill_id"
+            ],
+            "target": "SkillCatalogue",
+            "targetColumns": [
+              "account_id",
+              "skill_id"
+            ],
+            "source": "012_versioned_skill_framework.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,skill_id,definition_revision)",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id,skill_id,definition_revision,framework_id)",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,skill_id) REFERENCES dbo.SkillCatalogue(account_id,skill_id)",
+            "source": "012_versioned_skill_framework.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Skills & claims"
+      },
+      "SkillVersionCriterion": {
+        "source": "012_versioned_skill_framework.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "skill_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "skill_id uniqueidentifier NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "definition_revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "definition_revision int NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "framework_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "framework_id uniqueidentifier NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "rank": {
+            "type": "tinyint",
+            "nullable": false,
+            "declaration": "rank tinyint NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          "description": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "description nvarchar(1000) NOT NULL",
+            "source": "012_versioned_skill_framework.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "skill_id",
+          "definition_revision",
+          "rank"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "skill_id",
+              "definition_revision",
+              "framework_id"
+            ],
+            "target": "SkillDefinitionVersion",
+            "targetColumns": [
+              "account_id",
+              "skill_id",
+              "definition_revision",
+              "framework_id"
+            ],
+            "source": "012_versioned_skill_framework.sql"
+          },
+          {
+            "columns": [
+              "framework_id",
+              "rank"
+            ],
+            "target": "ProficiencyLevel",
+            "targetColumns": [
+              "framework_id",
+              "rank"
+            ],
+            "source": "012_versioned_skill_framework.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,skill_id,definition_revision,rank)",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,skill_id,definition_revision,framework_id) REFERENCES dbo.SkillDefinitionVersion(account_id,skill_id,definition_revision,framework_id)",
+            "source": "012_versioned_skill_framework.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(framework_id,rank) REFERENCES dbo.ProficiencyLevel(framework_id,rank)",
+            "source": "012_versioned_skill_framework.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Skills & claims"
+      },
+      "LearningPlan": {
+        "source": "014_employee_learning.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "014_employee_learning.sql"
+          },
+          "plan_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "plan_id uniqueidentifier NOT NULL",
+            "source": "014_employee_learning.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "014_employee_learning.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL CHECK(revision>0)",
+            "source": "014_employee_learning.sql"
+          },
+          "status": {
+            "type": "varchar(10)",
+            "nullable": false,
+            "declaration": "status varchar(10) NOT NULL CHECK(status IN ('ACTIVE','PAUSED','ARCHIVED'))",
+            "source": "014_employee_learning.sql"
+          },
+          "payload": {
+            "type": "nvarchar(max)",
+            "nullable": false,
+            "declaration": "payload nvarchar(max) NOT NULL",
+            "source": "014_employee_learning.sql"
+          },
+          "updated_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "updated_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "014_employee_learning.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "plan_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "014_employee_learning.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,plan_id)",
+            "source": "014_employee_learning.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "014_employee_learning.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_LearningPlan_Payload CHECK(ISJSON(payload)=1 AND DATALENGTH(payload)<=524288)",
+            "source": "015_learning_log_capacity.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_LearningPlan_Person",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "person_id",
+              "updated_at"
+            ],
+            "filter": "",
+            "source": "014_employee_learning.sql"
+          }
+        ],
+        "domain": "Learning & recommendations"
+      },
+      "LearningSession": {
+        "source": "017_learning_practice.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "plan_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "plan_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "task_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "task_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL CHECK(revision>0)",
+            "source": "017_learning_practice.sql"
+          },
+          "payload": {
+            "type": "nvarchar(max)",
+            "nullable": false,
+            "declaration": "payload nvarchar(max) NOT NULL CHECK(ISJSON(payload)=1 AND DATALENGTH(payload)<=20000)",
+            "source": "017_learning_practice.sql"
+          },
+          "updated_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "updated_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "017_learning_practice.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "plan_id",
+          "task_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "plan_id"
+            ],
+            "target": "LearningPlan",
+            "targetColumns": [
+              "account_id",
+              "plan_id"
+            ],
+            "source": "017_learning_practice.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,plan_id,task_id)",
+            "source": "017_learning_practice.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,plan_id) REFERENCES dbo.LearningPlan(account_id,plan_id)",
+            "source": "017_learning_practice.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Learning & recommendations"
+      },
+      "LearningQuiz": {
+        "source": "017_learning_practice.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "quiz_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "quiz_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "plan_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "plan_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "task_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "task_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "title": {
+            "type": "nvarchar(120)",
+            "nullable": false,
+            "declaration": "title nvarchar(120) NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "provider": {
+            "type": "nvarchar(80)",
+            "nullable": false,
+            "declaration": "provider nvarchar(80) NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "questions": {
+            "type": "nvarchar(max)",
+            "nullable": false,
+            "declaration": "questions nvarchar(max) NOT NULL CHECK(ISJSON(questions)=1 AND DATALENGTH(questions)<=128000)",
+            "source": "017_learning_practice.sql"
+          },
+          "created_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "created_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "017_learning_practice.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "quiz_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "plan_id"
+            ],
+            "target": "LearningPlan",
+            "targetColumns": [
+              "account_id",
+              "plan_id"
+            ],
+            "source": "017_learning_practice.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,quiz_id)",
+            "source": "017_learning_practice.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,plan_id) REFERENCES dbo.LearningPlan(account_id,plan_id)",
+            "source": "017_learning_practice.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_LearningQuiz_Owner",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "person_id",
+              "plan_id",
+              "task_id",
+              "created_at"
+            ],
+            "filter": "",
+            "source": "017_learning_practice.sql"
+          }
+        ],
+        "domain": "Learning & recommendations"
+      },
+      "LearningAttempt": {
+        "source": "017_learning_practice.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "attempt_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "attempt_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "quiz_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "quiz_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "017_learning_practice.sql"
+          },
+          "answers": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "answers nvarchar(1000) NOT NULL CHECK(ISJSON(answers)=1)",
+            "source": "017_learning_practice.sql"
+          },
+          "score": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "score int NOT NULL CHECK(score>=0)",
+            "source": "017_learning_practice.sql"
+          },
+          "total": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "total int NOT NULL CHECK(total BETWEEN 1 AND 20)",
+            "source": "017_learning_practice.sql"
+          },
+          "submitted_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "submitted_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "017_learning_practice.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "attempt_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "quiz_id"
+            ],
+            "target": "LearningQuiz",
+            "targetColumns": [
+              "account_id",
+              "quiz_id"
+            ],
+            "source": "017_learning_practice.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "CHECK(score<=total)",
+            "source": "017_learning_practice.sql"
+          },
+          {
+            "sql": "PRIMARY KEY(account_id,attempt_id)",
+            "source": "017_learning_practice.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,quiz_id) REFERENCES dbo.LearningQuiz(account_id,quiz_id)",
+            "source": "017_learning_practice.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Learning & recommendations"
+      },
+      "WorkflowRecord": {
+        "source": "019_requests_incidents.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "record_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "record_id uniqueidentifier NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "kind": {
+            "type": "varchar(8)",
+            "nullable": false,
+            "declaration": "kind varchar(8) NOT NULL CHECK(kind IN ('REQUEST','INCIDENT'))",
+            "source": "019_requests_incidents.sql"
+          },
+          "requester_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "requester_id uniqueidentifier NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "recipient_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "recipient_id uniqueidentifier NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "title": {
+            "type": "nvarchar(160)",
+            "nullable": false,
+            "declaration": "title nvarchar(160) NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "description": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "description nvarchar(2000) NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "priority": {
+            "type": "varchar(6)",
+            "nullable": false,
+            "declaration": "priority varchar(6) NOT NULL CHECK(priority IN ('NORMAL','HIGH'))",
+            "source": "019_requests_incidents.sql"
+          },
+          "status": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "status varchar(20) NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL CHECK(revision>0)",
+            "source": "019_requests_incidents.sql"
+          },
+          "created_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "created_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "019_requests_incidents.sql"
+          },
+          "updated_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "updated_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "019_requests_incidents.sql"
+          },
+          "category": {
+            "type": "varchar(24)",
+            "nullable": false,
+            "declaration": "category varchar(24) NOT NULL CONSTRAINT DF_Workflow_Category DEFAULT('OTHER') WITH VALUES",
+            "source": "021_workflow_workbench.sql"
+          },
+          "record_number": {
+            "type": "bigint",
+            "nullable": false,
+            "declaration": "record_number bigint IDENTITY(1,1) NOT NULL",
+            "source": "021_workflow_workbench.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "record_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "requester_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "recipient_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "019_requests_incidents.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,record_id)",
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,requester_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,recipient_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "sql": "CHECK(requester_id<>recipient_id)",
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_Workflow_Category CHECK(category IN ('LEARNING','SKILL','ASSESSMENT','PROJECT','PROFILE_ACCESS','OTHER'))",
+            "source": "021_workflow_workbench.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_Workflow_Lifecycle CHECK(status IN ('SUBMITTED','IN_PROGRESS','RESOLVED','CANCELLED'))",
+            "source": "023_workflow_lifecycle.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_WorkflowOwner",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "requester_id",
+              "updated_at DESC"
+            ],
+            "filter": "",
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "name": "IX_WorkflowRecipient",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "recipient_id",
+              "updated_at DESC"
+            ],
+            "filter": "",
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "name": "UX_Workflow_Reference",
+            "unique": true,
+            "columns": [
+              "record_number"
+            ],
+            "filter": "",
+            "source": "021_workflow_workbench.sql"
+          }
+        ],
+        "domain": "Requests & incidents"
+      },
+      "WorkflowEvent": {
+        "source": "019_requests_incidents.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "record_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "record_id uniqueidentifier NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "event_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "event_id uniqueidentifier NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "actor_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "actor_id uniqueidentifier NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "action": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "action varchar(20) NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "body": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "body nvarchar(1000) NOT NULL",
+            "source": "019_requests_incidents.sql"
+          },
+          "occurred_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "occurred_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "019_requests_incidents.sql"
+          },
+          "base_revision": {
+            "type": "int",
+            "nullable": true,
+            "declaration": "base_revision int NULL",
+            "source": "023_workflow_lifecycle.sql"
+          },
+          "target_recipient_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "target_recipient_id uniqueidentifier NULL",
+            "source": "023_workflow_lifecycle.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "event_id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "record_id",
+            "revision"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "record_id"
+            ],
+            "target": "WorkflowRecord",
+            "targetColumns": [
+              "account_id",
+              "record_id"
+            ],
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "actor_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "target_recipient_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "023_workflow_lifecycle.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,event_id)",
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id,record_id,revision)",
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,record_id) REFERENCES dbo.WorkflowRecord(account_id,record_id)",
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,actor_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "019_requests_incidents.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_Workflow_Actions CHECK(action IN ('CREATE','COMMENT','CANCEL','START','RESOLVE','REASSIGN'))",
+            "source": "023_workflow_lifecycle.sql"
+          },
+          {
+            "sql": "CONSTRAINT FK_Workflow_EventTarget FOREIGN KEY(account_id,target_recipient_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "023_workflow_lifecycle.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Requests & incidents"
+      },
+      "AccessImplementedScope": {
+        "source": "031_effective_access_baseline.sql",
+        "columns": {
+          "permission_code": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "permission_code varchar(100) NOT NULL",
+            "source": "031_effective_access_baseline.sql"
+          },
+          "scope_kind": {
+            "type": "varchar(30)",
+            "nullable": false,
+            "declaration": "scope_kind varchar(30) NOT NULL",
+            "source": "031_effective_access_baseline.sql"
+          }
+        },
+        "pk": [
+          "permission_code",
+          "scope_kind"
+        ],
+        "unique": [],
+        "fks": [],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(permission_code,scope_kind)",
+            "source": "031_effective_access_baseline.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Access & organization"
+      },
+      "LearningRecommendation": {
+        "source": "036_learning_recommendations.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "sender_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "sender_id uniqueidentifier NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "skill_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "skill_id uniqueidentifier NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "skill_name": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "skill_name nvarchar(100) NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "category": {
+            "type": "nvarchar(80)",
+            "nullable": false,
+            "declaration": "category nvarchar(80) NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "rank": {
+            "type": "tinyint",
+            "nullable": false,
+            "declaration": "rank tinyint NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "level_name": {
+            "type": "nvarchar(60)",
+            "nullable": false,
+            "declaration": "level_name nvarchar(60) NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "reason": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "reason nvarchar(2000) NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "resource": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "resource nvarchar(1000) NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "target_date": {
+            "type": "date",
+            "nullable": true,
+            "declaration": "target_date date NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "status": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "status varchar(20) NOT NULL CHECK(status IN('PENDING','DISCUSSION','ACCEPTED','DECLINED'))",
+            "source": "036_learning_recommendations.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL CHECK(revision>0)",
+            "source": "036_learning_recommendations.sql"
+          },
+          "response": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "response nvarchar(2000) NOT NULL DEFAULT N''",
+            "source": "036_learning_recommendations.sql"
+          },
+          "plan_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "plan_id uniqueidentifier NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "created_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "created_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "036_learning_recommendations.sql"
+          },
+          "updated_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "updated_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "036_learning_recommendations.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "sender_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "036_learning_recommendations.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "036_learning_recommendations.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "skill_id"
+            ],
+            "target": "SkillCatalogue",
+            "targetColumns": [
+              "account_id",
+              "skill_id"
+            ],
+            "source": "036_learning_recommendations.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "plan_id"
+            ],
+            "target": "LearningPlan",
+            "targetColumns": [
+              "account_id",
+              "plan_id"
+            ],
+            "source": "036_learning_recommendations.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id)",
+            "source": "036_learning_recommendations.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,sender_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "036_learning_recommendations.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "036_learning_recommendations.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,skill_id) REFERENCES dbo.SkillCatalogue(account_id,skill_id)",
+            "source": "036_learning_recommendations.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,plan_id) REFERENCES dbo.LearningPlan(account_id,plan_id)",
+            "source": "036_learning_recommendations.sql"
+          },
+          {
+            "sql": "CHECK(sender_id<>person_id)",
+            "source": "036_learning_recommendations.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_Recommendation_Person",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "person_id",
+              "updated_at"
+            ],
+            "filter": "",
+            "source": "036_learning_recommendations.sql"
+          },
+          {
+            "name": "IX_Recommendation_Sender",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "sender_id",
+              "updated_at"
+            ],
+            "filter": "",
+            "source": "036_learning_recommendations.sql"
+          }
+        ],
+        "domain": "Learning & recommendations"
+      },
+      "LearningRecommendationEvent": {
+        "source": "036_learning_recommendations.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "actor_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "actor_id uniqueidentifier NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "action": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "action varchar(20) NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "message": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "message nvarchar(2000) NOT NULL",
+            "source": "036_learning_recommendations.sql"
+          },
+          "created_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "created_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "036_learning_recommendations.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id",
+          "revision"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "id"
+            ],
+            "target": "LearningRecommendation",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "036_learning_recommendations.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id,revision)",
+            "source": "036_learning_recommendations.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,id) REFERENCES dbo.LearningRecommendation(account_id,id)",
+            "source": "036_learning_recommendations.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Learning & recommendations"
+      },
+      "AiAccountBudget": {
+        "source": "040_shared_ai_budget.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL PRIMARY KEY",
+            "source": "040_shared_ai_budget.sql"
+          },
+          "budget_day": {
+            "type": "date",
+            "nullable": false,
+            "declaration": "budget_day date NOT NULL",
+            "source": "040_shared_ai_budget.sql"
+          },
+          "request_count": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "request_count int NOT NULL",
+            "source": "040_shared_ai_budget.sql"
+          }
+        },
+        "pk": [
+          "account_id"
+        ],
+        "unique": [],
+        "fks": [],
+        "constraints": [],
+        "indexes": [],
+        "domain": "AI & budget"
+      },
+      "AiActorBudget": {
+        "source": "040_shared_ai_budget.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "040_shared_ai_budget.sql"
+          },
+          "actor_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "actor_id uniqueidentifier NOT NULL",
+            "source": "040_shared_ai_budget.sql"
+          },
+          "budget_minute": {
+            "type": "datetime2(0)",
+            "nullable": false,
+            "declaration": "budget_minute datetime2(0) NOT NULL",
+            "source": "040_shared_ai_budget.sql"
+          },
+          "request_count": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "request_count int NOT NULL",
+            "source": "040_shared_ai_budget.sql"
+          },
+          "lease_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "lease_id uniqueidentifier NULL",
+            "source": "040_shared_ai_budget.sql"
+          },
+          "lease_expires": {
+            "type": "datetime2(3)",
+            "nullable": false,
+            "declaration": "lease_expires datetime2(3) NOT NULL",
+            "source": "040_shared_ai_budget.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "actor_id"
+        ],
+        "unique": [],
+        "fks": [],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,actor_id)",
+            "source": "040_shared_ai_budget.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "AI & budget"
+      }
+    },
+    "views": {
+      "SkillProficiencyLevel": {
+        "sql": "SELECT c.account_id,c.skill_id,c.rank,l.display_name,c.description\n FROM dbo.SkillVersionCriterion c JOIN dbo.SkillCatalogue s ON s.account_id=c.account_id AND s.skill_id=c.skill_id AND s.definition_revision=c.definition_revision\n JOIN dbo.ProficiencyLevel l ON l.framework_id=c.framework_id AND l.rank=c.rank;",
+        "source": "012_versioned_skill_framework.sql"
+      }
+    },
+    "removedTables": [
+      "SkillProficiencyLevel"
+    ]
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/dev-access",
+      "module": "access",
+      "source": "apps/api/src/modules/access/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dev-access/effective/:id",
+      "module": "access",
+      "source": "apps/api/src/modules/access/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dev-access/preview",
+      "module": "access",
+      "source": "apps/api/src/modules/access/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dev-access",
+      "module": "access",
+      "source": "apps/api/src/modules/access/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/access",
+      "module": "access",
+      "source": "apps/api/src/modules/access/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/access/effective/:id",
+      "module": "access",
+      "source": "apps/api/src/modules/access/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/access/preview",
+      "module": "access",
+      "source": "apps/api/src/modules/access/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/access",
+      "module": "access",
+      "source": "apps/api/src/modules/access/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/assistant",
+      "module": "ai",
+      "source": "apps/api/src/modules/ai/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/assistant/navigation",
+      "module": "ai",
+      "source": "apps/api/src/modules/ai/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/assistant/navigation",
+      "module": "ai",
+      "source": "apps/api/src/modules/ai/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/assistant/conversations",
+      "module": "ai",
+      "source": "apps/api/src/modules/ai/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/assistant/conversations/:id",
+      "module": "ai",
+      "source": "apps/api/src/modules/ai/routes.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/assistant/conversations/:id",
+      "module": "ai",
+      "source": "apps/api/src/modules/ai/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/assistant/skill-review",
+      "module": "ai",
+      "source": "apps/api/src/modules/ai/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/assistant/workflow-draft",
+      "module": "ai",
+      "source": "apps/api/src/modules/ai/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/assistant",
+      "module": "ai",
+      "source": "apps/api/src/modules/ai/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard",
+      "module": "dashboard",
+      "source": "apps/api/src/modules/dashboard/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard/:card",
+      "module": "dashboard",
+      "source": "apps/api/src/modules/dashboard/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dev-login",
+      "module": "identity",
+      "source": "apps/api/src/modules/identity/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dev-login/people",
+      "module": "identity",
+      "source": "apps/api/src/modules/identity/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dev-login",
+      "module": "identity",
+      "source": "apps/api/src/modules/identity/routes.ts"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/dev-login",
+      "module": "identity",
+      "source": "apps/api/src/modules/identity/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/me",
+      "module": "identity",
+      "source": "apps/api/src/modules/identity/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/knowledge-transfer",
+      "module": "knowledge-transfer",
+      "source": "apps/api/src/modules/knowledge-transfer/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/knowledge-transfer/explain",
+      "module": "knowledge-transfer",
+      "source": "apps/api/src/modules/knowledge-transfer/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning",
+      "module": "learning",
+      "source": "apps/api/src/modules/learning/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/learning",
+      "module": "learning",
+      "source": "apps/api/src/modules/learning/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/learning/recovery/",
+      "module": "learning",
+      "source": "apps/api/src/modules/learning/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/learning/planner",
+      "module": "learning",
+      "source": "apps/api/src/modules/learning/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/practice",
+      "module": "learning",
+      "source": "apps/api/src/modules/learning/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/learning/practice/review",
+      "module": "learning",
+      "source": "apps/api/src/modules/learning/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/learning/practice/",
+      "module": "learning",
+      "source": "apps/api/src/modules/learning/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/access/organization",
+      "module": "organization",
+      "source": "apps/api/src/modules/organization/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/access/organization/preview",
+      "module": "organization",
+      "source": "apps/api/src/modules/organization/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/access/organization",
+      "module": "organization",
+      "source": "apps/api/src/modules/organization/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/recommendations",
+      "module": "recommendations",
+      "source": "apps/api/src/modules/recommendations/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/recommendations/people",
+      "module": "recommendations",
+      "source": "apps/api/src/modules/recommendations/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/recommendations",
+      "module": "recommendations",
+      "source": "apps/api/src/modules/recommendations/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/recommendations/respond",
+      "module": "recommendations",
+      "source": "apps/api/src/modules/recommendations/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/my-skills",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/claims-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/my-skills/catalogue",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/claims-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/my-skills",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/claims-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skill-reviews",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/claims-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skill-reviews/team",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/claims-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skill-reviews/:id",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/claims-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/skills",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workflows/options",
+      "module": "workflows",
+      "source": "apps/api/src/modules/workflows/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workflows",
+      "module": "workflows",
+      "source": "apps/api/src/modules/workflows/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workflows/:id/recipients",
+      "module": "workflows",
+      "source": "apps/api/src/modules/workflows/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workflows/:id",
+      "module": "workflows",
+      "source": "apps/api/src/modules/workflows/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflows",
+      "module": "workflows",
+      "source": "apps/api/src/modules/workflows/routes.ts"
+    }
+  ],
+  "procedures": [
+    {
+      "name": "GetOwnProfile",
+      "kind": "PROCEDURE",
+      "signature": "@tenant_id uniqueidentifier,\n  @object_id uniqueidentifier",
+      "source": "database/migrations/002_own_profile.sql"
+    },
+    {
+      "name": "AccessCan",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@person uniqueidentifier,@permission varchar(100),@own bit)\nRETURNS bit",
+      "source": "database/migrations/036_learning_recommendations.sql"
+    },
+    {
+      "name": "ReadAccessWorkspace",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier, @include_audit bit=1, @audit_person_id uniqueidentifier=NULL",
+      "source": "database/migrations/039_access_read_optimization.sql"
+    },
+    {
+      "name": "SaveAccessChange",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,\n @kind varchar(10),@target_id uniqueidentifier,@is_new bit,@payload nvarchar(max)",
+      "source": "database/migrations/031_effective_access_baseline.sql"
+    },
+    {
+      "name": "ResolveAccessIdentity",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@tenant_id uniqueidentifier,@object_id uniqueidentifier",
+      "source": "database/migrations/004_microsoft_access.sql"
+    },
+    {
+      "name": "ReadOrganization",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier",
+      "source": "database/migrations/006_department_membership.sql"
+    },
+    {
+      "name": "SaveOrganizationChange",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,\n @kind varchar(20),@target_id uniqueidentifier,@is_new bit,@payload nvarchar(max)",
+      "source": "database/migrations/006_department_membership.sql"
+    },
+    {
+      "name": "ReadSkillCatalogue",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,\n @query nvarchar(100)=N'',@status varchar(20)='',@page int=1",
+      "source": "database/migrations/012_versioned_skill_framework.sql"
+    },
+    {
+      "name": "SaveSkillCatalogue",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,\n @target_id uniqueidentifier,@is_new bit,@payload nvarchar(max)",
+      "source": "database/migrations/012_versioned_skill_framework.sql"
+    },
+    {
+      "name": "ReadOwnSkillClaims",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1",
+      "source": "database/migrations/010_skill_claim_reviews.sql"
+    },
+    {
+      "name": "ReadClaimSkills",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@query nvarchar(100)=N'',@page int=1,@category nvarchar(80)=N'',@page_size int=25",
+      "source": "database/migrations/013_claim_catalogue_discovery.sql"
+    },
+    {
+      "name": "SaveOwnSkillClaim",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@expected_revision int,@payload nvarchar(max)",
+      "source": "database/migrations/010_skill_claim_reviews.sql"
+    },
+    {
+      "name": "OwnAiConversations",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(8),\n @conversation_id uniqueidentifier=NULL,@revision int=0,@payload nvarchar(max)=NULL",
+      "source": "database/migrations/009_ai_conversations.sql"
+    },
+    {
+      "name": "TransitionSkillClaim",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@expected_revision int,@action varchar(20),@feedback nvarchar(2000)=N''",
+      "source": "database/migrations/034_exact_claim_review_access.sql"
+    },
+    {
+      "name": "ReadAssignedSkillReviews",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1",
+      "source": "database/migrations/010_skill_claim_reviews.sql"
+    },
+    {
+      "name": "ReadSkillClaimNotifications",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/029_notification_destinations.sql"
+    },
+    {
+      "name": "SkillProficiencyLevel",
+      "kind": "VIEW",
+      "signature": "",
+      "source": "database/migrations/012_versioned_skill_framework.sql"
+    },
+    {
+      "name": "ReadOwnLearningPlans",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/014_employee_learning.sql"
+    },
+    {
+      "name": "ChangeOwnLearningPlan",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@plan_id uniqueidentifier,@expected_revision int,@action varchar(20),@payload nvarchar(max)",
+      "source": "database/migrations/016_learning_skill_mapping.sql"
+    },
+    {
+      "name": "OwnLearningPractice",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@plan_id uniqueidentifier,@task_id uniqueidentifier,@action varchar(20),@payload nvarchar(max)",
+      "source": "database/migrations/017_learning_practice.sql"
+    },
+    {
+      "name": "RecoverOwnLearningPlan",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@plan_id uniqueidentifier,@expected_revision int,@payload nvarchar(max)",
+      "source": "database/migrations/018_learning_recovery.sql"
+    },
+    {
+      "name": "WorkflowCanView",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@record uniqueidentifier)\nRETURNS bit",
+      "source": "database/migrations/020_workflow_recipient_search.sql"
+    },
+    {
+      "name": "WorkflowWorkspace",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@mode varchar(20),@record_id uniqueidentifier=NULL,@page int=1,@inbox bit=0,@payload nvarchar(max)=NULL,@query nvarchar(100)=NULL",
+      "source": "database/migrations/025_workflow_timeline_text.sql"
+    },
+    {
+      "name": "ReadWorkflowList",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1,@inbox bit=0,\n @query nvarchar(80)=N'',@kind varchar(8)='',@status varchar(20)='',@priority varchar(6)='',@category varchar(24)=''",
+      "source": "database/migrations/023_workflow_lifecycle.sql"
+    },
+    {
+      "name": "ReadOwnSkillSummary",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/026_dashboard_skill_summary.sql"
+    },
+    {
+      "name": "ReadDirectReportCapability",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@query nvarchar(100)=N'',@page int=1,@person_id uniqueidentifier=NULL",
+      "source": "database/migrations/035_team_capability_analytics.sql"
+    },
+    {
+      "name": "ReadSkillReviewWorkbench",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1,@query nvarchar(100)=N'',@category nvarchar(80)=N'',\n @status varchar(20)='SUBMITTED',@person_id uniqueidentifier=NULL,@claim_id uniqueidentifier=NULL,@history_page int=1",
+      "source": "database/migrations/034_exact_claim_review_access.sql"
+    },
+    {
+      "name": "AccessReportingValid",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@person uniqueidentifier)\nRETURNS bit",
+      "source": "database/migrations/033_reporting_scope_integrity.sql"
+    },
+    {
+      "name": "AccessCanReviewClaim",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@claim uniqueidentifier,@decision bit)\nRETURNS bit",
+      "source": "database/migrations/034_exact_claim_review_access.sql"
+    },
+    {
+      "name": "RecommendationCan",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@sender uniqueidentifier,@person uniqueidentifier)\nRETURNS bit",
+      "source": "database/migrations/037_recommendation_permission_contract.sql"
+    },
+    {
+      "name": "LearningRecommendations",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@action varchar(20),@payload nvarchar(max)",
+      "source": "database/migrations/038_recommendation_recipient_discovery.sql"
+    },
+    {
+      "name": "AiRequestBudget",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@lease_id uniqueidentifier,@operation varchar(8)",
+      "source": "database/migrations/040_shared_ai_budget.sql"
+    }
+  ],
+  "groups": {
+    "Identity foundation": [
+      "SchemaMigration",
+      "Account",
+      "DeliveryUnit",
+      "Department",
+      "Team",
+      "AppUser",
+      "TeamMembership",
+      "ReportingRelationship",
+      "AppRole",
+      "Permission",
+      "UserRole",
+      "RolePermission",
+      "UserPermission",
+      "AuditEvent"
+    ],
+    "Access & organization": [
+      "AccessWorkspace",
+      "AccessRuntimeAccount",
+      "AccountRole",
+      "AccessPerson",
+      "AccountRolePermission",
+      "AccessPersonRole",
+      "AccessPersonOverride",
+      "AccessAudit",
+      "AccessOrgNode",
+      "AccessOrgAssignment",
+      "AccessImplementedScope"
+    ],
+    "Skills & claims": [
+      "SkillCatalogue",
+      "ProficiencyFramework",
+      "ProficiencyLevel",
+      "SkillDefinitionVersion",
+      "SkillVersionCriterion",
+      "SkillClaimDraft",
+      "SkillClaimNotification"
+    ],
+    "Learning & recommendations": [
+      "LearningPlan",
+      "LearningSession",
+      "LearningQuiz",
+      "LearningAttempt",
+      "LearningRecommendation",
+      "LearningRecommendationEvent"
+    ],
+    "Requests & incidents": [
+      "WorkflowRecord",
+      "WorkflowEvent"
+    ],
+    "AI & budget": [
+      "AiConversation",
+      "AiAccountBudget",
+      "AiActorBudget"
+    ]
+  }
+}

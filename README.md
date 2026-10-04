@@ -1,58 +1,55 @@
-# Skill Management App
+# Cognitive Intelligence Lab
 
-React/TypeScript frontend, Node/Express API and Azure SQL. Laptop is the primary design view, with responsive phone layouts and supplied Sopra Steria branding.
+Permission-driven workforce capability and learning platform. React/TypeScript + Vite frontend, modular Express API and restricted Azure SQL procedures. Node 24; dependencies pinned in `package-lock.json`.
 
-The frontend is a separate app; the backend is a modular monolith with Identity, Access, Organization, Skills and AI modules in one process. See [architecture and dependency rules](docs/ARCHITECTURE.md).
+## Project reference
+
+- [Complete project handover](docs/HANDOVER.md): requirements, architecture, module ownership, workflows, AI, schema, deployment, testing, limitations and removal instructions.
+- [Approved Access Management baseline](docs/ACCESS_MODEL_REDESIGN.md): mandatory policy for access-related changes. Approved target scopes are distinct from implemented enforcement.
+- [Interactive knowledge transfer](https://skill-management-app.vercel.app/knowledgetransfer): authenticated temporary reader, searchable chapters, schema/FK explorer, API/SQL inventory and source-grounded AI guide.
+
+The handover replaces obsolete topic documents. Source code, validators and migrations remain authoritative for exact contracts. The schema explorer reconstructs repository migrations; it does not introspect the live database.
 
 ## Local development
 
-Use Node 24. Copy frontend/backend .env.example files into ignored apps/web/.env.local and apps/api/.env. Configure Entra and SQL as described in docs/SSO_AND_PROFILE.md. No secrets belong in the frontend.
+Copy `apps/api/.env.example` to ignored `apps/api/.env`, and `apps/web/.env.example` to ignored `apps/web/.env.local`. Configure matching Entra registrations, approved callback, account binding and restricted SQL identity using the handover. Never put SQL/provider secrets in `VITE_*` variables.
 
 ```powershell
-npm.cmd ci
-npm.cmd run dev
+npm ci
+npm run dev
 ```
 
-Open http://localhost:5173/ for the registered Microsoft sign-in redirect. GET http://127.0.0.1:3001/api/health is liveness only. Public /preview shows the planned layout without employee records.
+Web: `http://localhost:5173/`. API: `http://127.0.0.1:3001/api/health` (liveness only). Sign-in does not provision users or grant permissions. Local direct login requires the development-only opt-in; hosted demo is a separate temporary gated configuration.
+
+## Implemented workflows
+
+- Effective access explanations, People & Access, supported scoped templates/exceptions, reporting and audited preview/recheck changes.
+- Published skill definitions, personal claims and current assigned direct-manager reviews with no self-review.
+- Team capability analytics and recommendations; acceptance leads to an explicitly reviewed learning plan, never automatic verification.
+- Learn & Grow plans/tasks, study logs, generated practice, progress and recovery.
+- Participant-scoped requests/incidents, searchable recipients, reassignment, resolution and notifications.
+- Authorized dashboard cards, personal navigation ordering and contextual AI with bounded context, recent durable conversations and shared SQL request budgets.
+
+Private file uploads, formal assessments, demand/matching and broader team/department/subtree grant scopes are not implemented. This remains a personal/demo deployment; deferred login hardening and production prerequisites are documented in the handover.
+
+## Verification and schema changes
 
 ```powershell
-npm.cmd run typecheck
-npm.cmd run architecture:check
-npm.cmd test
-npm.cmd run build
-npm.cmd run db:check -w apps/api
-npm.cmd run db:migrate -w apps/api
+npm run docs:generate
+npm run docs:check
+npm run architecture:check
+npm run typecheck
+npm test
+npm run build
+npm run db:check -w apps/api
 ```
 
-Database setup uses the developer's Azure identity, applies reviewed migrations and closes connections. Migration 001 manages its own transaction; the runner skips an initialized schema and transactionally applies outstanding migrations 002 through 012. Use a single migration worker. Runtime SQL uses a separate restricted identity.
+Python 3 generates the KT bundle from the maintained handbook, approved baseline, routes and migrations. Regenerate after changing those inputs; CI rejects stale output. `npm run db:migrate -w apps/api` applies reviewed outstanding migrations through 040 using a separate setup identity and one migration worker. Inspect opt-in integration fixtures before running them against live SQL; ordinary tests do not require SQL or model credentials. Never run seed/import scripts as ordinary startup tasks.
 
-## Current scope
+## Hosting and temporary KT removal
 
-Vercel multi-service configuration is in the root vercel.json: public /api routes reach the Express service and remaining paths reach the Vite service on one domain. There are no runtime service-to-service calls requiring internal bindings. See [Vercel deployment setup and verification](docs/VERCEL_DEPLOYMENT.md). Live hosting, Microsoft callbacks and hosted SQL connectivity are verified separately from local builds.
+Root `vercel.json` deploys services `api` (public `/api` and `/api/*`) and `web` (remaining paths) on one domain. No internal bindings are needed: browser requests use same-origin API routes. Main-branch pushes trigger deployment; verify Ready for the exact commit and smoke-test the hosted workflows.
 
-Temporary local direct login and permission administration are available when NODE_ENV=development and DEV_DIRECT_LOGIN=true. The account owner signs in with Microsoft and opens the Super Admin dashboard; the passwordless picker contains only unlinked test people. Define custom role names, people IDs, role permissions and per-person ALLOW/DENY overrides. Configuration now persists in account-scoped Azure SQL tables with transactional revision checks and audit. Set ACCESS_ACCOUNT_ID after the explicit access:import operation. Production must leave this flag off. A separate access-code-protected hosted demo can be enabled for temporary evaluation; see docs/VERCEL_DEPLOYMENT.md. See docs/PERMISSION_ADMINISTRATION.md for scope, tests and the company migration boundary.
+KT is isolated in `apps/web/src/knowledge-transfer` and `apps/api/src/modules/knowledge-transfer`. Set **`KNOWLEDGE_TRANSFER_ENABLED=false`** in API deployment configuration and redeploy to disable its protected reader/AI endpoints. Removing it needs no SQL rollback, data deletion, new grants or core chat changes. Follow the handover's **Temporary Feature Removal** checklist and retain the permanent documentation.
 
-Microsoft SPA/API registrations, validated delegated tokens, restricted SQL own-profile access and a responsive authenticated profile page are implemented. Missing membership is denied; sign-in does not automatically onboard employees. The complete browser login and live Azure SQL profile retrieval succeeded after user-completed individual consent. Migrations 1, 2, 3, 4 and 5, historical role seeds and custom access records are verified in the personal development database. Verification details are in docs/SSO_AND_PROFILE.md.
-
-The personal development workspace contains the imported NHS SBS department under UK and a separate development test branch. Dashboard cards, visual hierarchy editing and a department-filtered role-assignment matrix are implemented. The floating AI assistant uses Gemini with authenticated, permission-bound tools, bounded model context and durable recent conversations. See docs/AI_INTEGRATION.md for server configuration and verification boundaries. The skill catalogue now supports governed draft/publish/archive definitions and editable proficiency levels; see docs/SKILL_CATALOGUE.md. My Skills supports projects/evidence references, submission and assigned reporting-manager decisions with revision checks, audit and notifications; see [skill reviews](docs/SKILL_REVIEWS.md). The [enterprise catalogue](docs/ENTERPRISE_CATALOGUE.md) seeds 70 governed definitions using shared proficiency labels and immutable definition versions. Attachment storage, requests/incidents, learning workflows and onboarding remain future increments. Hosted Vercel deployment is verified. This development foundation is not yet production-ready.
-
-## Documentation
-
-- docs/ARCHITECTURE.md: module ownership, public contracts, dependency rules and deployment boundaries.
-- docs/MY_SKILLS.md: own draft claims, permissions, SQL concurrency and verification.
-- docs/REQUESTS_AND_INCIDENTS.md: preserved routing, approvals, IT assignment and AI boundaries.
-- docs/BUILD_PLAN.md: agreed workflows and delivery sequence.
-- docs/SKILL_CATALOGUE.md: catalogue permissions, proficiency definitions, SQL migration and verification.
-- docs/UI_DESIGN.md: simplified page structure, responsive behavior and UI verification.
-- docs/ORGANIZATION_SETUP.md: organization tree, direct department or team assignment, reporting chain and audited SQL validation.
-- docs/UI_DESIGN.md: laptop-first branding and responsive design.
-- docs/AZURE_SETUP.md: Azure setup and company migration.
-- docs/SSO_AND_PROFILE.md: sign-in, runtime SQL isolation and verification.
-- docs/IDENTITY_AND_ACCESS.md: scoped roles, grants and N+1 policy.
-- docs/PERMISSION_ADMINISTRATION.md: custom roles, per-ID overrides and local direct login.
-- docs/AI_INTEGRATION.md: internal tools, policy gateway and exact write approvals.
-- docs/ENGINEERING_STANDARDS.md: implementation, verification and deployment gates.
-
-Source is under apps/web and apps/api; reviewed SQL is under database/migrations. CI checks module boundaries, strict types, tests and builds. Dependencies are pinned in package-lock.json. Optional external Google Fonts have local font fallbacks. The supplied mark was PNG despite its original .svg extension and is stored with the correct .png extension.
-
-Repository: https://github.com/utkarshpat/Skill-Management-App
+[Repository](https://github.com/utkarshpat/Skill-Management-App) · [Application](https://skill-management-app.vercel.app)

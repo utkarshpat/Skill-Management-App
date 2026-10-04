@@ -16,6 +16,10 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm run docs:check
       - run: npm run architecture:check
       - run: npm run typecheck
       - run: npm test
