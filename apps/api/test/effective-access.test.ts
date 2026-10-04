@@ -3,11 +3,29 @@ import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {readFile} from 'node:fs/promises';
 import {LocalAccessStore,type LocalAccessState} from '../src/modules/access/local-access-store.js';
-import {actionRegistry,effectiveAccess,effectiveAccessSummary} from '../src/modules/access/effective-access.js';
+import {actionRegistry,effectiveAccess,effectiveAccessSummary,effectiveClaimReview} from '../src/modules/access/effective-access.js';
 import {previewAccessChange,recheckAccessChange} from '../src/modules/access/access-preview.js';
 import {createApp} from '../src/create-app.js';
 
 const fixture=():LocalAccessState=>({revision:1,audit:[],roles:[{id:'personal',name:'Custom title',permissions:[{permission:'profile.view',scope:'OWN',effect:'ALLOW'}]}],people:[{id:'actor',displayName:'Person',employeeCode:'EMP',active:true,hasDirectReports:true,roleIds:['personal'],overrides:[]}]});
+test('exact claim review resolves current relationship before scope and workflow decisions',()=>{
+ const state=fixture(),actor=state.people[0];
+ state.people.push({id:'report',displayName:'Report',employeeCode:'R',active:true,roleIds:[],overrides:[]},{id:'grandchild',displayName:'Grandchild',employeeCode:'G',active:true,roleIds:[],overrides:[]});
+ state.reporting=[{personId:'report',managerId:actor.id},{personId:'grandchild',managerId:'report'}];
+ const claim={id:'claim',revision:3,personId:'report',reviewerId:actor.id,status:'SUBMITTED'};
+ const evaluate=(fields={})=>effectiveClaimReview(state,actor,{...claim,...fields});
+ assert.equal(evaluate().allowed,true);assert.equal(evaluate().summaryOnly,false);assert.equal(evaluate().resource.revision,3);
+ assert.equal(evaluate({personId:'grandchild'}).reasonCode,'NOT_CURRENT_DIRECT_MANAGER');
+ assert.equal(evaluate({reviewerId:'other'}).reasonCode,'NOT_ASSIGNED_REVIEWER');
+ assert.equal(evaluate({personId:actor.id}).reasonCode,'SELF_APPROVAL');
+ assert.equal(evaluate({status:'APPROVED'}).reasonCode,'NOT_AWAITING_REVIEW');
+ assert.equal(evaluate({personId:undefined}).reasonCode,'UNRESOLVED_RESOURCE_SCOPE');
+ actor.overrides.push({permission:'skill.verify',scope:'OWN',effect:'DENY'});assert.equal(evaluate().allowed,true);
+ actor.overrides.push({permission:'skill.verify',scope:'ORGANIZATION',effect:'DENY',validUntil:'2099-01-01'});assert.equal(evaluate().reasonCode,'EXPLICIT_DENY');
+ actor.overrides.at(-1)!.validUntil='2000-01-01';assert.equal(evaluate().allowed,true);
+ state.reporting.push({personId:'report',managerId:null});assert.equal(evaluate().allowed,false);
+ state.reporting.pop();state.people[1].active=false;assert.equal(evaluate().allowed,false);
+});
 test('canonical decisions distinguish grants, reporting authority, scoped denies and unavailable actions',()=>{
  const state=fixture(),person=state.people[0];
  assert.equal(effectiveAccess(state,person,'profile.view').allowed,true);

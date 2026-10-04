@@ -28,16 +28,21 @@ test('assigned review AI tool stays actor-bound and disappears on permission rev
 test('review HTTP uses verified actor, independent review permission and strict decision endpoints',async()=>{
  const access=await LocalAccessStore.open(),state=access.snapshot(),person=state.people[0];
  person.overrides.push({permission:'profile.view',scope:'OWN',effect:'ALLOW'},{permission:'skill.claim',scope:'OWN',effect:'ALLOW'},{permission:'skill.view',scope:'ORGANIZATION',effect:'ALLOW'});access.snapshot=()=>structuredClone(state);
- const actors:string[]=[];const claims:ClaimsStore={read:async()=>({claims:[],total:0,page:1,pageSize:25,canClaim:true}),options:async()=>({skills:[],total:0,page:1,pageSize:25}),save:async()=>{},reviews:async actor=>{actors.push(actor);return {claims:[],total:0,page:1,pageSize:25,canClaim:false};},transition:async actor=>{actors.push(actor);}};
+ const reportId=randomUUID();
+ let wrongReviewer=false,changedRevision=false;
+ const actors:string[]=[];const claims:ClaimsStore={read:async()=>({claims:[],total:0,page:1,pageSize:25,canClaim:true}),options:async()=>({skills:[],total:0,page:1,pageSize:25}),save:async()=>{},reviews:async actor=>{actors.push(actor);return {claims:[],total:0,page:1,pageSize:25,canClaim:false};},transition:async actor=>{actors.push(actor);},reviewDetail:async(actor,id)=>({claim:{id,revision:changedRevision?2:1,personId:reportId,reviewerId:wrongReviewer?'other':actor,status:'SUBMITTED'} as never,history:[],total:0,page:1,pageSize:20})};
  const server=createApp({verify:async header=>{if(header!=='Bearer trusted')throw Error();return {tenantId:'tenant',objectId:'actor'};},resolveAccess:async()=>person.id,profile:async()=>undefined,access,claims}).listen(0,'127.0.0.1');await once(server,'listening');const address=server.address();assert.ok(address&&typeof address!=='string');const base=`http://127.0.0.1:${address.port}`,headers={Authorization:'Bearer trusted','Content-Type':'application/json'},change={id:randomUUID(),revision:1,action:'SUBMIT'};
  try{
   assert.equal((await fetch(base+'/api/skill-reviews')).status,401);
   assert.equal((await fetch(base+'/api/skill-reviews',{headers})).status,403);
   assert.equal((await fetch(base+'/api/my-skills/submit',{method:'POST',headers,body:JSON.stringify(change)})).status,200);
+  state.people.push({id:reportId,displayName:'Report',employeeCode:'REP',active:true,roleIds:[],overrides:[]});state.reporting=[{personId:reportId,managerId:person.id}];
   person.hasDirectReports=true;person.overrides.push({permission:'skill.verify',scope:'ORGANIZATION',effect:'ALLOW'});
   assert.equal((await fetch(base+'/api/skill-reviews',{headers})).status,200);
   assert.equal((await fetch(base+'/api/skill-reviews/decision',{method:'POST',headers,body:JSON.stringify(change)})).status,400);
   assert.equal((await fetch(base+'/api/skill-reviews/decision',{method:'POST',headers,body:JSON.stringify({...change,action:'APPROVE',feedback:'Reviewed.'})})).status,200);
+  wrongReviewer=true;assert.equal((await fetch(base+'/api/skill-reviews/decision',{method:'POST',headers,body:JSON.stringify({...change,action:'APPROVE',feedback:'Reviewed.'})})).status,403);
+  wrongReviewer=false;changedRevision=true;assert.equal((await fetch(base+'/api/skill-reviews/decision',{method:'POST',headers,body:JSON.stringify({...change,action:'APPROVE',feedback:'Reviewed.'})})).status,409);
   person.overrides.push({permission:'skill.verify',scope:'ORGANIZATION',effect:'DENY'});
   assert.equal((await fetch(base+'/api/skill-reviews',{headers})).status,403);
   assert.ok(actors.every(actor=>actor===person.id));assert.equal(actors.length,3);

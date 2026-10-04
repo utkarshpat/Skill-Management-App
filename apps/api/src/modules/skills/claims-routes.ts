@@ -1,6 +1,6 @@
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
-import { can, canReviewAssigned, type AccessStore } from '../access/index.js';
+import { can, canReviewAssigned, effectiveClaimReview, type AccessStore } from '../access/index.js';
 
 import { AccessError } from '../../shared/errors.js';
 import { claimChange, claimCategory, claimResultSize, claimPage, claimSearch, claimTransition, teamQuery, reviewQuery, reviewIdentifier, type ClaimsStore } from './claims.js';
@@ -45,7 +45,22 @@ export function registerClaimsRoutes(app:Express, dependencies:ClaimsHttpDepende
     catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'SKILL_REVIEW_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
   for(const path of ['/api/my-skills/submit','/api/skill-reviews/decision'])app.post(path,async(req,res)=>{
-    try{if(!dependencies?.claims?.transition)throw new AccessError(503,'Skill reviews are not configured.');const change=claimTransition(req.body);if((path.endsWith('/submit'))!==(change.action==='SUBMIT'))throw new AccessError(400,'Choose a valid action for this page.');await dependencies.claims.transition(res.locals.claimActor,change);res.json({saved:true});}
+    try{
+      if(!dependencies?.claims?.transition)throw new AccessError(503,'Skill reviews are not configured.');
+      const change=claimTransition(req.body);
+      if((path.endsWith('/submit'))!==(change.action==='SUBMIT'))throw new AccessError(400,'Choose a valid action for this page.');
+      if(change.action!=='SUBMIT'){
+        if(!dependencies.claims.reviewDetail)throw new AccessError(503,'Current claim access cannot be checked.');
+        const access=dependencies.access??store,before=await access?.snapshot();
+        if(!before)throw new AccessError(403,'Review access unavailable.');
+        const detail=await dependencies.claims.reviewDetail(res.locals.claimActor,change.id,1);
+        const after=await access!.snapshot(),actor=after.people.find(person=>person.id===res.locals.claimActor&&person.active);
+        if(after.revision!==before.revision||detail.claim.revision!==change.revision)throw new AccessError(409,'Review records changed. Refresh before continuing.');
+        if(!actor||!effectiveClaimReview(after,actor,detail.claim).allowed)throw new AccessError(403,'This claim is not currently available for your decision.');
+      }
+      // SQL rechecks exact resource authority and revision inside its transaction.
+      await dependencies.claims.transition(res.locals.claimActor,change);res.json({saved:true});
+    }
     catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'SKILL_REVIEW_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
   app.get('/api/skill-reviews/team',async(req,res)=>{
@@ -70,7 +85,9 @@ export function registerClaimsRoutes(app:Express, dependencies:ClaimsHttpDepende
       const data=await dependencies.claims.reviewDetail(res.locals.claimActor,id,page),after=await access!.snapshot(),person=after.people.find(p=>p.id===res.locals.claimActor&&p.active);
       if(!person||!canReviewAssigned(after,person)||!can(after,person,'profile.view',true))throw new AccessError(403,'Review access changed.');
       if(after.revision!==revision)throw new AccessError(409,'Review records changed. Refresh before continuing.');
-      res.json(data);
+      const reviewAccess=effectiveClaimReview(after,person,data.claim);
+      if(!reviewAccess.allowed&&reviewAccess.reasonCode!=='NOT_AWAITING_REVIEW')throw new AccessError(404,'Assigned review unavailable.');
+      res.json({...data,reviewAccess});
     }catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'SKILL_REVIEW_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
 }

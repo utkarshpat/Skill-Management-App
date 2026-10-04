@@ -8,8 +8,10 @@ import {SkillsProfileView} from './SkillsProfileView';
 import './skills-profile.css';
 import {SkillClaimWizard,type SkillChoice,type SkillDraft,type SkillChoices} from './SkillClaimWizard';
 import { useLocation, useNavigate } from 'react-router';
+import type {ClaimReviewDecision} from './ClaimReviewAccess';
 
 export interface Claim {
+  reviewAccess?:ClaimReviewDecision;
   id:string; revision:number; skillId:string; skillName:string; category:string;
   definitionRevision:number; rank:number; levelName:string; experienceMonths:number;
   description:string; status:'DRAFT'|'SUBMITTED'|'CHANGES_REQUESTED'|'APPROVED'|'REJECTED'; updatedAt:string; projects?:string; evidence?:string; feedback?:string; personName?:string; levelDescription?:string;

@@ -4,4 +4,4 @@ export { permissionCatalogue, type PermissionCode } from './access-catalogue.js'
 export { rolePresets, type RolePreset } from './role-presets.js';
 export { workspaceFor } from './workspace.js';
 
-export {effectiveAccess,effectiveAccessSummary,actionRegistry} from './effective-access.js';
+export {effectiveAccess,effectiveAccessSummary,effectiveClaimReview,actionRegistry} from './effective-access.js';

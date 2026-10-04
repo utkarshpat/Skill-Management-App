@@ -4,7 +4,7 @@ export interface SkillClaim {
   id: string; revision: number; skillId: string; skillName: string; category: string;
   definitionRevision: number; rank: number; levelName: string; levelDescription: string;
   experienceMonths: number; description: string; status: 'DRAFT'|'SUBMITTED'|'CHANGES_REQUESTED'|'APPROVED'|'REJECTED'; updatedAt: string;
-  projects?: string; evidence?: string; feedback?: string; reviewerId?: string; personName?: string;
+  projects?: string; evidence?: string; feedback?: string; reviewerId?: string; personId?:string; personName?: string;
 }
 export interface ClaimOption {
   description?:string; businessCode?:string|null;

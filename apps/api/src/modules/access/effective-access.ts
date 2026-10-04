@@ -37,6 +37,24 @@ export interface EffectiveDecision {
   sources:{kind:'TEMPLATE'|'EXCEPTION'|'RELATIONSHIP';id:string;label:string;effect:'ALLOW'|'DENY';scope:string;validUntil?:string;reason?:string}[];
   constraints:string[];
 }
+/** Resource fields are resolved by the account-bound claims store, never HTTP input. */
+export interface ReviewResource {id:string;revision:number;personId?:string;reviewerId?:string;status:string}
+export function effectiveClaimReview(state:LocalAccessState,actor:LocalPerson,claim:ReviewResource,at=new Date()){
+  const decision=effectiveAccess(state,actor,'skill.verify','DIRECT_REPORTS',at);
+  const deny=(reasonCode:string)=>({...decision,allowed:false,reasonCode});
+  let result:EffectiveDecision=decision;
+  if(decision.allowed){
+    const owner=state.people.find(person=>person.id===claim.personId&&person.active);
+    const edges=state.reporting?.filter(edge=>edge.personId===claim.personId);
+    if(!claim.personId||!state.reporting)result=deny('UNRESOLVED_RESOURCE_SCOPE');
+    else if(claim.personId===actor.id)result=deny('SELF_APPROVAL');
+    else if(!owner)result=deny('INACTIVE_CLAIMANT');
+    else if(edges?.length!==1||edges[0].managerId!==actor.id)result=deny('NOT_CURRENT_DIRECT_MANAGER');
+    else if(claim.reviewerId!==actor.id)result=deny('NOT_ASSIGNED_REVIEWER');
+    else if(claim.status!=='SUBMITTED')result=deny('NOT_AWAITING_REVIEW');
+  }
+  return {...result,summaryOnly:false as const,resource:{type:'SKILL_CLAIM' as const,id:claim.id,revision:claim.revision}};
+}
 export function effectiveAccess(state:LocalAccessState,person:LocalPerson,action:string,context:'OWN'|'WORKSPACE'|'DIRECT_REPORTS'='OWN',at=new Date()):EffectiveDecision {
   const implemented=Boolean(supported[action]);
   const resolvedScope={kind:context==='WORKSPACE'?'ORGANIZATION' as const:context,actorId:person.id};
