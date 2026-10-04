@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { ThemeProvider } from './Theme';
+import { WorkspaceRecovery } from './WorkspaceRecovery';
 import { BrowserRouter } from 'react-router';
 import './styles.css';
 import './ui.css';
@@ -10,6 +11,6 @@ import './workspace-pages.css';
 import './sidebar-navigation.css';
 import './profile-page.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><BrowserRouter><ThemeProvider><App /></ThemeProvider></BrowserRouter></React.StrictMode>);
+ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><WorkspaceRecovery><BrowserRouter><ThemeProvider><App /></ThemeProvider></BrowserRouter></WorkspaceRecovery></React.StrictMode>);
 
 import './effective-access.css';
