@@ -18,7 +18,7 @@ const walkthroughs=[
  {name:'AI explanation',section:'ai-architecture-budget-memory',steps:['Authenticated actor','Shared request budget','Bounded source context','Generate explanation','Permission recheck']},
 ];
 async function responseJson(response:Response){const body=await response.json().catch(()=>({}));if(!response.ok)throw Object.assign(Error(body.error?.message??'The handover could not be loaded. Please retry.'),{status:response.status});return body;}
-function RichText({children}:{children:string}){return <Markdown remarkPlugins={[remarkGfm]} urlTransform={safeDocUrl}>{children}</Markdown>;}
+function RichText({children}:{children:string}){return <Markdown remarkPlugins={[remarkGfm]} urlTransform={safeDocUrl} components={{a:({href,children})=>href?<a href={href}>{children}</a>:<span>{children}</span>}}>{children}</Markdown>;}
 function download(name:string,text:string,type='text/plain'){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 
 export function KnowledgeTransfer(){

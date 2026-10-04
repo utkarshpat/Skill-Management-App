@@ -29,6 +29,7 @@ test('KT inventory preserves actual FK tuples and treats view and quota tables h
  assert.ok(context.sources.some(s=>s.id==='table-AiActorBudget'));
  assert.ok(context.sources.every(s=>/^\/knowledgetransfer#[a-zA-Z0-9_-]+$/.test(s.href)));
  assert.ok(context.excerpts.length<=4&&context.excerpts.every(e=>e.text.length<3600));
+ assert.ok(context.excerpts.every(e=>context.sources.some(s=>s.id===e.id&&s.href===e.href)));
  const selected=projectContext(guideInput({question:'Explain this table',section:'database-schema-erd',table:'LearningAttempt'}));
  assert.ok(selected.sources.some(s=>s.id==='table-LearningAttempt'));
 });

@@ -24,7 +24,7 @@ export function projectContext(input:GuideInput){
  const ranked=chunks.sort((a,b)=>b.score-a.score).slice(0,4);
  const sources=ranked.map(({id,title,href})=>({id,title,href}));
  // Explicit truncation is visible to the provider; no invented continuation.
- const excerpts=ranked.map(c=>({id:c.id,title:c.title,text:c.text.length>3500?c.text.slice(0,3500)+'\n[Excerpt shortened; more is available in the linked document.]':c.text}));
+ const excerpts=ranked.map(c=>({id:c.id,title:c.title,href:c.href,text:c.text.length>3500?c.text.slice(0,3500)+'\n[Excerpt shortened; more is available in the linked document.]':c.text}));
  return {sources,excerpts};
 }
 export class KnowledgeTransferService {

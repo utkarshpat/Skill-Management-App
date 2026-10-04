@@ -6,4 +6,4 @@ export interface Knowledge {title:string;version:string;revision:string;basis:st
 export interface Source {id:string;title:string;href:string}
 export interface ChatMessage {role:'user'|'assistant';content:string;sources?:Source[]}
 export const sourceUrl=(path:string)=>'https://github.com/utkarshpat/Skill-Management-App/blob/main/'+path;
-export function safeDocUrl(url:string){return /^\/knowledgetransfer#[a-zA-Z0-9_-]+$/.test(url)||url.startsWith('https://github.com/utkarshpat/Skill-Management-App/')?url:'';}
+export function safeDocUrl(url:string){if(/^#[a-zA-Z0-9_-]+$/.test(url))return '/knowledgetransfer'+url;if(url==='ACCESS_MODEL_REDESIGN.md')return '/knowledgetransfer#approved-access-baseline';return /^\/knowledgetransfer#[a-zA-Z0-9_-]+$/.test(url)||url.startsWith('https://github.com/utkarshpat/Skill-Management-App/')?url:'';}
