@@ -1,5 +1,7 @@
 # Architecture: separate frontend and modular monolith API
 
+Access-related UI, backend, dashboard and AI changes follow the [approved Access Management baseline](ACCESS_MODEL_REDESIGN.md). Keep permissions, resolved resource scopes, relationships and workflow constraints distinct. The baseline describes the target contract; implementation availability and SQL enforcement determine what can actually be assigned or executed.
+
 ## Decision
 
 Keep one repository with a React frontend in `apps/web` and one Express backend in `apps/api`. The backend is a modular monolith: its business modules run in one Node process, communicate through explicit TypeScript contracts, and share the existing Azure SQL database. Modules do not require separate services, hosts, network calls or databases.

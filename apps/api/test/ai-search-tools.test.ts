@@ -43,9 +43,9 @@ test('own claim choices expose full criteria only for a selected eligible option
 test('workspace guide reflects current permissions and unconfigured or planned tools are absent',async()=>{
   const access=await LocalAccessStore.open(),state=access.snapshot(),actor=state.people[0].id;access.snapshot=()=>structuredClone(state);
   const registry=new ToolRegistry(access);
-  const admin=await registry.execute(actor,'workspace_guide',{},signal());assert.match(JSON.stringify(admin.data),/Roles & permissions/);
+  const admin=await registry.execute(actor,'workspace_guide',{},signal());assert.match(JSON.stringify(admin.data),/Access templates/);
   state.roles[0].permissions=structuredClone(rolePresets[0].permissions);state.roles[0].name='Super Admin';
-  const employee=await registry.execute(actor,'workspace_guide',{},signal());assert.doesNotMatch(JSON.stringify(employee.data),/Roles & permissions/);
+  const employee=await registry.execute(actor,'workspace_guide',{},signal());assert.doesNotMatch(JSON.stringify(employee.data),/Access templates/);
   const names=registry.available(state,state.people[0]).map(tool=>tool.function.name);
   for(const absent of ['catalogue_search','skill_claim_options','propose_own_skill','execute_proposal','read_assigned_review_queue'])assert.ok(!names.includes(absent));
 });

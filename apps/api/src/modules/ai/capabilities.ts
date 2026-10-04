@@ -11,8 +11,8 @@ export function assistantCapabilities(state:LocalAccessState, person:LocalPerson
   if(capabilities.reviewSkills)pages.push({label:'Skill reviews',url:'/skill-reviews'});
   if(capabilities.catalogue)pages.push({label:'Skill catalogue',url:'/skills'});
   if(capabilities.administration){
-    pages.push({label:'Administration dashboard',url:'/access?view=overview'},{label:'Roles & permissions',url:'/access?view=roles'});
-    if(can(state,person,'users.manage'))pages.push({label:'People',url:'/access?view=people'},{label:'Organization',url:'/access?view=organization'},{label:'Role assignments',url:'/access?view=assignments'});
+    pages.push({label:'Administration dashboard',url:'/access?view=overview'},{label:'Access templates',url:'/access?view=roles'});
+    if(can(state,person,'users.manage'))pages.push({label:'People & Access',url:'/access?view=people'},{label:'Organization',url:'/access?view=organization'},{label:'Role assignments',url:'/access?view=assignments'});
     if(can(state,person,'audit.view'))pages.push({label:'Activity log',url:'/access?view=audit'});
   }
   const guidance:{action:string;url:string;steps:string[]}[]=[];
@@ -27,7 +27,7 @@ export function assistantCapabilities(state:LocalAccessState, person:LocalPerson
   if(capabilities.catalogue)guidance.push({action:'Browse published skills',url:'/skills',steps:['Open Skill catalogue.','Search by skill or category.','Read the proficiency criteria before choosing a level.']});
   if(capabilities.manageCatalogue)guidance.push({action:'Create or edit a catalogue skill',url:'/skills',steps:['Open Skill catalogue and choose New skill, or open an existing skill.','Enter the skill details and define proficiency levels.','Review publication requirements and Save skill.']});
   if(capabilities.administration){
-    guidance.push({action:'Design permission sets',url:'/access?view=roles',steps:['Open Roles & permissions.','Create or edit a role.','Choose permission categories, grants and scopes.','Review and Save; a role label itself gives no access.']});
+    guidance.push({action:'Design permission sets',url:'/access?view=roles',steps:['Open Access templates.','Create or edit a role.','Choose permission categories, grants and scopes.','Review and Save; a role label itself gives no access.']});
     if(can(state,person,'users.manage'))guidance.push({action:'Assign people access',url:'/access?view=assignments',steps:['Open Role assignments.','Select the person and role checkboxes.','Review changes and Save assignments.','Use People to amend individual permission overrides.']},{action:'Maintain reporting structure',url:'/access?view=organization',steps:['Open Organization.','Select the person or tree node and Edit.','Choose the actual reporting manager and organizational placement.','Review and Save; reporting levels follow person-to-person relationships.']});
   }
   return {pages,guidance,canDraftOwnSkill:capabilities.claimSkills,canManageCatalogue:capabilities.manageCatalogue,

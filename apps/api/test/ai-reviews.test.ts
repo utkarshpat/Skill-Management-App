@@ -5,7 +5,7 @@ import {LocalAccessStore} from '../src/modules/access/local-access-store.js';
 import type {ClaimsStore,SkillClaim} from '../src/modules/skills/claims.js';
 
 test('review AI restricts context, binds reviewer and never writes or trusts forged selectors',async()=>{
- const access=await LocalAccessStore.open(),s=access.snapshot(),actor=s.people[0];actor.overrides.push({permission:'skill.verify',scope:'ORGANIZATION',effect:'ALLOW'});access.snapshot=()=>structuredClone(s);
+ const access=await LocalAccessStore.open(),s=access.snapshot(),actor=s.people[0];actor.hasDirectReports=true;actor.overrides.push({permission:'skill.verify',scope:'ORGANIZATION',effect:'ALLOW'});access.snapshot=()=>structuredClone(s);
  const claim:SkillClaim={id:'bb123456-1234-1234-1234-123456789abc',revision:2,skillId:'skill',skillName:'Java',category:'Programming',definitionRevision:1,rank:3,levelName:'Intermediate',levelDescription:'Build and test services',experienceMonths:24,description:'Built a service',projects:'Project A',evidence:'A reference, not file contents',status:'SUBMITTED',updatedAt:'2026-10-04',reviewerId:actor.id};
  let calls=0,change=false,revoke=false,foreign=false,invalid=false;
  const claims:ClaimsStore={read:async()=>{throw Error('No unrelated data');},options:async()=>{throw Error('No catalogue reads');},save:async()=>{throw Error('No writes');},transition:async()=>{throw Error('No decisions');},reviewDetail:async(who,id)=>{assert.equal(who,actor.id);assert.equal(id,claim.id);if(foreign)throw Error('Outside reviewer scope');return {claim:structuredClone(claim),history:[],total:0,page:1,pageSize:20};}};

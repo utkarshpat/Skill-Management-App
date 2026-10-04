@@ -33,7 +33,7 @@ test('hosted sessions survive another instance, reject tampering, expiry, host c
 
 test('hosted HTTP gates roster and login, protects cookies and mutations, excludes Microsoft accounts and rechecks permissions',async()=>{
   const store=await LocalAccessStore.open();let state=store.snapshot();const admin=state.people[0];
-  state=await store.save(admin.id,{revision:state.revision,kind:'person',displayName:'Hosted employee',employeeCode:'HOSTED-TEST',active:true,roleIds:[],overrides:[{permission:'profile.view',scope:'OWN',effect:'ALLOW'}]});
+  state=await store.save(admin.id,{revision:state.revision,kind:'person',displayName:'Hosted employee',employeeCode:'HOSTED-TEST',active:true,roleIds:[],overrides:[{permission:'profile.view',scope:'OWN',effect:'ALLOW',reason:'Temporary test access',validUntil:'2099-01-01T00:00:00Z'}]});
   const person=state.people.find(item=>item.employeeCode==='HOSTED-TEST')!;
   const linked={id:'11111111-1111-4111-8111-111111111111',displayName:'Microsoft owner',employeeCode:'LINKED-TEST',active:true,roleIds:[],overrides:[],entraObjectId:'22222222-2222-4222-8222-222222222222'};
   const hostedStore={snapshot:()=>{const current=store.snapshot();return {...current,people:[...current.people,linked]};},person:(id:string)=>id===linked.id?linked:store.person(id),save:store.save.bind(store)};

@@ -1,6 +1,6 @@
 import { AccessError } from '../../shared/errors.js';
 
-import { can, canReviewAssigned, permissionCatalogue, type AccessStore, type LocalAccessState, type LocalPerson } from '../access/index.js';
+import { can, canReviewAssigned, permissionCatalogue, actionRegistry, effectiveAccessSummary, type AccessStore, type LocalAccessState, type LocalPerson } from '../access/index.js';
 
 import type { OrganizationStore } from '../organization/index.js';
 
@@ -70,15 +70,15 @@ export class ToolRegistry {
 
       definition:definition('my_permissions','Explain the signed-in person’s current effective own/workspace permissions. Role labels confer no authority; does not alter access.'),permission:()=>true,source:{label:'Your current permissions',url:'/workspace'},
 
-      read:async({state,person})=>({permissions:permissionCatalogue.filter(([code])=>can(state,person,code,true)||can(state,person,code)).map(([code,label])=>({code,label,own:can(state,person,code,true),workspace:can(state,person,code)})),guide:assistantCapabilities(state,person)}),
+      read:async({state,person})=>({decisions:effectiveAccessSummary(state,person).decisions.filter(d=>d.allowed||d.reasonCode==='EXPLICIT_DENY').map(({action,allowed,reasonCode,resolvedScope,constraints,sources})=>({action,allowed,reasonCode,scope:resolvedScope.kind,constraints,sources:sources.map(({kind,label,effect,scope,validUntil})=>({kind,label,effect,scope,validUntil}))})),permissions:permissionCatalogue.filter(([code])=>can(state,person,code,true)||can(state,person,code)).map(([code,label])=>({code,label,own:can(state,person,code,true),workspace:can(state,person,code)})),guide:assistantCapabilities(state,person)}),
 
     });
 
     this.entries.set('permission_design_options',{
 
-      definition:definition('permission_design_options','Read role definitions, supported permission codes and scopes for permission design. No access changes are executed. Individual overrides and expiry must be reviewed in People.'),permission:(state,person)=>can(state,person,'permissions.manage'),source:{label:'Roles & permissions',url:'/access?view=roles'},
+      definition:definition('permission_design_options','Read role definitions, supported permission codes and scopes for permission design. No access changes are executed. Individual overrides and expiry must be reviewed in People.'),permission:(state,person)=>can(state,person,'permissions.manage'),source:{label:'Access templates',url:'/access?view=roles'},
 
-      read:async({state})=>({catalogue:permissionCatalogue.map(([code,label])=>({code,label})),scopes:['OWN','ORGANIZATION'],effects:['ALLOW','DENY'],roles:state.roles.slice(0,5).map(role=>({name:role.name,permissions:role.permissions.slice(0,20),totalPermissions:role.permissions.length,hasMore:role.permissions.length>20})),hasMore:state.roles.length>5,save:'Review and save explicitly in Roles & permissions. DENY and expiry affect effective access. Permission codes for future modules do not make those modules implemented.'}),
+      read:async({state})=>({catalogue:actionRegistry,scopes:['OWN','ORGANIZATION'],effects:['ALLOW','DENY'],roles:state.roles.slice(0,5).map(role=>({name:role.name,permissions:role.permissions.slice(0,20),totalPermissions:role.permissions.length,hasMore:role.permissions.length>20})),hasMore:state.roles.length>5,save:'Review and save explicitly in Access templates. DENY and expiry affect effective access. Permission codes for future modules do not make those modules implemented.'}),
 
     });
 

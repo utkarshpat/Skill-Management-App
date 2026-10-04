@@ -21,12 +21,12 @@ export function organizationChange(input:unknown) {
     if(!['DELIVERY_UNIT','DEPARTMENT','TEAM'].includes(String(body.type))||typeof body.name!=='string'||!body.name.trim()||body.name.trim().length>100||typeof body.active!=='boolean')throw new AccessError(400,'Enter a name, type and status.');
     const parentId=identifier(body.parentId,true);
     if((body.type==='DELIVERY_UNIT')!==(parentId===null))throw new AccessError(400,'Choose the parent for this level.');
-    return {kind:'node',revision:Number(body.revision),targetId:body.id===undefined?randomUUID():identifier(body.id)!,isNew:body.id===undefined,payload:{type:body.type,name:body.name.trim(),parentId,active:body.active}};
+    return {kind:'node' as const,revision:Number(body.revision),targetId:body.id===undefined?randomUUID():identifier(body.id)!,isNew:body.id===undefined,payload:{type:body.type,name:body.name.trim(),parentId,active:body.active}};
   }
   if(body.kind==='assignment') {
     const teamId=identifier(body.teamId,true),departmentId=identifier(body.departmentId,true);
     if(teamId&&departmentId)throw new AccessError(400,'Choose either a department or a team.');
-    return {kind:'assignment',revision:Number(body.revision),targetId:identifier(body.personId)!,isNew:false,payload:{teamId,departmentId,managerId:identifier(body.managerId,true)}};
+    return {kind:'assignment' as const,revision:Number(body.revision),targetId:identifier(body.personId)!,isNew:false,payload:{teamId,departmentId,managerId:identifier(body.managerId,true)}};
   }
   throw new AccessError(400,'Unknown organization change.');
 }

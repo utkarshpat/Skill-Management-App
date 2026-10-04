@@ -6,7 +6,7 @@ import { createDevelopmentSessions } from './development-login.js';
 import type { AccessStore } from '../access/index.js';
 import { workspaceFor } from './workspace.js';
 import { notificationsFor } from './notifications.js';
-import { can } from '../access/index.js';
+import { can, effectiveAccessSummary } from '../access/index.js';
 type DevelopmentSessions = ReturnType<typeof createDevelopmentSessions>;
 export interface HttpDependencies { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; resolveAccess?: (identity: Identity) => Promise<string | undefined>; access?: AccessStore; workflowNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; skillNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; }
 export function registerRoutes(app: Express, dependencies: HttpDependencies | undefined, store?: AccessStore, demo?: DevelopmentSessions) {
@@ -40,7 +40,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     if (!demo!.mutationAllowed(req)) { res.sendStatus(403); return; }
     demo!.revoke(req); res.clearCookie(demo!.cookieName, { path: '/api', httpOnly: true, secure: demo!.secure, sameSite: 'strict' }); res.sendStatus(204);
   });
-  app.get(['/api/workspace','/api/notifications'], async (req, res) => {
+  app.get(['/api/workspace','/api/notifications','/api/effective-access'], async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     let actor: string | undefined;
     if (demo?.subject(req)) {
@@ -61,6 +61,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     if (!state || !person) {
       res.status(403).json({ error: { code: 'ACCESS_NOT_PROVISIONED', message: 'Workspace access is not assigned.', requestId: res.locals.requestId } }); return;
     }
+    if(req.path==='/api/effective-access'){res.json(effectiveAccessSummary(state,person));return;}
     if(req.path==='/api/notifications'){
       if(!can(state,person,'profile.view',true)){res.sendStatus(403);return;}
       const feed=notificationsFor(state,person); const [claims,workflows]=await Promise.all([dependencies?.skillNotifications?.(person.id)??[],dependencies?.workflowNotifications?.(person.id)??[]]);res.json({...feed,items:[...feed.items,...claims,...workflows].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,30)});return;

@@ -27,10 +27,11 @@ test('custom roles, individual overrides, expiry, revision conflicts and adminis
     assert.ok(can(state,user,'profile.view',true));assert.equal(can(state,user,'permissions.manage'),false);
     await assert.rejects(store.save(user.id,{revision:state.revision,kind:'role',name:'Escalation',permissions:[]}),error=>(error as {status:number}).status===403);
     await assert.rejects(store.save(admin.id,{revision:1,kind:'role',name:'Stale',permissions:[]}),error=>(error as {status:number}).status===409);
-    state=await store.save(admin.id,{...user,revision:state.revision,kind:'person',overrides:[{permission:'profile.view',effect:'DENY',scope:'OWN'}]});
+    state=await store.save(admin.id,{...user,revision:state.revision,kind:'person',overrides:[{permission:'profile.view',effect:'DENY',scope:'OWN',reason:'Temporary test block',validUntil:'2099-01-01T00:00:00Z'}]});
     assert.equal(can(state,state.people.find(person=>person.id===user.id)!,'profile.view',true),false);
-    state=await store.save(admin.id,{...user,revision:state.revision,kind:'person',overrides:[{permission:'profile.view',effect:'DENY',scope:'OWN',validUntil:'2021-01-01T00:00:00Z'}]});
-    assert.ok(can(state,state.people.find(person=>person.id===user.id)!,'profile.view',true));
+    const historical=structuredClone(state);historical.people.find(person=>person.id===user.id)!.overrides[0].validUntil='2021-01-01T00:00:00Z';
+    assert.ok(can(historical,historical.people.find(person=>person.id===user.id)!,'profile.view',true));
+    state=await store.save(admin.id,{...user,revision:state.revision,kind:'person',overrides:[]});
     state=await store.save(admin.id,{...user,revision:state.revision,kind:'person',active:false});
     assert.equal(store.person(user.id),undefined);
     const adminRole=state.roles.find(role=>admin.roleIds.includes(role.id))!;
@@ -46,7 +47,7 @@ test('custom roles, individual overrides, expiry, revision conflicts and adminis
 
 test('local direct sessions enforce origin, opaque identity, live revocation and administration permission', async () => {
   const store=await LocalAccessStore.open(); const admin=store.snapshot().people[0];
-  let state=await store.save(admin.id,{revision:1,kind:'person',displayName:'Ordinary test user',employeeCode:'TEST',active:true,roleIds:[],overrides:[{permission:'profile.view',scope:'OWN',effect:'ALLOW'}]});
+  let state=await store.save(admin.id,{revision:1,kind:'person',displayName:'Ordinary test user',employeeCode:'TEST',active:true,roleIds:[],overrides:[{permission:'profile.view',scope:'OWN',effect:'ALLOW',reason:'Temporary test access',validUntil:'2099-01-01T00:00:00Z'}]});
   const person=state.people.find(person=>person.employeeCode==='TEST')!;
   const server=createApp(undefined,{developmentStore:store}).listen(0,'127.0.0.1');await once(server,'listening');
   const address=server.address();assert.ok(address&&typeof address!=='string');const base=`http://127.0.0.1:${address.port}`;

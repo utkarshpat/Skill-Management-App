@@ -2,13 +2,14 @@ import { AccessError } from '../../shared/errors.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { authorize, type Grant } from './domain/authorization.js';
+import type { Grant } from './domain/authorization.js';
 import { permissionCatalogue, type PermissionCode } from './access-catalogue.js';
+import { effectiveAccess, isAssignable, hasResolvedDirectReports } from './effective-access.js';
 
-export interface Assignment { permission: PermissionCode; scope: 'OWN' | 'ORGANIZATION'; effect: 'ALLOW' | 'DENY'; validUntil?: string }
+export interface Assignment { permission: PermissionCode; scope: 'OWN' | 'ORGANIZATION'; effect: 'ALLOW' | 'DENY'; validUntil?: string; reason?:string }
 export interface CustomRole { id: string; name: string; permissions: Assignment[] }
 export interface LocalPerson { id: string; displayName: string; employeeCode: string; active: boolean; hasDirectReports?:boolean; entraObjectId?:string; roleIds: string[]; overrides: Assignment[] }
-export interface LocalAccessState { revision: number; roles: CustomRole[]; people: LocalPerson[]; audit: { actorId: string; action: string; targetId: string; at: string; revision: number; before?: CustomRole | LocalPerson; after?: CustomRole | LocalPerson }[] }
+export interface LocalAccessState { reporting?:{personId:string;managerId:string|null}[]; revision: number; roles: CustomRole[]; people: LocalPerson[]; audit: { actorId: string; action: string; targetId: string; at: string; revision: number; before?: CustomRole | LocalPerson; after?: CustomRole | LocalPerson }[] }
 export { AccessError } from '../../shared/errors.js';
 export interface AccessStore {
   readonly storage?: 'azure-sql' | 'local-file';
@@ -31,15 +32,12 @@ export function grantsFor(state: LocalAccessState, person: LocalPerson): Grant[]
   return [...state.roles.filter(role => person.roleIds.includes(role.id)).flatMap(role => wrap(role.permissions, 'ROLE')), ...wrap(person.overrides, 'USER')];
 }
 export function can(state: LocalAccessState, person: LocalPerson, permission: string, own = false) {
-  return authorize({ id: person.id, accountId, active: person.active }, permission,
-    { id: own ? person.id : accountId, type: own ? 'profile' : 'workspace', accountId, ownerUserId: own ? person.id : undefined }, grantsFor(state, person), new Date()).allowed;
+  return effectiveAccess(state,person,permission,own?'OWN':'WORKSPACE').allowed;
 }
 // Capability discovery only. Claim assignment, ownership and reporting scope are
 // enforced again by the review procedures before any records are exposed or changed.
 export function canReviewAssigned(state:LocalAccessState,person:LocalPerson){
-  if(!person.active||person.hasDirectReports===false)return false;
-  const now=Date.now(),grants=grantsFor(state,person).filter(grant=>grant.permission==='skill.verify'&&grant.scope.kind==='ORGANIZATION'&&(!grant.validUntil||now<Date.parse(grant.validUntil)));
-  return (person.hasDirectReports===true||grants.some(grant=>grant.effect==='ALLOW'))&&!grants.some(grant=>grant.effect==='DENY');
+  return effectiveAccess(state,person,'skill.verify','DIRECT_REPORTS').allowed;
 }
 function text(value: unknown, max: number): string {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max) throw new AccessError(400,'A required text field is invalid.');
@@ -53,8 +51,16 @@ function assignments(value: unknown): Assignment[] {
     const key = `${item.permission}:${item.scope}`;
     if (seen.has(key)) throw new AccessError(400,'Duplicate permission scope.'); seen.add(key);
     if (item.validUntil !== undefined && (typeof item.validUntil !== 'string' || !Number.isFinite(Date.parse(item.validUntil)))) throw new AccessError(400,'Invalid permission expiry.');
-    return { permission: item.permission, scope: item.scope, effect: item.effect, ...(item.validUntil ? {validUntil:item.validUntil} : {}) };
+    return { permission: item.permission, scope: item.scope, effect: item.effect, ...(item.validUntil ? {validUntil:item.validUntil} : {}), ...(item.reason!==undefined?{reason:text(item.reason,500)}:{}) };
   });
+}
+export function validateAssignmentChanges(next:Assignment[],previous:Assignment[],individual:boolean){
+  for(const grant of next){
+    const unchanged=previous.some(old=>old.permission===grant.permission&&old.scope===grant.scope&&old.effect===grant.effect&&old.reason===grant.reason&&(old.validUntil===grant.validUntil||(old.validUntil!==undefined&&grant.validUntil!==undefined&&Date.parse(old.validUntil)===Date.parse(grant.validUntil))));
+    if(unchanged)continue; // Historical unsupported grants are preserved, not broadened.
+    if(!isAssignable(grant))throw new AccessError(400,'This action or scope is not implemented. Existing unsupported grants require review.');
+    if(individual&&(!grant.reason||!grant.validUntil||Date.parse(grant.validUntil)<=Date.now()))throw new AccessError(400,'New or changed exceptions require a reason and a future expiry.');
+  }
 }
 export class LocalAccessStore {
   private state: LocalAccessState;
@@ -95,6 +101,7 @@ export class LocalAccessStore {
         const previous = state.roles.find(role => role.id === id);
         if (body.id !== undefined && !previous) throw new AccessError(404,'Role not found.');
         const role: CustomRole = { id, name: text(body.name,100), permissions: assignments(body.permissions) };
+        validateAssignmentChanges(role.permissions,previous?.permissions??[],false);
         if (state.roles.some(item => item.id !== id && item.name.toLowerCase() === role.name.toLowerCase())) throw new AccessError(400,'Role name already exists.');
         if (!previous && state.roles.length >= 100) throw new AccessError(400,'Local role limit reached.');
         state.roles = [...state.roles.filter(role => role.id !== id),role];
@@ -103,11 +110,15 @@ export class LocalAccessStore {
         const previous = state.people.find(person => person.id === id);
         if (body.id !== undefined && !previous) throw new AccessError(404,'Person not found.');
         if (typeof body.active !== 'boolean' || !Array.isArray(body.roleIds) || body.roleIds.length > 100 || body.roleIds.some(roleId => typeof roleId !== 'string' || !state.roles.some(role => role.id === roleId))) throw new AccessError(400,'Invalid status or roles.');
-        const person: LocalPerson = { id, displayName:text(body.displayName,100), employeeCode:text(body.employeeCode,40), active:body.active, ...(previous?.entraObjectId?{entraObjectId:previous.entraObjectId}:{}), roleIds:[...new Set(body.roleIds as string[])], overrides:assignments(body.overrides) };
+        const person: LocalPerson = { id, displayName:text(body.displayName,100), employeeCode:text(body.employeeCode,40), active:body.active, ...(previous?.entraObjectId?{entraObjectId:previous.entraObjectId}:{}), ...(previous?.hasDirectReports!==undefined?{hasDirectReports:previous.hasDirectReports}:{}), roleIds:[...new Set(body.roleIds as string[])], overrides:assignments(body.overrides) };
+        validateAssignmentChanges(person.overrides,previous?.overrides??[],true);
+        const newRoles=person.roleIds.filter(roleId=>!previous?.roleIds.includes(roleId));
+        if(newRoles.some(roleId=>state.roles.find(role=>role.id===roleId)?.permissions.some(grant=>!isAssignable(grant))))throw new AccessError(400,'This template contains unsupported assignments. Review it before assigning to another person.');
         if (state.people.some(item => item.id !== id && item.employeeCode.toLowerCase() === person.employeeCode.toLowerCase())) throw new AccessError(400,'Person ID already exists.');
         if (!previous && state.people.length >= 200) throw new AccessError(400,'Local people limit reached.');
         state.people = [...state.people.filter(person => person.id !== id),person];
       } else throw new AccessError(400,'Unknown change type.');
+      if(state.reporting)for(const person of state.people)person.hasDirectReports=hasResolvedDirectReports(state,person);
       if (!state.people.some(person => can(state,person,'permissions.manage') && can(state,person,'users.manage'))) throw new AccessError(400,'Keep at least one active access administrator.');
       const after = body.kind === 'role' ? state.roles.find(role => role.id === id) : state.people.find(person => person.id === id);
       state.revision++; state.audit.push({ actorId, action: `${body.kind}.${body.id ? 'updated' : 'created'}`, targetId:id, at:new Date().toISOString(), revision:state.revision, ...(before ? {before} : {}), ...(after ? {after} : {}) });

@@ -17,7 +17,7 @@ test('six editable presets never widen pending scopes or grant administrative ac
     const created=await store.save(owner,{kind:'role',revision:before.revision,name:preset.name,permissions:preset.permissions});
     assert.deepEqual(created.people,before.people,'Preset creation must never assign users.');
     const role=created.roles.find(role=>role.name===preset.name)!;
-    const person={id:'employee',displayName:'Test',employeeCode:'T',active:true,roleIds:[role.id],overrides:[]};
+    const person={hasDirectReports:preset.key==='manager',id:'employee',displayName:'Test',employeeCode:'T',active:true,roleIds:[role.id],overrides:[]};
     assert.equal(can(created,person,'profile.view',true),true);
     assert.equal(can(created,person,'profile.view'),false);
     assert.equal(can(created,person,'permissions.manage'),false);

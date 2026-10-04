@@ -16,7 +16,7 @@ test('review actions reject forged routing, invalid state selectors and missing 
 });
 test('assigned review AI tool stays actor-bound and disappears on permission revocation',async()=>{
  const access=await LocalAccessStore.open(),state=access.snapshot(),person=state.people[0];access.snapshot=()=>structuredClone(state);
- person.overrides.push({permission:'profile.view',scope:'OWN',effect:'ALLOW'},{permission:'skill.verify',scope:'ORGANIZATION',effect:'ALLOW'});
+ person.hasDirectReports=true;person.overrides.push({permission:'profile.view',scope:'OWN',effect:'ALLOW'},{permission:'skill.verify',scope:'ORGANIZATION',effect:'ALLOW'});
  let actor='';const claims:ClaimsStore={read:async()=>({claims:[],total:0,page:1,pageSize:25,canClaim:false}),options:async()=>({skills:[],total:0,page:1,pageSize:25}),save:async()=>{},reviews:async id=>{actor=id;return {claims:[],total:0,page:1,pageSize:25,canClaim:false};}};
  const registry=new ToolRegistry(access,undefined,claims),signal=AbortSignal.timeout(5000);
  await registry.execute(person.id,'assigned_skill_reviews',{},signal);assert.equal(actor,person.id);
@@ -34,7 +34,7 @@ test('review HTTP uses verified actor, independent review permission and strict 
   assert.equal((await fetch(base+'/api/skill-reviews')).status,401);
   assert.equal((await fetch(base+'/api/skill-reviews',{headers})).status,403);
   assert.equal((await fetch(base+'/api/my-skills/submit',{method:'POST',headers,body:JSON.stringify(change)})).status,200);
-  person.overrides.push({permission:'skill.verify',scope:'ORGANIZATION',effect:'ALLOW'});
+  person.hasDirectReports=true;person.overrides.push({permission:'skill.verify',scope:'ORGANIZATION',effect:'ALLOW'});
   assert.equal((await fetch(base+'/api/skill-reviews',{headers})).status,200);
   assert.equal((await fetch(base+'/api/skill-reviews/decision',{method:'POST',headers,body:JSON.stringify(change)})).status,400);
   assert.equal((await fetch(base+'/api/skill-reviews/decision',{method:'POST',headers,body:JSON.stringify({...change,action:'APPROVE',feedback:'Reviewed.'})})).status,200);

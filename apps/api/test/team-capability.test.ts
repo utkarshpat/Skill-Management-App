@@ -11,7 +11,7 @@ test('team query rejects forged scope, repeated selectors and oversized searches
 });
 test('team HTTP requires independent view permission, verified actor and live authority after retrieval',async()=>{
  const access=await LocalAccessStore.open(),state=access.snapshot(),person=state.people[0];access.snapshot=()=>structuredClone(state);
- person.overrides.push({permission:'skill.verify',scope:'ORGANIZATION',effect:'ALLOW'});
+ person.hasDirectReports=true;person.overrides.push({permission:'skill.verify',scope:'ORGANIZATION',effect:'ALLOW'});
  let calls=0,revoke=false;
  const claims:ClaimsStore={read:async()=>({claims:[],total:0,page:1,pageSize:25,canClaim:false}),options:async()=>({skills:[],total:0,page:1,pageSize:25}),save:async()=>{},team:async actor=>{calls++;assert.equal(actor,person.id);if(revoke)person.overrides.push({permission:'skill.view',scope:'ORGANIZATION',effect:'DENY'});return {total:0,page:1,pageSize:12,scope:'DIRECT_REPORTS',people:[],skills:[]};}};
  const server=createApp({verify:async auth=>{if(auth!=='Bearer trusted')throw Error();return {tenantId:'tenant',objectId:'actor'};},resolveAccess:async()=>person.id,profile:async()=>undefined,access,claims}).listen(0,'127.0.0.1');await once(server,'listening');const address=server.address();assert.ok(address&&typeof address!=='string');const url=`http://127.0.0.1:${address.port}/api/skill-reviews/team`,headers={Authorization:'Bearer trusted'};

@@ -1,5 +1,7 @@
 # Permission-led access on Azure SQL
 
+The dated sections below describe earlier implementation increments. Future access changes must follow the [approved Access Management baseline](ACCESS_MODEL_REDESIGN.md), including its consolidated administration UX and explicit implementation gaps. Design approval is not an applied permission migration; historical sections do not establish support for additional scopes.
+
 Roles and people are administrator-defined. Permission codes and resource scopes determine access; names and organizational titles do not grant authority. Super Admin is an explicit bootstrap grant, not a hard-coded role-name bypass.
 
 ## Current setup

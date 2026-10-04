@@ -2,7 +2,7 @@ import sql from 'mssql';
 import type {Identity} from '../identity/index.js';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { LocalAccessStore, AccessError, type AccessStore, type LocalAccessState, type Assignment } from './local-access-store.js';
-type PermissionRow = { permission:Assignment['permission'];scope:Assignment['scope'];effect:Assignment['effect'];validUntil:Date|null };
+type PermissionRow = { permission:Assignment['permission'];scope:Assignment['scope'];effect:Assignment['effect'];validUntil:Date|null;reason:string|null };
 type ResultSets = [
   sql.IRecordSet<{revision:number}>,
   sql.IRecordSet<{id:string;name:string}>,
@@ -11,6 +11,7 @@ type ResultSets = [
   sql.IRecordSet<{personId:string;roleId:string}>,
   sql.IRecordSet<PermissionRow & {personId:string}>,
   sql.IRecordSet<{actorId:string;action:string;targetId:string;at:Date;revision:number;before:string|null;after:string}>,
+  sql.IRecordSet<{personId:string;managerId:string|null}>,
 ];
 
 export class SqlAccessStore implements AccessStore {
@@ -22,9 +23,10 @@ export class SqlAccessStore implements AccessStore {
     return withRuntimeDatabase(async pool => {
       const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).execute('dbo.ReadAccessWorkspace');
       const sets=result.recordsets as unknown as ResultSets;
-      const assignment=(row:PermissionRow):Assignment => ({ permission:row.permission,scope:row.scope,effect:row.effect,...(row.validUntil ? {validUntil:row.validUntil.toISOString()} : {}) });
+      const assignment=(row:PermissionRow):Assignment => ({ permission:row.permission,scope:row.scope,effect:row.effect,...(row.validUntil ? {validUntil:row.validUntil.toISOString()} : {}),...(row.reason?{reason:row.reason}:{}) });
       return {
         revision:sets[0][0].revision,
+        reporting:sets[7].map(row=>({personId:row.personId.toLowerCase(),managerId:row.managerId?.toLowerCase()??null})),
         roles:sets[1].map(row=>({id:row.id.toLowerCase(),name:row.name,permissions:sets[2].filter(item=>item.roleId===row.id).map(assignment)})),
         people:sets[3].map(row=>({id:row.id.toLowerCase(),displayName:row.displayName,employeeCode:row.employeeCode,active:row.active,hasDirectReports:Boolean(row.hasDirectReports),...(row.entraObjectId?{entraObjectId:row.entraObjectId.toLowerCase()}:{}),roleIds:sets[4].filter(item=>item.personId===row.id).map(item=>item.roleId.toLowerCase()),overrides:sets[5].filter(item=>item.personId===row.id).map(assignment)})),
         audit:sets[6].map(row=>({actorId:row.actorId.toLowerCase(),action:row.action,targetId:row.targetId.toLowerCase(),at:row.at.toISOString(),revision:row.revision,...(row.before?{before:JSON.parse(row.before)}:{}),after:JSON.parse(row.after)})),

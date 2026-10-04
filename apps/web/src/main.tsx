@@ -11,3 +11,5 @@ import './sidebar-navigation.css';
 import './profile-page.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><BrowserRouter><ThemeProvider><App /></ThemeProvider></BrowserRouter></React.StrictMode>);
+
+import './effective-access.css';

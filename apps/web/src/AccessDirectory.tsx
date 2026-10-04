@@ -21,7 +21,7 @@ export function AccessDirectory({kind,people,roles,onPerson,onRole,busy}:{kind:'
         <th scope="row"><div className="directory-identity"><span className="directory-avatar" aria-hidden="true">{item.displayName.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join('')}</span><strong>{item.displayName}</strong></div></th>
         <td className="directory-code">{item.employeeCode}</td><td><div className="directory-tags">{item.roleIds.length?item.roleIds.map(id=><span key={id}>{roles.find(role=>role.id===id)?.name??'Unlisted role'}</span>):<span className="directory-unassigned">No roles assigned</span>}</div></td>
         <td><span className={'directory-status '+(item.active?'active':'suspended')}>{item.active?'Active':'Suspended'}</span></td>
-        <td><button className="directory-edit" disabled={busy} aria-label={'Edit '+item.displayName} onClick={()=>onPerson(item.id)}><Pencil size={15}/>Edit</button></td>
+        <td><button className="directory-edit" disabled={busy} aria-label={'View access for '+item.displayName} onClick={()=>onPerson(item.id)}><ShieldCheck size={15}/>View access</button></td>
       </tr>:'permissions' in item?<tr key={item.id}>
         <th scope="row"><div className="directory-identity"><span className="directory-avatar" aria-hidden="true"><ShieldCheck size={19}/></span><strong>{item.name}</strong></div></th>
         <td>{item.permissions.length} assignments</td><td>{people.filter(person=>person.roleIds.includes(item.id)).length} people</td>

@@ -27,7 +27,9 @@ test('Microsoft administration trusts verified mapping, rechecks grants and bloc
     const state=await response.json(); assert.equal(state.currentPerson.id,admin.id); assert.equal(state.authentication,'microsoft');
     const picker=await (await fetch(base+'/api/dev-login')).json(); assert.deepEqual(picker.people.map((person:{id:string})=>person.id),['reader']);
     assert.equal((await fetch(base+'/api/dev-login',{method:'POST',headers,body:JSON.stringify({personId:admin.id})})).status,400);
-    const saved=await fetch(base+'/api/access',{method:'POST',headers,body:JSON.stringify({kind:'role',revision:state.revision,name:'Reviewers',permissions:[],actorId:'reader'})});
+    const change={kind:'role',revision:state.revision,name:'Reviewers',permissions:[],actorId:'reader'};
+    const preview=await (await fetch(base+'/api/access/preview',{method:'POST',headers,body:JSON.stringify(change)})).json();
+    const saved=await fetch(base+'/api/access',{method:'POST',headers,body:JSON.stringify({...change,previewReceipt:preview.receipt})});
     assert.equal(saved.status,200); assert.equal(store.snapshot().audit.at(-1)?.actorId,admin.id);
     resolved='reader';
     assert.equal((await fetch(base+'/api/access?personId='+admin.id,{headers})).status,403);

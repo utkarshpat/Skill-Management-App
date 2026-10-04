@@ -40,7 +40,10 @@ test('organization endpoints bind actor to Microsoft identity and require curren
     assert.equal((await fetch(url)).status,401);
     const headers={Authorization:'Bearer owner','Content-Type':'application/json'};
     assert.equal((await fetch(url,{headers})).status,200);
-    assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify({actorId:'attacker'})})).status,200);assert.equal(actor,admin);
+    const change={kind:'assignment',revision:1,personId:first,teamId:null,departmentId:null,managerId:third,actorId:'attacker'};
+    assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify(change)})).status,409);
+    const preview=await(await fetch(url+'/preview',{method:'POST',headers,body:JSON.stringify(change)})).json();
+    assert.equal(calls,0);assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify({...change,previewReceipt:preview.receipt})})).status,200);assert.equal(actor,admin);
     const denied=store.snapshot();denied.people[0].overrides.push({permission:'users.manage',scope:'ORGANIZATION',effect:'DENY'});store.snapshot=()=>structuredClone(denied);
     assert.equal((await fetch(url,{method:'POST',headers,body:'{}'})).status,403);assert.equal(calls,1);
   }finally{await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}
