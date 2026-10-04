@@ -1,0 +1,81 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {once} from 'node:events';
+import {dashboardManifest,loadDashboardCard} from '../src/modules/dashboard/index.js';
+import type {DashboardSources,DashboardItem} from '../src/modules/dashboard/dashboard.js';
+import type {Assignment,LocalAccessState,LocalPerson,AccessStore} from '../src/modules/access/index.js';
+import {createApp} from '../src/create-app.js';
+const actor='00000000-0000-4000-8000-000000000001';
+function fixture(grants:Assignment[]){const person:LocalPerson={id:actor,displayName:'Test member',employeeCode:'QA',active:true,roleIds:['role'],overrides:[]};const state:LocalAccessState={revision:1,roles:[{id:'role',name:'Any title',permissions:grants}],people:[person],audit:[]};return {state,person};}
+const own=(permission:Assignment['permission']):Assignment=>({permission,scope:'OWN',effect:'ALLOW'});
+const sources:DashboardSources={claims:{read:async()=>({total:0,page:1,pageSize:25,canClaim:false,claims:[]}),summary:async()=>({total:80,verified:40,pending:25,draft:15,changesRequested:0,rejected:0}),options:async()=>({skills:[],total:0,page:1,pageSize:25}),save:async()=>{throw Error('No writes');},reviews:async()=>({claims:[],total:0,page:1,pageSize:25,canClaim:false})},learning:{read:async()=>({canManage:true,plans:[]}),change:async()=>{throw Error('No writes');}},workflows:{list:async()=>({items:[],total:0,page:1,pageSize:10,summary:{total:0,submitted:0,cancelled:0,inProgress:0,resolved:0,incidents:0,highPriority:0,myTotal:0,assignedTotal:0}}),options:async()=>({canRequest:false,canIncident:false,recipients:[]}),detail:async()=>{throw Error('No detail');},notifications:async()=>[],change:async()=>{throw Error('No writes');}},aiConfigured:true};
+test('dashboard composition ignores role names, resolves own scopes and hides unimplemented features',()=>{
+ const {state,person}=fixture([own('profile.view'),own('skill.view'),own('learning.view'),own('request.view'),own('request.create')]);
+ const first=dashboardManifest(state,person,sources);state.roles[0].name='CHRO';assert.deepEqual(dashboardManifest(state,person,sources),first);
+ assert.deepEqual(first.cards.map(c=>c.id),['learning','capability','requests']);assert.ok(first.cards.every(c=>c.scope.actorId===actor));assert.deepEqual(first.actions.map(a=>a.id),['request']);
+ person.overrides=[{...own('skill.view'),effect:'DENY'}];assert.ok(!dashboardManifest(state,person,sources).cards.some(c=>c.id==='capability'));
+ person.overrides=[];state.roles[0].permissions=[own('reports.view'),own('assessment.view'),own('demand.view')];assert.equal(dashboardManifest(state,person,sources).cards.length,0);
+ state.roles[0].permissions=[{...own('learning.view'),validUntil:'2020-01-01T00:00:00Z'}];assert.equal(dashboardManifest(state,person,sources).cards.length,0);
+});
+test('capability totals come from the full summary contract; revoked cards never retrieve data',async()=>{
+ const {state,person}=fixture([own('profile.view'),own('skill.view')]);let reads=0;const s={...sources,claims:{...sources.claims!,summary:async(id:string)=>{assert.equal(id,actor);reads++;return sources.claims!.summary!(id);}}};
+ const result=await loadDashboardCard('capability',actor,state,person,s);assert.equal('total' in result&&result.total,80);assert.equal(reads,1);
+ person.overrides=[{...own('skill.view'),effect:'DENY'}];await assert.rejects(loadDashboardCard('capability',actor,state,person,s));assert.equal(reads,1);
+});
+test('learning urgency uses each plan timezone and completed work never becomes overdue',async()=>{
+ const {state,person}=fixture([own('learning.view'),own('learning.manage')]);const s={...sources,learning:{...sources.learning!,read:async()=>({canManage:true,plans:[{id:actor,revision:1,title:'Goal',goal:'Learn',timezone:'Asia/Calcutta',dailyMinutes:30,targetDate:'2026-10-06',status:'ACTIVE' as const,tasks:[{id:'a',title:'Completed',plannedDate:'2026-10-02',estimatedMinutes:10,completedAt:'2026-10-02T12:00:00Z'},{id:'b',title:'Due today',plannedDate:'2026-10-04',estimatedMinutes:10},{id:'c',title:'Late',plannedDate:'2026-10-03',estimatedMinutes:10}]}]})}};
+ const data=await loadDashboardCard('learning',actor,state,person,s,new Date('2026-10-03T20:00:00Z'));assert.ok('overdue' in data);assert.equal(data.overdue,1);assert.equal(data.today,1);assert.equal(data.progress,33);assert.equal(data.items[0].title,'Late');
+});
+test('capability binds preview to actor, preserves full totals and strips claim evidence',async()=>{
+ const {state,person}=fixture([own('profile.view'),own('skill.view'),own('skill.claim'),{permission:'skill.view',scope:'ORGANIZATION',effect:'ALLOW'}]);
+ let reads=0;const s:DashboardSources={...sources,claims:{...sources.claims!,read:async(id,page)=>{reads++;assert.equal(id,actor);assert.equal(page,1);return {total:80,page:1,pageSize:25,canClaim:true,claims:Array.from({length:5},(_,i)=>({id:'claim-'+i,skillName:'Java',category:'Programming',rank:3,levelName:'Intermediate',status:'DRAFT',updatedAt:'2026-10-04T10:00:00Z',evidence:'Private evidence',description:'Private description'} as never))};}}};
+ const result=await loadDashboardCard('capability',actor,state,person,s);assert.ok('recentClaims' in result);assert.equal(result.total,80);assert.equal(result.recentClaims.length,3);assert.equal(result.canClaim,true);assert.equal(result.recentClaims[0].href,'/my-skills?claim=claim-0');assert.doesNotMatch(JSON.stringify(result),/Private evidence|Private description/);
+ person.overrides=[{...own('skill.view'),effect:'DENY'}];await assert.rejects(loadDashboardCard('capability',actor,state,person,s));assert.equal(reads,1);
+});
+test('attention skips unauthorized sources and isolates a failed queue without inventing zero completion',async()=>{
+ const {state,person}=fixture([own('request.view'),own('request.assign'),own('learning.view'),own('learning.manage')]);let workflowReads=0;const s={...sources,claims:{...sources.claims!,reviews:async()=>{throw Error('Must not read reviews');}},learning:{...sources.learning!,read:async()=>{throw Error('Private SQL details');}},workflows:{...sources.workflows!,list:async(id:string,page:number,inbox:boolean,filter?:{kind:string;status:string})=>{assert.equal(id,actor);assert.equal(inbox,true);assert.equal(filter?.kind,'REQUEST');assert.equal(filter?.status,'SUBMITTED');workflowReads++;return {items:[],total:3,page,pageSize:10};}}};
+ const data=await loadDashboardCard('attention',actor,state,person,s);assert.ok('partial' in data);assert.equal(data.partial,true);assert.equal(data.total,3);assert.deepEqual(data.failedSources,['learning']);assert.equal(workflowReads,1);assert.ok(!JSON.stringify(data).includes('Private SQL'));
+ assert.equal(data.groups.find(g=>g.id==='learning')?.count,null);assert.equal(data.groups.find(g=>g.id==='request-SUBMITTED')?.count,3);assert.equal(data.groups.find(g=>g.id==='request-SUBMITTED')?.href,'/requests?inbox=true&kind=REQUEST&status=SUBMITTED');assert.ok(!data.groups.some(g=>g.id==='reviews'||g.id.startsWith('incident')));
+});
+
+test('next learning task prioritizes plan-local urgency, excludes paused work and reports plan-specific progress',async()=>{
+ const {state,person}=fixture([own('learning.view')]);
+ const tasks=[{id:'done',title:'Done',plannedDate:'2026-10-02',estimatedMinutes:30,completedAt:'2026-10-03T10:00:00Z',actualMinutes:18},{id:'same',title:'Same title',plannedDate:'2026-10-04',estimatedMinutes:25}];
+ const s:DashboardSources={...sources,learning:{...sources.learning!,read:async()=>({canManage:false,plans:[{id:'today',revision:1,title:'India',goal:'Learn',status:'ACTIVE',timezone:'Asia/Calcutta',dailyMinutes:30,targetDate:'2026-10-05',tasks},{id:'future',revision:1,title:'Pacific',goal:'Learn',status:'ACTIVE',timezone:'America/Los_Angeles',dailyMinutes:30,targetDate:'2026-10-05',tasks:[{id:'same',title:'Same title',plannedDate:'2026-10-04',estimatedMinutes:10}]},{id:'paused',revision:1,title:'Ignore',goal:'Learn',status:'PAUSED',timezone:'UTC',dailyMinutes:30,targetDate:'2026-10-05',tasks:[{id:'old',title:'Old',plannedDate:'2026-09-01',estimatedMinutes:10}]}]})}};
+ const result=await loadDashboardCard('learning',actor,state,person,s,new Date('2026-10-03T20:00:00Z'));assert.ok('nextTask' in result&&result.nextTask);assert.equal(result.nextTask.planId,'today');assert.equal(result.nextTask.due,'TODAY');assert.equal(result.nextTask.planCompleted,1);assert.equal(result.nextTask.planTotal,2);assert.equal(result.loggedMinutes,18);assert.equal(result.completed,1);assert.equal(result.total,3);assert.equal(result.progress,33);assert.equal(result.canManage,false);assert.equal(result.nextTask.href,'/learning?plan=today&task=same');
+});
+
+test('attention provides full-scope counts, exact destinations and honest urgency for bounded previews',async()=>{
+ const {state,person}=fixture([own('profile.view'),own('request.view'),own('request.assign'),own('request.resolve'),own('learning.view'),own('learning.manage'),{permission:'skill.verify',scope:'ORGANIZATION',effect:'ALLOW'}]);
+ const s:DashboardSources={...sources,claims:{...sources.claims!,reviews:async()=>({total:27,page:1,pageSize:25,canClaim:false,claims:[{id:'review',skillName:'Java',personName:'Report',levelName:'Practitioner'} as never]})},workflows:{...sources.workflows!,list:async(_actor,page,_inbox,filter)=>({total:filter?.status==='SUBMITTED'?12:5,page,pageSize:10,items:[{id:filter?.status,title:'A request',kind:'REQUEST',priority:filter?.status==='SUBMITTED'?'HIGH':'NORMAL',requesterName:'Sender'} as never]})}};
+ const data=await loadDashboardCard('attention',actor,state,person,s);assert.ok('partial' in data);assert.ok(data.groups);const attentionItems:DashboardItem[]=data.items;assert.equal(data.total,44);assert.equal(data.items.length,3);assert.equal(data.groups.find(g=>g.id==='reviews')?.count,27);assert.equal(data.groups.find(g=>g.id==='learning')?.href,'/learning?tab=backlog');assert.equal(data.groups.find(g=>g.id==='request-IN_PROGRESS')?.href,'/requests?inbox=true&kind=REQUEST&status=IN_PROGRESS');assert.equal(attentionItems[0].urgency,'High priority');assert.equal(attentionItems.find(i=>i.id==='review')?.urgency,'Awaiting review');assert.equal(attentionItems.find(i=>i.id==='IN_PROGRESS')?.urgency,'In progress');
+});
+test('dashboard HTTP binds identity, rejects scope injection and discards data after permission changes',async()=>{
+ const {state,person}=fixture([own('profile.view'),own('skill.view')]);const access:AccessStore={snapshot:()=>state,person:()=>person,save:async()=>state};let revoke=false;
+ const app=createApp({verify:async auth=>{if(auth!=='Bearer trusted')throw Error();return {tenantId:actor,objectId:actor,displayName:'Test'};},profile:async()=>undefined,resolveAccess:async()=>actor,access,claims:{...sources.claims!,summary:async()=>{if(revoke){person.overrides=[{...own('skill.view'),effect:'DENY'}];state.revision++;}return sources.claims!.summary!(actor);}}});
+ const server=app.listen(0);await once(server,'listening');const address=server.address();assert.ok(address&&typeof address==='object');const url='http://127.0.0.1:'+address.port;const headers={Authorization:'Bearer trusted'};
+ try{assert.equal((await fetch(url+'/api/dashboard')).status,401);assert.equal((await fetch(url+'/api/dashboard?scope=ORGANIZATION',{headers})).status,400);assert.equal((await fetch(url+'/api/dashboard/attention',{headers})).status,403);assert.equal((await fetch(url+'/api/dashboard/capability',{headers})).status,200);revoke=true;const result=await fetch(url+'/api/dashboard/capability',{headers});assert.equal(result.status,409);assert.ok(!JSON.stringify(await result.json()).includes('verified'));const manifest=await(await fetch(url+'/api/dashboard',{headers})).json();assert.equal(manifest.cards.length,0);}finally{server.close();await once(server,'close');}
+});
+test('request previews filter the complete own queue, preserve totals and strip private bodies',async()=>{
+ const {state,person}=fixture([own('request.view'),own('request.create')]);
+ const s:DashboardSources={...sources,workflows:{...sources.workflows!,list:async(id,page,inbox,filter)=>{assert.equal(id,actor);assert.equal(page,1);assert.equal(inbox,false);assert.equal(filter?.status,'RESOLVED');return {total:22,page,pageSize:10,summary:{total:50,submitted:10,inProgress:15,resolved:22,cancelled:3,incidents:0,highPriority:0,myTotal:50,assignedTotal:99},items:[{id:'r',reference:'REQ-1',kind:'REQUEST',title:'Own request',status:'RESOLVED',priority:'NORMAL',recipientName:'Recipient',updatedAt:'2026-10-04T12:00:00Z',description:'Private body'} as never]};}}};
+ const result=await loadDashboardCard('requests',actor,state,person,s,new Date(),'RESOLVED');assert.ok('recentRecords' in result);assert.equal(result.total,50);assert.equal(result.previewTotal,22);assert.equal(result.canCreate,true);assert.equal(result.recentRecords[0].status,'RESOLVED');assert.doesNotMatch(JSON.stringify(result),/Private body|assignedTotal/);
+});
+test('filtered dashboard HTTP rejects scope and repeated status, and discards data after policy revocation',async()=>{
+ const {state,person}=fixture([own('request.view')]);const access:AccessStore={snapshot:()=>state,person:()=>person,save:async()=>state};let reads=0,revoke=false;
+ const app=createApp({verify:async()=>({tenantId:actor,objectId:actor,displayName:'Test'}),profile:async()=>undefined,resolveAccess:async()=>actor,access,workflows:{...sources.workflows!,list:async(id,page,inbox,filter)=>{reads++;assert.equal(id,actor);assert.equal(inbox,false);assert.equal(filter?.status,'RESOLVED');if(revoke){person.overrides=[{...own('request.view'),effect:'DENY'}];state.revision++;}return sources.workflows!.list(id,page,inbox,filter);}}});
+ const server=app.listen(0);await once(server,'listening');const address=server.address();assert.ok(address&&typeof address==='object');const url='http://127.0.0.1:'+address.port;
+ try{for(const path of ['/requests?status=foreign','/requests?status=RESOLVED&status=SUBMITTED','/requests?status=RESOLVED&actor=foreign','/learning?status=RESOLVED','?status=RESOLVED'])assert.equal((await fetch(url+'/api/dashboard'+path)).status,400);assert.equal(reads,0);assert.equal((await fetch(url+'/api/dashboard/requests?status=RESOLVED')).status,200);revoke=true;const response=await fetch(url+'/api/dashboard/requests?status=RESOLVED');assert.equal(response.status,409);assert.doesNotMatch(JSON.stringify(await response.json()),/recentRecords/);}finally{server.close();await once(server,'close');}
+});
+
+test('quick AI assistance follows effective grants, implementation and model availability',()=>{
+ const {state,person}=fixture([own('profile.view'),own('skill.view'),{permission:'skill.view',scope:'ORGANIZATION',effect:'ALLOW'},own('skill.claim'),own('learning.view'),own('learning.manage'),own('request.view'),own('request.create')]);
+ const actions=dashboardManifest(state,person,sources).actions;assert.deepEqual(actions.map(a=>a.id),['skill','learning','request']);assert.equal(actions.find(a=>a.id==='learning')?.assistance?.href,'/learning?action=planner');
+ for(const a of actions){assert.ok(a.description);if(a.assistance?.prompt){assert.ok(a.assistance.prompt.length<=500);assert.match(a.assistance.prompt,/review/i);assert.match(a.assistance.prompt,/Do not/);}}
+ assert.ok(dashboardManifest(state,person,{...sources,aiConfigured:false}).actions.every(a=>!a.assistance));
+ person.overrides=[{...own('profile.view'),effect:'DENY'}];assert.ok(dashboardManifest(state,person,sources).actions.every(a=>!a.assistance));
+ person.overrides=[{...own('skill.claim'),effect:'DENY'},{...own('learning.manage'),effect:'DENY'},{...own('request.create'),effect:'DENY'}];assert.equal(dashboardManifest(state,person,sources).actions.length,0);
+});
+test('incident-only users receive incident assistance and unavailable stores cannot advertise actions',()=>{
+ const {state,person}=fixture([own('profile.view'),own('incident.view'),own('incident.create')]);const action=dashboardManifest(state,person,sources).actions[0];assert.match(action.assistance?.prompt??'',/incident_draft/);assert.doesNotMatch(action.assistance?.prompt??'',/request_draft/);assert.equal(dashboardManifest(state,person,{aiConfigured:true}).actions.length,0);
+});

@@ -1,7 +1,8 @@
+import {SidebarNavigation} from './SidebarNavigation';
 import {AccessDirectory} from './AccessDirectory';
 import { OrganizationSetup } from './OrganizationSetup';
 import {Workspace,type WorkspaceState} from './Workspace';
-import {PersonalCapabilityNavigation,personalPageTitle} from './WorkspaceNavigation';
+import {personalNavigationItems,personalPageTitle} from './WorkspaceNavigation';
 import { SkillCatalogue } from './SkillCatalogue';
 import { FormDialog } from './FormDialog';
 import { NavigationDrawer } from './NavigationDrawer';
@@ -73,7 +74,11 @@ export function AccessAdmin({personalPath,personalCapabilities,workspaceContext}
   const name=state?.currentPerson?.displayName??'Workspace administrator';
   const greetingName=state?.currentPerson?(name.trim().split(/\s+/)[0]||'there'):'there';
   const sections=[{id:'overview',label:'Dashboard',icon:LayoutDashboard},{id:'organization',label:'Organization',icon:FolderTree},{id:'skills',label:'Skill catalogue',icon:BookOpen},{id:'people',label:'People',icon:Users},{id:'roles',label:'Roles & permissions',icon:ShieldCheck},{id:'assignments',label:'Role assignments',icon:Users},{id:'audit',label:'Activity log',icon:History}] as const;
-  const sidebarContent=(close:()=>void=()=>{})=><><Link className="admin-brand" to="/access"><img src="/brand/sopra-steria.svg" alt="Sopra Steria"/></Link><p className="nav-caption">WORKSPACE</p><nav aria-label="Administration sections">{sections.filter(section=>section.id==='overview'||section.id==='roles'||(section.id==='skills'?state?.canViewSkills:section.id==='audit'?state?.canViewAudit:state?.canManageUsers)).map(({id,label,icon:Icon})=><button key={id} aria-current={!personalTitle&&tab===id?'page':undefined} onClick={()=>{setTab(id);setEditor(undefined);setSearch('');setNotice('');close();}}><Icon size={19}/>{label}{!personalTitle&&tab===id&&<ChevronRight size={15}/>}</button>)}</nav><PersonalCapabilityNavigation capabilities={personalCapabilities} pathname={personalPath} onNavigate={close}/></>;
+  const sidebarContent=(close:()=>void=()=>{})=><><Link className="admin-brand" to="/access"><img src="/brand/sopra-steria.svg" alt="Sopra Steria"/></Link><p className="nav-caption">WORKSPACE</p><SidebarNavigation actorId={workspaceContext?.person.id??state?.currentPerson?.id} label="Administration sections" onNavigate={close} items={[
+    ...sections.filter(section=>section.id==='overview'||section.id==='roles'||(section.id==='skills'?state?.canViewSkills:section.id==='audit'?state?.canViewAudit:state?.canManageUsers)).map(({id,label,icon})=>({id:id==='overview'?'dashboard':id,label,icon,active:!personalTitle&&tab===id,onSelect:()=>{setTab(id);setEditor(undefined);setSearch('');setNotice('');}})),
+    ...personalNavigationItems(personalCapabilities,personalPath),
+  ]}/></>;
+
   return <div className="admin-shell"><a className="skip-link" href="#access-main">Skip to content</a><Sidebar className="desktop-sidebar">{sidebarContent()}</Sidebar>{navigationOpen&&<NavigationDrawer onClose={()=>setNavigationOpen(false)}>{close=><Sidebar>{sidebarContent(close)}</Sidebar>}</NavigationDrawer>}
     <div className="admin-content"><header className="admin-topbar"><button className="navigation-toggle secondary-button" aria-label="Open navigation" aria-expanded={navigationOpen} aria-controls="workspace-navigation" onClick={()=>setNavigationOpen(true)}><Menu size={20}/></button><div className="page-location navbar-context"><div className="navbar-greeting"><span className="greeting-hello">Hello,</span><strong className="greeting-name" title={name}>{greetingName}</strong></div><h1>{personalTitle??sections.find(section=>section.id===tab)?.label}</h1></div><div className="page-actions" role="group" aria-label="Page actions" ref={setPageActions}>
       {state&&!personalTitle&&tab==='overview'&&<>{state.canManageUsers&&<button className="admin-primary" onClick={()=>createRecord('person')}><Plus size={17}/>Add person</button>}<button className="secondary-button" onClick={()=>createRecord('role')}>Create role</button></>}

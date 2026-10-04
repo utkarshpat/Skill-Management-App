@@ -76,6 +76,13 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
     setPicked(undefined);setCategory('');setNotice('');setFormError('');setFormPage(0);setOptionPage(1);setSearch(claim?.skillName??'');
     setDraft(claim?{id:claim.id,revision:claim.revision,skillId:claim.skillId,definitionRevision:claim.definitionRevision,rank:claim.rank,experienceMonths:claim.experienceMonths,description:claim.description,projects:claim.projects??'',evidence:claim.evidence??''}:emptyDraft());
   }
+  useEffect(()=>{if(!state||new URLSearchParams(location.search).get('action')!=='add')return;const next=new URLSearchParams(location.search);next.delete('action');navigate(location.pathname+(next.size?'?'+next:''),{replace:true});if(state.canClaim)edit();else setError('Skill editing is not assigned.');},[location.search,state?.canClaim]);
+  useEffect(()=>{
+    const params=new URLSearchParams(location.search),id=params.get('claim');if(!id||!state||loading)return;
+    params.delete('claim');navigate(location.pathname+(params.size?'?'+params:''),{replace:true});
+    const claim=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)?state.claims.find(c=>c.id.toLowerCase()===id.toLowerCase()):undefined;
+    if(claim){setInspecting(claim);setSubmitting(false);}else setError('This claim is unavailable in your current skill profile.');
+  },[location.search,state,loading]);
   async function save() {
     if(!draft||busy)return;
     if(!selected||!selected.levels.some(level=>level.rank===draft.rank)){setFormPage(0);setFormError('Select a published skill and its proficiency level.');return;}
@@ -97,7 +104,7 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
     {actionsContainer?createPortal(actions,actionsContainer):actions&&<div className="my-skills-actions">{actions}</div>}
     {error&&<div className="access-message" role="alert">{error}<button className="secondary-button" onClick={()=>void load()}>Retry</button></div>}
     {notice&&<p className="access-message" role="status">{notice}</p>}
-    {loading&&!state?<section className="profile-panel" role="status">Loading your skills…</section>:state&&<SkillsProfileView onAdd={()=>edit()} claims={state.claims} canClaim={state.canClaim} loading={loading||busy} onView={claim=>{setInspecting(claim);setSubmitting(false);}} onEdit={edit} onSubmit={claim=>{setInspecting(claim);setSubmitting(true);}}/>}
+    {loading&&!state?<section className="profile-panel" role="status">Loading your skills…</section>:state&&<SkillsProfileView initialStatus={new URLSearchParams(location.search).get("status")??""} onAdd={()=>edit()} claims={state.claims} canClaim={state.canClaim} loading={loading||busy} onView={claim=>{setInspecting(claim);setSubmitting(false);}} onEdit={edit} onSubmit={claim=>{setInspecting(claim);setSubmitting(true);}}/>}
     </>}
     {inspecting&&<SkillClaimDialog claim={inspecting} mode={submitting?'submit':'view'} onClose={()=>setInspecting(undefined)} onSaved={()=>{setInspecting(undefined);setNotice('Claim submitted to your assigned reporting manager.');window.dispatchEvent(new Event('own-skills-updated'));}}/>}
     {draft&&<SkillClaimWizard draft={draft} onDraft={setDraft} selected={selected} onSelect={skill=>{setPicked(skill);setDraft({...draft,skillId:skill.id,rank:skill.id===draft.skillId?draft.rank:0,definitionRevision:skill.definitionRevision});}} options={options} loading={optionsLoading} busy={busy} error={formError} page={formPage} onPage={setFormPage} search={search} onSearch={value=>{setSearch(value);setOptionPage(1);setFormError('');}} category={category} onCategory={value=>{setCategory(value);setOptionPage(1);setFormError('');}} onResultsPage={setOptionPage} onSave={()=>void save()} onClose={closeDraft} aiDraft={!!reviewRequest}/>}

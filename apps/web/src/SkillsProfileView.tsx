@@ -1,12 +1,13 @@
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 
 import {Layers,ShieldCheck,Clock3,UserRound,Search,ArrowUpRight,BookOpen,ChevronLeft,ChevronRight,Pencil,Eye,Send,RotateCcw,Code2,Database,Cloud,Brain,Briefcase,Monitor,Target,AlertCircle} from 'lucide-react';
 import type {Claim} from './MySkills';
 
 const statuses:Record<Claim['status'],string>={DRAFT:'Self-assessed',SUBMITTED:'Pending review',CHANGES_REQUESTED:'Changes requested',APPROVED:'Manager reviewed',REJECTED:'Not approved'};
 function SkillIcon({category}:{category:string}){const Icon=category.includes('Programming')?Code2:category.includes('Database')?Database:category.includes('Cloud')?Cloud:category.includes('AI')?Brain:category.includes('Project')?Briefcase:category.includes('Frontend')?Monitor:BookOpen;return <Icon size={19} aria-hidden="true"/>;}
-export function SkillsProfileView({claims,canClaim,loading,onView,onEdit,onSubmit,onAdd}:{claims:Claim[];canClaim:boolean;loading:boolean;onView:(claim:Claim)=>void;onEdit:(claim:Claim)=>void;onSubmit:(claim:Claim)=>void;onAdd?:()=>void}){
+export function SkillsProfileView({claims,canClaim,loading,onView,onEdit,onSubmit,onAdd,initialStatus=''}:{claims:Claim[];canClaim:boolean;loading:boolean;onView:(claim:Claim)=>void;onEdit:(claim:Claim)=>void;onSubmit:(claim:Claim)=>void;onAdd?:()=>void;initialStatus?:string}){
  const [query,setQuery]=useState(''),[category,setCategory]=useState(''),[status,setStatus]=useState(''),[rank,setRank]=useState(''),[page,setPage]=useState(1),[size,setSize]=useState(10),[tab,setTab]=useState('all');
+ useEffect(()=>{setStatus(Object.hasOwn(statuses,initialStatus)?initialStatus:'');setTab('all');setPage(1);},[initialStatus]);
  const approved=claims.filter(c=>c.status==='APPROVED').length,pending=claims.filter(c=>c.status==='SUBMITTED').length,drafts=claims.filter(c=>c.status==='DRAFT').length,attention=claims.filter(c=>['CHANGES_REQUESTED','REJECTED'].includes(c.status)).length;
  const categories=Array.from(new Set(claims.map(c=>c.category))).sort(),levels=Array.from(new Set(claims.map(c=>c.rank))).sort((a,b)=>a-b);
  const filtered=claims.filter(c=>(!query||[c.skillName,c.category,c.levelName].some(text=>text.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())))&&(!category||category===c.category)&&(!status||status===c.status)&&(!rank||Number(rank)===c.rank)&&(tab==='all'||tab==='reviewed'&&c.status==='APPROVED'||tab==='attention'&&['DRAFT','CHANGES_REQUESTED','REJECTED'].includes(c.status)));

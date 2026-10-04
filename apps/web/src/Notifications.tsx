@@ -15,8 +15,8 @@ export function Notifications({id}:{id:string}) {
       catch{if(!controller.signal.aborted){setFeed(undefined);setError('Notifications could not be loaded.');}}
       finally{running=false;}
     };
-    void load();const timer=setInterval(()=>void load(),60000),refresh=()=>void load();document.addEventListener('visibilitychange',refresh);
-    return()=>{controller.abort();clearInterval(timer);document.removeEventListener('visibilitychange',refresh);};
+    void load();const timer=setInterval(()=>void load(),60000),refresh=()=>void load();document.addEventListener('visibilitychange',refresh);window.addEventListener('notifications-updated',refresh);
+    return()=>{controller.abort();clearInterval(timer);document.removeEventListener('visibilitychange',refresh);window.removeEventListener('notifications-updated',refresh);};
   },[attempt]);
   useEffect(()=>{const changed=(event:StorageEvent)=>{if(feed&&event.key===key(feed.personId))setRead(readIds(feed.personId));};window.addEventListener('storage',changed);return()=>window.removeEventListener('storage',changed);},[feed?.personId]);
   function mark(ids:string[]){if(!feed)return;const next=[...new Set([...read,...ids])].slice(-100);setRead(next);try{localStorage.setItem(key(feed.personId),JSON.stringify(next));}catch{/* Read state still works in this session. */}}

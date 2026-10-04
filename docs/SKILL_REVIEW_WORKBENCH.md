@@ -1,0 +1,30 @@
+# Skill review workbench
+
+The review workspace provides server-side employee/name/code/skill search, category filters and pending, approved, changes-requested, rejected or all review states. Summary buttons filter the queue. Counts are calculated over matching authorized records before the selected status filter; pagination remains 25 claims. Team member actions can open that person's pending queue.
+
+Migration 028 resolves active current direct reports with the actor as both assigned reviewer and current manager. Self claims and DRAFT records are excluded. Query inputs reject actor/scope routing, draft status, repeated selectors and malformed person/claim IDs. SQL runtime/account, active workspace, own-profile and review authority are checked transactionally. List/detail HTTP responses recheck live authority and workspace revision after retrieval; changed access/scope discards the result.
+
+`GET /api/skill-reviews/:id?page=N` reads the currently authorized claim and 20 submission/decision events at a time. The history includes actor display name, audit workspace revision, timestamp, action and committed feedback. It never returns audit JSON or private draft edit events. The UI displays one event at a time and paginates long feedback so desktop forms remain readable without internal form scrolling.
+
+For a pending submission, the reviewer reads the submitted claim. For changes-requested/rejected/approved states, proficiency, experience, projects and evidence come from the latest immutable `claim.submitted` audit snapshot. This avoids exposing later private employee edits before resubmission. The current status is shown separately. History remains readable only inside current assignment/reporting scope; former managers lose access after reassignment.
+
+Only SUBMITTED claims open in decision mode. Other states are read-only. Explicit confirmation, required feedback, revision conflict checks, self-review prevention, notifications and audit remain enforced by the existing owning procedure. Direct claim links fetch an authorized record rather than requiring it to be on the first queue page.
+
+Verification includes HTTP query/authentication/revocation/revision tests and SQL rollback scenarios for filtered states, submitted-snapshot privacy, newly resubmitted evidence, decision history, unrelated claim IDs, changed manager, revoked permission and existing stale/double-decision checks. No business changes from those fixtures are retained.
+
+AI review assistance now offers an evidence summary and editable feedback for the reviewer-selected decision. The referenced dashboard layout refinement remains a later increment.
+
+Production acceptance on 2026-10-04: deployment `H3d5Y5ggXXGgbuQWFxe5SLPddz6F` reached Ready without a Git push. Migration 028 applied. In the owner's Chrome, employee/category/status filters returned Khushi's existing reviewed QA claim, which opened read-only with four actual audit events. History displayed the committed approval feedback and resubmission actor/time; desktop body client/scroll heights were both 413px. At 390px viewport the document stayed 375px wide; the table remained inside its own wrapper. Dark theme rendered a dark surface; light theme and desktop viewport were restored. All 139 automated checks, strict types, builds and architecture guard passed; SQL rollback lifecycle/history/privacy/isolation checks passed separately. Public health/page returned 200 and anonymous queue/detail returned 401. No production review decisions were changed by browser checks.
+
+## AI review assistance
+
+POST /api/assistant/skill-review accepts only claim ID, expected revision, SUMMARY or FEEDBACK, optional reviewer facts (500 characters), and an explicit decision for feedback. Verified actor, own profile permission, effective review permission and fresh SQL reporting/assignment scope are required. The submitted snapshot is read before and after the model call; revoked access or changed claim data discards the result. Feedback is allowed only for pending submissions.
+
+Generation uses one bounded provider call, only the presentation tool, no navigation/data/action tools, no conversation history and no writes. Source data is capped at 20 KB without silent excerpting; output is capped at 1,800 characters and 900 output tokens. Shared actor concurrency and per-minute/daily instance limits apply; usage is metered. These instance limits are not a distributed quota.
+
+Evidence links remain references, not verified document contents. The prompt distinguishes missing evidence from lack of ability. Markdown is sanitized using the existing lazy rich-text renderer. Result pages keep desktop content bounded; mobile supports scrolling. Feedback is transferred only by an explicit Use feedback draft action, remains editable, and still requires the existing Confirm decision action with server-side revision/authority checks. Generation is cancellable and failures preserve manual review.
+
+Verification: 140 automated checks passed (5 architecture, 114 API, 21 web), strict typecheck and architecture guard passed. Vercel production build passed. New security tests cover forged selectors, out-of-scope claims, stale submissions, unsupported output, changed records, revoked grants, restricted tools and no writes. Anonymous production assistance returned 401. Live Gemini summary was generated from the existing authorized QA submission in the owner's Chrome. Feedback generation is covered by automated fixtures; no pending production submissions existed, so no live review decision was changed.
+
+Production deployment: EH4VuWMVgRyDGXYuP6447jvTB1MY, 2026-10-04. No Git push.
+Chrome layout acceptance: at the 640px-high desktop viewport, intake and all seven generated summary pages had body clientHeight = scrollHeight = 357px. At 390px mobile viewport, document width was 375px without horizontal overflow; desktop viewport was restored. One oversized/unsupported model draft was rejected, and explicit retry returned a valid summary. Screenshots: ignored .vercel/qa/review-ai.jpg and review-ai-mobile.jpg.

@@ -1,5 +1,6 @@
 import { SqlOrganizationStore } from './modules/organization/sql-store.js';
 import { createApp } from './create-app.js';
+import {SqlWorkflowStore} from './modules/workflows/index.js';
 import { identityConfig, tokenVerifier } from './modules/identity/index.js';
 import { ownProfile } from './modules/identity/index.js';
 import { closeRuntimeDatabase } from './shared/database.js';
@@ -10,7 +11,7 @@ import {AssistantService,configuredProvider} from './modules/ai/index.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
 import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
 import { SqlConversationsStore } from './modules/ai/conversations.js';
-import {SqlLearningStore} from './modules/learning/index.js';
+import {SqlLearningStore,SqlPracticeStore,LearningPracticeService,LearningPlannerService,LearningRecoveryService,SqlRecoveryStore,type QuizGenerator} from './modules/learning/index.js';
 
 const port = Number(process.env.PORT ?? 3001);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be between 1 and 65535.');
@@ -22,8 +23,13 @@ const organization=process.env.ACCESS_ACCOUNT_ID?new SqlOrganizationStore(proces
 const claims=process.env.ACCESS_ACCOUNT_ID?new SqlClaimsStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const catalogue=process.env.ACCESS_ACCOUNT_ID?new SqlCatalogueStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const learning=process.env.ACCESS_ACCOUNT_ID?new SqlLearningStore(process.env.ACCESS_ACCOUNT_ID):undefined;
-const assistant=access?new AssistantService(access,organization,configuredProvider(process.env),claims,usage=>console.info(JSON.stringify({event:'ai.usage',...usage})) ,catalogue,process.env.ACCESS_ACCOUNT_ID?new SqlConversationsStore(process.env.ACCESS_ACCOUNT_ID):undefined,learning):undefined;
-const app = createApp(config ? { verify: tokenVerifier(config),access,organization,assistant,catalogue,claims,learning,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
+const workflows=process.env.ACCESS_ACCOUNT_ID?new SqlWorkflowStore(process.env.ACCESS_ACCOUNT_ID):undefined;
+const assistant=access?new AssistantService(access,organization,configuredProvider(process.env),claims,usage=>console.info(JSON.stringify({event:'ai.usage',...usage})) ,catalogue,process.env.ACCESS_ACCOUNT_ID?new SqlConversationsStore(process.env.ACCESS_ACCOUNT_ID):undefined,learning,workflows):undefined;
+const learningGenerator:QuizGenerator|undefined=assistant?async(actor,prompt,signal)=>{const result=await assistant.chat(actor,{messages:[{role:'user',content:prompt}]},signal);return {artifact:result.artifact,reply:result.reply,provider:assistant.status().provider??'AI'};}:undefined;
+const practice=learning&&process.env.ACCESS_ACCOUNT_ID?new LearningPracticeService(learning,new SqlPracticeStore(process.env.ACCESS_ACCOUNT_ID),learningGenerator):undefined;
+const planner=learning?new LearningPlannerService(learning,learningGenerator):undefined;
+const recovery=learning&&process.env.ACCESS_ACCOUNT_ID?new LearningRecoveryService(learning,new SqlRecoveryStore(process.env.ACCESS_ACCOUNT_ID),learningGenerator):undefined;
+const app = createApp(config ? { verify: tokenVerifier(config),access,organization,assistant,catalogue,claims,learning,practice,planner,recovery,workflows,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
   const id=await access?.resolveIdentity(identity);
   if(!id)return ownProfile(identity);
   const state=await access!.snapshot();const person=state.people.find(person=>person.id===id);

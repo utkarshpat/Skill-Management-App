@@ -10,8 +10,10 @@ import { registerRoutes as skillsRoutes, type HttpDependencies as SkillsDependen
 import { registerRoutes as aiRoutes, type HttpDependencies as AiDependencies } from './modules/ai/routes.js';
 import { registerClaimsRoutes, type ClaimsHttpDependencies } from './modules/skills/claims-routes.js';
 import {registerLearningRoutes,type LearningDependencies} from './modules/learning/index.js';
+import {registerWorkflowRoutes,type WorkflowDependencies} from './modules/workflows/index.js';
+import {registerDashboardRoutes} from './modules/dashboard/index.js';
 
-export type AppDependencies = IdentityDependencies & AccessDependencies & OrganizationDependencies & SkillsDependencies & AiDependencies & ClaimsHttpDependencies & LearningDependencies;
+export type AppDependencies = IdentityDependencies & AccessDependencies & OrganizationDependencies & SkillsDependencies & AiDependencies & ClaimsHttpDependencies & LearningDependencies & WorkflowDependencies;
 
 export function createApp(dependencies?: AppDependencies, options: { developmentStore?: AccessStore; hostedDemo?: HostedDemoConfig } = {}) {
   const app = express();
@@ -25,13 +27,15 @@ export function createApp(dependencies?: AppDependencies, options: { development
     next();
   });
   app.use(express.json({ limit: '128kb' }));
-  identityRoutes(app, dependencies ? {...dependencies,skillNotifications:dependencies.claims?.notifications?.bind(dependencies.claims)} : undefined, store, demo);
+  identityRoutes(app, dependencies ? {...dependencies,skillNotifications:dependencies.claims?.notifications?.bind(dependencies.claims),workflowNotifications:dependencies.workflows?.notifications.bind(dependencies.workflows)} : undefined, store, demo);
   // Access middleware authenticates /api/access before organization routes run.
   accessRoutes(app, dependencies, store, demo);
   organizationRoutes(app, dependencies);
   skillsRoutes(app, dependencies, store, demo);
   registerClaimsRoutes(app, dependencies, store, demo);
   registerLearningRoutes(app, dependencies, store, demo);
+  registerWorkflowRoutes(app, dependencies, store, demo);
+  registerDashboardRoutes(app, dependencies?{...dependencies,aiConfigured:dependencies.assistant?.status().configured}:undefined, store, demo);
   aiRoutes(app, dependencies, store, demo);
   // Liveness only: this must never imply SQL or organizational SSO is ready.
   app.get('/api/health', (_req, res) => {

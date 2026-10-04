@@ -2,14 +2,16 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const moduleNames = new Set(['identity', 'access', 'organization', 'skills', 'ai', 'learning']);
+const moduleNames = new Set(['identity', 'access', 'organization', 'skills', 'ai', 'learning', 'workflows', 'dashboard']);
 const runtimeDependencies = {
-  identity: ['access'], access: [], organization: ['access'], learning: ['access'],
+  dashboard: ['access'],
+  identity: ['access'], access: [], organization: ['access'], learning: ['access'], workflows: ['access'],
   skills: ['access'], ai: ['access', 'organization', 'skills'],
 };
 const typeDependencies = {
-  identity: ['access'], access: ['identity'], organization: ['access'], learning: ['access', 'identity'],
-  skills: ['access', 'identity'], ai: ['access', 'organization', 'skills', 'identity', 'learning'],
+  dashboard: ['access','identity','skills','learning','workflows'],
+  identity: ['access'], access: ['identity'], organization: ['access'], learning: ['access', 'identity'], workflows: ['access', 'identity'],
+  skills: ['access', 'identity'], ai: ['access', 'organization', 'skills', 'identity', 'learning', 'workflows'],
 };
 const normalize = value => value.replaceAll('\\', '/');
 const owner = file => /^apps\/api\/src\/modules\/([^/]+)\//.exec(file)?.[1];
@@ -116,5 +118,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   if (!existsSync(path.join(root, 'apps/api/src'))) throw new Error('Repository source is missing.');
   const errors = checkSources(repositorySources(root));
   if (errors.length) { console.error(errors.join('\n')); process.exitCode = 1; }
-  else console.log('Architecture boundaries passed: six modules, shared infrastructure and separate frontend.');
+  else console.log('Architecture boundaries passed: eight modules, shared infrastructure and separate frontend.');
 }

@@ -36,6 +36,16 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
   app.get('/api/assistant/conversations',historyHandler);
   app.get('/api/assistant/conversations/:id',historyHandler);
   app.delete('/api/assistant/conversations/:id',historyHandler);
+  app.post('/api/assistant/skill-review',async(req,res)=>{
+    const controller=new AbortController();res.on('close',()=>{if(!res.writableEnded)controller.abort();});
+    try{if(!dependencies?.assistant)throw new AccessError(503,'Assistant is unavailable.');const result=await dependencies.assistant.reviewAssistance(res.locals.assistantActor,req.body,AbortSignal.any([controller.signal,AbortSignal.timeout(35000)]));if(!controller.signal.aborted)res.json(result);}
+    catch(e){if(e instanceof AccessError){res.status(e.status).json({error:{message:e.message}});return;}throw e;}
+  });
+  app.post('/api/assistant/workflow-draft',async(req,res)=>{
+    const controller=new AbortController();res.on('close',()=>{if(!res.writableEnded)controller.abort();});
+    try{if(!dependencies?.assistant)throw new AccessError(503,'Assistant is unavailable.');const result=await dependencies.assistant.workflowDraft(res.locals.assistantActor,req.body,AbortSignal.any([controller.signal,AbortSignal.timeout(35000)]));if(!controller.signal.aborted)res.json(result);}
+    catch(e){if(e instanceof AccessError){res.status(e.status).json({error:{message:e.message}});return;}throw e;}
+  });
   app.post('/api/assistant',async(req,res)=>{
     const controller=new AbortController();res.on('close',()=>{if(!res.writableEnded)controller.abort();});
     try{

@@ -21,3 +21,19 @@ test('learning AI navigation requires the exact currently permitted page',()=>{
  assert.deepEqual(assistantNavigationTargets('[Learning](/learning)',[],[]),[]);
  assert.equal(canonicalAssistantDestination('/learning?personId=other'),undefined);
 });
+
+test('workflow drafts offer explicit review without automatic submission or navigation',()=>{
+ for(const kind of ['request_draft','incident_draft'] as const){
+  const artifact={kind,title:'Help with learning',summary:'Review first',body:'Please help with my plan.',steps:[],questions:[]};
+  const blocked=renderToStaticMarkup(<AssistantOutput artifact={artifact}/>);
+  assert.doesNotMatch(blocked,/Review (request|incident) draft|href=|Submit/);
+  const allowed=renderToStaticMarkup(<AssistantOutput artifact={artifact} onReviewRequest={()=>{}}/>);
+  assert.match(allowed,kind==='incident_draft'?/Review incident draft/:/Review request draft/);
+  assert.match(allowed,/Not submitted|No records have been changed/);
+  assert.doesNotMatch(allowed,/href=|Submit/);
+ }
+ const requests={label:'Requests',url:'/requests'};
+ assert.deepEqual(assistantNavigationTargets('[Requests](/requests)',[],[requests]),[requests]);
+ assert.deepEqual(assistantNavigationTargets('[Requests](/requests)',[],[]),[]);
+ assert.equal(canonicalAssistantDestination('/requests?actorId=other'),undefined);
+});

@@ -11,17 +11,33 @@ export interface ClaimOption {
   id: string; name: string; category: string; definitionRevision: number;
   levels: { rank: number; name: string; description: string }[];
 }
-export interface ClaimState { claims: SkillClaim[]; total: number; page: number; pageSize: number; canClaim: boolean }
+export interface ClaimState { claims: SkillClaim[]; total: number; page: number; pageSize: number; canClaim: boolean; categories?:string[]; summary?:{pending:number;approved:number;changes:number;rejected:number} }
 export interface ClaimOptions { skills: ClaimOption[]; total: number; page: number; pageSize: number }
 export interface ClaimsStore {
+  team?(actorId:string,query:ReturnType<typeof teamQuery>):Promise<TeamCapability>;
+  summary?(actorId:string):Promise<{total:number;verified:number;pending:number;draft:number;changesRequested:number;rejected:number}>;
   read(actorId: string, page: number): Promise<ClaimState>;
   options(actorId: string, search: string, page: number, category?:string,pageSize?:number): Promise<ClaimOptions>;
   save(actorId: string, input: unknown): Promise<void>;
   transition?(actorId: string, input: ReturnType<typeof claimTransition>): Promise<void>;
-  reviews?(actorId: string, page: number): Promise<ClaimState>;
+  reviews?(actorId: string, page: number,query?:ReturnType<typeof reviewQuery>): Promise<ClaimState>;
+  reviewDetail?(actorId:string,id:string,page:number):Promise<ReviewDetail>;
   notifications?(actorId: string): Promise<{id:string;at:string;title:string;body:string;href:string}[]>;
 }
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export interface ReviewDetail {claim:SkillClaim;history:{revision:number;action:string;at:string;actorName:string;feedback:string}[];total:number;page:number;pageSize:number}
+export function reviewIdentifier(value:unknown){if(typeof value!=='string'||!uuid.test(value))throw new AccessError(400,'Choose a valid claim.');return value.toLowerCase();}
+export function reviewQuery(input:Record<string,unknown>){
+ if(Object.keys(input).some(key=>!['search','page','category','status','person'].includes(key)))throw new AccessError(400,'Unsupported review selector.');
+ const status=input.status??'SUBMITTED';if(typeof status!=='string'||!['SUBMITTED','APPROVED','CHANGES_REQUESTED','REJECTED','ALL'].includes(status))throw new AccessError(400,'Choose a valid review status.');
+ return {search:claimSearch(input.search),category:claimCategory(input.category),status,person:input.person===undefined?undefined:reviewIdentifier(input.person)};
+}
+export interface TeamCapability {total:number;page:number;pageSize:number;scope:'DIRECT_REPORTS';people:{id:string;name:string;employeeCode:string;reviewed:number;pending:number}[];skills:{personId:string;skillName:string;category:string;rank:number;levelName:string;status:'APPROVED'|'SUBMITTED'}[]}
+export function teamQuery(input:Record<string,unknown>){
+ if(Object.keys(input).some(key=>!['search','page','person'].includes(key)))throw new AccessError(400,'Unsupported team selector.');
+ const person=input.person;if(person!==undefined&&(typeof person!=='string'||!uuid.test(person)))throw new AccessError(400,'Choose a valid team member.');
+ return {search:claimSearch(input.search),page:claimPage(input.page),person:typeof person==='string'?person.toLowerCase():undefined};
+}
 export function claimPage(value: unknown): number {
   if(value!==undefined&&typeof value!=='string'&&typeof value!=='number')throw new AccessError(400,'Choose a valid page.');
   const page = value === undefined ? 1 : Number(value);

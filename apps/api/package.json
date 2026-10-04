@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --env-file-if-exists=.env --import tsx --watch src/server.ts",
-    "build": "tsc",
+    "build": "node scripts/build.mjs",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "test": "tsx --test test/*.test.ts",
@@ -20,7 +20,11 @@
     "test:conversations": "node --env-file-if-exists=.env --import tsx test/conversations.integration.ts",
     "catalogue:seed": "node --env-file-if-exists=.env --import tsx src/catalogue-seed-cli.ts",
     "test:framework": "node --env-file-if-exists=.env --import tsx test/framework.integration.ts",
-    "test:learning": "node --env-file-if-exists=.env --import tsx test/learning.integration.ts"
+    "test:learning": "node --env-file-if-exists=.env --import tsx test/learning.integration.ts",
+    "test:recovery": "node --env-file-if-exists=.env --import tsx test/learning-recovery.integration.ts",
+    "test:practice": "node --env-file-if-exists=.env --import tsx test/learning-practice.integration.ts",
+    "test:workflows": "node --env-file-if-exists=.env --import tsx test/workflows.integration.ts",
+    "test:lifecycle": "node --env-file-if-exists=.env --import tsx test/workflow-lifecycle.integration.ts"
   },
   "dependencies": {
     "@azure/identity": "4.13.3",

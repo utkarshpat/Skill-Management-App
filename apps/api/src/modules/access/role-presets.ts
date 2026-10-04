@@ -9,7 +9,7 @@ export interface RolePreset {
   permissions: Assignment[];
   pending: { permission: PermissionCode; scope: PlannedScope }[];
 }
-const own: PermissionCode[] = ['profile.view','profile.edit','skill.claim','evidence.view','evidence.submit','learning.view','learning.manage','request.create','request.view','incident.create','incident.view'];
+const own: PermissionCode[] = ['profile.view','profile.edit','skill.claim','evidence.view','evidence.submit','learning.view','learning.manage','request.create','request.view','request.assign','request.resolve','incident.create','incident.view','incident.assign','incident.resolve'];
 const employee = (): Assignment[] => [
   ...own.map(permission => ({ permission, scope: 'OWN' as const, effect: 'ALLOW' as const })),
   { permission: 'skill.view', scope: 'ORGANIZATION', effect: 'ALLOW' },

@@ -21,9 +21,15 @@ await withDatabase(async pool=>{
   await transition(tx,claim,1,'SUBMIT');
   const queue=await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,people.manager).execute('dbo.ReadAssignedSkillReviews');assert.ok((queue.recordsets as sql.IRecordSet<{id:string}>[])[1].some(row=>row.id.toLowerCase()===claim));
   await transition(tx,claim,2,'REQUEST_CHANGES',people.manager);
+  const workbench=(status='ALL',id:string|null=claim)=>new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,people.manager).input('status',sql.VarChar(20),status).input('claim_id',sql.UniqueIdentifier,id).execute('dbo.ReadSkillReviewWorkbench');
+  await new sql.Request(tx).input('account',sql.UniqueIdentifier,account).input('claim',sql.UniqueIdentifier,claim).query("UPDATE dbo.SkillClaimDraft SET description=N'PRIVATE EDIT AFTER CHANGES',projects=N'PRIVATE NEW PROJECT',evidence=N'PRIVATE NEW EVIDENCE' WHERE account_id=@account AND claim_id=@claim;");
+  const changed=(await workbench()).recordsets as unknown as sql.IRecordSet<Record<string,unknown>>[];
+  assert.equal(changed[1][0].description,'Built a reviewed feature.');assert.equal(changed[1][0].projects,'Project contribution');assert.equal(changed[1][0].evidence,'Certificate reference');assert.equal(changed[4].length,2);assert.equal(changed[4][0].action,'claim.changes_requested');assert.equal(changed[4][0].feedback,'Reviewed project evidence.');
+  assert.equal((await workbench('SUBMITTED')).recordset[0].total,0);
   await transition(tx,claim,3,'SUBMIT');await transition(tx,claim,4,'APPROVE',people.manager);
+  const approved=(await workbench('APPROVED')).recordsets as unknown as sql.IRecordSet<Record<string,unknown>>[];assert.equal(approved[0][0].total,1);assert.equal(approved[4].length,4);assert.equal(approved[4][0].action,'claim.approved');
   const rows=(await new sql.Request(tx).input('account',sql.UniqueIdentifier,account).input('claim',sql.UniqueIdentifier,claim).query("SELECT status,revision,projects,evidence FROM dbo.SkillClaimDraft WHERE account_id=@account AND claim_id=@claim;SELECT COUNT(*) AS n FROM dbo.AccessAudit WHERE account_id=@account AND target_id=@claim;SELECT COUNT(*) AS n FROM dbo.SkillClaimNotification WHERE account_id=@account AND claim_id=@claim;")).recordsets as sql.IRecordSet<{status:string;revision:number;projects:string;evidence:string;n:number}>[];
-  assert.equal(rows[0][0].status,'APPROVED');assert.equal(rows[0][0].revision,5);assert.equal(rows[0][0].projects,'Project contribution');assert.equal(rows[1][0].n,5);assert.equal(rows[2][0].n,4);
+  assert.equal(rows[0][0].status,'APPROVED');assert.equal(rows[0][0].revision,5);assert.equal(rows[0][0].projects,'PRIVATE NEW PROJECT');assert.equal(approved[1][0].projects,'PRIVATE NEW PROJECT');assert.equal(rows[1][0].n,5);assert.equal(rows[2][0].n,4);
  });
  await fixture(async(tx,claim)=>{await transition(tx,claim,1,'SUBMIT');await transition(tx,claim,2,'REJECT',people.manager);const row=(await new sql.Request(tx).input('claim',sql.UniqueIdentifier,claim).query('SELECT status,feedback FROM dbo.SkillClaimDraft WHERE claim_id=@claim;')).recordset[0];assert.equal(row.status,'REJECTED');assert.equal(row.feedback,'Reviewed project evidence.');});
  for(const scenario of ['foreign','stale','self','revoked','manager-changed','double-decision'] as const)await fixture(async(tx,claim)=>{
@@ -34,5 +40,12 @@ await withDatabase(async pool=>{
   const expected=scenario==='stale'?51009:scenario==='double-decision'?51010:51003;
   await assert.rejects(transition(tx,claim,scenario==='stale'?1:2,'APPROVE',scenario==='foreign'?other:scenario==='self'?people.employee:people.manager),error=>(error as {number:number}).number===expected);
  });
- console.log('SQL reviews verified: submission, assigned queue, changes/resubmission, approval/rejection, evidence, audit, notifications, foreign/self review, revocation, manager change and stale/double decisions. All fixtures rolled back.');
+ for(const scenario of ['history-foreign','history-manager-changed','history-revoked'] as const)await fixture(async(tx,claim)=>{
+  await transition(tx,claim,1,'SUBMIT');
+  if(scenario==='history-manager-changed')await new sql.Request(tx).input('account',sql.UniqueIdentifier,account).input('employee',sql.UniqueIdentifier,people.employee).input('other',sql.UniqueIdentifier,other).query('UPDATE dbo.AccessOrgAssignment SET manager_id=@other WHERE account_id=@account AND person_id=@employee;');
+  if(scenario==='history-revoked')await new sql.Request(tx).input('account',sql.UniqueIdentifier,account).input('manager',sql.UniqueIdentifier,people.manager).query("UPDATE dbo.AccessPersonOverride SET effect='DENY' WHERE account_id=@account AND person_id=@manager AND permission_code='skill.verify';");
+  const denied=new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,people.manager).input('claim_id',sql.UniqueIdentifier,scenario==='history-foreign'?randomUUID():claim).input('status',sql.VarChar(20),'ALL');
+  await assert.rejects(denied.execute('dbo.ReadSkillReviewWorkbench'),error=>(error as {number:number}).number===(scenario==='history-revoked'?51003:51004));
+ });
+ console.log('SQL reviews verified: filtered queue, immutable submission privacy, decision history, submission/resubmission, approval/rejection, audit/notifications, foreign/self review, history isolation, revocation, manager change and stale/double decisions. All fixtures rolled back.');
 });

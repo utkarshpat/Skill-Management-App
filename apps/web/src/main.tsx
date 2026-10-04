@@ -7,5 +7,6 @@ import './styles.css';
 import './ui.css';
 import './theme.css';
 import './workspace-pages.css';
+import './sidebar-navigation.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><BrowserRouter><ThemeProvider><App /></ThemeProvider></BrowserRouter></React.StrictMode>);

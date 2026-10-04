@@ -20,6 +20,9 @@ apps/
       organization/          Organization structure and reporting-line policy
       skills/                Catalogue validation and proficiency definitions
       ai/                    Read-only assistant, tools and model adapters
+      learning/              Own plans, study sessions, practice and recovery
+      workflows/             Requests/incidents, explicit recipients and timeline
+      dashboard/             Authorized manifest and actionable own/assigned cards
     shared/
       database.ts            Restricted SQL connections and connection lifecycle
       errors.ts              Shared HTTP-aware application error
@@ -42,7 +45,10 @@ Organization and Skills keep validation and types in their domain files and SQL 
 | Access | None | Identity |
 | Organization | Access | None |
 | Skills | Access | Identity |
-| AI | Access, Organization, Skills | Identity |
+| AI | Access, Organization, Skills | Identity, Learning, Workflows |
+| Learning | Access | Identity |
+| Workflows | Access | Identity |
+| Dashboard | Access | Identity, Skills, Learning, Workflows |
 
 Shared infrastructure cannot import modules or bootstrap files. Modules cannot import `app.ts`, `server.ts`, administrator CLIs or frontend implementation. The runtime module graph is acyclic; type-only identity references are erased during compilation. SQL, cryptography and provider SDKs remain normal external dependencies.
 
@@ -75,3 +81,9 @@ Own claim drafts now belong to Skills, with domain validation, SQL adapters and 
 ### Learning module
 
 The `learning` module owns personal plans and task completion logs, behind its public index. Identity and current effective access are resolved at the HTTP boundary; restricted SQL procedures repeat account/owner/permission checks within the mutation transaction. AI imports only the LearningStore type and receives the store via composition for compact, read-only own learning retrieval. Plans, claims and learning quiz results are separate domains.
+
+### Workflow module
+
+The `workflows` module owns requests/incidents, explicit recipients, comments, cancellation and committed event notifications. It imports public Access and type-only Identity contracts. Composition passes its notification callback to Identity; Identity never imports workflow internals. Recipient OWN access is constrained to records explicitly addressed to that actor. Approval/reassignment need separate policies. See REQUESTS_AND_INCIDENTS.md for implemented boundaries and pending work.
+
+AI also consumes the Workflows public type contract for participant-authorized request queries and recipient search. Persistence stays in Workflows; AI produces reviewable request artifacts and never invokes the workflow change method. The frontend opens the normal workflow composer with drafts, keeping human submission and transactional authorization in the owning module.
