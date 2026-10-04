@@ -166,3 +166,5 @@ body{cursor:default;caret-color:transparent}input,textarea,[contenteditable=true
 .assistant-collapse-handle:hover{background:color-mix(in srgb,var(--color-ai,#7850cc) 9%,var(--surface,#fff))}
 .assistant-collapse-handle:focus-visible{outline:3px solid var(--color-ai,#7850cc);outline-offset:3px}
 @media(max-width:650px){.assistant-collapse-handle{right:auto;left:0;width:32px;height:56px;border-right:1px solid var(--line);border-left:0;border-radius:0 12px 12px 0}}
+
+.workspace-refresh-warning{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);z-index:1100;max-width:calc(100vw - 2rem);padding:.75rem 1rem;border:1px solid var(--line);border-radius:.75rem;background:var(--surface,#fff);color:var(--ink,#172033);box-shadow:0 4px 16px #0002;}

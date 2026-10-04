@@ -1,3 +1,5 @@
+import {loadNotificationFeed} from './notification-feed.js';
+import {AccessError} from '../../shared/errors.js';
 import type { Express } from 'express';
 import type { Identity } from './auth.js';
 import type { Profile } from './profile.js';
@@ -56,7 +58,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
       }
       actor = await dependencies!.resolveAccess!(identity);
     }
-    const state = await (dependencies?.access ?? store)?.snapshot();
+    const state = await (dependencies?.access ?? store)?.snapshot({includeAudit:req.path==='/api/notifications',auditPersonId:actor});
     const person = state?.people.find(item => item.id === actor && item.active && (!demo?.subject(req)||!item.entraObjectId));
     if (!state || !person) {
       res.status(403).json({ error: { code: 'ACCESS_NOT_PROVISIONED', message: 'Workspace access is not assigned.', requestId: res.locals.requestId } }); return;
@@ -64,7 +66,14 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     if(req.path==='/api/effective-access'){res.json(effectiveAccessSummary(state,person));return;}
     if(req.path==='/api/notifications'){
       if(!can(state,person,'profile.view',true)){res.sendStatus(403);return;}
-      const feed=notificationsFor(state,person); const [claims,workflows,recommendations]=await Promise.all([dependencies?.skillNotifications?.(person.id)??[],dependencies?.workflowNotifications?.(person.id)??[],dependencies?.recommendationNotifications?.(person.id)??[]]);res.json({...feed,items:[...feed.items,...claims,...workflows,...recommendations].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,30)});return;
+      try{
+       const feed=await loadNotificationFeed(notificationsFor(state,person),[
+        {name:'reviews',load:()=>dependencies?.skillNotifications?.(person.id)??Promise.resolve([])},
+        {name:'requests',load:()=>dependencies?.workflowNotifications?.(person.id)??Promise.resolve([])},
+        {name:'recommendations',load:()=>dependencies?.recommendationNotifications?.(person.id)??Promise.resolve([])},
+       ]);res.json(feed);
+      }catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{message:'Notification access changed. Refresh your workspace.'}});return;}throw error;}
+      return;
     }
     res.json({ ...workspaceFor(state, person), authentication: demo?.subject(req) ? 'local-demo' : 'microsoft' });
   });

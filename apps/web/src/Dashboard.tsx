@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useState,useRef} from 'react';
 import {Link} from 'react-router';
 import {ArrowUpRight,Bell,BookOpen,CheckCircle2,Clock3,Inbox,Layers,Plus,RefreshCw,Sparkles} from 'lucide-react';
 import {authenticatedFetch} from './auth';
@@ -19,8 +19,8 @@ export function openDashboardAssistant(card:Card['id']){
 }
 export function Dashboard(){
  const [manifest,setManifest]=useState<Manifest>(),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[cardRefresh,setCardRefresh]=useState(0);
- useEffect(()=>{const c=new AbortController();let generation=0;
-  const load=()=>{const n=++generation;authenticatedFetch('/api/dashboard',{signal:c.signal}).then(read<Manifest>).then(value=>{if(!c.signal.aborted&&n===generation){setManifest(value);setCardRefresh(v=>v+1);setError('');}}).catch(e=>{if(!c.signal.aborted&&n===generation){setError(e.message);setManifest(undefined);}});};
+ useEffect(()=>{const c=new AbortController();let generation=0,running=false;
+  const load=()=>{if(running)return;running=true;const n=++generation;authenticatedFetch('/api/dashboard',{signal:c.signal}).then(read<Manifest>).then(value=>{if(!c.signal.aborted&&n===generation){setManifest(value);setCardRefresh(v=>v+1);setError('');}}).catch(e=>{if(!c.signal.aborted&&n===generation){setError(e.message);if([401,403,409].includes(e.status))setManifest(undefined);}}).finally(()=>{running=false;});};
   load();const focus=()=>load(),timer=window.setInterval(()=>{if(document.visibilityState==='visible')load();},60000);
   window.addEventListener('focus',focus);window.addEventListener('notifications-updated',focus);window.addEventListener('own-skills-updated',focus);window.addEventListener('requests-updated',focus);
   return()=>{c.abort();clearInterval(timer);window.removeEventListener('focus',focus);window.removeEventListener('notifications-updated',focus);window.removeEventListener('own-skills-updated',focus);window.removeEventListener('requests-updated',focus);};
@@ -37,9 +37,11 @@ export function Dashboard(){
  </div>;
 }
 function DashboardCard({card,revision,refresh,ai,onAccessChanged}:{card:Card;revision:number;refresh:number;ai:boolean;onAccessChanged:()=>void}){
+ const lastRevision=useRef(revision);
+ const [refreshing,setRefreshing]=useState(false);
  const [data,setData]=useState<CardData>(),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[denied,setDenied]=useState(false),[requestStatus,setRequestStatus]=useState('');
- useEffect(()=>{const c=new AbortController();setData(undefined);setError('');setDenied(false);
-  authenticatedFetch(card.endpoint,{signal:c.signal}).then(read<CardData>).then(value=>{if(!c.signal.aborted)setData(value);}).catch(e=>{if(!c.signal.aborted){setData(undefined);if(e.status===403||e.status===409){setDenied(true);onAccessChanged();}else setError(e.message);}});
+ useEffect(()=>{const c=new AbortController();if(lastRevision.current!==revision)setData(undefined);lastRevision.current=revision;setRefreshing(true);setError('');setDenied(false);
+  authenticatedFetch(card.endpoint,{signal:c.signal}).then(read<CardData>).then(value=>{if(!c.signal.aborted)setData(value);}).catch(e=>{if(!c.signal.aborted){if([401,403,409].includes(e.status)){setData(undefined);setDenied(true);onAccessChanged();}else setError(e.message);}}).finally(()=>{if(!c.signal.aborted)setRefreshing(false);});
   return()=>c.abort();
  },[card.endpoint,revision,refresh,attempt]);
  const Icon={attention:Bell,learning:BookOpen,capability:Layers,requests:Inbox}[card.id];
@@ -47,7 +49,9 @@ function DashboardCard({card,revision,refresh,ai,onAccessChanged}:{card:Card;rev
  const href={attention:'/requests?inbox=true',learning:'/learning',capability:'/my-skills',requests:'/requests'}[card.id];
  return <section className={'dashboard-card dashboard-'+card.id+(card.id==='attention'&&data?.total===0&&!data.partial?' dashboard-caught-up':'')} aria-label={card.title}>
   <header><span className="dashboard-icon"><Icon size={20}/></span><div><h3>{card.title}</h3><p>{card.description}</p></div></header>
-  {error?<div className="dashboard-error" role="alert"><p>{error}</p><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></div>:!data?<div className="dashboard-skeleton" role="status" aria-label={'Loading '+card.title}><i/><i/><i/></div>:<>
+  {refreshing&&data&&<small role="status">Refreshing...</small>}
+  {error&&<div className="dashboard-error" role="alert"><p>{error}</p><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></div>}
+  {!data?(error?null:<div className="dashboard-skeleton" role="status" aria-label={'Loading '+card.title}><i/><i/><i/></div>):<>
    {card.id==='attention'&&<DashboardAttention total={data.total} partial={data.partial} groups={data.groups} onRetry={()=>setAttempt(n=>n+1)}/>}
    {card.id==='learning'&&<DashboardLearning data={data as DashboardLearningData} ai={ai} onHelp={task=>window.dispatchEvent(new CustomEvent('assistant-context-request',{detail:{prompt:learningTaskPrompt(task)}}))}/>}
    {card.id==='capability'&&<DashboardCapability data={data as DashboardCapabilityData}/>}

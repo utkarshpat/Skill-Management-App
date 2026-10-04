@@ -27,9 +27,9 @@ export function App() {
   const [sessionNotice,setSessionNotice]=useState('');
   const [workspace,setWorkspace]=useState<WorkspaceState>(),[workspaceError,setWorkspaceError]=useState(''),[workspaceAttempt,setWorkspaceAttempt]=useState(0);
   useEffect(()=>{
-    setWorkspace(undefined);setWorkspaceError('');if(session!=='signed-in')return;
+    setWorkspaceError('');if(session!=='signed-in'){setWorkspace(undefined);return;}
     const controller=new AbortController();let generation=0,lastLoad=0;
-    const load=()=>{lastLoad=Date.now();const request=++generation;authenticatedFetch('/api/workspace',{signal:controller.signal}).then(async response=>{if(!response.ok)throw Error('Workspace navigation could not be loaded.');const body=await response.json();if(!controller.signal.aborted&&request===generation){setWorkspace(body);setWorkspaceError('');}}).catch(error=>{if(!controller.signal.aborted&&request===generation){setWorkspace(undefined);setWorkspaceError(error.message);}});};
+    const load=()=>{lastLoad=Date.now();const request=++generation;authenticatedFetch('/api/workspace',{signal:controller.signal}).then(async response=>{if(!response.ok)throw Object.assign(Error('Workspace navigation could not be refreshed.'),{status:response.status});const body=await response.json();if(!controller.signal.aborted&&request===generation){setWorkspace(body);setWorkspaceError('');}}).catch(error=>{if(!controller.signal.aborted&&request===generation){if([401,403].includes(error.status))setWorkspace(undefined);setWorkspaceError(error.message);}});};
     const focus=()=>{if(document.visibilityState==='visible'&&Date.now()-lastLoad>15000)load();};
     load();const timer=setInterval(()=>{if(document.visibilityState==='visible')load();},60000);
     window.addEventListener('workspace-access-updated',load);window.addEventListener('focus',focus);document.addEventListener('visibilitychange',focus);
@@ -40,8 +40,9 @@ export function App() {
   if (pathname === '/preview') return <Overview />;
   if (session === 'loading') return <div className="session-loading" role="status">Preparing your workspace…</div>;
   if(session==='signed-in'&&!workspace)return <div className="session-loading" role="status">{workspaceError?<>{workspaceError}<button onClick={()=>setWorkspaceAttempt(value=>value+1)}>Retry</button></>:'Preparing workspace navigation…'}</div>;
-  if (session==='signed-in'&&administrationShellFor(pathname,Boolean(workspace?.capabilities.administration)))return <Suspense fallback={<div className="session-loading" role="status">Opening your workspace…</div>}><AccessAdmin personalPath={pathname==='/access'?undefined:pathname} personalCapabilities={workspace?.capabilities} workspaceContext={workspace}/><Suspense fallback={null}><AssistantWidget /></Suspense></Suspense>;
-  return session === 'signed-in' ? <Suspense fallback={<div className="session-loading" role="status">Opening your workspace…</div>}><Workspace initialWorkspace={workspace}/><Suspense fallback={null}><AssistantWidget /></Suspense></Suspense> : <Welcome authError={session === 'error'} sessionNotice={sessionNotice} onDevelopmentSessionReady={()=>{setSessionNotice('');setSession('signed-in');}} />;
+  const refreshWarning=workspace&&workspaceError?<div className="workspace-refresh-warning" role="alert">{workspaceError} <button onClick={()=>setWorkspaceAttempt(n=>n+1)}>Retry</button></div>:null;
+  if (session==='signed-in'&&administrationShellFor(pathname,Boolean(workspace?.capabilities.administration)))return <>{refreshWarning}<Suspense fallback={<div className="session-loading" role="status">Opening your workspace…</div>}><AccessAdmin personalPath={pathname==='/access'?undefined:pathname} personalCapabilities={workspace?.capabilities} workspaceContext={workspace}/><Suspense fallback={null}><AssistantWidget /></Suspense></Suspense></>;
+  return session === 'signed-in' ? <>{refreshWarning}<Suspense fallback={<div className="session-loading" role="status">Opening your workspace…</div>}><Workspace initialWorkspace={workspace}/><Suspense fallback={null}><AssistantWidget /></Suspense></Suspense></> : <Welcome authError={session === 'error'} sessionNotice={sessionNotice} onDevelopmentSessionReady={()=>{setSessionNotice('');setSession('signed-in');}} />;
 }
 
 function Welcome({ authError,sessionNotice,onDevelopmentSessionReady }: { authError: boolean;sessionNotice:string;onDevelopmentSessionReady:()=>void }) {

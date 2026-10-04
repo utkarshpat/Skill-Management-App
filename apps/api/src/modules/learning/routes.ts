@@ -12,7 +12,7 @@ export function registerLearningRoutes(app:Express,deps:LearningDependencies|und
   res.setHeader('Cache-Control','no-store');let actor:string|undefined;
   if(demo?.subject(req)){if(!demo.requestAllowed(req)||(req.method!=='GET'&&!demo.mutationAllowed(req))){res.sendStatus(403);return;}actor=(await demo.person(req))?.id;}
   else{try{if(!deps?.resolveAccess)throw Error();actor=await deps.resolveAccess(await deps.verify(req.headers.authorization));}catch{res.status(401).json({error:{message:'Sign in to continue.'}});return;}}
-  const state=await(deps?.access??store)?.snapshot(),person=state?.people.find(p=>p.id===actor&&p.active);
+  const state=await(deps?.access??store)?.snapshot({includeAudit:false}),person=state?.people.find(p=>p.id===actor&&p.active);
   if(!state||!person||!can(state,person,'learning.view',true)||(req.method!=='GET'&&!can(state,person,'learning.manage',true))){res.sendStatus(403);return;}
   res.locals.learningActor=person.id;next();
  });

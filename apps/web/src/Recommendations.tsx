@@ -3,6 +3,7 @@ import {useSearchParams,Link} from 'react-router';
 import {Plus,Search,Send,BookOpen,MessageSquare,Check,ArrowRight,RefreshCw,UserRound,Sparkles} from 'lucide-react';
 import {authenticatedFetch} from './auth';
 import {FormDialog} from './FormDialog';
+import {recommendationQuery} from './learning-navigation';
 import {dateInZone,shiftDay} from './learning-calendar';
 import './recommendations.css';
 import {LearningPlanner} from './LearningPlanner';
@@ -14,8 +15,9 @@ export function Recommendations({sentOnly=false,onAccepted}:{sentOnly?:boolean;o
  const [params,setParams]=useSearchParams(),[view,setView]=useState<'received'|'sent'>(sentOnly||params.get('direction')==='sent'?'sent':'received'),[page,setPage]=useState(1),[feed,setFeed]=useState<Feed>(),[error,setError]=useState(''),[loading,setLoading]=useState(true),[attempt,setAttempt]=useState(0),[sending,setSending]=useState(false),[detail,setDetail]=useState<Recommendation>(),[notice,setNotice]=useState('');
  const focused=params.get('recommendation')??'';
  const direction=params.get('direction');
+ useEffect(()=>{if(focused)setPage(1);},[focused]);
  useEffect(()=>{setView(sentOnly||direction==='sent'?'sent':'received');setPage(1);},[sentOnly,direction]);
- useEffect(()=>{const c=new AbortController();setLoading(true);setError('');setFeed(undefined);setDetail(undefined);const q=new URLSearchParams({view,page:String(page)});if(focused)q.set('id',focused);
+ useEffect(()=>{const c=new AbortController();setLoading(true);setError('');setFeed(undefined);setDetail(undefined);const q=recommendationQuery(view,page,focused);
  authenticatedFetch('/api/recommendations?'+q,{signal:c.signal}).then(read<Feed>).then(value=>{if(!c.signal.aborted){setFeed(value);if(focused){if(value.items.length===1)setDetail(value.items[0]);else setError('This recommendation is unavailable under your current access.');}}}).catch(e=>{if(!c.signal.aborted){setError(e.message);setDetail(undefined);}}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();},[view,page,attempt,focused]);
  function all(nextView=view){const q=new URLSearchParams(params);q.delete('recommendation');if(nextView==='sent')q.set('direction','sent');else q.delete('direction');setParams(q,{replace:true});setDetail(undefined);setPage(1);}
  function updated(){setDetail(undefined);setAttempt(n=>n+1);window.dispatchEvent(new Event('notifications-updated'));onAccepted?.();}

@@ -235,7 +235,7 @@ export class ToolRegistry {
 
       signal.throwIfAborted();
 
-      const state=await this.access.snapshot(),person=state.people.find(item=>item.id===actorId);
+      const state=await this.access.snapshot({includeAudit:false}),person=state.people.find(item=>item.id===actorId);
 
       if(!tool||!person||!this.permits(state,person,name))throw new AccessError(403,'Current permission does not allow this assistant action.');
 

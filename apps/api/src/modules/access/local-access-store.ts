@@ -13,7 +13,7 @@ export interface LocalAccessState { reporting?:{personId:string;managerId:string
 export { AccessError } from '../../shared/errors.js';
 export interface AccessStore {
   readonly storage?: 'azure-sql' | 'local-file';
-  snapshot(): LocalAccessState | Promise<LocalAccessState>;
+  snapshot(options?:{includeAudit?:boolean;auditPersonId?:string}): LocalAccessState | Promise<LocalAccessState>;
   person(id: string): LocalPerson | undefined | Promise<LocalPerson | undefined>;
   save(actorId: string,input: unknown): Promise<LocalAccessState>;
 }

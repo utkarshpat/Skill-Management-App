@@ -11,3 +11,7 @@ test('notification actions target implemented internal destinations without gran
 test('notification actions reject external, protocol relative and unsupported destinations',()=>{
  for(const href of ['https://example.com','//example.com','javascript:alert(1)','/unknown','/requests\\evil','/requests/other'])assert.equal(notificationDestination(href),undefined);
 });
+
+test('control characters cannot turn an internal notification into an external redirect',()=>{
+ for(const href of ['/\n/example.com/profile','/\t/example.com/requests','/\r/example.com/learning','/profile\u0000'])assert.equal(notificationDestination(href),undefined);
+});

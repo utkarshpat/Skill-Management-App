@@ -20,7 +20,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
       catch{res.status(401).json({error:{code:'NOT_AUTHORIZED',message:'Sign in to continue.',requestId:res.locals.requestId}});return;}
       actor=await dependencies!.resolveAccess!(identity);
     }
-    const state=await (dependencies?.access??store)?.snapshot(),person=state?.people.find(item=>item.id===actor&&item.active);
+    const state=await (dependencies?.access??store)?.snapshot({includeAudit:false}),person=state?.people.find(item=>item.id===actor&&item.active);
     if(!state||!person||!(req.method==='POST'?can(state,person,'skill.catalogue.manage'):can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage'))){res.sendStatus(403);return;}
     res.locals.catalogueActor=person.id;next();
   });

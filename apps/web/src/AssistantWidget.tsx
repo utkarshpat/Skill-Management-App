@@ -27,12 +27,13 @@ export function AssistantWidget() {
  const conversationId=useRef<string|undefined>(undefined);
  const session=useRef(new AssistantSession());
  const [unread,setUnread]=useState(false);
- function newChat(){session.current.newConversation();conversationId.current=undefined;setMessages([]);setText('');setError('');setActionNotice('');setPendingContext(undefined);setShowHistory(false);setDocument(undefined);}
+ function newChat(){historyController.current?.abort();setHistoryBusy(false);session.current.newConversation();conversationId.current=undefined;setMessages([]);setText('');setError('');setActionNotice('');setPendingContext(undefined);setShowHistory(false);setDocument(undefined);}
  function openChat(){const restart=session.current.open();if(restart){newChat();if(unread)setActionNotice('Your previous reply is available in Recent chats.');}setOpen(true);setUnread(false);}
  function collapse(){session.current.collapse();setOpen(false);requestAnimationFrame(()=>launcher.current?.focus());}
+ const historyController=useRef<AbortController|null>(null);
  const actionController=useRef<AbortController|null>(null);
  const controller=useRef<AbortController|null>(null),input=useRef<HTMLTextAreaElement>(null),launcher=useRef<HTMLButtonElement>(null),latest=useRef<HTMLDivElement>(null),closeButton=useRef<HTMLButtonElement>(null);
- useEffect(()=>()=>{controller.current?.abort();actionController.current?.abort();},[]);
+ useEffect(()=>()=>{controller.current?.abort();actionController.current?.abort();historyController.current?.abort();},[]);
  function prepareContext(value:unknown){if(busy||actionBusy||historyBusy)return;const context=assistantContextPrompt(value,session.current.restartOnOpen?'':text);if(!context)return;openChat();setError('');setShowHistory(false);if(context.needsReplacement)setPendingContext(context.prompt);else{setPendingContext(undefined);setText(context.prompt);}}
  useEffect(()=>{const contextual=(event:Event)=>prepareContext((event as CustomEvent<{prompt?:unknown}>).detail?.prompt);window.addEventListener('assistant-context-request',contextual);return()=>window.removeEventListener('assistant-context-request',contextual);},[busy,actionBusy,historyBusy,text]);
  useEffect(()=>{if(open)(status?.configured?input.current:closeButton.current)?.focus();},[open,status?.configured]);
@@ -46,15 +47,17 @@ export function AssistantWidget() {
    if(kind==='review_own_skill')setReviewDescription(description);else{navigate(body.destination);setActionNotice('Opened '+body.label+'. Your chat stays here.');}
   }catch(err){if(!pending.signal.aborted)setError(err instanceof Error?err.message:'Could not open this action.');}finally{if(actionController.current===pending){actionController.current=null;setActionBusy(false);}}
  }
- async function historyRequest(path='',method='GET'){
-  const response=await authenticatedFetch('/api/assistant/conversations'+path,{method});
+ async function historyRequest(path='',method='GET',signal?:AbortSignal){
+  const response=await authenticatedFetch('/api/assistant/conversations'+path,{method,signal});
   const body=await response.json().catch(()=>undefined);
   if(!response.ok)throw new Error(body?.error?.message??'Chat history is unavailable. Please retry.');return body;
  }
- async function loadHistory(){setHistoryBusy(true);setError('');try{const body=await historyRequest();setChats(body.conversations);}catch(err){setError(err instanceof Error?err.message:'Could not load chats.');}finally{setHistoryBusy(false);}}
- async function resume(id:string){if(busy||historyBusy||actionBusy)return;setHistoryBusy(true);setError('');try{const body=await historyRequest('/'+id);conversationId.current=id;setMessages(body.messages);setPendingContext(undefined);setText('');setDocument(undefined);setShowHistory(false);}catch(err){setError(err instanceof Error?err.message:'Could not open chat.');}finally{setHistoryBusy(false);}}
- async function deleteChat(id:string){if(busy||historyBusy||actionBusy)return;setHistoryBusy(true);setError('');try{await historyRequest('/'+id,'DELETE');setChats(current=>current.filter(chat=>chat.id!==id));if(conversationId.current===id){conversationId.current=undefined;setMessages([]);setText('');}}catch(err){setError(err instanceof Error?err.message:'Could not delete chat.');}finally{setHistoryBusy(false);}}
- function close(){actionController.current?.abort();session.current.close();setPendingContext(undefined);collapse();}
+ function beginHistory(){historyController.current?.abort();const pending=new AbortController();historyController.current=pending;setHistoryBusy(true);setError('');return pending;}
+ function endHistory(pending:AbortController){if(historyController.current===pending){historyController.current=null;setHistoryBusy(false);}}
+ async function loadHistory(){const pending=beginHistory();try{const body=await historyRequest('','GET',pending.signal);if(!pending.signal.aborted)setChats(body.conversations);}catch(err){if(!pending.signal.aborted)setError(err instanceof Error?err.message:'Could not load chats.');}finally{endHistory(pending);}}
+ async function resume(id:string){if(busy||historyBusy||actionBusy)return;const pending=beginHistory(),epoch=session.current.epoch;try{const body=await historyRequest('/'+id,'GET',pending.signal);if(pending.signal.aborted||!session.current.completion(epoch).current)return;conversationId.current=id;setMessages(body.messages);setPendingContext(undefined);setText('');setDocument(undefined);setShowHistory(false);}catch(err){if(!pending.signal.aborted)setError(err instanceof Error?err.message:'Could not open chat.');}finally{endHistory(pending);}}
+ async function deleteChat(id:string){if(busy||historyBusy||actionBusy)return;const pending=beginHistory(),epoch=session.current.epoch;try{await historyRequest('/'+id,'DELETE',pending.signal);if(pending.signal.aborted||!session.current.completion(epoch).current)return;setChats(current=>current.filter(chat=>chat.id!==id));if(conversationId.current===id){conversationId.current=undefined;setMessages([]);setText('');}}catch(err){if(!pending.signal.aborted)setError(err instanceof Error?err.message:'Could not delete chat.');}finally{endHistory(pending);}}
+ function close(){historyController.current?.abort();setHistoryBusy(false);actionController.current?.abort();session.current.close();setPendingContext(undefined);collapse();}
  async function send(prompt?:string){
   if(busy||historyBusy||actionBusy||!(prompt??text).trim()||!status?.configured)return;
   const next:ChatMessage[]=[...messages,{role:'user',content:(prompt??text).trim()}];setPendingContext(undefined);setMessages(next);setText('');setBusy(true);setError('');
