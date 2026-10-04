@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {useSearchParams} from 'react-router';
 import {authenticatedFetch} from './auth';
+import {FormDialog} from './FormDialog';
 import {SkillClaimDialog} from './SkillClaimDialog';
 import type {Claim} from './MySkills';
 import {Recommendations} from './Recommendations';
@@ -51,6 +52,7 @@ export function SkillReviews(){
    {!loading&&data&&data.total>0&&<footer><span>Showing {(page-1)*data.pageSize+1}–{Math.min(page*data.pageSize,data.total)} of {data.total} claims</span><div className="review-pagination"><button aria-label="Previous reviews page" className="secondary-button" disabled={page===1} onClick={()=>setPage(n=>n-1)}><ChevronLeft size={17}/></button><span>Page {page}</span><button aria-label="Next reviews page" className="secondary-button" disabled={page*data.pageSize>=data.total} onClick={()=>setPage(n=>n+1)}><ChevronRight size={17}/></button></div></footer>}
   </section>
   <p className="review-policy-note"><ShieldCheck size={15}/>Only assigned claims from your current direct reports appear here. Private drafts stay with the employee.</p>
+  {!claim&&!error&&(opening||Boolean(params.get('claim')))&&<FormDialog title="Skill review" busy={opening} onClose={()=>{const next=new URLSearchParams(params);next.delete('claim');setParams(next,{replace:true});}}><div className="notification-destination-loading" role="status"><RefreshCw size={26} className="notification-spin"/><strong>Opening skill review…</strong><p>Checking the current claim and your available actions.</p></div></FormDialog>}
   {claim&&<SkillClaimDialog claim={claim} mode={claim.status==='SUBMITTED'&&claim.reviewAccess?.allowed?'review':'view'} history={data?.canReadHistory} onClose={()=>setClaim(undefined)} onSaved={()=>{setClaim(undefined);setNotice('Review saved. The employee has been notified.');setAttempt(n=>n+1);window.dispatchEvent(new Event('notifications-updated'));}}/>}
   </>}
  </div>;
