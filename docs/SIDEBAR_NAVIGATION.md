@@ -1,6 +1,6 @@
 # Sidebar navigation
 
-Personal and administration shells share one permission-filtered navigation component. The default order follows daily work: Dashboard, Learn & Grow, My skills, Skill reviews, Requests, then available catalogue and administration pages. My profile is the final destination. Missing permissions omit their entries; role names never determine order.
+Personal and administration shells share one permission-filtered navigation component. The default order follows daily work: Dashboard, Learn & Grow, My skills, Skill reviews, Requests, then available catalogue and administration pages. My profile is pinned in a separate footer, outside the scrollable navigation. It has no drag handle and cannot be moved even by an older stored preference. The logo is centered. Missing permissions omit their entries; role names never determine order.
 
 Users can hold a separate grip for 220 milliseconds and drag to another row. The destination is highlighted; release commits the order. Clicking a link retains normal navigation and cannot start a drag. Pointer cancellation, capture loss and Escape cancel a gesture. Only the grip blocks touch scrolling; the rest of the mobile sidebar remains scrollable. Arrow Up/Down or Home/End on the focused grip move the item without needing a pointer; a live status announces changes. Reset restores the default order.
 

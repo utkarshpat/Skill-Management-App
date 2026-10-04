@@ -1,3 +1,4 @@
+import {PersonalProfile} from './PersonalProfile';
 import {SidebarNavigation} from './SidebarNavigation';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
@@ -102,5 +103,3 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
     </main></div>
   </div>;
 }
-
-function PersonalProfile({workspace:state}:{workspace:WorkspaceState}){return <section className="profile-panel member-profile"><div className="member-profile-header"><span className="member-avatar" aria-hidden="true">{state.person.displayName.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join('')}</span><div><h2>{state.person.displayName}</h2><p>{state.person.employeeCode}</p></div><span className="member-auth"><ShieldCheck size={16}/>{state.authentication==='local-demo'?'Demo account':'Microsoft account'}</span></div><dl className="profile-details member-details"><div><dt>Employee ID</dt><dd>{state.person.employeeCode}</dd></div><div><dt>Sign-in method</dt><dd>{state.authentication==='local-demo'?'Temporary demo login':'Microsoft'}</dd></div><div><dt>Assigned roles</dt><dd><span className="directory-tags">{state.person.roles.length?state.person.roles.map(role=><span key={role}>{role}</span>):'None assigned'}</span></dd></div></dl></section>;}

@@ -7,9 +7,9 @@ export interface DashboardDependencies extends DashboardSources {verify:(authori
 export function registerDashboardRoutes(app:Express,deps:DashboardDependencies|undefined,store?:AccessStore,demo?:DevelopmentSessions){
  app.use('/api/dashboard',async(req,res,next)=>{
   res.setHeader('Cache-Control','no-store');let actor:string|undefined;
-  if(demo?.subject(req)){if(!demo.requestAllowed(req)){res.sendStatus(403);return;}actor=(await demo.person(req))?.id;}
+  if(demo?.subject(req)){if(!demo.requestAllowed(req)){res.sendStatus(403);return;}actor=demo.subject(req);}
   else try{if(!deps?.resolveAccess)throw Error();actor=await deps.resolveAccess(await deps.verify(req.headers.authorization));}catch{res.sendStatus(401);return;}
-  const state=await(deps?.access??store)?.snapshot(),person=state?.people.find(p=>p.id===actor&&p.active);
+  const state=await(deps?.access??store)?.snapshot(),person=state?.people.find(p=>p.id===actor&&p.active&&(!demo?.subject(req)||!p.entraObjectId));
   if(!state||!person){res.sendStatus(403);return;}
   if(Object.keys(req.query).some(key=>key!=='status')||(Object.keys(req.query).length&&(req.path!=='/requests'||typeof req.query.status!=='string'||!['SUBMITTED','IN_PROGRESS','RESOLVED','CANCELLED'].includes(req.query.status)))){res.status(400).json({error:{message:'Choose a valid request status. Dashboard scope is resolved by the server.'}});return;}
   res.locals.dashboardPerson=person;res.locals.dashboardState=state;res.locals.dashboardRevision=state.revision;res.locals.dashboardPolicy=dashboardPolicy(state,person);next();

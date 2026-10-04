@@ -3,14 +3,14 @@ export const DEFAULT_SIDEBAR_ORDER=['dashboard','learning','my-skills','skill-re
 const known=new Set<string>(DEFAULT_SIDEBAR_ORDER);
 export function normalizeSidebarOrder(value:unknown):string[]{
  const saved=Array.isArray(value)&&value.length<=30?value.filter((id):id is string=>typeof id==='string'&&known.has(id)):[];
- return [...new Set([...saved,...DEFAULT_SIDEBAR_ORDER])];
+ return [...new Set([...saved,...DEFAULT_SIDEBAR_ORDER])].filter(id=>id!=='profile').concat('profile');
 }
 export function orderSidebarItems<T extends {id:string}>(items:T[],preference:unknown):T[]{
  const ranks=normalizeSidebarOrder(preference);
  return [...items].sort((a,b)=>ranks.indexOf(a.id)-ranks.indexOf(b.id));
 }
 export function moveSidebarItem(preference:unknown,visibleIds:string[],source:string,target:string):string[]{
- const full=normalizeSidebarOrder(preference),visible=new Set(visibleIds.filter(id=>known.has(id)));
+ const full=normalizeSidebarOrder(preference),visible=new Set(visibleIds.filter(id=>known.has(id)&&id!=='profile'));
  const shown=full.filter(id=>visible.has(id)),from=shown.indexOf(source),to=shown.indexOf(target);
  if(from<0||to<0||from===to)return full;
  shown.splice(to,0,...shown.splice(from,1));let index=0;

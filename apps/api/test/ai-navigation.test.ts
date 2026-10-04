@@ -8,7 +8,7 @@ import {rolePresets} from '../src/modules/access/role-presets.js';
 test('assistant navigation follows current permissions and forbids actor selectors, altered URLs and revoked actions',async()=>{
  const access=await LocalAccessStore.open(),state=access.snapshot(),actor=state.people[0].id;state.roles[0].permissions=structuredClone(rolePresets[0].permissions);state.roles[0].name='Super Admin';access.snapshot=()=>structuredClone(state);
  const service=new AssistantService(access,undefined,undefined);
- const available=await service.navigation(actor);assert.ok('pages' in available);assert.ok(available.pages?.some(page=>page.url==='/my-skills'));assert.ok(!available.pages?.some(page=>page.url.startsWith('/access')));
+ const available=await service.navigation(actor);assert.ok('pages' in available);assert.ok('status' in available);assert.equal(available.status?.configured,false);assert.ok(available.pages?.some(page=>page.url==='/my-skills'));assert.ok(!available.pages?.some(page=>page.url.startsWith('/access')));
  await service.navigation(actor,{destination:'/my-skills',action:'review_own_skill'});
  for(const destination of ['/access?view=people','/my-skills?personId=other','https://evil.invalid','/my-skills#other'])await assert.rejects(service.navigation(actor,{destination,action:'open_page'}));
  await assert.rejects(service.navigation(actor,{destination:'/my-skills',action:'open_page',actorId:'other'}));

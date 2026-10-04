@@ -12,12 +12,12 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     const access=dependencies?.access??store;let actor:string|undefined;
     if(demo?.subject(req)){
       if(!demo.requestAllowed(req)||(!['GET','HEAD'].includes(req.method)&&!demo!.mutationAllowed(req))){res.sendStatus(403);return;}
-      actor=(await demo.person(req))?.id;
+      actor=demo.subject(req);
     }else{
       try{if(!dependencies?.resolveAccess)throw new Error();actor=await dependencies.resolveAccess(await dependencies.verify(req.headers.authorization));}
       catch{res.status(401).json({error:{code:'NOT_AUTHORIZED',message:'Sign in to continue.',requestId:res.locals.requestId}});return;}
     }
-    const state=await access?.snapshot(),person=state?.people.find(item=>item.id===actor&&item.active);
+    const state=await access?.snapshot(),person=state?.people.find(item=>item.id===actor&&item.active&&(!demo?.subject(req)||!item.entraObjectId));
     if(!state||!person||!can(state,person,'profile.view',true)){res.sendStatus(403);return;}
     res.locals.assistantActor=person.id;next();
   });

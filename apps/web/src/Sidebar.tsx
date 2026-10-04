@@ -7,7 +7,9 @@ export function Sidebar({children,className=''}:{children:ReactNode;className?:s
     // Even a sidebar shorter than its viewport must not scroll the document.
     const wheel=(event:WheelEvent)=>{
       if(event.ctrlKey||!event.deltaY)return;
-      const atTop=element.scrollTop<=0,atBottom=element.scrollTop+element.clientHeight>=element.scrollHeight-1;
+      const scroll=element.querySelector<HTMLElement>('.sidebar-scroll')??element;
+      const atTop=scroll.scrollTop<=0,atBottom=scroll.scrollTop+scroll.clientHeight>=scroll.scrollHeight-1;
+      if(!(event.target instanceof Node)||!scroll.contains(event.target)){event.preventDefault();return;}
       if((event.deltaY<0&&atTop)||(event.deltaY>0&&atBottom))event.preventDefault();
     };
     element.addEventListener('wheel',wheel,{passive:false});

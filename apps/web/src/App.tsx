@@ -1,14 +1,17 @@
-import { Workspace, type WorkspaceState } from './Workspace';
+import type {WorkspaceState} from './Workspace';
 import {administrationShellFor} from './WorkspaceNavigation';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { AccessAdmin } from './AccessAdmin';
-import { AssistantWidget } from './AssistantWidget';
+
+
 import { ThemeSwitcher } from './Theme';
 import { authenticatedFetch, initializeAuth, signedIn, signIn, signInConfigured, refreshDevelopmentLogin } from './auth';
 import { DevelopmentLogin } from './DevelopmentLogin';
 import { BookOpen, BriefcaseBusiness, Compass, Layers3, ListChecks, Users } from 'lucide-react';
 
+const Workspace=lazy(()=>import('./Workspace').then(module=>({default:module.Workspace})));
+const AccessAdmin=lazy(()=>import('./AccessAdmin').then(module=>({default:module.AccessAdmin})));
+const AssistantWidget=lazy(()=>import('./AssistantWidget').then(module=>({default:module.AssistantWidget})));
 const modules = [
   { title: 'My Capability', icon: Compass, description: 'Your skills, evidence and experience.' },
   { title: 'Team & Assessment', icon: Users, description: 'Understand capability. Verify with confidence.' },
@@ -29,8 +32,8 @@ export function App() {
   if (pathname === '/preview') return <Overview />;
   if (session === 'loading') return <div className="session-loading" role="status">Preparing your workspace…</div>;
   if(session==='signed-in'&&!workspace)return <div className="session-loading" role="status">{workspaceError?<>{workspaceError}<button onClick={()=>setWorkspaceAttempt(value=>value+1)}>Retry</button></>:'Preparing workspace navigation…'}</div>;
-  if (session==='signed-in'&&administrationShellFor(pathname,Boolean(workspace?.capabilities.administration)))return <><AccessAdmin personalPath={pathname==='/access'?undefined:pathname} personalCapabilities={workspace?.capabilities} workspaceContext={workspace}/><AssistantWidget /></>;
-  return session === 'signed-in' ? <><Workspace initialWorkspace={workspace}/><AssistantWidget /></> : <Welcome authError={session === 'error'} sessionNotice={sessionNotice} onDevelopmentSessionReady={()=>{setSessionNotice('');setSession('signed-in');}} />;
+  if (session==='signed-in'&&administrationShellFor(pathname,Boolean(workspace?.capabilities.administration)))return <Suspense fallback={<div className="session-loading" role="status">Opening your workspace…</div>}><AccessAdmin personalPath={pathname==='/access'?undefined:pathname} personalCapabilities={workspace?.capabilities} workspaceContext={workspace}/><Suspense fallback={null}><AssistantWidget /></Suspense></Suspense>;
+  return session === 'signed-in' ? <Suspense fallback={<div className="session-loading" role="status">Opening your workspace…</div>}><Workspace initialWorkspace={workspace}/><Suspense fallback={null}><AssistantWidget /></Suspense></Suspense> : <Welcome authError={session === 'error'} sessionNotice={sessionNotice} onDevelopmentSessionReady={()=>{setSessionNotice('');setSession('signed-in');}} />;
 }
 
 function Welcome({ authError,sessionNotice,onDevelopmentSessionReady }: { authError: boolean;sessionNotice:string;onDevelopmentSessionReady:()=>void }) {

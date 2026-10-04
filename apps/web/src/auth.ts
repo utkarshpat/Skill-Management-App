@@ -27,7 +27,8 @@ export async function unlockDemoPeople(accessCode: string) {
 export async function directSignIn(personId: string, accessCode?: string) {
   const response = await fetch('/api/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personId, accessCode }),signal:AbortSignal.timeout(90000) });
   if (!response.ok) throw new Error('Direct login failed.');
-  window.location.assign('/');
+  await refreshDevelopmentLogin();
+  if(!demoSession)throw new Error('Demo session could not be verified.');
 }
 export function initializeAuth() {
   return ready ??= (async () => {

@@ -44,7 +44,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     res.setHeader('Cache-Control', 'no-store');
     let actor: string | undefined;
     if (demo?.subject(req)) {
-      actor = (await demo.person(req))?.id;
+      actor = demo.subject(req);
     } else {
       let identity: Identity;
       try {
@@ -57,13 +57,13 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
       actor = await dependencies!.resolveAccess!(identity);
     }
     const state = await (dependencies?.access ?? store)?.snapshot();
-    const person = state?.people.find(item => item.id === actor && item.active);
+    const person = state?.people.find(item => item.id === actor && item.active && (!demo?.subject(req)||!item.entraObjectId));
     if (!state || !person) {
       res.status(403).json({ error: { code: 'ACCESS_NOT_PROVISIONED', message: 'Workspace access is not assigned.', requestId: res.locals.requestId } }); return;
     }
     if(req.path==='/api/notifications'){
       if(!can(state,person,'profile.view',true)){res.sendStatus(403);return;}
-      const feed=notificationsFor(state,person); const claims=await dependencies?.skillNotifications?.(person.id)??[];const workflows=await dependencies?.workflowNotifications?.(person.id)??[];res.json({...feed,items:[...feed.items,...claims,...workflows].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,30)});return;
+      const feed=notificationsFor(state,person); const [claims,workflows]=await Promise.all([dependencies?.skillNotifications?.(person.id)??[],dependencies?.workflowNotifications?.(person.id)??[]]);res.json({...feed,items:[...feed.items,...claims,...workflows].sort((a,b)=>b.at.localeCompare(a.at)).slice(0,30)});return;
     }
     res.json({ ...workspaceFor(state, person), authentication: demo?.subject(req) ? 'local-demo' : 'microsoft' });
   });
