@@ -50,7 +50,7 @@ export function AccessAdmin({personalPath,personalCapabilities,workspaceContext}
   async function load() {
     const response=await authenticatedFetch(endpoint);
     if (!response.ok) throw new Error(response.status===403?'Your ID does not have permission to administer access.':response.status===401?'Sign in with an assigned administrator ID.':'Local access administration is unavailable.');
-    const data:State=await response.json(); setState(data); return data;
+    const data:State=await response.json(); setState(data); window.dispatchEvent(new Event('workspace-access-updated')); return data;
   }
   useEffect(()=>{let active=true;const controller=new AbortController();authenticatedFetch(endpoint,{signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error(response.status===403?'Your ID does not have permission to administer access.':'Sign in with your assigned Microsoft administrator account.'); const data:State=await response.json(); if(active)setState(data);}).catch(err=>{if(active)setError(err.message);});return()=>{active=false;controller.abort();};},[endpoint]);
   async function save(kind:'role'|'person') {

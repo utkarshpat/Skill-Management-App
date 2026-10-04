@@ -6,6 +6,24 @@ import { LocalAccessStore, type LocalAccessState } from '../src/modules/access/l
 import { workspaceFor } from '../src/modules/identity/workspace.js';
 import { rolePresets } from '../src/modules/access/role-presets.js';
 
+test('current direct reporting relationships enable reviews without a manager role and explicit deny wins',()=>{
+ const state:LocalAccessState={revision:1,audit:[],roles:[{id:'employee',name:'Employee',permissions:structuredClone(rolePresets[0].permissions)}],people:[{id:'manager',displayName:'Any title',employeeCode:'EMP',active:true,hasDirectReports:true,roleIds:['employee'],overrides:[]}]};
+ const person=state.people[0];
+ assert.equal(workspaceFor(state,person).capabilities.reviewSkills,true);
+ person.hasDirectReports=false;assert.equal(workspaceFor(state,person).capabilities.reviewSkills,false);
+ person.hasDirectReports=true;person.overrides.push({permission:'skill.verify',scope:'ORGANIZATION',effect:'DENY'});
+ assert.equal(workspaceFor(state,person).capabilities.reviewSkills,false);
+ person.overrides[0].validUntil='2020-01-01T00:00:00Z';assert.equal(workspaceFor(state,person).capabilities.reviewSkills,true);
+ person.active=false;assert.equal(workspaceFor(state,person).capabilities.reviewSkills,false);
+ person.active=true;person.overrides.push({permission:'profile.view',scope:'OWN',effect:'DENY'});assert.equal(workspaceFor(state,person).capabilities.reviewSkills,false);
+});
+
+test('a manager title or broad review grant cannot create actual direct-report scope',()=>{
+ const state:LocalAccessState={revision:1,audit:[],roles:[{id:'manager-role',name:'Manager',permissions:structuredClone(rolePresets[1].permissions)}],people:[{id:'person',displayName:'Title only',employeeCode:'EMP',active:true,hasDirectReports:false,roleIds:['manager-role'],overrides:[]}]};
+ assert.equal(workspaceFor(state,state.people[0]).capabilities.reviewSkills,false);
+ state.people[0].hasDirectReports=true;assert.equal(workspaceFor(state,state.people[0]).capabilities.reviewSkills,true);
+});
+
 test('workspace capabilities use permissions, never role names; every preset gets only supported workflows', () => {
   for (const preset of rolePresets) {
     const state: LocalAccessState = { revision: 1, audit: [], roles: [{ id: 'role', name: preset.name, permissions: structuredClone(preset.permissions) }], people: [{ id: 'person', displayName: 'A person', employeeCode: 'EMP', active: true, roleIds: ['role'], overrides: [] }] };

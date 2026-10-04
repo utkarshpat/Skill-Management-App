@@ -7,7 +7,7 @@ import { permissionCatalogue, type PermissionCode } from './access-catalogue.js'
 
 export interface Assignment { permission: PermissionCode; scope: 'OWN' | 'ORGANIZATION'; effect: 'ALLOW' | 'DENY'; validUntil?: string }
 export interface CustomRole { id: string; name: string; permissions: Assignment[] }
-export interface LocalPerson { id: string; displayName: string; employeeCode: string; active: boolean; entraObjectId?:string; roleIds: string[]; overrides: Assignment[] }
+export interface LocalPerson { id: string; displayName: string; employeeCode: string; active: boolean; hasDirectReports?:boolean; entraObjectId?:string; roleIds: string[]; overrides: Assignment[] }
 export interface LocalAccessState { revision: number; roles: CustomRole[]; people: LocalPerson[]; audit: { actorId: string; action: string; targetId: string; at: string; revision: number; before?: CustomRole | LocalPerson; after?: CustomRole | LocalPerson }[] }
 export { AccessError } from '../../shared/errors.js';
 export interface AccessStore {
@@ -37,9 +37,9 @@ export function can(state: LocalAccessState, person: LocalPerson, permission: st
 // Capability discovery only. Claim assignment, ownership and reporting scope are
 // enforced again by the review procedures before any records are exposed or changed.
 export function canReviewAssigned(state:LocalAccessState,person:LocalPerson){
-  if(!person.active)return false;
+  if(!person.active||person.hasDirectReports===false)return false;
   const now=Date.now(),grants=grantsFor(state,person).filter(grant=>grant.permission==='skill.verify'&&grant.scope.kind==='ORGANIZATION'&&(!grant.validUntil||now<Date.parse(grant.validUntil)));
-  return grants.some(grant=>grant.effect==='ALLOW')&&!grants.some(grant=>grant.effect==='DENY');
+  return (person.hasDirectReports===true||grants.some(grant=>grant.effect==='ALLOW'))&&!grants.some(grant=>grant.effect==='DENY');
 }
 function text(value: unknown, max: number): string {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max) throw new AccessError(400,'A required text field is invalid.');

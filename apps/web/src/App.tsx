@@ -26,7 +26,15 @@ export function App() {
   const [session, setSession] = useState<'loading' | 'anonymous' | 'signed-in' | 'error'>('loading');
   const [sessionNotice,setSessionNotice]=useState('');
   const [workspace,setWorkspace]=useState<WorkspaceState>(),[workspaceError,setWorkspaceError]=useState(''),[workspaceAttempt,setWorkspaceAttempt]=useState(0);
-  useEffect(()=>{setWorkspace(undefined);setWorkspaceError('');if(session!=='signed-in')return;const controller=new AbortController();authenticatedFetch('/api/workspace',{signal:controller.signal}).then(async response=>{if(!response.ok)throw Error('Workspace navigation could not be loaded.');const body=await response.json();if(!controller.signal.aborted)setWorkspace(body);}).catch(error=>{if(!controller.signal.aborted)setWorkspaceError(error.message);});return()=>controller.abort();},[session,workspaceAttempt]);
+  useEffect(()=>{
+    setWorkspace(undefined);setWorkspaceError('');if(session!=='signed-in')return;
+    const controller=new AbortController();let generation=0,lastLoad=0;
+    const load=()=>{lastLoad=Date.now();const request=++generation;authenticatedFetch('/api/workspace',{signal:controller.signal}).then(async response=>{if(!response.ok)throw Error('Workspace navigation could not be loaded.');const body=await response.json();if(!controller.signal.aborted&&request===generation){setWorkspace(body);setWorkspaceError('');}}).catch(error=>{if(!controller.signal.aborted&&request===generation){setWorkspace(undefined);setWorkspaceError(error.message);}});};
+    const focus=()=>{if(document.visibilityState==='visible'&&Date.now()-lastLoad>15000)load();};
+    load();const timer=setInterval(()=>{if(document.visibilityState==='visible')load();},60000);
+    window.addEventListener('workspace-access-updated',load);window.addEventListener('focus',focus);document.addEventListener('visibilitychange',focus);
+    return()=>{controller.abort();clearInterval(timer);window.removeEventListener('workspace-access-updated',load);window.removeEventListener('focus',focus);document.removeEventListener('visibilitychange',focus);};
+  },[session,workspaceAttempt]);
   useEffect(()=>{let active=true;const expired=()=>{setSessionNotice('Your development session expired or the API restarted. Choose a test person to open a new demo session.');setSession('loading');void refreshDevelopmentLogin().then(()=>{if(active)setSession('anonymous');});};window.addEventListener('development-session-expired',expired);return()=>{active=false;window.removeEventListener('development-session-expired',expired);};},[]);
   useEffect(() => { let active = true; initializeAuth().then(() => { if (active) setSession(signedIn() ? 'signed-in' : 'anonymous'); }).catch(() => { if (active) setSession('error'); }); return () => { active = false; }; }, []);
   if (pathname === '/preview') return <Overview />;

@@ -7,7 +7,7 @@ type ResultSets = [
   sql.IRecordSet<{revision:number}>,
   sql.IRecordSet<{id:string;name:string}>,
   sql.IRecordSet<PermissionRow & {roleId:string}>,
-  sql.IRecordSet<{id:string;displayName:string;employeeCode:string;active:boolean;entraObjectId:string|null}>,
+  sql.IRecordSet<{id:string;displayName:string;employeeCode:string;active:boolean;hasDirectReports:boolean;entraObjectId:string|null}>,
   sql.IRecordSet<{personId:string;roleId:string}>,
   sql.IRecordSet<PermissionRow & {personId:string}>,
   sql.IRecordSet<{actorId:string;action:string;targetId:string;at:Date;revision:number;before:string|null;after:string}>,
@@ -26,7 +26,7 @@ export class SqlAccessStore implements AccessStore {
       return {
         revision:sets[0][0].revision,
         roles:sets[1].map(row=>({id:row.id.toLowerCase(),name:row.name,permissions:sets[2].filter(item=>item.roleId===row.id).map(assignment)})),
-        people:sets[3].map(row=>({id:row.id.toLowerCase(),displayName:row.displayName,employeeCode:row.employeeCode,active:row.active,...(row.entraObjectId?{entraObjectId:row.entraObjectId.toLowerCase()}:{}),roleIds:sets[4].filter(item=>item.personId===row.id).map(item=>item.roleId.toLowerCase()),overrides:sets[5].filter(item=>item.personId===row.id).map(assignment)})),
+        people:sets[3].map(row=>({id:row.id.toLowerCase(),displayName:row.displayName,employeeCode:row.employeeCode,active:row.active,hasDirectReports:Boolean(row.hasDirectReports),...(row.entraObjectId?{entraObjectId:row.entraObjectId.toLowerCase()}:{}),roleIds:sets[4].filter(item=>item.personId===row.id).map(item=>item.roleId.toLowerCase()),overrides:sets[5].filter(item=>item.personId===row.id).map(assignment)})),
         audit:sets[6].map(row=>({actorId:row.actorId.toLowerCase(),action:row.action,targetId:row.targetId.toLowerCase(),at:row.at.toISOString(),revision:row.revision,...(row.before?{before:JSON.parse(row.before)}:{}),after:JSON.parse(row.after)})),
       };
     });
