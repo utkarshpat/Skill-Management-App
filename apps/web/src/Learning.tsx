@@ -19,7 +19,7 @@ export function Learning({actionsContainer}:{actionsContainer?:HTMLElement|null}
  const [dashboardParams,setDashboardParams]=useSearchParams();
  const zone=Intl.DateTimeFormat().resolvedOptions().timeZone,today=dateInZone(new Date(),zone);
  const [state,setState]=useState<State>(),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[attempt,setAttempt]=useState(0);
- const [tab,setTab]=useState('My learning'),[selectedDay,setSelectedDay]=useState(today),[month,setMonth]=useState(today.slice(0,7)),[creating,setCreating]=useState(false),[page,setPage]=useState(0),[reviewPage,setReviewPage]=useState(0);
+ const [tab,setTab]=useState(()=>dashboardParams.get('tab')==='recommendations'?'Recommendations':'My learning'),[selectedDay,setSelectedDay]=useState(today),[month,setMonth]=useState(today.slice(0,7)),[creating,setCreating]=useState(false),[page,setPage]=useState(0),[reviewPage,setReviewPage]=useState(0);
  useEffect(()=>{const view=dashboardParams.get('tab');if(view==='backlog')setTab('Backlog');else if(view==='today')setTab('Today');else if(view==='recommendations')setTab('Recommendations');else if(view==='paths')setTab('Learning paths');},[dashboardParams]);
  const [focus,setFocus]=useState('General'),[skillId,setSkillId]=useState(''),[skillOptions,setSkillOptions]=useState<{id:string;name:string}[]>([]),[mappingError,setMappingError]=useState('');
  const [plannerGoal,setPlannerGoal]=useState<string>(),[recovery,setRecovery]=useState<Plan>();

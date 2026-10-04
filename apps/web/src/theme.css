@@ -337,3 +337,5 @@ html[data-theme] .assistant-markdown a { font-size:inherit;display:inline;margin
 @media(prefers-reduced-motion:reduce){.notification-spin{animation:none}}
 
 .notification-list .notification-summary-link{display:block;padding:0;border-radius:0;color:var(--ink)}.notification-summary-link:hover strong{text-decoration:underline;color:var(--accent-ink)}.notification-popover a:focus-visible,.notification-popover button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+.notification-popover{overflow:hidden}.notification-popover:popover-open{display:flex;flex-direction:column}.notification-heading,.notification-toolbar,.notification-device-note{flex-shrink:0}.notification-list{min-height:0;flex:1}.notification-list .notification-summary-link strong{white-space:normal;overflow:visible;text-overflow:clip}
