@@ -1,6 +1,6 @@
 # Security and architecture audit — 5 October 2026
 
-Scope: repository review plus isolated local reproductions using an in-memory access store and a stub AI provider. No production writes, PIN guessing, real model calls or database migrations. This is a bounded audit, not a security certification. Demo-login findings remain deferred by user instruction. Shared AI budgets and access-read optimizations have local fixes; see REGRESSION_OPTIMIZATION_2026-10-05.md for validation and rollout dependencies. Earlier frontend fixes are separate.
+Scope: repository review plus isolated local reproductions using an in-memory access store and a stub AI provider. No production writes, PIN guessing, real model calls or database migrations. This is a bounded audit, not a security certification. Demo-login findings remain deferred by user instruction. Shared AI budgets and access-read optimizations were subsequently deployed in commit `6a7803f` after migrations 039/040; see REGRESSION_OPTIMIZATION_2026-10-05.md for validation and rollout dependencies. Earlier frontend fixes are separate.
 
 ## P1 — Hosted demo PIN has no application attempt limit
 
@@ -41,3 +41,7 @@ Run `node --import tsx apps/api/test/security-audit.repro.ts` from the repositor
 Thirty selected authentication, effective-access, assistant, recommendation and workflow tests passed. They cover forged actors/tools, scoped denies, reporting constraints and current permissions. Live SQL integration and production firewall inspection were not run; passing unit tests do not prove all authorization paths safe.
 
 Suggested order: shared demo attempt protection and revocable sessions, shared AI quotas, then bounded authorization queries with before/after performance measurements.
+
+## Subsequent remediation status
+
+The original evidence above records the pre-fix characterization. Production now uses shared SQL request quotas/leases rather than the local MemoryAiBudget fallback. Routine authorization reads omit audit and notification audit is addressed-person filtered. Administrative audit and workspace-wide authorization records remain unbounded and need a separate paginated/actor-context design. Runtime SQL and production browser verification are recorded in REGRESSION_OPTIMIZATION_2026-10-05.md. Demo-login findings are intentionally deferred.

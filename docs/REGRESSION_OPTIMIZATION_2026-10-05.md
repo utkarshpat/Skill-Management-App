@@ -1,6 +1,6 @@
 # Bug fixes and runtime optimization — 5 October 2026
 
-Migrations 039/040 applied to the configured hosted database on 5 October 2026. Restricted runtime access reads and shared AI budget acquire/release passed. Application rollout and production browser verification are recorded below when complete. Demo login hardening is explicitly deferred.
+Migrations 039/040 applied to the configured hosted database on 5 October 2026. Restricted runtime access reads and shared AI budget acquire/release passed. Application commit `6a7803f78247dbb5ef9d688698adb7001d393edd` deployed successfully to Vercel production (deployment `AvsdfyBqcTyWVPBbPB88nTU8vCE8`, status Ready). Demo login hardening is explicitly deferred.
 
 ## Implemented
 
@@ -28,3 +28,14 @@ The administrative access snapshot still includes full audit history, and non-au
 - User Chrome against the built frontend served by `apps/api/test/ui-regression-server.ts` on loopback, using only synthetic data: dashboard refresh retains content; partial notifications remain actionable; delayed old history cannot overwrite a fresh chat; collapse preserves drafts; Today tab survives reload; search reaches skill 503 and preserves selection into review; workspace refresh failure preserves an unsaved plan and retry clears the warning.
 
 The UI fixture intentionally has no persistent mutations or real model. This is not a claim that every production user journey has been exercised. Login findings remain deferred in the security audit.
+
+## Production rollout verification
+
+- User Chrome at https://skill-management-app.vercel.app: demo sign-in and manager dashboard loaded; dashboard refresh retained cards.
+- Notification opened its exact accepted recommendation and detail; switching to Today removed focused parameters, persisted `?tab=today`, and survived reload.
+- New-plan published-skill server search returned Azure results; selecting Azure SQL then searching React preserved Azure SQL. Unsaved QA plan was closed without saving.
+- Manager review queue and direct-report team analytics loaded with current stored counts.
+- One live AI guidance request completed under the SQL-backed budget. Collapse displayed background/reply-ready badges, reopening resumed the answer, closing/reopening started fresh, and recent history showed the saved conversation. No request, recommendation, claim or access mutation was made.
+- Restricted SQL runtime identity successfully read an audit-free access snapshot and acquired/released a shared budget lease. Post-migration rollback integration checks passed; test mutations rolled back.
+
+This is a bounded production smoke test, not exhaustive coverage of every write workflow or a security certification. Demo-login hardening remains deferred. Dedicated actor authorization reads and paginated admin audit remain future optimization work.
