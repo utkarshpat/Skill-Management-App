@@ -7,8 +7,8 @@ export class SqlClaimsStore implements ClaimsStore {
   async team(actorId:string,query:ReturnType<typeof teamQuery>):Promise<TeamCapability>{
     try{return await withRuntimeDatabase(async pool=>{
       const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId).input('query',sql.NVarChar(100),query.search).input('page',sql.Int,query.page).input('person_id',sql.UniqueIdentifier,query.person??null).execute('dbo.ReadDirectReportCapability');
-      const sets=result.recordsets as unknown as [sql.IRecordSet<{total:number}>,sql.IRecordSet<TeamCapability['people'][number]>,sql.IRecordSet<TeamCapability['skills'][number]>];
-      return {total:sets[0][0].total,page:query.page,pageSize:12,scope:'DIRECT_REPORTS',people:sets[1].map(p=>({...p,id:p.id.toLowerCase()})),skills:sets[2].map(s=>({...s,personId:s.personId.toLowerCase()}))};
+      const sets=result.recordsets as unknown as [sql.IRecordSet<{total:number}>,sql.IRecordSet<TeamCapability['people'][number]>,sql.IRecordSet<TeamCapability['skills'][number]>,sql.IRecordSet<{members:number;reviewed:number;pending:number}>,sql.IRecordSet<{skillName:string;rank:number;people:number;memberIds:string}>,sql.IRecordSet<{rank:number;count:number;memberIds:string}>,sql.IRecordSet<{category:string;count:number}>];
+      return {total:sets[0][0].total,page:query.page,pageSize:12,scope:'DIRECT_REPORTS',people:sets[1].map(p=>({...p,id:p.id.toLowerCase()})),skills:sets[2].map(s=>({...s,personId:s.personId.toLowerCase()})),...(sets[3]?.[0]?{analytics:{...sets[3][0],coverage:sets[4].map(row=>({...row,memberIds:row.memberIds.split(',').map(id=>id.toLowerCase())})),levels:sets[5].map(row=>({...row,memberIds:row.memberIds.split(',').map(id=>id.toLowerCase())})),categories:sets[6]}}:{})};
     });}catch(error){throw claimError(error);}
   }
   async summary(actorId:string){

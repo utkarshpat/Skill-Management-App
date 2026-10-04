@@ -32,7 +32,7 @@ export function reviewQuery(input:Record<string,unknown>){
  const status=input.status??'SUBMITTED';if(typeof status!=='string'||!['SUBMITTED','APPROVED','CHANGES_REQUESTED','REJECTED','ALL'].includes(status))throw new AccessError(400,'Choose a valid review status.');
  return {search:claimSearch(input.search),category:claimCategory(input.category),status,person:input.person===undefined?undefined:reviewIdentifier(input.person)};
 }
-export interface TeamCapability {total:number;page:number;pageSize:number;scope:'DIRECT_REPORTS';people:{id:string;name:string;employeeCode:string;reviewed:number;pending:number}[];skills:{personId:string;skillName:string;category:string;rank:number;levelName:string;status:'APPROVED'|'SUBMITTED'}[]}
+export interface TeamCapability {total:number;page:number;pageSize:number;scope:'DIRECT_REPORTS';people:{id:string;name:string;employeeCode:string;reviewed:number;pending:number}[];skills:{personId:string;skillName:string;category:string;rank:number;levelName:string;status:'APPROVED'|'SUBMITTED'}[];analytics?:{members:number;reviewed:number;pending:number;coverage:{skillName:string;rank:number;people:number;memberIds:string[]}[];levels:{rank:number;count:number;memberIds:string[]}[];categories:{category:string;count:number}[]}}
 export function teamQuery(input:Record<string,unknown>){
  if(Object.keys(input).some(key=>!['search','page','person'].includes(key)))throw new AccessError(400,'Unsupported team selector.');
  const person=input.person;if(person!==undefined&&(typeof person!=='string'||!uuid.test(person)))throw new AccessError(400,'Choose a valid team member.');
