@@ -1,30 +1,14 @@
 import {useEffect,useState} from 'react';
 import {useSearchParams} from 'react-router';
 import {authenticatedFetch} from './auth';
-import {FormDialog} from './FormDialog';
+import {SkillClaimDialog} from './SkillClaimDialog';
 import type {Claim} from './MySkills';
 import {TeamCapability} from './TeamCapability';
-import {ReviewHistory} from './ReviewHistory';
-import {ReviewAssistance} from './ReviewAssistance';
-import {ClaimReviewAccess,type ClaimReviewDecision} from './ClaimReviewAccess';
+import type {ClaimReviewDecision} from './ClaimReviewAccess';
 import {ArrowRight,CheckCheck,ChevronLeft,ChevronRight,ClipboardCheck,Clock3,FileCheck2,MessageSquareMore,RefreshCw,Search,ShieldCheck,UsersRound,XCircle} from 'lucide-react';
 import './review-workbench.css';
 
 async function result<T>(response:Response):Promise<T>{const data=await response.json().catch(()=>undefined);if(!response.ok)throw Error(data?.error?.message??'This action could not finish. Reload to check the current state before retrying.');return data;}
-export function SkillClaimDialog({claim,mode,onClose,onSaved,history=false}:{history?:boolean;claim:Claim;mode:'view'|'submit'|'review';onClose:()=>void;onSaved:()=>void}){
- const [page,setPage]=useState(0),[feedback,setFeedback]=useState(''),[decision,setDecision]=useState('REQUEST_CHANGES'),[busy,setBusy]=useState(false),[error,setError]=useState('');
- async function apply(){if(busy||(mode==='review'&&!claim.reviewAccess?.allowed))return;setBusy(true);setError('');try{await result(await authenticatedFetch(mode==='submit'?'/api/my-skills/submit':'/api/skill-reviews/decision',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:claim.id,revision:claim.revision,action:mode==='submit'?'SUBMIT':decision,feedback})}));onSaved();}catch(reason){setError(reason instanceof Error?reason.message:'Could not complete this review.');}finally{setBusy(false);}}
- const textPages=(label:string,text:string)=>((text||'None provided.').match(/[\s\S]{1,650}/g)??[]).map((part,index)=>({label:label+(index?' (continued)':''),content:<><h3>{label}</h3><p className="claim-level-description">{part}</p></>}));
- const pages=[
-  {label:'Claim summary',content:<><h3>{claim.personName??claim.skillName}</h3>{history&&<ClaimReviewAccess decision={claim.reviewAccess}/>}<dl className="profile-details"><div><dt>Skill</dt><dd>{claim.skillName}</dd></div><div><dt>Proficiency</dt><dd>{claim.levelName} · Level {claim.rank}</dd></div><div><dt>Experience</dt><dd>{claim.experienceMonths} months</dd></div><div><dt>Status</dt><dd>{claim.status.replaceAll('_',' ')}</dd></div></dl></>},
-  ...textPages('Experience',claim.description),...textPages('Level criteria',claim.levelDescription??''),...textPages('Projects',claim.projects??''),...textPages('Evidence references',claim.evidence??''),
-  ...(history?[{label:'AI assistance',content:<ReviewAssistance claim={claim} canDraft={mode==='review'} decision={decision} onDecision={setDecision} onUse={setFeedback} hasFeedback={Boolean(feedback.trim())}/>},{label:'History',content:<ReviewHistory id={claim.id}/>}]:[]),
-  {label:mode==='review'?'Decision':'Review',content:mode==='review'?<><label>Decision<select value={decision} disabled={busy} onChange={event=>setDecision(event.target.value)}><option value="REQUEST_CHANGES">Request changes</option><option value="APPROVE">Approve</option><option value="REJECT">Reject</option></select></label><label>Feedback<textarea rows={5} required maxLength={2000} value={feedback} disabled={busy} onChange={event=>setFeedback(event.target.value)}/></label><p>Approval records a manager-reviewed proficiency claim, separate from learning quizzes and certifications.</p></>:<><h3>{mode==='submit'?'Confirm submission':'Review status'}</h3>{mode==='submit'&&<p>Your current reporting manager will receive this submission. Submitted claims cannot be edited until changes are requested or the claim is rejected. If your manager changed, resubmitting routes the pending claim to the current manager.</p>}</>},
-  ...(mode!=='review'?textPages('Manager feedback',claim.feedback??'No review feedback yet.'):[]),
- ];
- return <FormDialog title={mode==='review'?'Review skill claim':mode==='submit'?'Submit skill claim':claim.skillName} busy={busy} onClose={onClose} page={page} onPageChange={setPage} message={error&&<p role="alert">{error}</p>}
- pages={pages} footer={<><button className="secondary-button" disabled={busy} onClick={onClose}>{mode==='view'?'Close':'Cancel'}</button>{page<pages.length-1?<button className="admin-primary" disabled={busy} onClick={()=>setPage(value=>value+1)}>Continue</button>:mode!=='view'&&<button className="admin-primary" disabled={busy||(mode==='review'&&(!feedback.trim()||!claim.reviewAccess?.allowed))} onClick={()=>void apply()}>{busy?'Saving…':mode==='submit'?'Submit for review':'Confirm decision'}</button>}</>}/>;
-}
 interface ReviewQueue {claims:Claim[];total:number;pageSize:number;canViewTeam?:boolean;canReadHistory?:boolean;categories?:string[];summary?:{pending:number;approved:number;changes:number;rejected:number}}
 const reviewLabels:Record<string,string>={SUBMITTED:'Pending review',APPROVED:'Manager reviewed',CHANGES_REQUESTED:'Changes requested',REJECTED:'Not approved',ALL:'All review states'};
 export function SkillReviews(){
@@ -42,7 +26,7 @@ export function SkillReviews(){
   {key:'CHANGES_REQUESTED',label:'Changes requested',hint:'Feedback shared with employees',value:data?.summary?.changes,icon:MessageSquareMore,tone:'blue'},
   {key:'REJECTED',label:'Not approved',hint:'Claims with a recorded decision',value:data?.summary?.rejected,icon:XCircle,tone:'rose'},
  ];
- const navigation=<nav className="review-workspace-tabs" aria-label="Skill review workspace"><button aria-pressed={view==='queue'} onClick={()=>setView('queue')}><ClipboardCheck size={18}/>Review queue</button>{data?.canViewTeam&&<button aria-pressed={view==='team'} onClick={()=>setView('team')}><UsersRound size={18}/>Team analytics</button>}</nav>;
+ const navigation=<nav className="review-workspace-tabs" aria-label="Skill review workspace"><button aria-pressed={view==='queue'} onClick={()=>{setView('queue');setAttempt(n=>n+1);}}><ClipboardCheck size={18}/>Review queue</button>{data?.canViewTeam&&<button aria-pressed={view==='team'} onClick={()=>setView('team')}><UsersRound size={18}/>Team analytics</button>}</nav>;
  return <div className="review-shell">
   {!(view==='team'&&data?.canViewTeam)&&navigation}
   {view==='team'&&data?.canViewTeam?<TeamCapability navigation={navigation} onReviews={id=>{setPerson(id);setStatus('SUBMITTED');setPage(1);setQuery('');setSearch('');setView('queue');}}/>:<>

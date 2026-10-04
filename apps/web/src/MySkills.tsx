@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus } from 'lucide-react';
 import { authenticatedFetch } from './auth';
-import { SkillClaimDialog } from './SkillReviews';
+import { SkillClaimDialog } from './SkillClaimDialog';
 import { FormDialog } from './FormDialog';
 import {SkillsProfileView} from './SkillsProfileView';
 import './skills-profile.css';
@@ -11,6 +11,7 @@ import { useLocation, useNavigate } from 'react-router';
 import type {ClaimReviewDecision} from './ClaimReviewAccess';
 
 export interface Claim {
+  personId?:string;
   reviewAccess?:ClaimReviewDecision;
   id:string; revision:number; skillId:string; skillName:string; category:string;
   definitionRevision:number; rank:number; levelName:string; experienceMonths:number;
