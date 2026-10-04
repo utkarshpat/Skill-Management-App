@@ -6,7 +6,7 @@ import type { Assignment, LocalAccessState, LocalPerson } from './local-access-s
 const supported: Record<string, Assignment['scope'][]> = {
   'profile.view':['OWN'], 'skill.view':['OWN','ORGANIZATION'], 'skill.claim':['OWN'],
   'skill.verify':['ORGANIZATION'], 'skill.catalogue.manage':['ORGANIZATION'],
-  'learning.view':['OWN'], 'learning.manage':['OWN'],
+  'learning.recommend':['ORGANIZATION'], 'learning.view':['OWN'], 'learning.manage':['OWN'],
   'users.manage':['ORGANIZATION'],
   'permissions.manage':['ORGANIZATION'], 'audit.view':['ORGANIZATION'],
   ...Object.fromEntries(['request','incident'].flatMap(kind=>['view','create','assign','resolve'].map(action=>[kind+'.'+action,['OWN'] as Assignment['scope'][]]))),
@@ -63,14 +63,15 @@ export function effectiveAccess(state:LocalAccessState,person:LocalPerson,action
     ...person.overrides.map(grant=>({grant,kind:'EXCEPTION' as const,id:person.id,label:'Individual exception'})),
   ].filter(({grant})=>grant.permission===action&&(grant.scope==='ORGANIZATION'||context==='OWN')&&(!grant.validUntil||at.getTime()<Date.parse(grant.validUntil)));
   const sources:EffectiveDecision['sources']=candidates.map(({grant,kind,id,label})=>({kind,id,label,effect:grant.effect,scope:grant.scope,...(grant.validUntil?{validUntil:grant.validUntil}:{}),...(grant.reason?{reason:grant.reason}:{})}));
-  const constraints=action==='skill.verify'?['CURRENT_DIRECT_MANAGER','ASSIGNED_REVIEWER','NO_SELF_REVIEW','ACTIVE_CLAIMANT','REVIEWABLE_STATE']:
+  const constraints=action==='learning.recommend'?['CURRENT_DIRECT_MANAGER','ACTIVE_RECIPIENT','PUBLISHED_SKILL','RECIPIENT_ACCEPTANCE']:action==='skill.verify'?['CURRENT_DIRECT_MANAGER','ASSIGNED_REVIEWER','NO_SELF_REVIEW','ACTIVE_CLAIMANT','REVIEWABLE_STATE']:
     action.startsWith('request.')||action.startsWith('incident.')?['CURRENT_PARTICIPANT','WORKFLOW_STATE','REVISION_RECHECK']:
     action==='skill.claim'?['OWN_CLAIM','EDITABLE_STATE','PUBLISHED_SKILL']:action.startsWith('learning.')?['OWN_PLAN','WORKFLOW_STATE']:[];
   let reasonCode='DEFAULT_DENY',allowed=false;
   if(!implemented)reasonCode='UNAVAILABLE';
   else if(!Number.isFinite(at.getTime()))reasonCode='INVALID_TIME';
   else if(!person.active)reasonCode='INACTIVE_ACTOR';
-  else if(context==='DIRECT_REPORTS'&&action!=='skill.verify')reasonCode='UNSUPPORTED_SCOPE';
+  else if(context==='DIRECT_REPORTS'&&!['skill.verify','learning.recommend'].includes(action))reasonCode='UNSUPPORTED_SCOPE';
+  else if(context==='WORKSPACE'&&action==='learning.recommend')reasonCode='RESOURCE_SCOPE_REQUIRED';
   else if(context==='DIRECT_REPORTS') {
     // SQL snapshots always resolve this flag. An unresolved relationship fails closed.
     if(sources.some(s=>s.effect==='DENY'))reasonCode='EXPLICIT_DENY';
@@ -84,6 +85,8 @@ export function effectiveAccess(state:LocalAccessState,person:LocalPerson,action
   const prerequisites:{action:string;context:'OWN'|'WORKSPACE'}[]=[];
   if((action==='skill.verify'&&context==='DIRECT_REPORTS')||(action==='skill.view'&&context==='OWN')||action==='skill.claim')prerequisites.push({action:'profile.view',context:'OWN'});
   if(action==='skill.claim')prerequisites.push({action:'skill.view',context:'WORKSPACE'});
+  if(action==='learning.recommend'&&allowed&&!effectiveAccess(state,person,'skill.view','WORKSPACE',at).allowed&&!effectiveAccess(state,person,'skill.catalogue.manage','WORKSPACE',at).allowed){allowed=false;reasonCode='CATALOGUE_ACCESS_DENIED';}
+  if(action==='learning.recommend')prerequisites.push({action:'profile.view',context:'OWN'},{action:'learning.view',context:'OWN'});
   if(action==='learning.manage')prerequisites.push({action:'learning.view',context:'OWN'});
   if(action==='users.manage'||action==='audit.view')prerequisites.push({action:'permissions.manage',context:'WORKSPACE'});
   for(const kind of ['request','incident'])if(action.startsWith(kind+'.')&&action!==kind+'.view')prerequisites.push({action:kind+'.view',context:'OWN'});
@@ -95,7 +98,7 @@ export function effectiveAccess(state:LocalAccessState,person:LocalPerson,action
 }
 export function effectiveAccessSummary(state:LocalAccessState,person:LocalPerson){
   return {actorId:person.id,revision:state.revision,summaryOnly:true,decisions:actionRegistry.flatMap(action=>
-    action.code==='skill.verify'?[effectiveAccess(state,person,action.code,'DIRECT_REPORTS')]:
+    ['skill.verify','learning.recommend'].includes(action.code)?[effectiveAccess(state,person,action.code,'DIRECT_REPORTS')]:
     (action.scopes.length?action.scopes.map(scope=>scope==='OWN'?'OWN' as const:'WORKSPACE' as const):['OWN' as const]).map(context=>effectiveAccess(state,person,action.code,context))),
     unsupportedAssignments:[...state.roles.filter(role=>person.roleIds.includes(role.id)).flatMap(role=>role.permissions),...person.overrides].filter(grant=>!isAssignable(grant))};
 }

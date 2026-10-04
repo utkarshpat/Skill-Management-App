@@ -5,6 +5,7 @@ import {BookOpen,CalendarDays,Clock3,Plus,Check,ArrowLeft,ArrowRight,Sparkles} f
 import {authenticatedFetch} from './auth';
 import {FormDialog} from './FormDialog';
 import './learning.css';
+import {Recommendations} from './Recommendations';
 import {LearningHome} from './LearningHome';
 import {LearningSession} from './LearningSession';
 import {LearningPlanner} from './LearningPlanner';
@@ -19,7 +20,7 @@ export function Learning({actionsContainer}:{actionsContainer?:HTMLElement|null}
  const zone=Intl.DateTimeFormat().resolvedOptions().timeZone,today=dateInZone(new Date(),zone);
  const [state,setState]=useState<State>(),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[attempt,setAttempt]=useState(0);
  const [tab,setTab]=useState('My learning'),[selectedDay,setSelectedDay]=useState(today),[month,setMonth]=useState(today.slice(0,7)),[creating,setCreating]=useState(false),[page,setPage]=useState(0),[reviewPage,setReviewPage]=useState(0);
- useEffect(()=>{const view=dashboardParams.get('tab');if(view==='backlog')setTab('Backlog');else if(view==='today')setTab('Today');},[dashboardParams]);
+ useEffect(()=>{const view=dashboardParams.get('tab');if(view==='backlog')setTab('Backlog');else if(view==='today')setTab('Today');else if(view==='recommendations')setTab('Recommendations');else if(view==='paths')setTab('Learning paths');},[dashboardParams]);
  const [focus,setFocus]=useState('General'),[skillId,setSkillId]=useState(''),[skillOptions,setSkillOptions]=useState<{id:string;name:string}[]>([]),[mappingError,setMappingError]=useState('');
  const [plannerGoal,setPlannerGoal]=useState<string>(),[recovery,setRecovery]=useState<Plan>();
  const [detail,setDetail]=useState<{plan:Plan;task:Task}>();
@@ -42,6 +43,7 @@ export function Learning({actionsContainer}:{actionsContainer?:HTMLElement|null}
  {error&&<p role="alert">{error} <button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></p>}{notice&&<p role="status">{notice}</p>}{!state&&!error&&<p role="status">Loading learning…</p>}
  {state&&<>
  <section className="learning-workbench learning-home-workbench"><nav className="learning-tabs" aria-label="Learning views">{['My learning','Learning paths','Goals','Recommendations','Today','Calendar','Backlog'].map(name=><button key={name} className="secondary-button" aria-current={tab===name?'page':undefined} onClick={()=>setTab(name)}>{name}{name==='Backlog'&&backlog.length>0?' ('+backlog.length+')':''}</button>)}</nav>
+ {tab==='Recommendations'&&<Recommendations onAccepted={()=>setAttempt(n=>n+1)}/>}
  <LearningHome busy={busy} plans={plans} canManage={state.canManage} tab={tab} zone={zone} onNew={openCreate} onPlanner={setPlannerGoal} onRecover={setRecovery} onStateChange={plan=>void change({action:plan.status==='ACTIVE'?'PAUSE':'RESUME',id:plan.id,revision:plan.revision})} onArchive={plan=>{setArchive(plan);setFormError('');}} onContinue={(plan,task)=>setDetail({plan,task})} onDraft={draft=>{openCreate();setTitle(draft.title);setGoal(draft.body||draft.summary);setTaskText(draft.steps.join('\n'));}}/>
  {tab==='Backlog'&&state.canManage&&[...new Map(backlog.map(x=>[x.plan.id,x.plan])).values()].map(plan=><div className="recovery-entry" key={plan.id}><div><strong>{plan.title}</strong><small>{backlog.filter(x=>x.plan.id===plan.id).length} overdue tasks · Rebuild the pending schedule</small></div><button className="secondary-button" onClick={()=>setRecovery(plan)}>Recover plan</button></div>)}
  {tab==='Calendar'&&<div className="learning-calendar"><div className="panel-title"><button aria-label="Previous month" className="secondary-button" onClick={()=>setMonth(shiftDay(first,-1).slice(0,7))}><ArrowLeft size={16}/></button><h3>{new Date(first+'T12:00:00Z').toLocaleDateString(undefined,{month:'long',year:'numeric',timeZone:'UTC'})}</h3><button aria-label="Next month" className="secondary-button" onClick={()=>setMonth(shiftDay(first,32).slice(0,7))}><ArrowRight size={16}/></button></div><div className="calendar-grid">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day=><span key={day}>{day}</span>)}{Array.from({length:weekday},(_,i)=><span key={'blank'+i}/>)}{Array.from({length:last},(_,i)=>{const day=month+'-'+String(i+1).padStart(2,'0'),count=active.filter(x=>x.task.plannedDate===day).length;return <button key={day} aria-label={day+(count?', '+count+(count===1?' task':' tasks'):'')} aria-pressed={selectedDay===day} onClick={()=>setSelectedDay(day)}><strong>{i+1}</strong>{count>0&&<small>{count} {count===1?'task':'tasks'}</small>}</button>;})}</div><h3>Tasks for {selectedDay}</h3></div>}

@@ -4,7 +4,7 @@ export const permissionCatalogue = [
   ['skill.catalogue.propose','Propose skills'], ['skill.catalogue.manage','Manage skill catalogue'],
   ['evidence.view','View evidence'], ['evidence.submit','Submit evidence'],
   ['assessment.view','View assessments'], ['assessment.approve','Approve assigned assessments'],
-  ['learning.view','View learning plans'], ['learning.manage','Manage learning plans'], ['learning.approve','Approve learning proposals'],
+  ['learning.recommend','Recommend learning to current direct reports'], ['learning.view','View learning plans'], ['learning.manage','Manage learning plans'], ['learning.approve','Approve learning proposals'],
   ['demand.view','View demand'], ['demand.create','Create demand'], ['demand.approve','Approve demand'],
   ['matching.view','View matches'], ['matching.run','Run matching'], ['matching.shortlist','Shortlist candidates'],
   ['reports.view','View reports'], ['reports.export','Export reports'],

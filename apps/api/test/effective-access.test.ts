@@ -42,7 +42,8 @@ test('canonical decisions distinguish grants, reporting authority, scoped denies
 });
 test('SQL assignability registry matches implemented service action/scope combinations',async()=>{
  const source=await readFile(new URL('../../../database/migrations/031_effective_access_baseline.sql',import.meta.url),'utf8');
- const values=source.split('INSERT dbo.AccessImplementedScope VALUES')[1].split(';')[0];
+ const increment=await readFile(new URL('../../../database/migrations/036_learning_recommendations.sql',import.meta.url),'utf8');
+ const values=source.split('INSERT dbo.AccessImplementedScope VALUES')[1].split(';')[0]+increment.split('INSERT dbo.AccessImplementedScope VALUES')[1].split(';')[0];
  const sql=[...values.matchAll(/\('([^']+)','([^']+)'\)/g)].map(m=>m[1]+':'+m[2]).sort();
  assert.deepEqual(sql,actionRegistry.flatMap(action=>action.scopes.map(scope=>action.code+':'+scope)).sort());
 });

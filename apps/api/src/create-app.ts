@@ -11,9 +11,10 @@ import { registerRoutes as aiRoutes, type HttpDependencies as AiDependencies } f
 import { registerClaimsRoutes, type ClaimsHttpDependencies } from './modules/skills/claims-routes.js';
 import {registerLearningRoutes,type LearningDependencies} from './modules/learning/index.js';
 import {registerWorkflowRoutes,type WorkflowDependencies} from './modules/workflows/index.js';
+import {registerRecommendationRoutes,type RecommendationDependencies} from './modules/recommendations/index.js';
 import {registerDashboardRoutes} from './modules/dashboard/index.js';
 
-export type AppDependencies = IdentityDependencies & AccessDependencies & OrganizationDependencies & SkillsDependencies & AiDependencies & ClaimsHttpDependencies & LearningDependencies & WorkflowDependencies;
+export type AppDependencies = IdentityDependencies & AccessDependencies & OrganizationDependencies & SkillsDependencies & AiDependencies & ClaimsHttpDependencies & LearningDependencies & WorkflowDependencies & RecommendationDependencies;
 
 export function createApp(dependencies?: AppDependencies, options: { developmentStore?: AccessStore; hostedDemo?: HostedDemoConfig } = {}) {
   const app = express();
@@ -27,13 +28,14 @@ export function createApp(dependencies?: AppDependencies, options: { development
     next();
   });
   app.use(express.json({ limit: '128kb' }));
-  identityRoutes(app, dependencies ? {...dependencies,skillNotifications:dependencies.claims?.notifications?.bind(dependencies.claims),workflowNotifications:dependencies.workflows?.notifications.bind(dependencies.workflows)} : undefined, store, demo);
+  identityRoutes(app, dependencies ? {...dependencies,skillNotifications:dependencies.claims?.notifications?.bind(dependencies.claims),workflowNotifications:dependencies.workflows?.notifications.bind(dependencies.workflows),recommendationNotifications:dependencies.recommendations?.notifications.bind(dependencies.recommendations)} : undefined, store, demo);
   // Access middleware authenticates /api/access before organization routes run.
   accessRoutes(app, dependencies, store, demo);
   organizationRoutes(app, dependencies);
   skillsRoutes(app, dependencies, store, demo);
   registerClaimsRoutes(app, dependencies, store, demo);
   registerLearningRoutes(app, dependencies, store, demo);
+  registerRecommendationRoutes(app, dependencies, store, demo);
   registerWorkflowRoutes(app, dependencies, store, demo);
   registerDashboardRoutes(app, dependencies?{...dependencies,aiConfigured:dependencies.assistant?.status().configured}:undefined, store, demo);
   aiRoutes(app, dependencies, store, demo);

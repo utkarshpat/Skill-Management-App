@@ -21,6 +21,7 @@
     "test:conversations": "node --env-file-if-exists=.env --import tsx test/conversations.integration.ts",
     "catalogue:seed": "node --env-file-if-exists=.env --import tsx src/catalogue-seed-cli.ts",
     "test:framework": "node --env-file-if-exists=.env --import tsx test/framework.integration.ts",
+    "test:recommendations": "node --env-file-if-exists=.env --import tsx test/recommendations.integration.ts",
     "test:learning": "node --env-file-if-exists=.env --import tsx test/learning.integration.ts",
     "test:recovery": "node --env-file-if-exists=.env --import tsx test/learning-recovery.integration.ts",
     "test:practice": "node --env-file-if-exists=.env --import tsx test/learning-practice.integration.ts",
