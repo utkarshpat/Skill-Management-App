@@ -1,10 +1,10 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useState,type ReactNode} from 'react';
 import {ArrowLeft,ArrowUpRight,Search,UsersRound,Layers3,Clock3,FileCheck2,RefreshCw,ChevronRight} from 'lucide-react';
 import {authenticatedFetch} from './auth';
 import {teamAnalytics,type TeamPerson,type TeamSkill} from './team-analytics';
 import './team-capability.css';
 interface Team {total:number;pageSize:number;people:TeamPerson[];skills:TeamSkill[];analytics?:{members:number;reviewed:number;pending:number;coverage:{skillName:string;rank:number;people:number;memberIds:string[]}[];levels:{rank:number;count:number;memberIds:string[]}[];categories:{category:string;count:number}[]}}
-export function TeamCapability({onReviews}:{onReviews:(personId:string)=>void}){
+export function TeamCapability({onReviews,navigation}:{onReviews:(personId:string)=>void;navigation?:ReactNode}){
  const [data,setData]=useState<Team>(),[search,setSearch]=useState(''),[query,setQuery]=useState(''),[page,setPage]=useState(1),[person,setPerson]=useState<string>(),[attempt,setAttempt]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [minimumRank,setMinimumRank]=useState(1),[memberFilter,setMemberFilter]=useState<'all'|'reviewed'|'pending'>('all'),[skillFilter,setSkillFilter]=useState(''),[levelFilter,setLevelFilter]=useState<number>();
  useEffect(()=>{const c=new AbortController();setLoading(true);setData(undefined);setError('');const params=new URLSearchParams({page:String(page),search:query});if(person)params.set('person',person);
@@ -22,7 +22,7 @@ export function TeamCapability({onReviews}:{onReviews:(personId:string)=>void}){
  function openPerson(id:string){setPerson(id);setPage(1);setQuery('');setSearch('');setSkillFilter('');setLevelFilter(undefined);}
  function reset(){setPerson(undefined);setPage(1);setQuery('');setSearch('');setMemberFilter('all');setSkillFilter('');setLevelFilter(undefined);}
  return <section className="team-analytics-shell" aria-label="Direct report capability" aria-busy={loading}>
- <div className="team-analytics-toolbar">{person?<button className="team-back" onClick={reset}><ArrowLeft size={16}/>All direct reports</button>:<form className="team-search" onSubmit={event=>{event.preventDefault();setPage(1);setQuery(search.trim());setMemberFilter('all');}}><Search size={19}/><input aria-label="Search direct reports" placeholder="Search name or employee code" maxLength={100} value={search} onChange={e=>setSearch(e.target.value)}/><button className="secondary-button" disabled={loading}>Search</button>{query&&<button type="button" className="secondary-button" onClick={reset}>Clear</button>}</form>}<button className="secondary-button team-refresh" disabled={loading} onClick={()=>setAttempt(n=>n+1)}><RefreshCw size={16}/>Refresh</button></div>
+ <div className="team-analytics-toolbar">{person?<button className="team-back" onClick={reset}><ArrowLeft size={16}/>All direct reports</button>:<form className="team-search" onSubmit={event=>{event.preventDefault();setPage(1);setQuery(search.trim());setMemberFilter('all');}}><Search size={19}/><input aria-label="Search direct reports" placeholder="Search name or employee code" maxLength={100} value={search} onChange={e=>setSearch(e.target.value)}/><button className="secondary-button" disabled={loading}>Search</button>{query&&<button type="button" className="secondary-button" onClick={reset}>Clear</button>}</form>}<button className="secondary-button team-refresh" disabled={loading} onClick={()=>setAttempt(n=>n+1)}><RefreshCw size={16}/>Refresh</button>{navigation}</div>
  {loading&&<div className="review-loading" role="status"><RefreshCw className="review-spin" size={24}/><strong>Loading team analytics</strong><p>Resolving current reporting assignments.</p></div>}
  {error&&<div className="review-error" role="alert"><span>{error}</span><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></div>}
  {!loading&&data&&<>

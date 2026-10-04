@@ -42,9 +42,10 @@ export function SkillReviews(){
   {key:'CHANGES_REQUESTED',label:'Changes requested',hint:'Feedback shared with employees',value:data?.summary?.changes,icon:MessageSquareMore,tone:'blue'},
   {key:'REJECTED',label:'Not approved',hint:'Claims with a recorded decision',value:data?.summary?.rejected,icon:XCircle,tone:'rose'},
  ];
+ const navigation=<nav className="review-workspace-tabs" aria-label="Skill review workspace"><button aria-pressed={view==='queue'} onClick={()=>setView('queue')}><ClipboardCheck size={18}/>Review queue</button>{data?.canViewTeam&&<button aria-pressed={view==='team'} onClick={()=>setView('team')}><UsersRound size={18}/>Team analytics</button>}</nav>;
  return <div className="review-shell">
-  <nav className="review-workspace-tabs" aria-label="Skill review workspace"><button aria-pressed={view==='queue'} onClick={()=>setView('queue')}><ClipboardCheck size={18}/>Review queue</button>{data?.canViewTeam&&<button aria-pressed={view==='team'} onClick={()=>setView('team')}><UsersRound size={18}/>Team analytics</button>}</nav>
-  {view==='team'&&data?.canViewTeam?<TeamCapability onReviews={id=>{setPerson(id);setStatus('SUBMITTED');setPage(1);setQuery('');setSearch('');setView('queue');}}/>:<>
+  {!(view==='team'&&data?.canViewTeam)&&navigation}
+  {view==='team'&&data?.canViewTeam?<TeamCapability navigation={navigation} onReviews={id=>{setPerson(id);setStatus('SUBMITTED');setPage(1);setQuery('');setSearch('');setView('queue');}}/>:<>
   {notice&&<p role="status" className="access-message">{notice}</p>}
   {error&&<div className="review-error" role="alert"><span>{error}</span><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></div>}
   {(data?.summary||loading)&&<div className="review-metrics" aria-label="Filter reviews by status">{metrics.map(item=><button className={'review-metric '+item.tone} key={item.key} disabled={loading} aria-pressed={status===item.key} onClick={()=>{setStatus(item.key);setPage(1);}}><span className="review-metric-icon"><item.icon size={22}/></span><span className="review-metric-copy"><strong>{loading?'—':item.value??'—'}</strong><span>{item.label}</span><small>{item.hint}</small></span><ArrowRight size={16} className="review-metric-arrow"/></button>)}</div>}
