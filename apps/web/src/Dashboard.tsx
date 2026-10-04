@@ -30,8 +30,8 @@ export function Dashboard(){
   {error&&<section className="dashboard-card" role="alert"><h3>Dashboard could not be loaded</h3><p>{error}</p><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></section>}
   {!manifest&&!error&&<div className="dashboard-grid" role="status" aria-label="Loading your dashboard">{[1,2,3].map(id=><div key={id} className="dashboard-card dashboard-skeleton"><i/><i/><i/></div>)}</div>}
   {manifest&&<>
-   <div className="dashboard-grid">{manifest.cards.map(card=><DashboardCard key={manifest.actorId+card.id} card={card} revision={manifest.revision} refresh={cardRefresh} ai={manifest.ai} onAccessChanged={()=>setAttempt(n=>n+1)}/>)}</div>
-   <DashboardQuickActions actions={manifest.actions} onAssist={prompt=>window.dispatchEvent(new CustomEvent('assistant-context-request',{detail:{prompt}}))}/>
+   <div className="dashboard-grid">{manifest.cards.map(card=><DashboardCard key={manifest.actorId+card.id} card={card} revision={manifest.revision} refresh={cardRefresh} ai={manifest.ai} onAccessChanged={()=>setAttempt(n=>n+1)}/>)}
+   <DashboardQuickActions actions={manifest.actions} onAssist={prompt=>window.dispatchEvent(new CustomEvent('assistant-context-request',{detail:{prompt}}))}/></div>
    {!manifest.cards.length&&<section className="dashboard-card"><h3>Your workspace is ready</h3><p>Your assigned features will appear here when access is available.</p></section>}
   </>}
  </div>;
@@ -45,7 +45,7 @@ function DashboardCard({card,revision,refresh,ai,onAccessChanged}:{card:Card;rev
  const Icon={attention:Bell,learning:BookOpen,capability:Layers,requests:Inbox}[card.id];
  if(denied)return null;
  const href={attention:'/requests?inbox=true',learning:'/learning',capability:'/my-skills',requests:'/requests'}[card.id];
- return <section className={'dashboard-card dashboard-'+card.id} aria-label={card.title}>
+ return <section className={'dashboard-card dashboard-'+card.id+(card.id==='attention'&&data?.total===0&&!data.partial?' dashboard-caught-up':'')} aria-label={card.title}>
   <header><span className="dashboard-icon"><Icon size={20}/></span><div><h3>{card.title}</h3><p>{card.description}</p></div></header>
   {error?<div className="dashboard-error" role="alert"><p>{error}</p><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></div>:!data?<div className="dashboard-skeleton" role="status" aria-label={'Loading '+card.title}><i/><i/><i/></div>:<>
    {card.id==='attention'&&<DashboardAttention total={data.total} partial={data.partial} groups={data.groups} onRetry={()=>setAttempt(n=>n+1)}/>}
