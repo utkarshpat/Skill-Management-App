@@ -14,7 +14,7 @@ export function EmployeeCapability({person,skills,onReviews,onSaved}:{person:Tea
  const [tab,setTab]=useState<'skills'|'history'>('skills'),[filter,setFilter]=useState('ALL'),[search,setSearch]=useState('');
  const [assigned,setAssigned]=useState<Claim[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(25),[canRead,setCanRead]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[attempt,setAttempt]=useState(0);
  const [claim,setClaim]=useState<Claim>(),[opening,setOpening]=useState(false);
- useEffect(()=>{heading.current?.focus({preventScroll:true});heading.current?.scrollIntoView({block:'start',behavior:'instant'});},[person.id]);
+ useEffect(()=>{heading.current?.focus({preventScroll:true});heading.current?.closest('.team-analytics-shell')?.scrollIntoView({block:'start',behavior:'instant'});},[person.id]);
  useEffect(()=>{const controller=new AbortController();setLoading(true);setError('');
   const params=new URLSearchParams({person:person.id,status:'ALL',page:String(page)});
   authenticatedFetch('/api/skill-reviews?'+params,{signal:controller.signal}).then(async r=>{const body=await r.json();if(!r.ok)throw Error(body?.error?.message??'Assigned claim details could not be loaded.');return body as Assigned;}).then(v=>{if(controller.signal.aborted)return;setAssigned(old=>page===1?v.claims:[...old,...v.claims]);setTotal(v.total);setPageSize(v.pageSize);setCanRead(Boolean(v.canReadHistory));}).catch(e=>{if(!controller.signal.aborted){setAssigned([]);setCanRead(false);setError(e.message);}}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();
