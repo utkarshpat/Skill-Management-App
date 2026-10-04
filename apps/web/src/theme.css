@@ -27,7 +27,7 @@
   --ink: #18202a;
   --heading: #172033;
   --muted: #687385;
-  --line: #e5e8ec;
+  --line: #cbd3dd;
   --accent-soft: #e9f4f3;
   --accent-ink: #126b70;
   --ai-soft: #f1edfc;
@@ -53,7 +53,7 @@
   --ink: #e7edf5;
   --heading: #edf3fa;
   --muted: #acb8ca;
-  --line: #35455d;
+  --line: #455772;
   --accent-soft: #163a40;
   --accent-ink: #8cdbd5;
   --ai-soft: #302849;
@@ -339,3 +339,19 @@ html[data-theme] .assistant-markdown a { font-size:inherit;display:inline;margin
 .notification-list .notification-summary-link{display:block;padding:0;border-radius:0;color:var(--ink)}.notification-summary-link:hover strong{text-decoration:underline;color:var(--accent-ink)}.notification-popover a:focus-visible,.notification-popover button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 
 .notification-popover{overflow:hidden}.notification-popover:popover-open{display:flex;flex-direction:column}.notification-heading,.notification-toolbar,.notification-device-note{flex-shrink:0}.notification-list{min-height:0;flex:1}.notification-list .notification-summary-link strong{white-space:normal;overflow:visible;text-overflow:clip}
+
+/* Shared slim scrollbars: native fallback, gradient thumbs in Chromium/WebKit. */
+:root{--scrollbar-start:#167c80;--scrollbar-end:#65bfb5;--scrollbar-hover-start:#126b70;--scrollbar-hover-end:#399f98;--scrollbar-track:transparent}
+:root[data-theme=dark]{--scrollbar-start:#3b939b;--scrollbar-end:#8cdbd5;--scrollbar-hover-start:#55aeb5;--scrollbar-hover-end:#ade9e4}
+html,body,body *,html[data-theme] .admin-sidebar,html[data-theme] .admin-sidebar .sidebar-scroll{scrollbar-width:thin;scrollbar-color:var(--scrollbar-start) var(--scrollbar-track)}
+@supports selector(::-webkit-scrollbar){
+ html,body,body *,html[data-theme] .admin-sidebar,html[data-theme] .admin-sidebar .sidebar-scroll{scrollbar-width:auto;scrollbar-color:auto}
+ ::-webkit-scrollbar{width:6px;height:6px}
+ ::-webkit-scrollbar-track{background:var(--scrollbar-track);border-radius:999px}
+ ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--scrollbar-start),var(--scrollbar-end));border-radius:999px;min-height:28px}
+ ::-webkit-scrollbar-thumb:horizontal{background:linear-gradient(90deg,var(--scrollbar-start),var(--scrollbar-end));min-width:28px}
+ ::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,var(--scrollbar-hover-start),var(--scrollbar-hover-end))}
+ ::-webkit-scrollbar-thumb:horizontal:hover{background:linear-gradient(90deg,var(--scrollbar-hover-start),var(--scrollbar-hover-end))}
+ ::-webkit-scrollbar-corner{background:transparent}
+}
+@media(forced-colors:active){html,body,body *,html[data-theme] .admin-sidebar,html[data-theme] .admin-sidebar .sidebar-scroll{scrollbar-width:auto;scrollbar-color:auto}}
