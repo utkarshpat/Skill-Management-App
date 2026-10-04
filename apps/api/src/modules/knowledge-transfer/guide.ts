@@ -4,21 +4,21 @@ import {can,type AccessStore} from '../access/index.js';
 import type {Provider,Message} from '../ai/index.js';
 import type {AiBudget} from '../ai/index.js';
 
-export interface GuideInput {question:string;section?:string;history:{role:'user'|'assistant';content:string}[]}
+export interface GuideInput {question:string;section?:string;table?:string;history:{role:'user'|'assistant';content:string}[]}
 export function guideInput(input:unknown):GuideInput {
  if(!input||typeof input!=='object'||Array.isArray(input))throw new AccessError(400,'Enter a project question.');
  const v=input as Record<string,unknown>;
- if(Object.keys(v).some(k=>!['question','section','history'].includes(k))||typeof v.question!=='string'||!v.question.trim()||v.question.length>1500||v.section!==undefined&&(typeof v.section!=='string'||!content.sections.some(s=>s.id===v.section)))throw new AccessError(400,'Choose a documented section and a question under 1,500 characters.');
+ if(Object.keys(v).some(k=>!['question','section','table','history'].includes(k))||typeof v.question!=='string'||!v.question.trim()||v.question.length>1500||v.section!==undefined&&(typeof v.section!=='string'||!content.sections.some(s=>s.id===v.section))||v.table!==undefined&&(typeof v.table!=='string'||!Object.hasOwn(content.schema.tables,v.table)))throw new AccessError(400,'Choose a documented section/table and a question under 1,500 characters.');
  const history=v.history??[];
  if(!Array.isArray(history)||history.length>6||history.some(m=>!m||typeof m!=='object'||Object.keys(m).some(k=>!['role','content'].includes(k))||!['user','assistant'].includes(m.role)||typeof m.content!=='string'||m.content.length>2000)||JSON.stringify(history).length>8000)throw new AccessError(400,'Keep a short project discussion.');
- return {question:v.question.trim(),section:v.section as string|undefined,history};
+ return {question:v.question.trim(),section:v.section as string|undefined,table:v.table as string|undefined,history};
 }
 export function projectContext(input:GuideInput){
  const words=(input.question+' '+input.history.filter(m=>m.role==='user').slice(-1).map(m=>m.content).join(' ')).toLowerCase().match(/[a-z0-9_]{3,}/g)??[];
  const score=(title:string,text:string)=>words.reduce((n,w)=>n+(title.toLowerCase().includes(w)?6:0)+(text.toLowerCase().includes(w)?1:0),0);
  const chunks=content.sections.map(s=>({id:s.id,title:s.title,text:s.content,href:'/knowledgetransfer#'+s.id,score:score(s.title,s.content)+(s.id===input.section?20:0)}));
  for(const [name,table] of Object.entries(content.schema.tables)){
-  if(words.some(w=>name.toLowerCase().includes(w)))chunks.push({id:'table-'+name,title:'dbo.'+name,text:JSON.stringify(table),href:'/knowledgetransfer#table-'+name,score:score(name,JSON.stringify(table))+12});
+  if(name===input.table||words.some(w=>name.toLowerCase().includes(w)))chunks.push({id:'table-'+name,title:'dbo.'+name,text:JSON.stringify(table),href:'/knowledgetransfer#table-'+name,score:score(name,JSON.stringify(table))+12+(name===input.table?30:0)});
  }
  if(/\b(api|endpoint|route)\b/i.test(input.question))chunks.push({id:'api-inventory',title:'Registered HTTP routes',text:JSON.stringify(content.routes),href:'/knowledgetransfer#api-inventory',score:15});
  const ranked=chunks.sort((a,b)=>b.score-a.score).slice(0,4);

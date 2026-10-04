@@ -54,7 +54,7 @@ export function KnowledgeTransfer(){
    {active==='setup-configuration-deployment'&&<details className="kt-inventory"><summary>All {data.schema.migrations.length} reviewed migrations <ChevronDown size={17}/></summary><ol>{data.schema.migrations.map(m=><li key={m}><a href={sourceUrl('database/migrations/'+m)} target="_blank" rel="noreferrer">{m}<ExternalLink size={13}/></a></li>)}</ol></details>}
    <footer className="kt-chapter-footer"><a href={sourceUrl(chapter?.source??'docs/HANDOVER.md')} target="_blank" rel="noreferrer"><Code2 size={15}/>View maintained source <ExternalLink size={13}/></a><p>Source revision {data.revision} · Repository reconstruction; live configuration can differ.</p><div>{index>0&&<button onClick={()=>open(chapters[index-1].id)}><ArrowLeft size={16}/>Previous chapter</button>}{index<chapters.length-1&&<button onClick={()=>open(chapters[index+1].id)}>Next chapter<ArrowRight size={16}/></button>}</div></footer>
   </main>
-  <ProjectGuide data={data} section={active??chapters[0].id} open={aiOpen} setOpen={setAiOpen}/>
+  <ProjectGuide data={data} section={active??chapters[0].id} table={active===schemaId?selected||Object.keys(data.schema.tables)[0]:undefined} open={aiOpen} setOpen={setAiOpen}/>
   {!aiOpen&&<button className="kt-guide-launcher" onClick={()=>setAiOpen(true)}><Sparkles size={19}/>Ask the project guide</button>}
  </div>;
 }
@@ -72,7 +72,7 @@ function SchemaExplorer({data,selected,open}:{data:Knowledge;selected:string;ope
 
 function ApiExplorer({data}:{data:Knowledge}){const [query,setQuery]=useState('');return <section className="kt-inventory"><h2>Source-derived API & SQL inventory</h2><label className="kt-search"><Search size={17}/><input type="search" aria-label="Search API and SQL inventory" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Route, module or procedure…"/></label><div className="kt-table-scroll"><table><caption>Literal registered routes (not a full OpenAPI specification)</caption><thead><tr><th>Method</th><th>Route</th><th>Owner / source</th></tr></thead><tbody>{data.routes.filter(r=>(r.method+r.path+r.module).toLowerCase().includes(query.toLowerCase())).map((r,i)=><tr key={r.path+i}><td><span className={'kt-method kt-'+r.method.toLowerCase()}>{r.method}</span></td><td><code>{r.path}</code></td><td><a href={sourceUrl(r.source)} target="_blank" rel="noreferrer">{r.module}<ExternalLink size={13}/></a></td></tr>)}</tbody></table></div><h3>Latest procedure / function / view declarations</h3>{data.procedures.filter(p=>(p.name+p.kind+p.signature).toLowerCase().includes(query.toLowerCase())).map(p=><details key={p.name}><summary><Code2 size={15}/>{p.name}<span>{p.kind}</span></summary><pre>{p.signature||'No parameter declaration'}</pre><a href={sourceUrl(p.source)} target="_blank" rel="noreferrer">{p.source}<ExternalLink size={13}/></a></details>)}</section>;}
 
-function ProjectGuide({data,section,open,setOpen}:{data:Knowledge;section:string;open:boolean;setOpen:(v:boolean)=>void}){
+function ProjectGuide({data,section,table,open,setOpen}:{data:Knowledge;section:string;table?:string;open:boolean;setOpen:(v:boolean)=>void}){
  const [messages,setMessages]=useState<ChatMessage[]>([]),[question,setQuestion]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const controller=useRef<AbortController|undefined>(undefined),generation=useRef(0),log=useRef<HTMLDivElement>(null);
  useEffect(()=>()=>{generation.current++;controller.current?.abort();},[]);
@@ -80,7 +80,7 @@ function ProjectGuide({data,section,open,setOpen}:{data:Knowledge;section:string
  const reset=()=>{generation.current++;controller.current?.abort();setBusy(false);setMessages([]);setQuestion('');setError('');};
  const send=async()=>{
   if(busy||!question.trim())return;const text=question.trim(),epoch=++generation.current,request=new AbortController();controller.current=request;setBusy(true);setError('');setQuestion('');setMessages(m=>[...m.slice(-11),{role:'user',content:text}]);
-  try{const body=await responseJson(await authenticatedFetch('/api/knowledge-transfer/explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,section,history:messages.slice(-6).map(m=>({role:m.role,content:m.content.slice(0,1200)}))}),signal:request.signal}));if(epoch===generation.current&&!request.signal.aborted)setMessages(m=>[...m,{role:'assistant',content:body.reply,sources:body.sources}]);}
+  try{const body=await responseJson(await authenticatedFetch('/api/knowledge-transfer/explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:text,section,table,history:messages.slice(-6).map(m=>({role:m.role,content:m.content.slice(0,1200)}))}),signal:request.signal}));if(epoch===generation.current&&!request.signal.aborted)setMessages(m=>[...m,{role:'assistant',content:body.reply,sources:body.sources}]);}
   catch(e){if(epoch===generation.current&&!request.signal.aborted){setError((e as Error).message);setQuestion(text);}}
   finally{if(epoch===generation.current)setBusy(false);}
  };
