@@ -10,7 +10,7 @@ import { workspaceFor } from './workspace.js';
 import { notificationsFor } from './notifications.js';
 import { can, effectiveAccessSummary } from '../access/index.js';
 type DevelopmentSessions = ReturnType<typeof createDevelopmentSessions>;
-export interface HttpDependencies { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; resolveAccess?: (identity: Identity) => Promise<string | undefined>; access?: AccessStore; recommendationNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; workflowNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; skillNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; }
+export interface HttpDependencies { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; ownOrganization?: (actorId:string)=>Promise<NonNullable<Profile['organizationDetails']>>; resolveAccess?: (identity: Identity) => Promise<string | undefined>; access?: AccessStore; recommendationNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; workflowNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; skillNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; }
 export function registerRoutes(app: Express, dependencies: HttpDependencies | undefined, store?: AccessStore, demo?: DevelopmentSessions) {
   app.use('/api/dev-login', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -79,8 +79,17 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
   });
   app.get('/api/me', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
+    async function sendProfile(profile:Profile,mode?:string){
+      try {
+        const organizationDetails=await dependencies?.ownOrganization?.(profile.id);
+        res.json({profile:organizationDetails?{...profile,organization:organizationDetails.workspace,organizationDetails}:profile,...(mode?{mode}:{})});
+      }catch(error){
+        if(error instanceof AccessError){res.status(error.status).json({error:{code:'PROFILE_UNAVAILABLE',message:error.message,requestId:res.locals.requestId}});return;}
+        throw error;
+      }
+    }
     const demoProfile = await demo?.profile(req);
-    if (demoProfile) { res.json({ profile: demoProfile, mode: 'local-demo' }); return; }
+    if (demoProfile) { await sendProfile(demoProfile,'local-demo'); return; }
     if (demo?.subject(req)) { res.status(403).json({error:{code:'ACCESS_NOT_PROVISIONED',message:'Profile view permission is not assigned.',requestId:res.locals.requestId}}); return; }
     let identity: Identity;
     try {
@@ -96,6 +105,6 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
       res.status(403).json({ error: { code: 'ACCESS_NOT_PROVISIONED', message: 'Your workspace access is not available. Contact your administrator.', requestId: res.locals.requestId } });
       return;
     }
-    res.json({ profile });
+    await sendProfile(profile);
   });
 }

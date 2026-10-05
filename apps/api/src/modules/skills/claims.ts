@@ -3,7 +3,7 @@ import { AccessError } from '../../shared/errors.js';
 export interface SkillClaim {
   id: string; revision: number; skillId: string; skillName: string; category: string;
   definitionRevision: number; rank: number; levelName: string; levelDescription: string;
-  experienceMonths: number; description: string; status: 'DRAFT'|'SUBMITTED'|'CHANGES_REQUESTED'|'APPROVED'|'REJECTED'; updatedAt: string;
+  experienceMonths: number; lastUsedOn?: string|null; description: string; status: 'DRAFT'|'SUBMITTED'|'CHANGES_REQUESTED'|'APPROVED'|'REJECTED'; updatedAt: string;
   projects?: string; evidence?: string; feedback?: string; reviewerId?: string; personId?:string; personName?: string;
 }
 export interface ClaimOption {
@@ -53,10 +53,10 @@ export function claimSearch(value: unknown): string {
   if (typeof value !== 'string' || value.length > 100) throw new AccessError(400, 'Search using up to 100 characters.');
   return value.trim();
 }
-export function claimChange(input: unknown) {
+export function claimChange(input: unknown, at=new Date()) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new AccessError(400, 'Invalid skill draft.');
   const body = input as Record<string, unknown>;
-  const fields = new Set(['id','revision','skillId','definitionRevision','rank','experienceMonths','description','projects','evidence']);
+  const fields = new Set(['id','revision','skillId','definitionRevision','rank','experienceMonths','lastUsedOn','description','projects','evidence']);
   if (Object.keys(body).some(key => !fields.has(key))) throw new AccessError(400, 'Only editable skill draft fields are accepted.');
   if (typeof body.id !== 'string' || !uuid.test(body.id) || typeof body.skillId !== 'string' || !uuid.test(body.skillId)) throw new AccessError(400, 'Choose a valid skill draft.');
   for (const [key, min, max] of [['revision',0,2147483646],['definitionRevision',1,2147483646],['rank',1,8],['experienceMonths',0,600]] as const) {
@@ -64,7 +64,18 @@ export function claimChange(input: unknown) {
   }
   if (typeof body.description !== 'string' || !body.description.trim() || body.description.trim().length > 2000) throw new AccessError(400, 'Describe your experience using up to 2,000 characters.');
   const projects=claimText(body.projects,2000), evidence=claimText(body.evidence,2000);
-  return { id: body.id.toLowerCase(), revision: Number(body.revision), skillId: body.skillId.toLowerCase(), definitionRevision: Number(body.definitionRevision), rank: Number(body.rank), experienceMonths: Number(body.experienceMonths), description: body.description.trim(),projects,evidence };
+  let lastUsedOn:string|null|undefined;
+  if(Object.hasOwn(body,'lastUsedOn')){
+    if(body.lastUsedOn===null)lastUsedOn=null;
+    else {
+      const value=body.lastUsedOn;
+      if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value)||value<'0001-01-01')throw new AccessError(400,'Choose a valid last-used date or leave it blank.');
+      const parsed=new Date(value+'T00:00:00Z');
+      if(!Number.isFinite(parsed.getTime())||parsed.toISOString().slice(0,10)!==value||!Number.isFinite(at.getTime())||value>at.toISOString().slice(0,10))throw new AccessError(400,'Last used must be a real date on or before today (UTC).');
+      lastUsedOn=value;
+    }
+  }
+  return { id: body.id.toLowerCase(), revision: Number(body.revision), skillId: body.skillId.toLowerCase(), definitionRevision: Number(body.definitionRevision), rank: Number(body.rank), experienceMonths: Number(body.experienceMonths), description: body.description.trim(),projects,evidence,...(lastUsedOn!==undefined?{lastUsedOn}:{}) };
 }
 function claimText(value:unknown,max:number) {if(value===undefined)return '';if(typeof value!=='string'||value.length>max)throw new AccessError(400,`Use up to ${max} characters.`);return value.trim();}
 export function claimTransition(input:unknown){

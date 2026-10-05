@@ -35,12 +35,12 @@ const learningGenerator:QuizGenerator|undefined=assistant?async(actor,prompt,sig
 const practice=learning&&process.env.ACCESS_ACCOUNT_ID?new LearningPracticeService(learning,new SqlPracticeStore(process.env.ACCESS_ACCOUNT_ID),learningGenerator):undefined;
 const planner=learning?new LearningPlannerService(learning,learningGenerator):undefined;
 const recovery=learning&&process.env.ACCESS_ACCOUNT_ID?new LearningRecoveryService(learning,new SqlRecoveryStore(process.env.ACCESS_ACCOUNT_ID),learningGenerator):undefined;
-const app = createApp(config ? { verify: tokenVerifier(config),access,organization,assistant,knowledgeTransfer,catalogue,claims,learning,practice,planner,recovery,workflows,recommendations,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
+const app = createApp(config ? { verify: tokenVerifier(config),access,organization,ownOrganization:organization?.ownOrganization.bind(organization),assistant,knowledgeTransfer,catalogue,claims,learning,practice,planner,recovery,workflows,recommendations,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
   const id=await access?.resolveIdentity(identity);
   if(!id)return ownProfile(identity);
   const state=await access!.snapshot({includeAudit:false});const person=state.people.find(person=>person.id===id);
   if(!person||!can(state,person,'profile.view',true))return undefined;
-  return {id:person.id,displayName:person.displayName,employeeCode:person.employeeCode,organization:'Development Workspace',status:person.active?'ACTIVE':'SUSPENDED',roles:state.roles.filter(role=>person.roleIds.includes(role.id)).map(role=>role.name),canManageAccess:can(state,person,'permissions.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage')};
+  return {id:person.id,displayName:person.displayName,employeeCode:person.employeeCode,jobTitle:person.jobTitle,grade:person.grade,organization:'Development Workspace',status:person.active?'ACTIVE':'SUSPENDED',roles:state.roles.filter(role=>person.roleIds.includes(role.id)).map(role=>role.name),canManageAccess:can(state,person,'permissions.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage')};
 } } : undefined, { developmentStore, hostedDemo });
 // Vercel owns the listener and lifecycle; local/Azure Node hosting keeps its server.
 export default app;

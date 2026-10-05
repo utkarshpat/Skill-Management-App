@@ -18,7 +18,13 @@ test('KT rejects forged authority/history and oversized context before any provi
 
 test('KT inventory preserves actual FK tuples and treats view and quota tables honestly',()=>{
  assert.equal(Object.keys(content.schema.tables).length,43);
- assert.equal(content.schema.migrations.length,40);
+ assert.equal(content.schema.migrations.length,45);
+ assert.equal(content.schema.tables.AccessPerson.columns.job_title.type,'nvarchar(100)');
+ assert.equal(content.schema.tables.AccessPerson.columns.grade.nullable,true);
+ assert.ok(content.schema.tables.ProficiencyFramework.constraints.some(item=>item.sql.includes("'enterprise-v1','enterprise-v2'")));
+ assert.ok(!content.schema.tables.ProficiencyFramework.constraints.some(item=>item.sql==="CHECK(account_id IS NOT NULL OR framework_key='enterprise-v1')"));
+ assert.equal(content.schema.tables.SkillClaimDraft.columns.last_used_on.type,'date');
+ assert.equal(content.schema.tables.SkillClaimDraft.columns.last_used_on.nullable,true);
  assert.ok('SkillProficiencyLevel' in content.schema.views);
  assert.ok(!('SkillProficiencyLevel' in content.schema.tables));
  assert.equal(content.schema.tables.AiActorBudget.fks.length,0);

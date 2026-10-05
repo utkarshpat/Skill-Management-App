@@ -1,9 +1,25 @@
 import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
-import { organizationChange, identifier, type OrganizationStore, type OrganizationState, type OrgNode, type OrgAssignment, type OrgPerson } from './organization.js';
+import { organizationChange, identifier, type OrganizationStore, type OrganizationState, type OrgNode, type OrgAssignment, type OrgPerson, type OwnOrganization } from './organization.js';
 export class SqlOrganizationStore implements OrganizationStore {
   constructor(private accountId:string) { identifier(accountId); }
+  async ownOrganization(actorId:string):Promise<OwnOrganization> {
+    identifier(actorId);
+    try {
+      return await withRuntimeDatabase(async pool=>{
+        const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId).execute('dbo.ReadOwnOrganization');
+        const row:OwnOrganization|undefined=result.recordset[0];
+        if(!row)throw new AccessError(404,'Your organization details are unavailable.');
+        return row;
+      });
+    }catch(error){
+      const number=(error as {number?:number}).number;
+      if(number===51003)throw new AccessError(403,'Your current permissions do not allow viewing this profile.');
+      if(number===51004)throw new AccessError(404,'Your workspace is unavailable.');
+      throw error;
+    }
+  }
   async snapshot():Promise<OrganizationState> {
     return withRuntimeDatabase(async pool=>{
       const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).execute('dbo.ReadOrganization');

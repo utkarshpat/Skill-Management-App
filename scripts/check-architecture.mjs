@@ -14,7 +14,7 @@ const typeDependencies = {
   'knowledge-transfer': ['access','identity','ai'],
   recommendations: ['access','learning','identity'],
   dashboard: ['access','identity','skills','learning','workflows'],
-  identity: ['access'], access: ['identity'], organization: ['access'], learning: ['access', 'identity'], workflows: ['access', 'identity'],
+  identity: ['access','organization'], access: ['identity'], organization: ['access'], learning: ['access', 'identity'], workflows: ['access', 'identity'],
   skills: ['access', 'identity'], ai: ['access', 'organization', 'skills', 'identity', 'learning', 'workflows'],
 };
 const normalize = value => value.replaceAll('\\', '/');

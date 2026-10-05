@@ -5,10 +5,11 @@ import { dirname } from 'node:path';
 import type { Grant } from './domain/authorization.js';
 import { permissionCatalogue, type PermissionCode } from './access-catalogue.js';
 import { effectiveAccess, isAssignable, hasResolvedDirectReports } from './effective-access.js';
+import {employmentDetails,type EmploymentDetails} from './employment.js';
 
 export interface Assignment { permission: PermissionCode; scope: 'OWN' | 'ORGANIZATION'; effect: 'ALLOW' | 'DENY'; validUntil?: string; reason?:string }
 export interface CustomRole { id: string; name: string; permissions: Assignment[] }
-export interface LocalPerson { id: string; displayName: string; employeeCode: string; active: boolean; hasDirectReports?:boolean; entraObjectId?:string; roleIds: string[]; overrides: Assignment[] }
+export interface LocalPerson extends EmploymentDetails { id: string; displayName: string; employeeCode: string; active: boolean; hasDirectReports?:boolean; entraObjectId?:string; roleIds: string[]; overrides: Assignment[] }
 export interface LocalAccessState { reporting?:{personId:string;managerId:string|null}[]; revision: number; roles: CustomRole[]; people: LocalPerson[]; audit: { actorId: string; action: string; targetId: string; at: string; revision: number; before?: CustomRole | LocalPerson; after?: CustomRole | LocalPerson }[] }
 export { AccessError } from '../../shared/errors.js';
 export interface AccessStore {
@@ -74,7 +75,7 @@ export class LocalAccessStore {
         state = JSON.parse(await readFile(path, 'utf8'));
         if (!Number.isInteger(state.revision) || !Array.isArray(state.roles) || !Array.isArray(state.people) || !Array.isArray(state.audit)) throw new Error('Invalid local access file.');
         for (const role of state.roles) { text(role.name,100); assignments(role.permissions); }
-        for (const person of state.people) { text(person.displayName,100); text(person.employeeCode,40); assignments(person.overrides); if (!Array.isArray(person.roleIds) || person.roleIds.some(id => !state.roles.some(role => role.id === id))) throw new Error('Invalid local role references.'); }
+        for (const person of state.people) { text(person.displayName,100); text(person.employeeCode,40); employmentDetails({...person}); assignments(person.overrides); if (!Array.isArray(person.roleIds) || person.roleIds.some(id => !state.roles.some(role => role.id === id))) throw new Error('Invalid local role references.'); }
       } catch (error) { if (!(error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT')) throw new Error('Local access configuration could not be loaded.'); }
     }
     const store = new LocalAccessStore(path,state); if (path) await store.persist(state); return store;
@@ -110,7 +111,7 @@ export class LocalAccessStore {
         const previous = state.people.find(person => person.id === id);
         if (body.id !== undefined && !previous) throw new AccessError(404,'Person not found.');
         if (typeof body.active !== 'boolean' || !Array.isArray(body.roleIds) || body.roleIds.length > 100 || body.roleIds.some(roleId => typeof roleId !== 'string' || !state.roles.some(role => role.id === roleId))) throw new AccessError(400,'Invalid status or roles.');
-        const person: LocalPerson = { id, displayName:text(body.displayName,100), employeeCode:text(body.employeeCode,40), active:body.active, ...(previous?.entraObjectId?{entraObjectId:previous.entraObjectId}:{}), ...(previous?.hasDirectReports!==undefined?{hasDirectReports:previous.hasDirectReports}:{}), roleIds:[...new Set(body.roleIds as string[])], overrides:assignments(body.overrides) };
+        const person: LocalPerson = { id, displayName:text(body.displayName,100), employeeCode:text(body.employeeCode,40), ...employmentDetails(body,previous), active:body.active, ...(previous?.entraObjectId?{entraObjectId:previous.entraObjectId}:{}), ...(previous?.hasDirectReports!==undefined?{hasDirectReports:previous.hasDirectReports}:{}), roleIds:[...new Set(body.roleIds as string[])], overrides:assignments(body.overrides) };
         validateAssignmentChanges(person.overrides,previous?.overrides??[],true);
         const newRoles=person.roleIds.filter(roleId=>!previous?.roleIds.includes(roleId));
         if(newRoles.some(roleId=>state.roles.find(role=>role.id===roleId)?.permissions.some(grant=>!isAssignable(grant))))throw new AccessError(400,'This template contains unsupported assignments. Review it before assigning to another person.');

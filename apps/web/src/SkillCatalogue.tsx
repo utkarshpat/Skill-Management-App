@@ -3,11 +3,13 @@ import { createPortal } from 'react-dom';
 import { Plus, Search, BookOpen } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { FormDialog } from './FormDialog';
+import { ProficiencyEditor } from './ProficiencyEditor';
+import { isStandardFramework, standardLevels } from './proficiency';
 
 interface Level {rank:number;name:string;description:string}
 interface Skill {businessCode?:string|null;definitionRevision?:number;id?:string;name:string;category:string;description:string;status:'DRAFT'|'PUBLISHED'|'ARCHIVED';levels:Level[]}
 interface State {revision:number;canManage:boolean;total:number;page:number;pageSize:number;skills:Skill[]}
-const blank=():Skill=>({name:'',category:'',description:'',status:'DRAFT',levels:['Awareness','Beginner','Intermediate','Advanced','Expert'].map((name,index)=>({rank:index+1,name,description:''}))});
+const blank=():Skill=>({name:'',category:'',description:'',status:'DRAFT',levels:standardLevels()});
 async function responseBody(response:Response) {
  const body=await response.json().catch(()=>undefined);
  if(!response.ok)throw new Error(body?.error?.message??(response.status===403?'Skill catalogue permission is not assigned.':response.status===401?'Sign in to view the catalogue.':'The catalogue could not be loaded. Please try again.'));
@@ -29,8 +31,9 @@ export function SkillCatalogue({actionsContainer,onChanged}:{actionsContainer:HT
  function levels(next:Level[]){if(draft)setDraft({...draft,levels:next.map((level,index)=>({...level,rank:index+1}))});}
  async function save(){
   if(!draft||!state?.canManage||busy)return;
+  if(!isStandardFramework(draft.levels)){setEditorPage(1);setError('Align this definition to the five-level proficiency model before saving.');return;}
   const invalid=draft.levels.findIndex(level=>!level.name.trim()||(draft.status==='PUBLISHED'&&!level.description.trim()));
-  if(invalid>=0){setEditorPage(1);setLevelIndex(invalid);setError('Enter a name and, before publishing, criteria for every proficiency level.');return;}
+  if(invalid>=0){setEditorPage(1);setLevelIndex(invalid);setError('Enter skill-specific criteria for every proficiency level before publishing.');return;}
   setBusy(true);setError('');setNotice('');let saved=false;
   try{
    await responseBody(await authenticatedFetch('/api/skills',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...draft,revision:draftRevision})}));
@@ -51,7 +54,7 @@ export function SkillCatalogue({actionsContainer,onChanged}:{actionsContainer:HT
    </section>
    {draft&&<FormDialog readOnly={!state?.canManage} title={state?.canManage?draft.id?'Edit skill':'Create skill':draft.name} busy={busy} onClose={()=>setDraft(undefined)} formId={state?.canManage?'skill-editor':undefined} onSubmit={()=>void save()} page={editorPage} onPageChange={setEditorPage} message={error&&<p role="alert">{error}</p>} footer={state?.canManage?<><button type="button" className="secondary-button" disabled={busy} onClick={()=>setDraft(undefined)}>Cancel</button><button type="submit" form="skill-editor" className="microsoft-button" disabled={busy||loading}>{busy?'Saving…':'Save skill'}</button></>:undefined} pages={state?.canManage?[
     {label:'Details',content:<><div className="dialog-field-grid"><label>Skill name<input ref={nameInput} required maxLength={100} value={draft.name} onChange={event=>setDraft({...draft,name:event.target.value})}/></label><label>Category<input required maxLength={80} list="skill-categories" value={draft.category} onChange={event=>setDraft({...draft,category:event.target.value})}/><datalist id="skill-categories">{[...new Set(state.skills.map(skill=>skill.category))].map(category=><option key={category} value={category}/>)}</datalist></label></div>{draft.businessCode&&<p className="access-help">{draft.businessCode} · Definition revision {draft.definitionRevision}</p>}<label>Description<textarea required={draft.status==='PUBLISHED'} maxLength={2000} rows={3} value={draft.description} onChange={event=>setDraft({...draft,description:event.target.value})}/></label><label>Status<select value={draft.status} onChange={event=>setDraft({...draft,status:event.target.value as Skill['status']})}><option value="DRAFT">Draft</option><option value="PUBLISHED">Published</option><option value="ARCHIVED">Archived</option></select></label></>},
-    {label:'Proficiency levels',content:<><div className="level-selector"><label>Proficiency level<select value={Math.min(levelIndex,draft.levels.length-1)} onChange={event=>setLevelIndex(Number(event.target.value))}>{draft.levels.map((level,index)=><option key={index} value={index}>Level {level.rank} · {level.name}</option>)}</select></label><button type="button" className="secondary-button" disabled={draft.levels.length>=8} onClick={()=>{levels([...draft.levels,{rank:draft.levels.length+1,name:'Level '+(draft.levels.length+1),description:''}]);setLevelIndex(draft.levels.length);}}>Add level</button><button type="button" className="secondary-button" disabled={draft.levels.length<=1} onClick={()=>{levels(draft.levels.filter((_,index)=>index!==Math.min(levelIndex,draft.levels.length-1)));setLevelIndex(Math.max(0,levelIndex-1));}}>Remove level</button></div>{draft.levels.map((level,index)=>index===Math.min(levelIndex,draft.levels.length-1)&&<div key={index} role="group" aria-label={'Proficiency level '+level.rank}><label>Name<input required maxLength={60} value={level.name} onChange={event=>levels(draft.levels.map((item,i)=>i===index?{...item,name:event.target.value}:item))}/></label><label>Criteria<textarea required={draft.status==='PUBLISHED'} rows={4} maxLength={1000} value={level.description} onChange={event=>levels(draft.levels.map((item,i)=>i===index?{...item,description:event.target.value}:item))}/></label></div>)}<p className="access-help">Published skills require criteria for every level. Changes to all levels save together.</p></>}
+    {label:'Proficiency levels',content:<ProficiencyEditor levels={draft.levels} original={state.skills.find(skill=>skill.id===draft.id)?.levels} selected={levelIndex} onSelect={setLevelIndex} onChange={levels} published={draft.status==='PUBLISHED'}/>}
    ]:[{label:'Description',content:<><p className="skill-category">{draft.category}</p><p>{draft.description}</p></>},...draft.levels.map(level=>({label:'Level '+level.rank,content:<><h3>{level.name}</h3><p>{level.description}</p></>}))]}/>}
   </div></>;
 }

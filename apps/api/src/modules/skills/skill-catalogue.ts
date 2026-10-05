@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { AccessError } from '../../shared/errors.js';
+import { hasStandardProficiency } from './proficiency.js';
 
 export type SkillStatus='DRAFT'|'PUBLISHED'|'ARCHIVED';
 export interface SkillLevel { rank:number; name:string; description:string }
@@ -29,7 +30,7 @@ export function catalogueChange(input:unknown) {
  if(typeof body.status!=='string'||!statuses.includes(body.status))throw new AccessError(400,'Choose a skill status.');
  if(body.id!==undefined&&(typeof body.id!=='string'||!uuid.test(body.id)))throw new AccessError(400,'Choose a valid skill.');
  const published=body.status==='PUBLISHED';
- if(!Array.isArray(body.levels)||body.levels.length<1||body.levels.length>8)throw new AccessError(400,'Define between one and eight proficiency levels.');
+ if(!Array.isArray(body.levels)||body.levels.length!==5)throw new AccessError(400,'Use exactly five levels: Awareness, Foundation, Practitioner, Advanced and Expert.');
  const names=new Set<string>();
  const levels:SkillLevel[]=body.levels.map((item,index)=>{
   if(!item||typeof item!=='object'||item.rank!==index+1)throw new AccessError(400,'Keep proficiency levels in sequential order.');
@@ -37,5 +38,6 @@ export function catalogueChange(input:unknown) {
   if(names.has(name.toLowerCase()))throw new AccessError(400,'Proficiency level names must be unique.');names.add(name.toLowerCase());
   return {rank:index+1,name,description};
  });
+ if(!hasStandardProficiency(levels))throw new AccessError(400,'Use exactly five levels: Awareness, Foundation, Practitioner, Advanced and Expert.');
  return {revision:Number(body.revision),targetId:body.id===undefined?randomUUID():String(body.id).toLowerCase(),isNew:body.id===undefined,payload:{name:text(body.name,100,true,true),category:text(body.category,80,true,true),description:text(body.description,2000,published),status:body.status as SkillStatus,levels}};
 }

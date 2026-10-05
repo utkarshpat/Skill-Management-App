@@ -15,6 +15,7 @@
     "test:organization": "node --env-file-if-exists=.env --import tsx test/organization.integration.ts",
     "test:catalogue": "node --env-file-if-exists=.env --import tsx test/skill-catalogue.integration.ts",
     "test:sql": "node --env-file-if-exists=.env --import tsx test/sql-access.integration.ts",
+    "test:employment": "node --env-file-if-exists=.env --import tsx test/employment.integration.ts",
     "test:reviews": "node --env-file-if-exists=.env --import tsx test/reviews.integration.ts",
     "test:review-access": "node --env-file-if-exists=.env --import tsx test/review-access.integration.ts",
     "test:claims": "node --env-file-if-exists=.env --import tsx test/claims.integration.ts",

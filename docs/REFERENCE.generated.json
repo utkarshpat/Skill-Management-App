@@ -1,6 +1,6 @@
 {
   "version": "2026-10-05",
-  "revision": "4ade245ba8536ebe",
+  "revision": "42509fd00403272c",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -44,7 +44,11 @@
       "038_recommendation_recipient_discovery.sql",
       "039_access_read_optimization.sql",
       "040_shared_ai_budget.sql",
-      "041_dashboard_top_skills.sql"
+      "041_dashboard_top_skills.sql",
+      "042_skill_last_used.sql",
+      "043_own_organization_profile.sql",
+      "044_standard_proficiency.sql",
+      "045_person_employment.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -1384,6 +1388,18 @@
             "nullable": true,
             "declaration": "entra_object_id uniqueidentifier NULL",
             "source": "003_custom_access.sql"
+          },
+          "job_title": {
+            "type": "nvarchar(100)",
+            "nullable": true,
+            "declaration": "job_title nvarchar(100) NULL",
+            "source": "045_person_employment.sql"
+          },
+          "grade": {
+            "type": "nvarchar(40)",
+            "nullable": true,
+            "declaration": "grade nvarchar(40) NULL",
+            "source": "045_person_employment.sql"
           }
         },
         "pk": [
@@ -2240,6 +2256,12 @@
             "nullable": true,
             "declaration": "reviewed_at datetime2(7) NULL",
             "source": "010_skill_claim_reviews.sql"
+          },
+          "last_used_on": {
+            "type": "date",
+            "nullable": true,
+            "declaration": "last_used_on date NULL",
+            "source": "042_skill_last_used.sql"
           }
         },
         "pk": [
@@ -2583,8 +2605,8 @@
         ],
         "constraints": [
           {
-            "sql": "CHECK(account_id IS NOT NULL OR framework_key='enterprise-v1')",
-            "source": "012_versioned_skill_framework.sql"
+            "sql": "CONSTRAINT CK_ProficiencyFramework_Common CHECK(account_id IS NOT NULL OR framework_key IN ('enterprise-v1','enterprise-v2'))",
+            "source": "044_standard_proficiency.sql"
           }
         ],
         "indexes": [
@@ -4325,13 +4347,13 @@
       "name": "ReadAccessWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier, @include_audit bit=1, @audit_person_id uniqueidentifier=NULL",
-      "source": "database/migrations/039_access_read_optimization.sql"
+      "source": "database/migrations/045_person_employment.sql"
     },
     {
       "name": "SaveAccessChange",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,\n @kind varchar(10),@target_id uniqueidentifier,@is_new bit,@payload nvarchar(max)",
-      "source": "database/migrations/031_effective_access_baseline.sql"
+      "source": "database/migrations/045_person_employment.sql"
     },
     {
       "name": "ResolveAccessIdentity",
@@ -4361,13 +4383,13 @@
       "name": "SaveSkillCatalogue",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,\n @target_id uniqueidentifier,@is_new bit,@payload nvarchar(max)",
-      "source": "database/migrations/012_versioned_skill_framework.sql"
+      "source": "database/migrations/044_standard_proficiency.sql"
     },
     {
       "name": "ReadOwnSkillClaims",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1",
-      "source": "database/migrations/010_skill_claim_reviews.sql"
+      "source": "database/migrations/042_skill_last_used.sql"
     },
     {
       "name": "ReadClaimSkills",
@@ -4379,7 +4401,7 @@
       "name": "SaveOwnSkillClaim",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@expected_revision int,@payload nvarchar(max)",
-      "source": "database/migrations/010_skill_claim_reviews.sql"
+      "source": "database/migrations/042_skill_last_used.sql"
     },
     {
       "name": "OwnAiConversations",
@@ -4469,7 +4491,7 @@
       "name": "ReadSkillReviewWorkbench",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1,@query nvarchar(100)=N'',@category nvarchar(80)=N'',\n @status varchar(20)='SUBMITTED',@person_id uniqueidentifier=NULL,@claim_id uniqueidentifier=NULL,@history_page int=1",
-      "source": "database/migrations/034_exact_claim_review_access.sql"
+      "source": "database/migrations/042_skill_last_used.sql"
     },
     {
       "name": "AccessReportingValid",
@@ -4500,6 +4522,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@lease_id uniqueidentifier,@operation varchar(8)",
       "source": "database/migrations/040_shared_ai_budget.sql"
+    },
+    {
+      "name": "ReadOwnOrganization",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/043_own_organization_profile.sql"
     }
   ],
   "groups": {

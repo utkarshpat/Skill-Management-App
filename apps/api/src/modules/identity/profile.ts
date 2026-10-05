@@ -1,8 +1,9 @@
 import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import type { Identity } from './auth.js';
+import type {OwnOrganization} from '../organization/index.js';
 
-export interface Profile { id: string; displayName: string; employeeCode: string; organization: string; status: string; roles: string[]; canManageAccess?:boolean; canViewSkills?:boolean }
+export interface Profile { id: string; displayName: string; employeeCode: string; jobTitle?:string|null;grade?:string|null;organization: string; status: string; roles: string[]; canManageAccess?:boolean; canViewSkills?:boolean; organizationDetails?:OwnOrganization }
 export async function ownProfile(identity: Identity): Promise<Profile | undefined> {
   return withRuntimeDatabase(async pool => {
     const result = await pool.request().input('tenant_id', sql.UniqueIdentifier, identity.tenantId)

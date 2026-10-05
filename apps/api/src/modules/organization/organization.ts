@@ -5,6 +5,12 @@ export type NodeKind = 'DELIVERY_UNIT' | 'DEPARTMENT' | 'TEAM';
 export interface OrgNode { id:string; kind:NodeKind; name:string; parentId:string|null; active:boolean }
 export interface OrgAssignment { personId:string; teamId:string|null; departmentId?:string|null; managerId:string|null }
 export interface OrgPerson { id:string; displayName:string; employeeCode:string; active:boolean }
+export interface OwnOrganization {
+ workspace:string;
+ placementStatus:'ASSIGNED'|'NOT_ASSIGNED'|'NEEDS_ATTENTION';
+ deliveryUnit:string|null;department:string|null;team:string|null;
+ managerStatus:'ASSIGNED'|'NOT_ASSIGNED'|'NEEDS_ATTENTION';managerName:string|null;
+}
 export interface OrganizationState { revision:number; nodes:OrgNode[]; assignments:OrgAssignment[]; people:OrgPerson[] }
 export interface OrganizationStore { snapshot():Promise<OrganizationState>; save(actorId:string,input:unknown):Promise<void> }
 export const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

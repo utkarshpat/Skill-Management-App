@@ -13,6 +13,16 @@ test('draft validation rejects fabricated owners, verification, invalid levels, 
   assert.equal(claimPage(undefined),1);assert.throws(()=>claimPage(['1','2']));assert.throws(()=>claimPage(0));assert.throws(()=>claimSearch({toString:()=>''}));
 });
 
+test('last-used dates are optional, strictly calendar-valid and bounded by the current UTC day',()=>{
+ const valid=draft(),at=new Date('2026-10-05T23:59:59Z');
+ assert.equal(Object.hasOwn(claimChange(valid,at),'lastUsedOn'),false);
+ assert.equal(claimChange({...valid,lastUsedOn:null},at).lastUsedOn,null);
+ for(const lastUsedOn of ['2024-02-29','2026-10-05','0001-01-01'])assert.equal(claimChange({...valid,lastUsedOn},at).lastUsedOn,lastUsedOn);
+ for(const lastUsedOn of ['2026-10-06','2025-02-29','2026-04-31','2026-2-01','2026-10-05T00:00:00Z','0000-01-01','',{},[],3]){
+  assert.throws(()=>claimChange({...valid,lastUsedOn},at),/last.used|Last used|date/);
+ }
+});
+
 test('own-skills HTTP binds actor to identity and denies revoked or fabricated permissions before persistence',async()=>{
   const access=await LocalAccessStore.open(),id=access.snapshot().people[0].id;
   const state=access.snapshot();state.people[0].overrides.push({permission:'skill.claim',scope:'OWN',effect:'ALLOW'},{permission:'skill.view',scope:'ORGANIZATION',effect:'ALLOW'});access.snapshot=()=>structuredClone(state);
@@ -23,7 +33,8 @@ test('own-skills HTTP binds actor to identity and denies revoked or fabricated p
   try{
     assert.equal((await fetch(url)).status,401);assert.equal((await fetch(url,{headers})).status,200);
     assert.equal((await fetch(url+'/catalogue',{headers})).status,200);
-    assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify(draft())})).status,200);
+    assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify({...draft(),lastUsedOn:'2024-02-29'})})).status,200);
+    assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify({...draft(),lastUsedOn:'2025-02-29'})})).status,400);assert.equal(saves,1);
     assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify({...draft(),actorId:randomUUID()})})).status,400);assert.equal(saves,1);
     assert.ok(actors.every(actor=>actor===id));
     state.people[0].overrides.push({permission:'skill.claim',scope:'OWN',effect:'DENY'});

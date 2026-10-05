@@ -10,12 +10,13 @@ import './skills-profile.css';
 import {SkillClaimWizard,type SkillChoice,type SkillDraft,type SkillChoices} from './SkillClaimWizard';
 import { useLocation, useNavigate } from 'react-router';
 import type {ClaimReviewDecision} from './ClaimReviewAccess';
+import {skillDateError} from './skill-dates';
 
 export interface Claim {
   personId?:string;
   reviewAccess?:ClaimReviewDecision;
   id:string; revision:number; skillId:string; skillName:string; category:string;
-  definitionRevision:number; rank:number; levelName:string; experienceMonths:number;
+  definitionRevision:number; rank:number; levelName:string; experienceMonths:number; lastUsedOn?:string|null;
   description:string; status:'DRAFT'|'SUBMITTED'|'CHANGES_REQUESTED'|'APPROVED'|'REJECTED'; updatedAt:string; projects?:string; evidence?:string; feedback?:string; personName?:string; levelDescription?:string;
 }
 type Option=SkillChoice;
@@ -83,7 +84,7 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
   },[options,suggestedSkillName,draft?.skillId]);
   function edit(claim?:Claim) {
     setPicked(undefined);setSuggestedSkillName('');setCategory('');setNotice('');setFormError('');setFormPage(0);setOptionPage(1);setSearch(claim?.skillName??'');
-    setDraft(claim?{id:claim.id,revision:claim.revision,skillId:claim.skillId,definitionRevision:claim.definitionRevision,rank:claim.rank,experienceMonths:claim.experienceMonths,description:claim.description,projects:claim.projects??'',evidence:claim.evidence??''}:emptyDraft());
+    setDraft(claim?{id:claim.id,revision:claim.revision,skillId:claim.skillId,definitionRevision:claim.definitionRevision,rank:claim.rank,experienceMonths:claim.experienceMonths,lastUsedOn:claim.lastUsedOn??null,description:claim.description,projects:claim.projects??'',evidence:claim.evidence??''}:emptyDraft());
   }
   useEffect(()=>{const params=new URLSearchParams(location.search);if(!state||params.get('action')!=='add')return;const suggested=params.get('skill')??'';params.delete('action');params.delete('skill');navigate(location.pathname+(params.size?'?'+params:''),{replace:true});  if(state.canClaim){edit();if(suggested){setSearch(suggested.slice(0,100));setSuggestedSkillName(suggested);}}else setError('Skill editing is not assigned.');},[location.search,state?.canClaim]);
   useEffect(()=>{
@@ -96,16 +97,24 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
     if((editId||submitId)&&!state.canClaim)setError('Your account does not have permission to edit or submit this claim.');
     setInspecting(claim);setSubmitting(false);
   },[location.search,state,loading]);
-  async function save() {
+  async function save(submit=false) {
     if(!draft||busy)return;
     if(!selected||!selected.levels.some(level=>level.rank===draft.rank)){setFormPage(0);setFormError('Select a published skill and its proficiency level.');return;}
     if(!Number.isSafeInteger(draft.experienceMonths)||draft.experienceMonths<0||draft.experienceMonths>600){setFormPage(0);setFormError('Experience must be between 0 and 600 months.');return;}
+    const dateError=skillDateError(draft.lastUsedOn);
+    if(dateError){setFormPage(1);setFormError(dateError);return;}
     if((draft.projects?.length??0)>2000||(draft.evidence?.length??0)>2000){setFormPage(1);setFormError('Use up to 2,000 characters for projects and evidence.');return;}
     if(!draft.description.trim()||draft.description.trim().length>2000){setFormPage(1);setFormError('Describe your experience using up to 2,000 characters.');return;}
     setBusy(true);setFormError('');
     try {
-      await body(await authenticatedFetch('/api/my-skills',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...draft,definitionRevision:selected.definitionRevision})}));
-      setDraft(undefined);setNotice('Skill draft saved. It is self-assessed and has not been submitted for review.');reviewRequest?.onSaved();window.dispatchEvent(new Event('own-skills-updated'));
+      await body(await authenticatedFetch('/api/my-skills',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...draft,lastUsedOn:draft.lastUsedOn||null,definitionRevision:selected.definitionRevision})}));
+      let message='Skill draft saved. It is self-assessed and has not been submitted for review.';
+      if(submit){
+        // Saving always advances the claim revision by one; the server rechecks reviewer routing on submit.
+        try{await body(await authenticatedFetch('/api/my-skills/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:draft.id,revision:draft.revision+1,action:'SUBMIT',feedback:''})}));message='Skill submitted to your assigned reporting manager for review.';window.dispatchEvent(new Event('notifications-updated'));}
+        catch(error){message='Skill draft saved, but it could not be submitted: '+(error instanceof Error?error.message:'try again from My skills.');}
+      }
+      setDraft(undefined);setNotice(message);reviewRequest?.onSaved();window.dispatchEvent(new Event('own-skills-updated'));
     } catch(error){setFormError(error instanceof Error?error.message:'Your draft could not be saved.');}
     finally {setBusy(false);}
   }
@@ -120,6 +129,6 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
     {loading&&!state?<section className="profile-panel" role="status">Loading your skills…</section>:state&&<SkillsProfileView initialStatus={new URLSearchParams(location.search).get("status")??""} onAdd={()=>edit()} claims={state.claims} canClaim={state.canClaim} loading={loading||busy} onView={claim=>{setInspecting(claim);setSubmitting(false);}} onEdit={edit} onSubmit={claim=>{setInspecting(claim);setSubmitting(true);}}/>}
     </>}
     {inspecting&&<SkillClaimDialog claim={inspecting} mode={submitting?'submit':'view'} onClose={()=>setInspecting(undefined)} onSaved={()=>{setInspecting(undefined);setNotice('Claim submitted to your assigned reporting manager.');window.dispatchEvent(new Event('own-skills-updated'));}}/>}
-    {draft&&<SkillClaimWizard draft={draft} onDraft={setDraft} selected={selected} onSelect={skill=>{setPicked(skill);const switching=Boolean(draft.skillId)&&skill.id!==draft.skillId;setDraft({...draft,skillId:skill.id,definitionRevision:skill.definitionRevision,...(switching?{rank:0,experienceMonths:0,description:'',projects:undefined,evidence:undefined}:{})});}} options={options} loading={optionsLoading} busy={busy} error={formError} page={formPage} onPage={setFormPage} search={search} onSearch={value=>{setSearch(value);setOptionPage(1);setFormError('');}} category={category} onCategory={value=>{setCategory(value);setOptionPage(1);setFormError('');}} onResultsPage={setOptionPage} onSave={()=>void save()} onClose={closeDraft} aiDraft={!!reviewRequest}/>}
+    {draft&&<SkillClaimWizard draft={draft} onDraft={setDraft} selected={selected} onSelect={skill=>{setPicked(skill);const switching=Boolean(draft.skillId)&&skill.id!==draft.skillId;setDraft({...draft,skillId:skill.id,definitionRevision:skill.definitionRevision,...(switching?{rank:0,experienceMonths:0,lastUsedOn:null,description:'',projects:undefined,evidence:undefined}:{})});}} options={options} loading={optionsLoading} busy={busy} error={formError} page={formPage} onPage={setFormPage} search={search} onSearch={value=>{setSearch(value);setOptionPage(1);setFormError('');}} category={category} onCategory={value=>{setCategory(value);setOptionPage(1);setFormError('');}} onResultsPage={setOptionPage} onSave={submit=>void save(submit)} onClose={closeDraft} aiDraft={!!reviewRequest}/>}
   </>;
 }

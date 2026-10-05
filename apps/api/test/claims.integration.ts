@@ -5,6 +5,7 @@ import { withRuntimeDatabase,closeRuntimeDatabase } from '../src/shared/database
 import { SqlAccessStore } from '../src/modules/access/sql-access-store.js';
 import { SqlClaimsStore } from '../src/modules/skills/sql-claims-store.js';
 import { can } from '../src/modules/access/index.js';
+import { proficiencyNames } from '../src/modules/skills/proficiency.js';
 
 const account=process.env.ACCESS_ACCOUNT_ID;assert.ok(account);
 try {
@@ -20,7 +21,7 @@ try {
       try {
         const skill=randomUUID(),claim=randomUUID();
         await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,admin.id).input('expected_revision',sql.Int,before.revision).input('target_id',sql.UniqueIdentifier,skill).input('is_new',sql.Bit,true)
-          .input('payload',sql.NVarChar(sql.MAX),JSON.stringify({name:prefix,category:'Rollback-only test',description:'Definition',status:'PUBLISHED',levels:[{rank:1,name:'Foundation',description:'Complete a basic task.'},{rank:2,name:'Independent',description:'Complete the task without assistance.'}]})).execute('dbo.SaveSkillCatalogue');
+          .input('payload',sql.NVarChar(sql.MAX),JSON.stringify({name:prefix,category:'Rollback-only test',description:'Definition',status:'PUBLISHED',levels:proficiencyNames.map((name,index)=>({rank:index+1,name,description:'Criteria for '+name}))})).execute('dbo.SaveSkillCatalogue');
         await test(tx,skill,claim);
       }finally{await tx.rollback().catch(()=>undefined);}
     };
@@ -30,17 +31,20 @@ try {
     const read=(tx:sql.Transaction,actor=owner.id)=>new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,actor).execute('dbo.ReadOwnSkillClaims');
     await fixture(async(tx,skill,claim)=>{
       const options=await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,owner.id).input('query',sql.NVarChar(100),prefix).execute('dbo.ReadClaimSkills');
-      const optionSets=options.recordsets as sql.IRecordSet<{id:string;total:number}>[];assert.equal(optionSets[0][0].total,1);assert.equal(optionSets[2].length,2);
+      const optionSets=options.recordsets as sql.IRecordSet<{id:string;total:number}>[];assert.equal(optionSets[0][0].total,1);assert.equal(optionSets[2].length,5);
       const discovery=await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,owner.id).input('query',sql.NVarChar(100),prefix).input('category',sql.NVarChar(80),'Rollback-only test').input('page_size',sql.Int,1).execute('dbo.ReadClaimSkills');
       const discovered=discovery.recordsets as sql.IRecordSet<{total:number;description:string;name:string;count:number}>[];
       assert.equal(discovered[0][0].total,1);assert.equal(discovered[1].length,1);assert.equal(discovered[1][0].description,'Definition');assert.ok(discovered[3].some(row=>row.name==='Rollback-only test'&&row.count>=1));
       const wrongCategory=await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,owner.id).input('query',sql.NVarChar(100),prefix).input('category',sql.NVarChar(80),'Missing test category').execute('dbo.ReadClaimSkills');assert.equal((wrongCategory.recordsets as sql.IRecordSet<{total:number}>[])[0][0].total,0);
-      await save(tx,skill,claim);await save(tx,skill,claim,1,owner.id,{rank:2});
-      const mine=(await read(tx)).recordsets as sql.IRecordSet<{id:string;status:string;revision:number;rank:number}>[];
-      assert.ok(mine[1].some(row=>row.id.toLowerCase()===claim&&row.revision===2&&row.rank===2&&row.status==='DRAFT'));
+      await save(tx,skill,claim,0,owner.id,{lastUsedOn:'2024-02-29'});await save(tx,skill,claim,1,owner.id,{rank:2});
+      const mine=(await read(tx)).recordsets as sql.IRecordSet<{id:string;status:string;revision:number;rank:number;lastUsedOn:string|null}>[];
+      assert.ok(mine[1].some(row=>row.id.toLowerCase()===claim&&row.revision===2&&row.rank===2&&row.status==='DRAFT'&&row.lastUsedOn==='2024-02-29'));
+      await save(tx,skill,claim,2,owner.id,{lastUsedOn:null});
+      const cleared=(await read(tx)).recordsets as sql.IRecordSet<{id:string;lastUsedOn:string|null}>[];
+      assert.equal(cleared[1].find(row=>row.id.toLowerCase()===claim)?.lastUsedOn,null);
       const theirs=(await read(tx,other.id)).recordsets as sql.IRecordSet<{id:string}>[];assert.ok(!theirs[1].some(row=>row.id.toLowerCase()===claim));
       const audit=(await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).execute('dbo.ReadAccessWorkspace')).recordsets as sql.IRecordSet<{targetId:string;action:string}>[];
-      assert.equal(audit[6].filter(item=>item.targetId.toLowerCase()===claim&&item.action.startsWith('claim.draft.')).length,2);
+      assert.equal(audit[6].filter(item=>item.targetId.toLowerCase()===claim&&item.action.startsWith('claim.draft.')).length,3);
     });
     const rejects=(number:number,test:(tx:sql.Transaction,skill:string,claim:string)=>Promise<unknown>)=>fixture(async(tx,skill,claim)=>{await assert.rejects(test(tx,skill,claim),error=>(error as {number:number}).number===number);});
     await fixture(async(tx,skill,claim)=>{await save(tx,skill,claim);await assert.rejects(save(tx,skill,randomUUID()),error=>[2601,2627].includes((error as {number:number}).number));});
@@ -50,13 +54,15 @@ try {
     await rejects(51004,(tx,skill,claim)=>save(tx,skill,claim,0,owner.id,{rank:8}));
     await rejects(51004,async(tx,skill,claim)=>{
       await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,admin.id).input('expected_revision',sql.Int,before.revision+1).input('target_id',sql.UniqueIdentifier,skill).input('is_new',sql.Bit,false)
-        .input('payload',sql.NVarChar(sql.MAX),JSON.stringify({name:prefix,category:'Rollback-only test',description:'Archived definition',status:'ARCHIVED',levels:[{rank:1,name:'Foundation',description:'Criteria'}]})).execute('dbo.SaveSkillCatalogue');
+        .input('payload',sql.NVarChar(sql.MAX),JSON.stringify({name:prefix,category:'Rollback-only test',description:'Archived definition',status:'ARCHIVED',levels:proficiencyNames.map((name,index)=>({rank:index+1,name,description:'Criteria for '+name}))})).execute('dbo.SaveSkillCatalogue');
       const options=await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,owner.id).input('query',sql.NVarChar(100),prefix).execute('dbo.ReadClaimSkills');
       assert.equal((options.recordsets as sql.IRecordSet<{total:number}>[])[0][0].total,0);
       return save(tx,skill,claim);
     });
     await rejects(51000,(tx,skill,claim)=>save(tx,skill,claim,0,owner.id,{status:'VERIFIED'}));
     await rejects(51000,(tx,skill,claim)=>save(tx,skill,claim,0,owner.id,{experienceMonths:601}));
+    for(const lastUsedOn of ['2025-02-29','2026-04-31','9999-12-31','2026-1-01','','x'.repeat(5000),[],4])
+      await rejects(51000,(tx,skill,claim)=>save(tx,skill,claim,0,owner.id,{lastUsedOn}));
     await rejects(51003,async(tx,skill,claim)=>{
       await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,admin.id).input('expected_revision',sql.Int,before.revision+1).input('kind',sql.VarChar(10),'person').input('target_id',sql.UniqueIdentifier,owner.id).input('is_new',sql.Bit,false)
         .input('payload',sql.NVarChar(sql.MAX),JSON.stringify({...owner,overrides:[...owner.overrides.filter(item=>!(item.permission==='skill.claim'&&item.scope==='OWN')),{permission:'skill.claim',scope:'OWN',effect:'DENY'}]})).execute('dbo.SaveAccessChange');

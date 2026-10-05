@@ -4,18 +4,24 @@ import { once } from 'node:events';
 import { catalogueChange, catalogueQuery } from '../src/modules/skills/skill-catalogue.js';
 import { createApp } from '../src/create-app.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
+import { proficiencyNames } from '../src/modules/skills/proficiency.js';
 
-const input=()=>({revision:1,name:'  SQL   Server ',category:' Databases ',description:'Query relational data safely.',status:'PUBLISHED',levels:[{rank:1,name:'Foundation',description:'Read and explain a simple query.'},{rank:2,name:'Practitioner',description:'Write and tune queries independently.'}]});
+const input=()=>({revision:1,name:'  SQL   Server ',category:' Databases ',description:'Query relational data safely.',status:'PUBLISHED',levels:proficiencyNames.map((name,index)=>({rank:index+1,name,description:'SQL criteria for '+name}))});
 test('catalogue validates publication criteria, sequential unique levels, bounded filters and trusted fields',()=>{
  const change=catalogueChange({...input(),actorId:'attacker',accountId:'other'});
  assert.equal(change.payload.name,'SQL Server');assert.equal(change.payload.category,'Databases');assert.equal('actorId' in change,false);assert.equal('accountId' in change.payload,false);
- assert.equal(catalogueChange({...input(),status:'DRAFT',description:'',levels:[{rank:1,name:'Foundation',description:''}]}).payload.description,'');
+ assert.equal(catalogueChange({...input(),status:'DRAFT',description:'',levels:input().levels.map(level=>({...level,description:''}))}).payload.description,'');
  assert.throws(()=>catalogueChange({...input(),description:''}),/required/);
- assert.throws(()=>catalogueChange({...input(),levels:[{rank:1,name:'Foundation',description:''}]}),/required/);
- assert.throws(()=>catalogueChange({...input(),levels:[{rank:2,name:'Level',description:'Criteria'}]}),/sequential/);
- assert.throws(()=>catalogueChange({...input(),levels:[{rank:1,name:'Level',description:'Criteria'},{rank:2,name:'LEVEL',description:'Criteria'}]}),/unique/);
- assert.throws(()=>catalogueChange({...input(),levels:[]}),/one and eight/);
- assert.throws(()=>catalogueChange({...input(),levels:Array.from({length:9},(_,i)=>({rank:i+1,name:String(i),description:'Criteria'}))}),/one and eight/);
+ assert.throws(()=>catalogueChange({...input(),levels:input().levels.map(level=>({...level,description:''}))}),/required/);
+ assert.throws(()=>catalogueChange({...input(),levels:input().levels.map(level=>({...level,rank:level.rank+1}))}),/sequential/);
+ assert.throws(()=>catalogueChange({...input(),levels:input().levels.map(level=>level.rank===2?{...level,name:'AWARENESS'}:level)}),/unique/);
+ assert.throws(()=>catalogueChange({...input(),levels:[]}),/exactly five/);
+ assert.throws(()=>catalogueChange({...input(),levels:Array.from({length:9},(_,i)=>({rank:i+1,name:String(i),description:'Criteria'}))}),/exactly five/);
+ for(const levels of [input().levels.slice(0,4),[...input().levels,{rank:6,name:'Master',description:'Criteria'}],input().levels.map(level=>level.rank===2?{...level,name:'Beginner'}:level),input().levels.map(level=>level.rank===3?{...level,name:'Intermediate'}:level),input().levels.map(level=>({...level,name:level.name.toLowerCase()}))]){
+  assert.throws(()=>catalogueChange({...input(),levels}),/exactly five/);
+  assert.throws(()=>catalogueChange({...input(),id:'00000000-0000-4000-8000-000000000001',levels}),/exactly five/);
+ }
+ assert.throws(()=>catalogueChange({...input(),levels:input().levels.map(level=>level.rank===5?{...level,description:''}:level)}),/required/);
  assert.throws(()=>catalogueChange({...input(),revision:0}),/Reload/);
  assert.throws(()=>catalogueChange({...input(),id:'outside'}),/valid skill/);
  assert.throws(()=>catalogueQuery({page:'1.5'}),/valid/);assert.throws(()=>catalogueQuery({status:'DELETED'}),/valid/);

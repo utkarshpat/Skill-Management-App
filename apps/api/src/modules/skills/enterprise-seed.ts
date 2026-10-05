@@ -1,4 +1,6 @@
 import { catalogueChange } from './skill-catalogue.js';
+import { hasStandardProficiency, proficiencyNames } from './proficiency.js';
+import type { CatalogueSkill } from './skill-catalogue.js';
 
 export interface SeedSkill {code:string;name:string;category:string;description:string;criteria:{rank:number;description:string}[]}
 export interface EnterpriseSeed {version:1;framework:{key:'enterprise-v1';levels:{rank:number;name:string;description:string}[]};skills:SeedSkill[]}
@@ -17,7 +19,16 @@ export function validateEnterpriseSeed(input:unknown):EnterpriseSeed {
  return seed;
 }
 export function seedPayload(seed:EnterpriseSeed,skill:SeedSkill) {
- return {businessCode:skill.code,name:skill.name,category:skill.category,description:skill.description,status:'PUBLISHED' as const,levels:skill.criteria.map((criterion,index)=>({...criterion,name:seed.framework.levels[index]?.name}))};
+ return {businessCode:skill.code,name:skill.name,category:skill.category,description:skill.description,status:'PUBLISHED' as const,levels:skill.criteria.map((criterion,index)=>({...criterion,name:proficiencyNames[index]}))};
+}
+export function alignmentPlan(existing:CatalogueSkill[]) {
+ const changes=existing.filter(skill=>!hasStandardProficiency(skill.levels)).map(skill=>{
+  if(skill.levels.length!==5||skill.levels.some((level,index)=>level.rank!==index+1))throw Error(`${skill.name} needs manual five-level criteria mapping. No bulk alignment will be applied.`);
+  const levels=skill.levels.map((level,index)=>({...level,name:proficiencyNames[index]}));
+  const change=catalogueChange({...skill,levels,revision:1});
+  return {id:skill.id,before:skill.levels.map(level=>level.name),payload:{...change.payload,businessCode:skill.businessCode}};
+ });
+ return changes;
 }
 export function seedPlan(seed:EnterpriseSeed,existing:{businessCode:string|null;name:string}[]) {
  const create:SeedSkill[]=[],preserve:SeedSkill[]=[];

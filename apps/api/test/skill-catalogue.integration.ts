@@ -5,6 +5,7 @@ import { withRuntimeDatabase, closeRuntimeDatabase } from '../src/shared/databas
 import { SqlAccessStore } from '../src/modules/access/sql-access-store.js';
 import { SqlCatalogueStore } from '../src/modules/skills/sql-store.js';
 import { can } from '../src/modules/access/local-access-store.js';
+import { proficiencyNames } from '../src/modules/skills/proficiency.js';
 
 const account=process.env.ACCESS_ACCOUNT_ID;assert.ok(account);
 try{
@@ -15,7 +16,7 @@ try{
  const catalogue=new SqlCatalogueStore(account),query={search:'',status:'' as const,page:1};
  const before=await catalogue.read(admin.id,query),accessBefore=await accessStore.snapshot();
  const prefix='Catalogue SQL '+randomUUID();const skillIds:string[]=Array.from({length:28},()=>randomUUID());
- const definition=(name:string,status='PUBLISHED')=>({name,category:'Integration test',description:'Test definition',status,levels:[{rank:1,name:'Foundation',description:'Describe a basic task.'},{rank:2,name:'Independent',description:'Complete the task independently.'}]});
+ const definition=(name:string,status='PUBLISHED')=>({name,category:'Integration test',description:'Test definition',status,levels:proficiencyNames.map((label,index)=>({rank:index+1,name:label,description:'Criteria for '+label}))});
  await withRuntimeDatabase(async pool=>{
   const tx=new sql.Transaction(pool);await tx.begin();
   try{
@@ -23,10 +24,10 @@ try{
     .input('target_id',sql.UniqueIdentifier,skillIds[index]).input('is_new',sql.Bit,true).input('payload',sql.NVarChar(sql.MAX),JSON.stringify(definition(prefix+index,['PUBLISHED','DRAFT','ARCHIVED'][index]??'DRAFT'))).execute('dbo.SaveSkillCatalogue');
    const read=async(actor=admin.id,page=1)=>new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,actor).input('query',sql.NVarChar(100),prefix).input('page',sql.Int,page).execute('dbo.ReadSkillCatalogue');
    const ownerRead=await read();const ownerSets=ownerRead.recordsets as sql.IRecordSet<Record<string,unknown>>[];
-   assert.equal(ownerSets[0][0].total,28);assert.equal(ownerSets[1].length,25);assert.equal(ownerSets[2].length,50);
-   const pageTwo=(await read(admin.id,2)).recordsets as sql.IRecordSet<Record<string,unknown>>[];assert.equal(pageTwo[1].length,3);assert.equal(pageTwo[2].length,6);
+   assert.equal(ownerSets[0][0].total,28);assert.equal(ownerSets[1].length,25);assert.equal(ownerSets[2].length,125);
+   const pageTwo=(await read(admin.id,2)).recordsets as sql.IRecordSet<Record<string,unknown>>[];assert.equal(pageTwo[1].length,3);assert.equal(pageTwo[2].length,15);
    assert.ok(pageTwo[1].every(item=>!ownerSets[1].some(first=>first.id===item.id)));
-   const viewerSets=(await read(viewer.id)).recordsets as sql.IRecordSet<Record<string,unknown>>[];assert.equal(viewerSets[0][0].total,1);assert.equal(viewerSets[1][0].status,'PUBLISHED');assert.equal(viewerSets[2].length,2);
+   const viewerSets=(await read(viewer.id)).recordsets as sql.IRecordSet<Record<string,unknown>>[];assert.equal(viewerSets[0][0].total,1);assert.equal(viewerSets[1][0].status,'PUBLISHED');assert.equal(viewerSets[2].length,5);
    const audit=await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).execute('dbo.ReadAccessWorkspace');
    assert.equal((audit.recordsets as sql.IRecordSet<{action:string;targetId:string}>[])[6].filter(item=>item.action==='skill.created'&&skillIds.includes(item.targetId.toLowerCase())).length,28);
    await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,admin.id).input('expected_revision',sql.Int,before.revision+28)
@@ -39,6 +40,8 @@ try{
   await reject(definition(prefix),51004,admin.id,before.revision,randomUUID(),false);
   await reject({...definition(prefix),levels:[{rank:1,name:'Foundation',description:''}]},51000);
   await reject({...definition(prefix),levels:[{rank:3,name:'Foundation',description:'Criteria'}]},51000);
+  for(const levels of [definition(prefix).levels.slice(0,4),definition(prefix).levels.map(level=>level.rank===2?{...level,name:'Beginner'}:level),definition(prefix).levels.map(level=>({...level,name:level.name.toLowerCase()})),definition(prefix).levels.map(level=>level.rank===5?{...level,description:''}:level)])
+   await reject({...definition(prefix),levels},51000);
   await assert.rejects(pool.request().input('account_id',sql.UniqueIdentifier,randomUUID()).input('actor_id',sql.UniqueIdentifier,admin.id).execute('dbo.ReadSkillCatalogue'),error=>(error as {number:number}).number===51003);
   await assert.rejects(pool.request().query('SELECT TOP 1 * FROM dbo.SkillCatalogue'),error=>(error as {number:number}).number===229);
   const duplicates=new sql.Transaction(pool);await duplicates.begin();

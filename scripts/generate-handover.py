@@ -120,11 +120,12 @@ for path in sorted((ROOT / 'database/migrations').glob('*.sql')):
     for m in re.finditer(r'^CREATE VIEW dbo\.(\w+) AS\s*([\s\S]+?)(?=^GO\s*$)', text, re.I | re.M):
         views[m[1]] = {'sql':m[2].strip(), 'source':source}
 
-# Dynamic CHECK removals in 010, 015, 023 are selected from sys.check_constraints.
+# Dynamic CHECK removals in 010, 015, 023, 044 are selected from sys.check_constraints.
 tables['SkillClaimDraft']['columns']['status']['declaration'] = tables['SkillClaimDraft']['columns']['status']['declaration'].replace(" CHECK(status='DRAFT')", '')
 tables['LearningPlan']['columns']['payload']['declaration'] = re.sub(r'\s+CHECK\(ISJSON\(payload\)=1 AND DATALENGTH\(payload\)<=65536\)', '', tables['LearningPlan']['columns']['payload']['declaration'])
 tables['WorkflowRecord']['columns']['status']['declaration'] = tables['WorkflowRecord']['columns']['status']['declaration'].replace(" CHECK(status IN ('SUBMITTED','CANCELLED'))", '')
 tables['WorkflowEvent']['columns']['action']['declaration'] = tables['WorkflowEvent']['columns']['action']['declaration'].replace(" CHECK(action IN ('CREATE','COMMENT','CANCEL'))", '')
+tables['ProficiencyFramework']['constraints'] = [item for item in tables['ProficiencyFramework']['constraints'] if item['sql'] != "CHECK(account_id IS NOT NULL OR framework_key='enterprise-v1')"]
 
 for name,t in tables.items():
     assert t['pk'], name
