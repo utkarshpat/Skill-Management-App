@@ -5,3 +5,6 @@
 **/.env.*
 **/.local/
 *.log
+
+**/.vercel/
+artifacts/
