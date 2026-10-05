@@ -1,0 +1,77 @@
+SKILL MANAGEMENT PLATFORM
+Simple Business Requirement Document | Discussion Draft
+Recommended approach: Power Apps Canvas App + SharePoint + Power Automate + Power BI
+1. Purpose and Objective
+Create a central Skill Management Platform to capture employee capabilities, assess proficiency, track certifications and learning, identify skill gaps, and match available capability with project demand. The first version should be simple, scalable and suitable for phased enhancement.
+2. Target Architecture
+SKILL MANAGEMENT PLATFORM
+        │
+ ┌──────┴───────────────┐
+ ▼                      ▼
+POWER APPS           POWER BI
+Application UI       Analytics
+        │
+        ▼
+   SHAREPOINT
+    Data Layer
+        │
+ Employees | Skills | Assessments | Certifications | Projects | Training
+        │
+        ▼
+ POWER AUTOMATE
+Approvals | Reminders | Notifications
+3. Major Application Modules
+Module	Key Functions
+Employee	My Profile, My Skills, My Certifications, My Projects, My Training, Skill Development
+Manager	Team Skills, Assessments, Skill Gaps, Certification Status, Training Requirements
+Capability / Resource Manager	Organisation Skill Matrix, Demand vs Supply, Critical Gaps, Resource Matching
+Project	Project Requirements, Required Skills and Proficiency, Available Resources, Skill Matching
+Learning	Training Catalogue, Recommended Training, Completion and Certification Tracking
+Administration	Skill Catalogue, Categories, Roles, Proficiency Levels and Assessment Criteria
+Analytics	Capability Dashboard, Skill Gaps, Certification Dashboard, Workforce and Future Demand
+4. Core Data Repository
+The initial SharePoint data model will contain the following ten core lists:
+•	Employees
+•	Skills
+•	Employee Skills
+•	Skill Assessments
+•	Certifications
+•	Employee Certifications
+•	Projects
+•	Project Skill Requirements
+•	Training Catalogue
+•	Employee Training
+ 
+5. Core Business Requirements
+Area	Requirement
+Employee Profile	Capture employee, role, grade, department, manager, primary capability and profile completeness.
+Skill Profile	Allow employees to add skills, experience, last-used date, proficiency and supporting evidence.
+Assessment	Enable self-assessment followed by manager, project, technical, certification-based or panel assessment.
+Proficiency Model	Use five levels: 1 Awareness, 2 Foundation, 3 Practitioner, 4 Advanced and 5 Expert.
+Certification	Track provider, related skill, issue date, expiry date, certificate, status and verification.
+Learning	Maintain a training catalogue, recommendations, enrolment, completion, score and evidence.
+Project Demand	Capture project skills, required proficiency, headcount, priority and requirement period.
+Matching	Compare project demand with approved employee skills and show transparent match factors.
+Analytics	Provide capability, skill-gap, certification, workforce and future-demand dashboards.
+6. Key Screens
+•	Home Dashboard: personal capability summary, pending actions and development opportunities.
+•	My Profile and My Skills: employee information, skills, evidence, assessment status and proficiency.
+•	Assessment: manager review, comments, approval or rejection.
+•	Manager Dashboard: team skill matrix, assessment progress, gaps, expiry and training needs.
+•	Skill Gap and Project Matching: demand versus supply and suitable resource results.
+•	Certification Dashboard and Admin: credential tracking, taxonomy, roles and configuration.
+7. Automation and Security
+Area	Initial Requirement
+Power Automate	New employee profile, skill assessment, assessment approval, 90/60/30-day certification reminders, incomplete-profile reminders, training recommendations, project gap calculation and periodic skill review.
+Security	Microsoft Entra ID authentication with role-based access for Employee, Manager, Capability Manager, Project Manager and Administrator.
+Data Access	Employees see their own records; managers see authorised teams; capability managers see organisational capability; administrators manage configuration.
+Governance	Use approved taxonomies, evidence-based assessments, audit history, least privilege and controlled master-data changes.
+8. Recommended Phased Delivery
+Phase	Scope
+Phase 1 | MVP	Employees, Skills, Employee Skills and Assessments; Employee and Manager Power Apps; skill matrix and basic dashboard.
+Phase 2	Certifications, Training, Power Automate workflows, reminders and notifications.
+Phase 3	Projects, skill requirements, resource matching and skill-gap analytics.
+Phase 4	Power BI, AI-assisted skill extraction, profile parsing, advanced matching and forecasting.
+9. Discussion Points and Next Step
+Confirm data source, user volume, taxonomy ownership, assessment governance, manager visibility, privacy rules, matching logic, reporting scope and Dataverse migration thresholds. After discussion, prepare the detailed developer build specification.
+
