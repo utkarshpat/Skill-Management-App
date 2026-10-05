@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus } from 'lucide-react';
 import { authenticatedFetch } from './auth';
+import {readApiResponse} from './api-response';
 import { SkillClaimDialog } from './SkillClaimDialog';
 import { FormDialog } from './FormDialog';
 import {SkillsProfileView} from './SkillsProfileView';
@@ -23,9 +24,7 @@ type Options=SkillChoices;
 type Draft=SkillDraft;
 const emptyDraft=():Draft=>({id:crypto.randomUUID(),revision:0,skillId:'',definitionRevision:0,rank:0,experienceMonths:0,description:''});
 async function body<T>(response:Response):Promise<T> {
-  const value=await response.json().catch(()=>undefined);
-  if(!response.ok)throw new Error(value?.error?.message??(response.status===403?'Your account does not have access to this skill action.':'Could not load your skills. Please try again.'));
-  return value;
+  return readApiResponse<T>(response,response.status===403?'Your account does not have access to this skill action.':response.status===401?'Sign in to view your skills.':'Could not load your skills. Please try again.');
 }
 export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTMLElement|null;reviewRequest?:{description:string;onClose:()=>void;onSaved:()=>void}}) {
   const location=useLocation(),navigate=useNavigate();
@@ -34,6 +33,7 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
   const [error,setError]=useState(''),[notice,setNotice]=useState('');
   const [draft,setDraft]=useState<Draft>(),[formPage,setFormPage]=useState(0),[busy,setBusy]=useState(false),[formError,setFormError]=useState('');
   const [options,setOptions]=useState<Options>(),[search,setSearch]=useState(''),[category,setCategory]=useState(''),[picked,setPicked]=useState<Option>(),[optionPage,setOptionPage]=useState(1),[optionsLoading,setOptionsLoading]=useState(false);
+  const [suggestedSkillName,setSuggestedSkillName]=useState('');
   async function load(signal?:AbortSignal) {
     setLoading(true);
     try { const value=await body<State>(await authenticatedFetch('/api/my-skills?page=1',{signal}));
@@ -44,7 +44,7 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
         for(const result of pages)claims.push(...result.claims);
       }
       if(!signal?.aborted){setState({...value,claims:Array.from(new Map(claims.map(claim=>[claim.id,claim])).values())});setError('');} }
-    catch(error){if(!signal?.aborted)setError(error instanceof Error?error.message:'Could not load your skills.');}
+    catch(error){if(!signal?.aborted){if(error&&typeof error==='object'&&'status'in error&&[401,403].includes(Number(error.status)))setState(undefined);setError(error instanceof Error?error.message:'Could not load your skills.');}}
     finally {if(!signal?.aborted)setLoading(false);}
   }
   useEffect(()=>{const controller=new AbortController();void load(controller.signal);const refresh=()=>void load(controller.signal);window.addEventListener('own-skills-updated',refresh);return()=>{controller.abort();window.removeEventListener('own-skills-updated',refresh);};},[]);
@@ -75,16 +75,26 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
   },[draft?.id,search,optionPage,category]);
   const selected=options?.skills.find(item=>item.id===draft?.skillId)??picked;
   useEffect(()=>{const current=options?.skills.find(item=>item.id===draft?.skillId);if(current)setPicked(current);},[options,draft?.skillId]);
+  useEffect(()=>{
+    if(!options||!suggestedSkillName||draft?.skillId)return;
+    const matches=options.skills.filter(skill=>skill.name.localeCompare(suggestedSkillName,undefined,{sensitivity:'accent'})===0);
+    setSuggestedSkillName('');
+    if(matches.length===1){const [match]=matches;setPicked(match);setDraft(current=>current&&!current.skillId?{...current,skillId:match.id,definitionRevision:match.definitionRevision}:current);}
+  },[options,suggestedSkillName,draft?.skillId]);
   function edit(claim?:Claim) {
-    setPicked(undefined);setCategory('');setNotice('');setFormError('');setFormPage(0);setOptionPage(1);setSearch(claim?.skillName??'');
+    setPicked(undefined);setSuggestedSkillName('');setCategory('');setNotice('');setFormError('');setFormPage(0);setOptionPage(1);setSearch(claim?.skillName??'');
     setDraft(claim?{id:claim.id,revision:claim.revision,skillId:claim.skillId,definitionRevision:claim.definitionRevision,rank:claim.rank,experienceMonths:claim.experienceMonths,description:claim.description,projects:claim.projects??'',evidence:claim.evidence??''}:emptyDraft());
   }
-  useEffect(()=>{if(!state||new URLSearchParams(location.search).get('action')!=='add')return;const next=new URLSearchParams(location.search);next.delete('action');navigate(location.pathname+(next.size?'?'+next:''),{replace:true});if(state.canClaim)edit();else setError('Skill editing is not assigned.');},[location.search,state?.canClaim]);
+  useEffect(()=>{const params=new URLSearchParams(location.search);if(!state||params.get('action')!=='add')return;const suggested=params.get('skill')??'';params.delete('action');params.delete('skill');navigate(location.pathname+(params.size?'?'+params:''),{replace:true});  if(state.canClaim){edit();if(suggested){setSearch(suggested.slice(0,100));setSuggestedSkillName(suggested);}}else setError('Skill editing is not assigned.');},[location.search,state?.canClaim]);
   useEffect(()=>{
-    const params=new URLSearchParams(location.search),id=params.get('claim');if(!id||!state||loading)return;
-    params.delete('claim');navigate(location.pathname+(params.size?'?'+params:''),{replace:true});
+    const params=new URLSearchParams(location.search),editId=params.get('editClaim'),submitId=params.get('submitClaim'),id=editId??submitId??params.get('claim');if(!id||!state||loading)return;
+    params.delete('claim');params.delete('editClaim');params.delete('submitClaim');navigate(location.pathname+(params.size?'?'+params:''),{replace:true});
     const claim=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)?state.claims.find(c=>c.id.toLowerCase()===id.toLowerCase()):undefined;
-    if(claim){setInspecting(claim);setSubmitting(false);}else setError('This claim is unavailable in your current skill profile.');
+    if(!claim){setError('This claim is unavailable in your current skill profile.');return;}
+    if(editId&&state.canClaim&&['DRAFT','CHANGES_REQUESTED','REJECTED'].includes(claim.status)){edit(claim);return;}
+    if(submitId&&state.canClaim&&claim.status==='DRAFT'){setInspecting(claim);setSubmitting(true);return;}
+    if((editId||submitId)&&!state.canClaim)setError('Your account does not have permission to edit or submit this claim.');
+    setInspecting(claim);setSubmitting(false);
   },[location.search,state,loading]);
   async function save() {
     if(!draft||busy)return;
@@ -110,6 +120,6 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
     {loading&&!state?<section className="profile-panel" role="status">Loading your skills…</section>:state&&<SkillsProfileView initialStatus={new URLSearchParams(location.search).get("status")??""} onAdd={()=>edit()} claims={state.claims} canClaim={state.canClaim} loading={loading||busy} onView={claim=>{setInspecting(claim);setSubmitting(false);}} onEdit={edit} onSubmit={claim=>{setInspecting(claim);setSubmitting(true);}}/>}
     </>}
     {inspecting&&<SkillClaimDialog claim={inspecting} mode={submitting?'submit':'view'} onClose={()=>setInspecting(undefined)} onSaved={()=>{setInspecting(undefined);setNotice('Claim submitted to your assigned reporting manager.');window.dispatchEvent(new Event('own-skills-updated'));}}/>}
-    {draft&&<SkillClaimWizard draft={draft} onDraft={setDraft} selected={selected} onSelect={skill=>{setPicked(skill);setDraft({...draft,skillId:skill.id,rank:skill.id===draft.skillId?draft.rank:0,definitionRevision:skill.definitionRevision});}} options={options} loading={optionsLoading} busy={busy} error={formError} page={formPage} onPage={setFormPage} search={search} onSearch={value=>{setSearch(value);setOptionPage(1);setFormError('');}} category={category} onCategory={value=>{setCategory(value);setOptionPage(1);setFormError('');}} onResultsPage={setOptionPage} onSave={()=>void save()} onClose={closeDraft} aiDraft={!!reviewRequest}/>}
+    {draft&&<SkillClaimWizard draft={draft} onDraft={setDraft} selected={selected} onSelect={skill=>{setPicked(skill);const switching=Boolean(draft.skillId)&&skill.id!==draft.skillId;setDraft({...draft,skillId:skill.id,definitionRevision:skill.definitionRevision,...(switching?{rank:0,experienceMonths:0,description:'',projects:undefined,evidence:undefined}:{})});}} options={options} loading={optionsLoading} busy={busy} error={formError} page={formPage} onPage={setFormPage} search={search} onSearch={value=>{setSearch(value);setOptionPage(1);setFormError('');}} category={category} onCategory={value=>{setCategory(value);setOptionPage(1);setFormError('');}} onResultsPage={setOptionPage} onSave={()=>void save()} onClose={closeDraft} aiDraft={!!reviewRequest}/>}
   </>;
 }

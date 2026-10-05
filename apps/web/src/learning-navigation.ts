@@ -1,4 +1,4 @@
-const learningTabs:Record<string,string>={home:'My learning',paths:'Learning paths',goals:'Goals',recommendations:'Recommendations',today:'Today',calendar:'Calendar',backlog:'Backlog'};
+const learningTabs:Record<string,string>={home:'My learning',paths:'Learning paths',goals:'Goals',journey:'Growth journey',recommendations:'Recommendations',today:'Today',calendar:'Calendar',backlog:'Backlog'};
 export function learningView(params:URLSearchParams){return learningTabs[params.get('tab')??'home']??'My learning';}
 export function learningTabSearch(params:URLSearchParams,name:string){
  const next=new URLSearchParams(params);

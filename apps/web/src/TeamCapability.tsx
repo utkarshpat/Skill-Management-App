@@ -4,6 +4,7 @@ import {authenticatedFetch} from './auth';
 import {teamAnalytics,type TeamPerson,type TeamSkill} from './team-analytics';
 import './team-capability.css';
 import {EmployeeCapability} from './EmployeeCapability';
+import {TeamReports} from './TeamReports';
 interface Team {total:number;pageSize:number;people:TeamPerson[];skills:TeamSkill[];analytics?:{members:number;reviewed:number;pending:number;coverage:{skillName:string;rank:number;people:number;memberIds:string[]}[];levels:{rank:number;count:number;memberIds:string[]}[];categories:{category:string;count:number}[]}}
 export function TeamCapability({onReviews,navigation}:{onReviews:(personId:string)=>void;navigation?:ReactNode}){
  const [data,setData]=useState<Team>(),[search,setSearch]=useState(''),[query,setQuery]=useState(''),[page,setPage]=useState(1),[person,setPerson]=useState<string>(),[attempt,setAttempt]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState('');
@@ -33,6 +34,7 @@ export function TeamCapability({onReviews,navigation}:{onReviews:(personId:strin
  <button className="team-stat amber" aria-pressed={memberFilter==='pending'} onClick={()=>{if(selected)onReviews(selected.id);else setMemberFilter('pending');}}><Clock3 size={23}/><span><strong>{pending}</strong><small>Assigned pending reviews</small></span></button>
  </div>
  {!person&&<p className="team-note team-analytics-scope">{stats?'Analytics cover all active direct reports matching your search; the member table is paginated.':'Summary covers members on this page.'} Private drafts are excluded.</p>}
+ <TeamReports analytics={stats} query={query} onAccessChanged={()=>setAttempt(n=>n+1)}/>
  <div className="team-chart-grid">
  <section className="team-chart"><header><div><h3>Reviewed skill coverage</h3><p>Members with a manager-reviewed claim at or above the selected level.</p></div><select aria-label="Minimum reviewed proficiency" value={minimumRank} onChange={e=>{setMinimumRank(Number(e.target.value));setSkillFilter('');}}>{[1,2,3,4,5].map(rank=><option key={rank} value={rank}>L{rank} and above</option>)}</select></header>
  <p className="team-chart-caption">Denominator: {members} active {members===1?'member':'members'}{query?' matching your search':''}. This measures recorded coverage, not skill gaps.</p>

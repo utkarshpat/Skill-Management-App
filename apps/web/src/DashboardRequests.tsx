@@ -11,7 +11,8 @@ export async function readRequestPreview(status:string,signal:AbortSignal,fetche
  if(!requestDashboardViews.some(v=>v.id===status))throw Error('Choose a valid request status.');
  const response=await fetcher('/api/dashboard/requests'+(status?'?status='+encodeURIComponent(status):''),{signal});
  const body=await response.json().catch(()=>undefined);if(!response.ok)throw Object.assign(Error(body?.error?.message??'Your request updates could not be loaded.'),{status:response.status});
- return {items:body.recentRecords.slice(0,3).map((r:RequestPreview)=>({id:r.id,reference:r.reference,kind:r.kind,title:r.title,status:r.status,priority:r.priority,recipientName:r.recipientName,updatedAt:r.updatedAt})),total:body.previewTotal};
+ const records:RequestPreview[]=Array.isArray(body?.recentRecords)?body.recentRecords:[];
+ return {items:records.slice(0,3).map((r:RequestPreview)=>({id:r.id,reference:r.reference,kind:r.kind,title:r.title,status:r.status,priority:r.priority,recipientName:r.recipientName,updatedAt:r.updatedAt})),total:typeof body?.previewTotal==='number'?body.previewTotal:records.length};
 }
 export function DashboardRequests({data,onAccessChanged,fetcher,status,onStatusChange}:{data:DashboardRequestsData;onAccessChanged:()=>void;fetcher:RequestFetcher;status:string;onStatusChange:(status:string)=>void}){
  const [result,setResult]=useState<{status:string;items:RequestPreview[];total:number}>(),[failure,setFailure]=useState<{status:string;message:string}>(),[attempt,setAttempt]=useState(0);

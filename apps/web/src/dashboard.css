@@ -1,4 +1,11 @@
 .dashboard-workspace{display:grid;gap:20px;container-type:inline-size;container-name:dashboard;max-width:1600px;margin:0 auto;color:var(--ink)}
+.skill-radar{--radar-color:var(--accent-ink,#126b70);margin-top:22px;border-top:1px solid var(--line);padding-top:18px}
+.skill-radar-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.skill-radar h4,.skill-radar-empty h4{margin:0;font-size:16px}.skill-radar-heading>span{font-size:12px;color:var(--radar-color)}
+.skill-radar-layout{display:grid;grid-template-columns:minmax(150px,1fr) minmax(0,1fr);gap:12px;align-items:center}.skill-radar figure{margin:0;min-width:0}.skill-radar svg{display:block;width:100%;max-width:260px;margin:auto}.skill-radar figcaption{text-align:center;font-size:12px;color:var(--muted)}
+.skill-radar-ring{fill:none;stroke:var(--line);stroke-width:1}.skill-radar-tick{fill:var(--muted);font-size:10px}.skill-radar-label{fill:var(--ink);font-size:12px;font-weight:600}.skill-radar-area{fill:color-mix(in srgb,var(--radar-color) 16%,transparent);stroke:var(--radar-color);stroke-width:2}.skill-radar-point{fill:var(--radar-color)}
+.skill-radar-list{list-style:none;padding:0;margin:12px 0;display:grid;gap:12px}.skill-radar-list li{display:flex;gap:9px;align-items:start;min-width:0}.skill-radar-key{font-size:11px;color:var(--radar-color);background:color-mix(in srgb,var(--radar-color) 8%,transparent);padding:4px;border-radius:4px;flex-shrink:0}.skill-radar-list a{font-weight:600;font-size:13px;color:var(--ink);text-decoration:none;overflow-wrap:anywhere}.skill-radar-list li>div>span{display:block;font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;overflow-wrap:anywhere}
+.skill-radar-summary,.skill-radar-small,.skill-radar-empty p{font-size:13px;line-height:1.6;color:var(--muted);margin:14px 0 0}.skill-radar-summary strong{color:var(--ink);font-weight:600}.skill-radar-empty{margin-top:20px}.skill-radar-small{margin:0}
+@media(max-width:480px){.skill-radar-layout{grid-template-columns:1fr}.skill-radar-list{grid-template-columns:repeat(2,minmax(0,1fr))}.skill-radar-heading{align-items:start;flex-wrap:wrap}}
 .dashboard-heading{display:flex;justify-content:space-between;align-items:center;gap:20px}.dashboard-heading h2{font-size:23px;letter-spacing:-.5px;margin:0 0 7px}.dashboard-heading p{margin:0;color:var(--muted);font-size:15px}
 .dashboard-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:20px;align-items:stretch}
 .dashboard-card{background:var(--surface,#fff);border:1px solid var(--line);border-radius:16px;padding:20px;min-width:0;grid-column:span 6;display:flex;flex-direction:column;box-shadow:0 3px 12px #10203305}.dashboard-attention{grid-column:1/-1}.dashboard-requests{grid-column:span 8}.dashboard-quick-actions{grid-column:span 4}
@@ -25,7 +32,7 @@
 
 .dashboard-action-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px}.dashboard-action-grid article{padding:18px;border:1px solid var(--line);border-radius:12px;min-width:0;display:flex;flex-direction:column;align-items:flex-start}.dashboard-action-grid h4{font-size:16px;margin:12px 0 6px}.dashboard-action-grid p{font-size:14px;line-height:1.6;color:var(--muted);margin:0 0 18px}.dashboard-action-grid article>div{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:auto}.dashboard-action-grid .dashboard-ai{padding:8px 10px;white-space:normal;min-height:40px}.dashboard-quick-actions .dashboard-footnote{margin:16px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
 
-[data-theme=dark] .dashboard-quick-actions .dashboard-link,[data-theme=dark] .dashboard-quick-actions .dashboard-icon{color:#71dce4}[data-theme=dark] .dashboard-quick-actions .dashboard-ai{color:#c5afff}
+[data-theme=dark] .dashboard-quick-actions .dashboard-link,[data-theme=dark] .dashboard-quick-actions .dashboard-icon{color:#71dce4}[data-theme=dark] .dashboard-ai{color:#c5afff}
 
 /* Arrange authorized cards without reserving space for unavailable features. */
 .dashboard-learning footer,.dashboard-capability footer,.dashboard-requests footer{margin-top:auto;padding-top:18px}

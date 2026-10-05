@@ -14,6 +14,15 @@ export function FormDialog({title,onClose,busy=false,pages,footer,children,page:
   const input=Array.from(element.querySelectorAll<HTMLElement>('input,select,textarea')).find(field=>!field.closest('[hidden]')&&!field.hasAttribute('disabled'));if(!className.includes('skill-wizard')||window.matchMedia('(min-width:801px)').matches)input?.focus();
   return()=>{element.close();document.body.style.overflow=overflow;if(previous?.isConnected)previous.focus();};
  },[]);
+ function trapFocus(event:React.KeyboardEvent<HTMLDialogElement>){
+  if(event.key!=='Tab')return;
+  const element=dialog.current;if(!element)return;
+  const focusable=Array.from(element.querySelectorAll<HTMLElement>('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')).filter(node=>!node.hasAttribute('disabled')&&!node.closest('[hidden]')&&node.getClientRects().length>0);
+  if(!focusable.length)return;
+  const first=focusable[0],last=focusable[focusable.length-1];
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+ }
  function validate(event:FormEvent<HTMLDialogElement>){
   const form=event.target;if(!(form instanceof HTMLFormElement))return;
   const invalid=Array.from(form.elements).find(element=>(element instanceof HTMLInputElement||element instanceof HTMLSelectElement||element instanceof HTMLTextAreaElement)&&element.willValidate&&!element.validity.valid) as HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement|undefined;
@@ -23,7 +32,7 @@ export function FormDialog({title,onClose,busy=false,pages,footer,children,page:
   requestAnimationFrame(()=>{invalid.focus();invalid.reportValidity();});
  }
  const content=<>{children}{pages?.map((item,index)=><div data-form-page={index} key={index} hidden={page!==index}>{item.content}</div>)}</>;
- return createPortal(<dialog ref={dialog} className={"form-dialog "+className} data-readonly={readOnly||undefined} aria-label={title} onCancel={event=>{event.preventDefault();if(!busy)onClose();}} onSubmitCapture={validate}>
+ return createPortal(<dialog ref={dialog} className={"form-dialog "+className} data-readonly={readOnly||undefined} aria-label={title} onKeyDown={trapFocus} onCancel={event=>{event.preventDefault();if(!busy)onClose();}} onSubmitCapture={validate}>
   <header className="form-dialog-header"><div><h2>{title}</h2>{subtitle&&<p className="form-dialog-subtitle">{subtitle}</p>}</div><button type="button" className="catalogue-close" aria-label={`Close ${title}`} disabled={busy} onClick={onClose}><X size={20}/></button></header>
   {message&&<div className="form-dialog-message">{message}</div>}
   {pages&&pages.length>1&&<nav className={"form-page-tabs"+(stepNavigation?" wizard-steps":"")} aria-label="Form sections">{pages.map((item,index)=><button type="button" key={index} disabled={busy} aria-current={page===index?'step':undefined} onClick={()=>changePage(index)}>{stepNavigation&&<span className="wizard-step-number" aria-hidden="true">{index<page?'✓':index+1}</span>}{item.label}</button>)}</nav>}

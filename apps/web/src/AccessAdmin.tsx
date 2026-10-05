@@ -4,6 +4,7 @@ import {AccessDirectory} from './AccessDirectory';
 import { OrganizationSetup } from './OrganizationSetup';
 import {Workspace,type WorkspaceState} from './Workspace';
 import {personalNavigationItems,personalPageTitle} from './WorkspaceNavigation';
+import {readOrganizationSummary,type OrganizationSummary} from './organization-summary';
 import { SkillCatalogue } from './SkillCatalogue';
 import { FormDialog } from './FormDialog';
 import { NavigationDrawer } from './NavigationDrawer';
@@ -35,10 +36,22 @@ export function AccessAdmin({personalPath,personalCapabilities,workspaceContext}
   const [navigationOpen,setNavigationOpen]=useState(false);
   useEffect(()=>{setNavigationOpen(false);setEditor(undefined);},[personalPath]);
   const [pageActions,setPageActions]=useState<HTMLDivElement|null>(null);
-  const [organization,setOrganization]=useState<{nodes:{id:string;kind:string;name:string;parentId:string|null;active:boolean}[];assignments:{personId:string;departmentId:string|null;teamId:string|null;managerId?:string|null}[]}>();
+  const [organization,setOrganization]=useState<OrganizationSummary>();
+  const [organizationError,setOrganizationError]=useState('');
+  const [organizationAttempt,setOrganizationAttempt]=useState(0);
+  const [organizationLoading,setOrganizationLoading]=useState(false);
   const [assignmentDraft,setAssignmentDraft]=useState<Record<string,string[]>>({});
   const [department,setDepartment]=useState('');
-  useEffect(()=>{if(!state?.canManageUsers||isDemoSession())return;const controller=new AbortController();authenticatedFetch('/api/access/organization',{signal:controller.signal}).then(async response=>{if(response.ok)setOrganization(await response.json());}).catch(()=>{});return()=>controller.abort();},[state?.revision]);
+  useEffect(()=>{
+    if(!state?.canManageUsers||isDemoSession()){setOrganization(undefined);setOrganizationError('');setOrganizationLoading(false);return;}
+    const controller=new AbortController();setOrganization(undefined);setOrganizationError('');setOrganizationLoading(true);
+    authenticatedFetch('/api/access/organization',{signal:controller.signal})
+      .then(readOrganizationSummary)
+      .then(value=>{if(!controller.signal.aborted)setOrganization(value);})
+      .catch(reason=>{if(!controller.signal.aborted)setOrganizationError(reason instanceof Error?reason.message:'Organization details could not be loaded. Try again.');})
+      .finally(()=>{if(!controller.signal.aborted)setOrganizationLoading(false);});
+    return()=>controller.abort();
+  },[state?.revision,organizationAttempt]);
   const [bulkReview,setBulkReview]=useState(false);
   const [selectedPerson,setSelectedPerson]=useState<string>(),[personSection,setPersonSection]=useState('effective');
   const [review,setReview]=useState<{body:Record<string,unknown>;receipt:string;impacts:{personId:string;displayName:string;changes:Decision[];unsupportedAssignments:unknown[]}[]}>();
@@ -99,7 +112,10 @@ export function AccessAdmin({personalPath,personalCapabilities,workspaceContext}
       {state&&!personalTitle&&tab==='roles'&&<><button className="secondary-button" disabled={busy} onClick={()=>createRecord('role')}><Plus size={16}/>New template</button></>}
       {state&&!personalTitle&&tab==='audit'&&<label className="list-search"><Search size={16} aria-hidden="true"/><input aria-label="Search activity" placeholder="Search activity…" value={search} onChange={event=>setSearch(event.target.value)}/></label>}
       </div><NavbarAccount name={name} identity={state?.authentication==='microsoft'?'Microsoft account':'Development session'} workspaceLink={{href:'/workspace',label:'Personal workspace'}}/></header><main id="access-main" className="access-main">
-      {error&&<div className="access-message" role="alert">{error}<button className="secondary-button" onClick={()=>{setError('');load().catch(err=>setError(err.message));}}>Reload current configuration</button></div>}{notice&&<p className="access-message" role="status">{notice}</p>}
+      {error&&<div className="access-message" role="alert">{error}<button className="secondary-button" onClick={()=>{setError('');load().catch(err=>setError(err.message));}}>Reload current configuration</button></div>}
+      {organizationLoading&&<p role="status">Loading organization details…</p>}
+      {organizationError&&<div className="access-message" role="alert">{organizationError}<button className="secondary-button" onClick={()=>setOrganizationAttempt(value=>value+1)}>Retry organization details</button></div>}
+      {notice&&<p className="access-message" role="status">{notice}</p>}
       {!state&&!error&&<div className="admin-loading" role="status">Loading your administration workspace…</div>}
       {state&&<>{personalTitle&&<Workspace embedded actionsContainer={pageActions} initialWorkspace={workspaceContext}/>}
       {!personalTitle&&tab==='overview'&&<>

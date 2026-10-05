@@ -13,9 +13,11 @@ export interface ClaimOption {
 }
 export interface ClaimState { claims: SkillClaim[]; total: number; page: number; pageSize: number; canClaim: boolean; categories?:string[]; summary?:{pending:number;approved:number;changes:number;rejected:number} }
 export interface ClaimOptions { skills: ClaimOption[]; total: number; page: number; pageSize: number }
+export interface TopReviewedSkill {id:string;skillName:string;category:string;rank:number;levelName:string;maxRank:number|null}
+export interface OwnSkillSummary {total:number;verified:number;pending:number;draft:number;changesRequested:number;rejected:number;topSkills?:TopReviewedSkill[]}
 export interface ClaimsStore {
   team?(actorId:string,query:ReturnType<typeof teamQuery>):Promise<TeamCapability>;
-  summary?(actorId:string):Promise<{total:number;verified:number;pending:number;draft:number;changesRequested:number;rejected:number}>;
+  summary?(actorId:string):Promise<OwnSkillSummary>;
   read(actorId: string, page: number): Promise<ClaimState>;
   options(actorId: string, search: string, page: number, category?:string,pageSize?:number): Promise<ClaimOptions>;
   save(actorId: string, input: unknown): Promise<void>;

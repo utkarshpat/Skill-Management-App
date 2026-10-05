@@ -1,5 +1,5 @@
 import type {WorkspaceState} from './Workspace';
-import {administrationShellFor} from './WorkspaceNavigation';
+import {administrationShellFor,isSupportedWorkspacePath} from './WorkspaceNavigation';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 
@@ -37,10 +37,11 @@ export function App() {
     window.addEventListener('workspace-access-updated',load);window.addEventListener('focus',focus);document.addEventListener('visibilitychange',focus);
     return()=>{controller.abort();clearInterval(timer);window.removeEventListener('workspace-access-updated',load);window.removeEventListener('focus',focus);document.removeEventListener('visibilitychange',focus);};
   },[session,workspaceAttempt,isKnowledgeTransfer]);
-  useEffect(()=>{let active=true;const expired=()=>{setSessionNotice('Your development session expired or the API restarted. Choose a test person to open a new demo session.');setSession('loading');void refreshDevelopmentLogin().then(()=>{if(active)setSession('anonymous');});};window.addEventListener('development-session-expired',expired);return()=>{active=false;window.removeEventListener('development-session-expired',expired);};},[]);
+  useEffect(()=>{let active=true;const expired=()=>{setSessionNotice('Your development session expired or the API restarted. Choose a test person to open a new demo session.');setSession('loading');refreshDevelopmentLogin().catch(()=>undefined).finally(()=>{if(active)setSession('anonymous');});};window.addEventListener('development-session-expired',expired);return()=>{active=false;window.removeEventListener('development-session-expired',expired);};},[]);
   useEffect(() => { let active = true; initializeAuth().then(() => { if (active) setSession(signedIn() ? 'signed-in' : 'anonymous'); }).catch(() => { if (active) setSession('error'); }); return () => { active = false; }; }, []);
   if (pathname === '/preview') return <Overview />;
   if (session === 'loading') return <div className="session-loading" role="status">Preparing your workspace…</div>;
+  if(session==='signed-in'&&!isSupportedWorkspacePath(pathname))return <main className="profile-main"><h1>Page not found</h1><p>This workspace page is not available.</p><Link className="secondary-button" to="/workspace">Return to your workspace</Link></main>;
   if(session==='signed-in'&&isKnowledgeTransfer)return <Suspense fallback={<div className="session-loading" role="status">Opening project handover…</div>}><KnowledgeTransfer/></Suspense>;
   if(session==='signed-in'&&!workspace)return <div className="session-loading" role="status">{workspaceError?<>{workspaceError}<button onClick={()=>setWorkspaceAttempt(value=>value+1)}>Retry</button></>:'Preparing workspace navigation…'}</div>;
   const refreshWarning=workspace&&workspaceError?<div className="workspace-refresh-warning" role="alert">{workspaceError} <button onClick={()=>setWorkspaceAttempt(n=>n+1)}>Retry</button></div>:null;
@@ -50,6 +51,7 @@ export function App() {
 
 function Welcome({ authError,sessionNotice,onDevelopmentSessionReady }: { authError: boolean;sessionNotice:string;onDevelopmentSessionReady:()=>void }) {
   const [error, setError] = useState('');
+  const [signingIn, setSigningIn] = useState(false);
   return <div className="welcome-page">
     <a className="skip-link" href="#welcome-main">Skip to content</a>
     <header className="welcome-header"><ThemeSwitcher/><img src="/brand/sopra-steria.svg" alt="Sopra Steria" /></header>
@@ -60,7 +62,7 @@ function Welcome({ authError,sessionNotice,onDevelopmentSessionReady }: { authEr
         <h1 id="signin-title"><span className="desktop-welcome">Welcome back</span><span className="mobile-welcome">Skill Management</span></h1>
         <p className="signin-intro">Sign in to your workspace.</p>
         {sessionNotice&&<p role="status">{sessionNotice}</p>}
-        <button className="microsoft-button" disabled={!signInConfigured || authError} aria-describedby="signin-status" onClick={() => { signIn().catch(() => setError('Sign-in could not start. Please refresh and try again.')); }}><span className="microsoft-symbol" aria-hidden="true"><i /><i /><i /><i /></span>Continue with Microsoft</button>
+        <button className="microsoft-button" disabled={signingIn || !signInConfigured || authError} aria-busy={signingIn} aria-describedby="signin-status" onClick={() => { setError(''); setSigningIn(true); signIn().catch(() => { setError('Sign-in could not start. Please refresh and try again.'); setSigningIn(false); }); }}><span className="microsoft-symbol" aria-hidden="true"><i /><i /><i /><i /></span>{signingIn ? 'Signing in…' : 'Continue with Microsoft'}</button>
         <p id="signin-status" className="signin-status" role="status">{error || (authError ? 'Sign-in could not finish. Please return to this page and try again.' : signInConfigured ? 'Use your Microsoft account to access your assigned workspace.' : 'Sign-in is being set up. Access will be available soon.')}</p>
         <DevelopmentLogin onSessionReady={onDevelopmentSessionReady}/>
       </section>

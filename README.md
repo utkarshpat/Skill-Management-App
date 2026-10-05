@@ -26,7 +26,9 @@ Web: `http://localhost:5173/`. API: `http://127.0.0.1:3001/api/health` (liveness
 - Effective access explanations, People & Access, supported scoped templates/exceptions, reporting and audited preview/recheck changes.
 - Published skill definitions, personal claims and current assigned direct-manager reviews with no self-review.
 - Team capability analytics and recommendations; acceptance leads to an explicitly reviewed learning plan, never automatic verification.
-- Learn & Grow plans/tasks, study logs, generated practice, progress and recovery.
+- Manager **Reports & downloads** previews and exports full direct-report team summaries, reviewed coverage and recorded coverage gaps as Excel-compatible CSV. Search defines the report scope; chart filters and roster pagination do not. Export rechecks current access and reloads aggregates. Coverage shortfalls are not skill deficiencies or role-based target gaps; skills without any reviewed records are excluded.
+- Personal dashboard shows up to six highest-level manager-reviewed skills with saved proficiency names, a compact spider-web chart and summary. One/two skills use a readable list until a meaningful radar is possible. Draft/pending claims and learning completion never populate reviewed proficiency.
+- Learn & Grow plans/tasks, study logs, generated practice, progress and recovery; Growth Journey connects recommendations, skill-linked plans, employee-owned claims and assigned reviews without treating learning as proficiency evidence.
 - Participant-scoped requests/incidents, searchable recipients, reassignment, resolution and notifications.
 - Authorized dashboard cards, personal navigation ordering and contextual AI with bounded context, recent durable conversations and shared SQL request budgets.
 
@@ -44,7 +46,7 @@ npm run build
 npm run db:check -w apps/api
 ```
 
-Python 3 generates the KT bundle from the maintained handbook, approved baseline, routes and migrations. Regenerate after changing those inputs; CI rejects stale output. `npm run db:migrate -w apps/api` applies reviewed outstanding migrations through 040 using a separate setup identity and one migration worker. Inspect opt-in integration fixtures before running them against live SQL; ordinary tests do not require SQL or model credentials. Never run seed/import scripts as ordinary startup tasks.
+Python 3 generates the KT bundle from the maintained handbook, approved baseline, routes and migrations. Regenerate after changing those inputs; CI rejects stale output. `npm run db:migrate -w apps/api` applies reviewed outstanding migrations through 041 using a separate setup identity and one migration worker. Migration 041 supplies the complete actor-bound top-skills summary and each claim's saved definition scale; until it is deployed, the dashboard explicitly marks that snapshot unavailable. Inspect opt-in integration fixtures before running them against live SQL; ordinary tests do not require SQL or model credentials. Never run seed/import scripts as ordinary startup tasks.
 
 ## Hosting and temporary KT removal
 

@@ -1,6 +1,6 @@
 {
   "version": "2026-10-05",
-  "revision": "697832df2392f8de",
+  "revision": "4ade245ba8536ebe",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -43,7 +43,8 @@
       "037_recommendation_permission_contract.sql",
       "038_recommendation_recipient_discovery.sql",
       "039_access_read_optimization.sql",
-      "040_shared_ai_budget.sql"
+      "040_shared_ai_budget.sql",
+      "041_dashboard_top_skills.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -4456,7 +4457,7 @@
       "name": "ReadOwnSkillSummary",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/026_dashboard_skill_summary.sql"
+      "source": "database/migrations/041_dashboard_top_skills.sql"
     },
     {
       "name": "ReadDirectReportCapability",

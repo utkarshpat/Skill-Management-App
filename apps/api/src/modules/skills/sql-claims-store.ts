@@ -1,7 +1,7 @@
 import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
-import { claimChange, claimTransition, type ClaimsStore, type ClaimState, type ClaimOptions, type SkillClaim, type ClaimOption, type TeamCapability, type teamQuery, reviewQuery, type ReviewDetail } from './claims.js';
+import { claimChange, claimTransition, type ClaimsStore, type ClaimState, type ClaimOptions, type SkillClaim, type ClaimOption, type TeamCapability, type teamQuery, reviewQuery, type ReviewDetail, type OwnSkillSummary, type TopReviewedSkill } from './claims.js';
 
 export class SqlClaimsStore implements ClaimsStore {
   async team(actorId:string,query:ReturnType<typeof teamQuery>):Promise<TeamCapability>{
@@ -12,7 +12,11 @@ export class SqlClaimsStore implements ClaimsStore {
     });}catch(error){throw claimError(error);}
   }
   async summary(actorId:string){
-    try{return await withRuntimeDatabase(async pool=>{const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId).execute('dbo.ReadOwnSkillSummary');return result.recordset[0] as {total:number;verified:number;pending:number;draft:number;changesRequested:number;rejected:number};});}catch(error){throw claimError(error);}
+    try{return await withRuntimeDatabase(async pool=>{
+      const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId).execute('dbo.ReadOwnSkillSummary');
+      const sets=result.recordsets as unknown as [sql.IRecordSet<OwnSkillSummary>,sql.IRecordSet<TopReviewedSkill>?];
+      return {...sets[0][0],...(sets[1]?{topSkills:sets[1].map(skill=>({...skill,id:skill.id.toLowerCase()}))}:{})};
+    });}catch(error){throw claimError(error);}
   }
   constructor(private accountId: string) {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(accountId)) throw new Error('Claims require a workspace UUID.');

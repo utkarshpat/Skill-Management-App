@@ -1,18 +1,19 @@
-import {PersonalProfile} from './PersonalProfile';
 import {SidebarNavigation} from './SidebarNavigation';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { BookOpen, ChevronRight, Compass, LayoutDashboard, Menu, ShieldCheck, UserRound } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { Sidebar } from './Sidebar';
 import { NavigationDrawer } from './NavigationDrawer';
 import { NavbarAccount } from './NavbarAccount';
-import {SkillReviews} from './SkillReviews';
-import { MySkills } from './MySkills';
-import {Learning} from './Learning';
-import {Requests} from './Requests';
-import { SkillCatalogue } from './SkillCatalogue';
-import {Dashboard} from './Dashboard';
+import {catalogueNavigationVisible,catalogueRouteAllowed} from './WorkspaceNavigation';
+const PersonalProfile=lazy(()=>import('./PersonalProfile').then(module=>({default:module.PersonalProfile})));
+const SkillReviews=lazy(()=>import('./SkillReviews').then(module=>({default:module.SkillReviews})));
+const MySkills=lazy(()=>import('./MySkills').then(module=>({default:module.MySkills})));
+const Learning=lazy(()=>import('./Learning').then(module=>({default:module.Learning})));
+const Requests=lazy(()=>import('./Requests').then(module=>({default:module.Requests})));
+const SkillCatalogue=lazy(()=>import('./SkillCatalogue').then(module=>({default:module.SkillCatalogue})));
+const Dashboard=lazy(()=>import('./Dashboard').then(module=>({default:module.Dashboard})));
 
 export interface WorkspaceState {
   person: { id: string; displayName: string; employeeCode: string; roles: string[] };
@@ -51,9 +52,9 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
     { id: 'my-skills', label: 'My skills', href: '/my-skills', icon: Compass, visible: state?.capabilities.ownSkills },
     {id:'requests',label:'Requests',href:'/requests',icon:ShieldCheck,visible:state?.capabilities.requests},
     {id:'learning',label:'Learn & Grow',href:'/learning',icon:BookOpen,visible:state?.capabilities.learning},
-    { id: 'skills', label: 'Skill catalogue', href: '/skills', icon: BookOpen, visible: state?.capabilities.catalogue && (state.capabilities.manageCatalogue || state.capabilities.reviewSkills) },
+    { id: 'skills', label: 'Skill catalogue', href: '/skills', icon: BookOpen, visible: catalogueNavigationVisible(state?.capabilities) },
   ];
-  const permitted = view === 'overview' || (view === 'skills' ? state?.capabilities.catalogue : sections.some(section => section.id === view && section.visible));
+  const permitted = view === 'overview' || (view === 'skills' ? catalogueRouteAllowed(state?.capabilities) : sections.some(section => section.id === view && section.visible));
   const sidebarContent = (close: () => void = () => {}) => <>
     <Link className="admin-brand" to="/workspace"><img src="/brand/sopra-steria.svg" alt="Sopra Steria" /></Link>
     <p className="nav-caption">MY WORKSPACE</p>
@@ -68,13 +69,15 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
     {!state&&!error&&<p role="status">Loading your workspace…</p>}
     {state&&!permitted&&<section className="profile-panel"><h2>Access is not assigned</h2><p>Your current permissions do not include this page.</p></section>}
     {state&&permitted&&<>
-      {view==='overview'&&<Dashboard/>}
-      {view==='profile'&&<PersonalProfile workspace={state}/>}
-      {view==='my-skills'&&<MySkills actionsContainer={actionsContainer??null}/>}
-      {view==='requests'&&<Requests actionsContainer={actionsContainer}/>}
-      {view==='learning'&&<Learning actionsContainer={actionsContainer}/>}
-      {view==='skill-reviews'&&<SkillReviews/>}
-      {view==='skills'&&<SkillCatalogue actionsContainer={actionsContainer??null}/>}
+      <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
+        {view==='overview'&&<Dashboard/>}
+        {view==='profile'&&<PersonalProfile workspace={state}/>}
+        {view==='my-skills'&&<MySkills actionsContainer={actionsContainer??null}/>}
+        {view==='requests'&&<Requests actionsContainer={actionsContainer}/>}
+        {view==='learning'&&<Learning actionsContainer={actionsContainer}/>}
+        {view==='skill-reviews'&&<SkillReviews/>}
+        {view==='skills'&&<SkillCatalogue actionsContainer={actionsContainer??null}/>}
+      </Suspense>
     </>}
   </>;
   return <div className="admin-shell personal-workspace">
@@ -92,13 +95,15 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
       {!state && !error && <p role="status">Loading your workspace…</p>}
       {state && !permitted && <section className="profile-panel"><h2>Access is not assigned</h2><p>Your current permissions do not include this page.</p><Link className="secondary-button" to="/workspace">Return to dashboard</Link></section>}
       {state && permitted && <>
-        {view === 'overview' && <Dashboard/>}
-        {view === 'profile' && <PersonalProfile workspace={state}/>}
-        {view === 'my-skills' && <MySkills actionsContainer={actions} />}
-        {view === 'requests' && <Requests actionsContainer={actions}/>}
-        {view === 'learning' && <Learning actionsContainer={actions}/>}
-        {view === 'skill-reviews' && <SkillReviews/>}
-        {view === 'skills' && <SkillCatalogue actionsContainer={actions} />}
+        <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
+          {view === 'overview' && <Dashboard/>}
+          {view === 'profile' && <PersonalProfile workspace={state}/>}
+          {view === 'my-skills' && <MySkills actionsContainer={actions} />}
+          {view === 'requests' && <Requests actionsContainer={actions}/>}
+          {view === 'learning' && <Learning actionsContainer={actions}/>}
+          {view === 'skill-reviews' && <SkillReviews/>}
+          {view === 'skills' && <SkillCatalogue actionsContainer={actions} />}
+        </Suspense>
       </>}
     </main></div>
   </div>;

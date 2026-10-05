@@ -22,6 +22,17 @@ test('capability totals come from the full summary contract; revoked cards never
  const result=await loadDashboardCard('capability',actor,state,person,s);assert.equal('total' in result&&result.total,80);assert.equal(reads,1);
  person.overrides=[{...own('skill.view'),effect:'DENY'}];await assert.rejects(loadDashboardCard('capability',actor,state,person,s));assert.equal(reads,1);
 });
+test('top skills come from the actor-bound complete reviewed summary, not the recent claim page',async()=>{
+ const {state,person}=fixture([own('profile.view'),own('skill.view')]);
+ const s:DashboardSources={...sources,claims:{...sources.claims!,summary:async id=>{
+  assert.equal(id,actor);return {...await sources.claims!.summary!(id),topSkills:Array.from({length:7},(_,i)=>({id:'reviewed-'+i,skillName:'Reviewed '+i,category:'Cloud',rank:5,levelName:'Expert',maxRank:8,evidence:'Do not expose'}))};
+ }}};
+ const result=await loadDashboardCard('capability',actor,state,person,s);
+ assert.ok('topSkills' in result&&result.topSkills);assert.equal(result.topSkills.length,6);
+ assert.equal(result.topSkills[0].maxRank,8);assert.ok('recentClaims' in result);assert.equal(result.recentClaims.length,0);
+ assert.doesNotMatch(JSON.stringify(result),/Do not expose|evidence/);
+ person.overrides=[{...own('skill.view'),effect:'DENY'}];await assert.rejects(loadDashboardCard('capability',actor,state,person,s));
+});
 test('learning urgency uses each plan timezone and completed work never becomes overdue',async()=>{
  const {state,person}=fixture([own('learning.view'),own('learning.manage')]);const s={...sources,learning:{...sources.learning!,read:async()=>({canManage:true,plans:[{id:actor,revision:1,title:'Goal',goal:'Learn',timezone:'Asia/Calcutta',dailyMinutes:30,targetDate:'2026-10-06',status:'ACTIVE' as const,tasks:[{id:'a',title:'Completed',plannedDate:'2026-10-02',estimatedMinutes:10,completedAt:'2026-10-02T12:00:00Z'},{id:'b',title:'Due today',plannedDate:'2026-10-04',estimatedMinutes:10},{id:'c',title:'Late',plannedDate:'2026-10-03',estimatedMinutes:10}]}]})}};
  const data=await loadDashboardCard('learning',actor,state,person,s,new Date('2026-10-03T20:00:00Z'));assert.ok('overdue' in data);assert.equal(data.overdue,1);assert.equal(data.today,1);assert.equal(data.progress,33);assert.equal(data.items[0].title,'Late');

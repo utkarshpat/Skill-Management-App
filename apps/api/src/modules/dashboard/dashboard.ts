@@ -53,7 +53,7 @@ export async function loadDashboardCard(id:CardId,actor:string,state:LocalAccess
  if(id==='learning'){const data=await sources.learning!.read(actor);return {...learningSummary(data.plans,at),canManage:data.canManage};}
  if(id==='capability'){
   const [summary,recent]=await Promise.all([sources.claims!.summary!(actor),sources.claims!.read(actor,1)]);
-  return {...summary,canClaim:recent.canClaim&&can(state,person,'skill.claim',true)&&can(state,person,'skill.view'),recentClaims:recent.claims.slice(0,3).map(c=>({id:c.id,skillName:c.skillName,category:c.category,rank:c.rank,levelName:c.levelName,status:c.status,updatedAt:c.updatedAt,href:'/my-skills?claim='+c.id}))};
+  return {...summary,...(summary.topSkills?{topSkills:summary.topSkills.slice(0,6).map(s=>({id:s.id,skillName:s.skillName,category:s.category,rank:s.rank,levelName:s.levelName,maxRank:s.maxRank}))}:{}),canClaim:recent.canClaim&&can(state,person,'skill.claim',true)&&can(state,person,'skill.view'),recentClaims:recent.claims.slice(0,3).map(c=>({id:c.id,skillName:c.skillName,category:c.category,rank:c.rank,levelName:c.levelName,status:c.status,updatedAt:c.updatedAt,href:'/my-skills?claim='+c.id}))};
  }
  if(id==='requests'){
   const data=await sources.workflows!.list(actor,1,false,{query:'',kind:'',status:requestStatus,category:'',priority:''});

@@ -27,7 +27,7 @@ export function Dashboard(){
  },[attempt]);
  return <div className="dashboard-workspace">
   <div className="dashboard-heading"><div><h2>Your day, in focus</h2><p>Move work forward, build skills and keep track of what changes.</p></div><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)} aria-label="Refresh dashboard"><RefreshCw size={17}/>Refresh</button></div>
-  {error&&<section className="dashboard-card" role="alert"><h3>Dashboard could not be loaded</h3><p>{error}</p><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></section>}
+  {error&&<section className="dashboard-card" role="alert"><h3>{manifest?'Dashboard refresh failed':'Dashboard could not be loaded'}</h3><p>{error}{manifest?' The values below may be out of date.':''}</p><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></section>}
   {!manifest&&!error&&<div className="dashboard-grid" role="status" aria-label="Loading your dashboard">{[1,2,3].map(id=><div key={id} className="dashboard-card dashboard-skeleton"><i/><i/><i/></div>)}</div>}
   {manifest&&<>
    <div className="dashboard-grid">{manifest.cards.map(card=><DashboardCard key={manifest.actorId+card.id} card={card} revision={manifest.revision} refresh={cardRefresh} ai={manifest.ai} onAccessChanged={()=>setAttempt(n=>n+1)}/>)}
@@ -50,7 +50,7 @@ function DashboardCard({card,revision,refresh,ai,onAccessChanged}:{card:Card;rev
  return <section className={'dashboard-card dashboard-'+card.id+(card.id==='attention'&&data?.total===0&&!data.partial?' dashboard-caught-up':'')} aria-label={card.title}>
   <header><span className="dashboard-icon"><Icon size={20}/></span><div><h3>{card.title}</h3><p>{card.description}</p></div></header>
   {refreshing&&data&&<small role="status">Refreshing...</small>}
-  {error&&<div className="dashboard-error" role="alert"><p>{error}</p><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></div>}
+  {error&&<div className="dashboard-error" role="alert"><p>{error}{data?' Displayed values may be out of date.':''}</p><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></div>}
   {!data?(error?null:<div className="dashboard-skeleton" role="status" aria-label={'Loading '+card.title}><i/><i/><i/></div>):<>
    {card.id==='attention'&&<DashboardAttention total={data.total} partial={data.partial} groups={data.groups} onRetry={()=>setAttempt(n=>n+1)}/>}
    {card.id==='learning'&&<DashboardLearning data={data as DashboardLearningData} ai={ai} onHelp={task=>window.dispatchEvent(new CustomEvent('assistant-context-request',{detail:{prompt:learningTaskPrompt(task)}}))}/>}
