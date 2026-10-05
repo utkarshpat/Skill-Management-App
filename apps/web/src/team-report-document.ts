@@ -54,11 +54,11 @@ export function teamReportHtml(analytics:TeamReportAnalytics,query:string,at:Dat
  const profiles=skillProfiles(analytics),without=membersWithoutReviewedSkills(analytics);
  const data=JSON.stringify({members:analytics.members,skills:analytics.coverage.length?[...new Set(analytics.coverage.map(r=>r.skillName))].map(skill=>({skill,levels:LEVELS.map(rank=>analytics.coverage.find(r=>r.skillName===skill&&r.rank===rank)?.people??0)})):[]}).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
  const kpis:[string,string|number,string][]=[
-  ['Active direct reports',analytics.members,query?`Search: “${query}”`:'All current direct reports'],
+  ['Active direct reports',analytics.members,query?'Filtered current direct reports':'All current direct reports'],
   ['Manager-reviewed claims',analytics.reviewed,'Verified proficiency records'],
   ['Assigned pending reviews',analytics.pending,'Not yet counted as proficiency'],
   ['Reviewed skills',profiles.length,'Distinct skills with a reviewed record'],
-  ['Average reviewed level',teamAverageLevel(analytics)?'L'+teamAverageLevel(analytics):'—','Across all reviewed claims'],
+  ['Average reviewed level',teamAverageLevel(analytics)?'L'+teamAverageLevel(analytics):'—','Recorded ranks capped at L5; not equivalence across frameworks'],
   ['Without reviewed skills',without,'Members with no reviewed record'],
  ];
  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -92,7 +92,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}.gap-high{color
 footer{margin-top:24px;color:var(--muted);font-size:.8rem;max-width:75ch}
 @media print{body{background:#fff}.actions,.controls input{display:none}.panel,.kpi{break-inside:avoid;border-color:#ccc}main{padding:0}}
 </style></head><body><main>
-<header class="top"><div><h1>Team capability report</h1><p class="meta">Current active direct reports · ${escapeHtml(query?`Search “${query}”`:'All direct reports')} · Generated ${escapeHtml(at.toLocaleString())}</p></div>
+<header class="top"><div><h1>Team capability report</h1><p class="meta">Current active direct reports · ${escapeHtml(query?'Filtered current direct reports':'All direct reports')} · Generated ${escapeHtml(at.toLocaleString())}</p></div>
 <div class="actions"><button type="button" id="print">Print or save as PDF</button></div></header>
 <section class="kpis">${kpis.map(([label,value,note])=>`<div class="kpi"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span><small>${escapeHtml(note)}</small></div>`).join('')}</section>
 <div class="grid">
@@ -107,7 +107,7 @@ footer{margin-top:24px;color:var(--muted);font-size:.8rem;max-width:75ch}
 <section class="panel span-7"><h2>Level mix by skill</h2><p class="sub">How reviewed holders spread across levels.</p>${levelMix(analytics)}</section>
 <section class="panel span-5"><h2>Category share</h2><p class="sub">Reviewed claims by skill category.</p>${categories(analytics)}</section>
 </div>
-<footer>Based on manager-reviewed claims for current active direct reports. Assigned pending reviews are shown separately and never counted as proficiency; private drafts are excluded. Missing recorded coverage is not proof of a skill deficiency, and no role-based targets are configured. This report contains aggregate counts only, without names or employee IDs.</footer>
+<footer>Based on manager-reviewed claims for current active direct reports. Assigned pending reviews are shown separately and never counted as proficiency; private drafts are excluded. Missing recorded coverage is not proof of a skill deficiency, and no role-based targets are configured. This report contains aggregate counts only, without names or employee IDs. Small filtered groups can still be identifying; share only with authorized recipients.</footer>
 </main>
 <script type="application/json" id="data">${data}</script>
 <script>(function(){var d=JSON.parse(document.getElementById('data').textContent),level=document.getElementById('level'),search=document.getElementById('search'),show=document.getElementById('show'),bars=document.getElementById('bars'),rows=document.getElementById('rows'),none=document.getElementById('none'),sort='missing',dir=-1;

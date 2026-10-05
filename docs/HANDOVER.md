@@ -121,13 +121,15 @@ Do not treat catalogue publication, course completion, practice score or recomme
 
 ## Team Capability & Recommendations
 
-Skill Reviews provides Review Queue, Team Analytics and Recommendations. Team analytics uses current active direct reports, not arbitrary role-name routing. Roster search and chart filtering resolve the same scope. Pagination changes visible roster rows, not aggregate denominators.
+Skill Reviews provides Review Queue, Team Analytics and Recommendations. Team analytics uses current active direct reports, not arbitrary role-name routing. Roster search and chart filtering resolve the same scope. Aggregate exports omit identifying search text; filtered small cohorts can still be identifying. Recorded-rank chart averages consistently cap historical ranks above five at L5+, with explicit labels; they do not establish equivalence between different assessment frameworks. AI qualification requires an exact normalized published skill name; similar names require clarification before any qualification calculation. Pagination changes visible roster rows, not aggregate denominators.
 
 Coverage = distinct matching active direct reports with a manager-reviewed skill at or above selected level / all matching active direct reports. Members with no reviewed claim remain in the denominator. This measures recorded coverage, not a business gap without a requirement. Reviewed proficiency/category counts and assigned pending claims remain distinct from private drafts and other reviewers' submissions.
 
 View capability opens an individual manager-facing capability profile, separate from the employee's editable My Skills screen. It shows authorized records, not ownership transfer or permission to edit the employee's skills.
 
 Recommendation: eligible manager → search current report(s) → published skill + target defined proficiency → reason + optional HTTPS resource + target date → explicit Send → recipient notification. Recipient can Accept, Decline or Ask for Discussion. Acceptance reviews a new personal learning plan; its creation and response use the owning transaction. The flow does not create an approved skill claim.
+
+Migrations 046/047 enforce own skill-view access on claim reads and provide a bounded actor-owned projection for skill-linked active/paused learning plans. The journey reads one recent recommendation page and the bounded claim projection independently; unavailable claim status does not hide learning tasks or imply that no claim exists. Additional recommendations remain available through the full Recommendations view.
 
 Skill Growth Journey connects the implemented lifecycle: recommendation → accepted personal plan → logged learning tasks → an explicitly employee-created claim with their own experience/evidence → submission → current assigned manager review. The Learn & Grow journey reads existing recommendations, plans and personal claims; offers the appropriate next link/action; and displays learning progress separately from assessed proficiency. It does not invent evidence, create claims automatically, submit claims without confirmation, or approve proficiency. Formal certification, automated workplace assessment and broad organization gap matching are not implemented.
 
@@ -196,7 +198,7 @@ Knowledge Transfer AI uses the same configured provider and shared budget, retri
 
 The interactive Schema Explorer contains physical tables, every parsed column/type/nullability/declaration, exact primary and unique key tuples, declared foreign keys, explicit indexes, source migrations and related-entity navigation. The ERD draws only declared foreign keys, including composite account keys. It does not fabricate foreign keys from JSON fields or procedural checks.
 
-Schema reconstruction reads reviewed migrations 001–045. It is a repository-specific DDL extractor: literal CREATE TABLE, ALTER TABLE ADD, DROP TABLE, explicit indexes and CREATE VIEW are parsed. Dynamic CHECK removals in migrations 010/015/023/044 are reconciled explicitly. It is not a general T-SQL parser or a live database schema certification. Compare with DBA introspection before company migration.
+Schema reconstruction reads reviewed migrations 001–047. It is a repository-specific DDL extractor: literal CREATE TABLE, ALTER TABLE ADD, DROP TABLE, explicit indexes and CREATE VIEW are parsed. Dynamic CHECK removals in migrations 010/015/023/044 are reconciled explicitly. It is not a general T-SQL parser or a live database schema certification. Compare with DBA introspection before company migration.
 
 | Domain | Persistence |
 | --- | --- |
@@ -335,3 +337,19 @@ Quick disable: set server `KNOWLEDGE_TRANSFER_ENABLED=false` and redeploy. The d
 | tests and documentation scripts | Remove KT-only tests; adapt generator to an offline docs output before removing its KT bundle destination |
 
 Keep README, this permanent handover and the approved access baseline. If offline schema export is still required, redirect the generator output to an approved documentation artifact first. Run architecture/typecheck/full regression/build after removal, push, then verify dashboard, own skills, learning, notifications, manager reviews and normal AI in the deployed environment. No data cleanup or permission migration is required.
+
+
+## Short requirements delivery backlog
+
+The discussion draft in `apps/short requrement` supplies business outcomes. Its suggested Power Platform architecture and role labels do not replace the implemented React/Express/Azure SQL stack or approved effective-access baseline.
+
+Implementation order after the audited foundation passes combined SQL/browser regression:
+
+1. Profile: administrator-maintained primary capability and a transparent completeness denominator, with missing-field actions permitted by actual access.
+2. Certifications: credential/provider/skill references, issue/expiry dates, employee evidence, defined verifier policy, expiry status and deduplicated 90/60/30-day reminders. A credential never silently verifies proficiency.
+3. Training: maintained catalogue, enrolment, completion, scores and evidence, distinct from generated practice and personal task completion.
+4. Projects/demand: persisted required skills, saved assessment criteria/proficiency, headcount, priority and requirement periods.
+5. Matching: compare approved demand with authorized reviewed records and resource availability; explain each factor and do not infer qualification from similar skill names.
+6. Formal assessments and wider analytics: implement explicitly approved assessor policies and server/SQL-enforced scopes before exposing project/panel/department/organization actions. Reporting hierarchy alone is not access.
+
+Each increment requires implemented actions, current permission checks, genuine loading/error/empty states, regression tests and Chrome acceptance before deployment. These backlog items are not completed features.

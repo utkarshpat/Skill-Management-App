@@ -30,6 +30,13 @@ export class SqlClaimsStore implements ClaimsStore {
       });
     } catch(error) { throw claimError(error); }
   }
+  async journey(actorId:string):Promise<ClaimState>{
+    try{return await withRuntimeDatabase(async pool=>{
+      const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId).execute('dbo.ReadOwnGrowthClaims');
+      const sets=result.recordsets as unknown as [sql.IRecordSet<{total:number;canClaim:boolean}>,sql.IRecordSet<Omit<SkillClaim,'updatedAt'>&{updatedAt:Date}>];
+      return {...sets[0][0],page:1,pageSize:50,claims:sets[1].map(item=>({...item,id:item.id.toLowerCase(),skillId:item.skillId.toLowerCase(),reviewerId:item.reviewerId?.toLowerCase(),updatedAt:item.updatedAt.toISOString()}))};
+    });}catch(error){throw claimError(error);}
+  }
   async options(actorId: string, search: string, page: number, category='',pageSize=25) : Promise<ClaimOptions> {
     try {
       return await withRuntimeDatabase(async pool => {

@@ -25,8 +25,17 @@ export function registerClaimsRoutes(app:Express, dependencies:ClaimsHttpDepende
     }
     const state=await (dependencies?.access??store)?.snapshot({includeAudit:false}),person=state?.people.find(item=>item.id===actor&&item.active);
     const review=req.baseUrl==='/api/skill-reviews';
-    if(!state||!person||!can(state,person,'profile.view',true)||(review?!canReviewAssigned(state,person):((req.method==='POST'||req.path==='/catalogue')&&(!can(state,person,'skill.claim',true)||!can(state,person,'skill.view'))))){res.sendStatus(403);return;}
+    if(!state||!person||!can(state,person,'profile.view',true)||(review?!canReviewAssigned(state,person):(!can(state,person,'skill.view',true)||((req.method==='POST'||req.path==='/catalogue')&&(!can(state,person,'skill.claim',true)||!can(state,person,'skill.view')))))){res.sendStatus(403);return;}
     res.locals.claimActor=person.id;next();
+  });
+  app.get('/api/my-skills/journey',async(req,res)=>{
+    try {
+      if(Object.keys(req.query).length)throw new AccessError(400,'Journey scope is resolved from your own learning plans.');
+      const state=await (dependencies?.access??store)?.snapshot({includeAudit:false}),person=state?.people.find(p=>p.id===res.locals.claimActor&&p.active);
+      if(!state||!person||!can(state,person,'learning.view',true))throw new AccessError(403,'Learning access is unavailable.');
+      if(!dependencies?.claims?.journey)throw new AccessError(503,'Growth claim status is unavailable.');
+      res.json(await dependencies.claims.journey(person.id));
+    } catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{message:error.message}});return;}throw error;}
   });
   app.get('/api/my-skills',async(req,res)=>{
     try { if(!dependencies?.claims)throw new AccessError(503,'My Skills is not configured.');res.json(await dependencies.claims.read(res.locals.claimActor,claimPage(req.query.page))); }

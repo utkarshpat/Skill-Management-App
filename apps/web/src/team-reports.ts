@@ -33,7 +33,7 @@ export function csvCell(value:string|number){
 }
 export function teamReportCsv(analytics:TeamReportAnalytics,kind:TeamReportKind,rank:number,query:string,at:Date){
  const rows:(string|number)[][]=[
-  ['Report',reportLabels[kind]],['Scope','Current active direct reports'],['Search',query||'All direct reports'],
+  ['Report',reportLabels[kind]],['Scope','Current active direct reports'],['Scope filter',query?'Filtered current direct reports':'All direct reports'],
   ['Exported at',at.toISOString()],['Active members',analytics.members],
   ['Data basis','Manager-reviewed claims; only your assigned pending reviews. Private drafts excluded.'],
  ];

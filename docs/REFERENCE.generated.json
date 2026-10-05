@@ -1,6 +1,6 @@
 {
   "version": "2026-10-05",
-  "revision": "42509fd00403272c",
+  "revision": "1e64a386ff392461",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -48,7 +48,9 @@
       "042_skill_last_used.sql",
       "043_own_organization_profile.sql",
       "044_standard_proficiency.sql",
-      "045_person_employment.sql"
+      "045_person_employment.sql",
+      "046_own_skill_read_access.sql",
+      "047_bounded_growth_claims.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -4253,6 +4255,12 @@
     },
     {
       "method": "GET",
+      "path": "/api/my-skills/journey",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/claims-routes.ts"
+    },
+    {
+      "method": "GET",
       "path": "/api/my-skills",
       "module": "skills",
       "source": "apps/api/src/modules/skills/claims-routes.ts"
@@ -4389,7 +4397,7 @@
       "name": "ReadOwnSkillClaims",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1",
-      "source": "database/migrations/042_skill_last_used.sql"
+      "source": "database/migrations/046_own_skill_read_access.sql"
     },
     {
       "name": "ReadClaimSkills",
@@ -4528,6 +4536,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
       "source": "database/migrations/043_own_organization_profile.sql"
+    },
+    {
+      "name": "ReadOwnGrowthClaims",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/047_bounded_growth_claims.sql"
     }
   ],
   "groups": {

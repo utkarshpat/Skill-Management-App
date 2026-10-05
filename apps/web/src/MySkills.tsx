@@ -67,7 +67,7 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
   },[location.key,state?.canClaim]);
   useEffect(()=>{
     if(!draft)return;
-    const controller=new AbortController();setOptionsLoading(true);
+    const controller=new AbortController();setOptions(undefined);setOptionsLoading(true);
     const timer=setTimeout(()=>{authenticatedFetch(`/api/my-skills/catalogue?search=${encodeURIComponent(search)}&page=${optionPage}&category=${encodeURIComponent(category)}&pageSize=3`,{signal:controller.signal})
       .then(body<Options>).then(value=>{if(!controller.signal.aborted)setOptions(value);})
       .catch(error=>{if(!controller.signal.aborted){setOptions(undefined);setFormError(error.message);}})
@@ -77,13 +77,13 @@ export function MySkills({actionsContainer,reviewRequest}:{actionsContainer?:HTM
   const selected=options?.skills.find(item=>item.id===draft?.skillId)??picked;
   useEffect(()=>{const current=options?.skills.find(item=>item.id===draft?.skillId);if(current)setPicked(current);},[options,draft?.skillId]);
   useEffect(()=>{
-    if(!options||!suggestedSkillName||draft?.skillId)return;
+    if(optionsLoading||!options||!suggestedSkillName||draft?.skillId)return;
     const matches=options.skills.filter(skill=>skill.name.localeCompare(suggestedSkillName,undefined,{sensitivity:'accent'})===0);
     setSuggestedSkillName('');
     if(matches.length===1){const [match]=matches;setPicked(match);setDraft(current=>current&&!current.skillId?{...current,skillId:match.id,definitionRevision:match.definitionRevision}:current);}
-  },[options,suggestedSkillName,draft?.skillId]);
+  },[options,optionsLoading,suggestedSkillName,draft?.skillId]);
   function edit(claim?:Claim) {
-    setPicked(undefined);setSuggestedSkillName('');setCategory('');setNotice('');setFormError('');setFormPage(0);setOptionPage(1);setSearch(claim?.skillName??'');
+    setOptions(undefined);setPicked(undefined);setSuggestedSkillName('');setCategory('');setNotice('');setFormError('');setFormPage(0);setOptionPage(1);setSearch(claim?.skillName??'');
     setDraft(claim?{id:claim.id,revision:claim.revision,skillId:claim.skillId,definitionRevision:claim.definitionRevision,rank:claim.rank,experienceMonths:claim.experienceMonths,lastUsedOn:claim.lastUsedOn??null,description:claim.description,projects:claim.projects??'',evidence:claim.evidence??''}:emptyDraft());
   }
   useEffect(()=>{const params=new URLSearchParams(location.search);if(!state||params.get('action')!=='add')return;const suggested=params.get('skill')??'';params.delete('action');params.delete('skill');navigate(location.pathname+(params.size?'?'+params:''),{replace:true});  if(state.canClaim){edit();if(suggested){setSearch(suggested.slice(0,100));setSuggestedSkillName(suggested);}}else setError('Skill editing is not assigned.');},[location.search,state?.canClaim]);

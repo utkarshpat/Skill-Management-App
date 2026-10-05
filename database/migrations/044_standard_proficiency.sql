@@ -3,7 +3,8 @@ DECLARE @constraint sysname;
 SELECT @constraint=name FROM sys.check_constraints
 WHERE parent_object_id=OBJECT_ID(N'dbo.ProficiencyFramework') AND definition LIKE '%enterprise-v1%';
 IF @constraint IS NULL THROW 51000,'Expected the existing common-framework constraint.',1;
-EXEC(N'ALTER TABLE dbo.ProficiencyFramework DROP CONSTRAINT '+QUOTENAME(@constraint));
+DECLARE @drop_constraint nvarchar(max)=N'ALTER TABLE dbo.ProficiencyFramework DROP CONSTRAINT '+QUOTENAME(@constraint);
+EXEC(@drop_constraint);
 ALTER TABLE dbo.ProficiencyFramework ADD CONSTRAINT CK_ProficiencyFramework_Common
  CHECK(account_id IS NOT NULL OR framework_key IN ('enterprise-v1','enterprise-v2'));
 INSERT dbo.ProficiencyFramework(framework_id,account_id,framework_key)

@@ -45,3 +45,17 @@ test('team_skill_gaps requires direct-report review authority, binds the actor a
  await assert.rejects(registry.execute(person.id,'team_skill_gaps',{personId:person.id},signal));
  bump=true;await assert.rejects(registry.execute(person.id,'team_skill_gaps',{},signal),/changed/);
 });
+
+
+test('similar skill names never establish qualification without confirmation',()=>{
+ const java={...analytics,coverage:[1,2,3].map(rank=>({skillName:'Java',rank,people:1,memberIds:['a']}))};
+ for(const requested of ['JavaScript','Jav']){
+  const result=teamGapReport(java,[{skill:requested,level:3,headcount:1}],id=>names[id]).requirements[0] as any;
+  assert.equal(result.status,'AMBIGUOUS');assert.equal(result.qualified,undefined);
+ }
+ const exact=teamGapReport(java,[{skill:' java ',level:3,headcount:1}],id=>names[id]).requirements[0] as any;
+ assert.equal(exact.status,'MET');assert.equal(exact.matchedSkill,'Java');
+ for(const skill of ['!!!','   ','+++'])assert.throws(()=>teamGapArguments({requirements:[{skill,level:1}]}));
+ const unicode='\u0938\u0902\u091a\u093e\u0930';
+ assert.equal(teamGapArguments({requirements:[{skill:unicode,level:1}]}).requirements[0].skill,unicode);
+});

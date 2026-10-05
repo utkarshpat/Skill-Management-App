@@ -19,7 +19,7 @@ test('gaps include members with no claims, zero coverage at higher levels and ex
  assert.match(csv,/"Java","L3","30","0","30","0"/);
  assert.match(csv,/"Azure","L3","30","4","26","13"/);
  assert.doesNotMatch(csv,/"SQL","L3"|private-member/);
- assert.match(csv,/not proof of a skill deficiency/);assert.match(csv,/"Search","Cloud"/);
+ assert.match(csv,/not proof of a skill deficiency/);assert.match(csv,/"Scope filter","Filtered current direct reports"/);assert.doesNotMatch(csv,/"Cloud"/);
  assert.match(csv,/2026-10-05T09:00:00.000Z/);
 });
 test('coverage and team summary export all aggregate rows, never employee IDs or private claims',()=>{

@@ -32,9 +32,17 @@ test('interactive report is self-contained, escaped and aggregate-only',()=>{
  assert.match(html,/Content-Security-Policy" content="default-src 'none'/);
  assert.doesNotMatch(html,/<script>[^(]*SQL|SQL <script>/);
  assert.match(html,/SQL &lt;script&gt;/);assert.match(html,/SQL \\u003cscript>/);
- assert.match(html,/Search “Cloud &quot;team&quot;”/);
+ assert.match(html,/Filtered current direct reports/);assert.doesNotMatch(html,/Cloud &quot;team&quot;/);
  assert.doesNotMatch(html,/memberIds|"a","b"/);
  assert.match(html,/not proof of a skill deficiency/);assert.match(html,/window\.print/);
  assert.doesNotMatch(html,/https?:\/\//);
  assert.equal(escapeHtml(`<&"'>`),'&lt;&amp;&quot;&#39;&gt;');
+});
+
+
+test('historical ranks use an explicit capped scale consistently and identifying searches stay out of exports',()=>{
+ const legacy={...analytics,levels:[{rank:8,count:1,memberIds:['a']}],coverage:[1,2,3,4,5].map(rank=>({skillName:'Azure',rank,people:1,memberIds:['a']}))};
+ assert.equal(teamAverageLevel(legacy),5);assert.equal(skillProfiles(legacy)[0].average,5);
+ const html=teamReportHtml(legacy,'Private Employee Name',new Date());
+ assert.doesNotMatch(html,/Private Employee Name/);assert.match(html,/capped at L5/);assert.match(html,/identifying/);
 });

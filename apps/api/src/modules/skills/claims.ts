@@ -18,6 +18,7 @@ export interface OwnSkillSummary {total:number;verified:number;pending:number;dr
 export interface ClaimsStore {
   team?(actorId:string,query:ReturnType<typeof teamQuery>):Promise<TeamCapability>;
   summary?(actorId:string):Promise<OwnSkillSummary>;
+  journey?(actorId:string):Promise<ClaimState>;
   read(actorId: string, page: number): Promise<ClaimState>;
   options(actorId: string, search: string, page: number, category?:string,pageSize?:number): Promise<ClaimOptions>;
   save(actorId: string, input: unknown): Promise<void>;

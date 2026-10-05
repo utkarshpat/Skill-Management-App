@@ -30,7 +30,7 @@ export function membersWithoutReviewedSkills(analytics:TeamReportAnalytics){
 
 export function teamAverageLevel(analytics:TeamReportAnalytics){
  const total=analytics.levels.reduce((sum,l)=>sum+l.count,0);
- return total?Math.round(analytics.levels.reduce((sum,l)=>sum+l.rank*l.count,0)/total*10)/10:0;
+ return total?Math.round(analytics.levels.reduce((sum,l)=>sum+Math.min(5,l.rank)*l.count,0)/total*10)/10:0;
 }
 
 export function demandPrompt(demand:string){

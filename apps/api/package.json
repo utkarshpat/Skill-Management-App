@@ -18,6 +18,7 @@
     "test:employment": "node --env-file-if-exists=.env --import tsx test/employment.integration.ts",
     "test:reviews": "node --env-file-if-exists=.env --import tsx test/reviews.integration.ts",
     "test:review-access": "node --env-file-if-exists=.env --import tsx test/review-access.integration.ts",
+    "test:audit-fixes": "node --env-file-if-exists=.env --import tsx test/audit-fixes.integration.ts",
     "test:claims": "node --env-file-if-exists=.env --import tsx test/claims.integration.ts",
     "test:conversations": "node --env-file-if-exists=.env --import tsx test/conversations.integration.ts",
     "catalogue:seed": "node --env-file-if-exists=.env --import tsx src/catalogue-seed-cli.ts",
