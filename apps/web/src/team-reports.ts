@@ -6,14 +6,18 @@ export interface TeamReportAnalytics {
 }
 export type TeamReportKind='summary'|'coverage'|'gap';
 export const reportLabels:Record<TeamReportKind,string>={summary:'Team summary',coverage:'Reviewed skill coverage',gap:'Recorded coverage gaps'};
-export async function fetchTeamReport(fetcher:(path:string,init?:RequestInit)=>Promise<Response>,kind:TeamReportKind,rank:number,query:string,signal:AbortSignal){
+type Fetcher=(path:string,init?:RequestInit)=>Promise<Response>;
+export async function fetchTeamAnalytics(fetcher:Fetcher,query:string,signal:AbortSignal){
  const response=await fetcher('/api/skill-reviews/team?'+new URLSearchParams({page:'1',search:query}),{signal});
  const body=await response.json() as {analytics?:TeamReportAnalytics;error?:{message?:string}};
  if(!response.ok)throw Object.assign(Error(body.error?.message??'Report could not be downloaded. Refresh team data and retry.'),{status:response.status});
  if(!body.analytics)throw Error('Full-team report data is unavailable. Refresh and retry; no partial-page report was downloaded.');
  signal.throwIfAborted();
- const at=new Date();
- return {csv:teamReportCsv(body.analytics,kind,rank,query,at),at};
+ return {analytics:body.analytics,at:new Date()};
+}
+export async function fetchTeamReport(fetcher:Fetcher,kind:TeamReportKind,rank:number,query:string,signal:AbortSignal){
+ const {analytics,at}=await fetchTeamAnalytics(fetcher,query,signal);
+ return {csv:teamReportCsv(analytics,kind,rank,query,at),at};
 }
 export function coverageRows(analytics:TeamReportAnalytics,rank:number){
  const names=[...new Set(analytics.coverage.map(s=>s.skillName))];

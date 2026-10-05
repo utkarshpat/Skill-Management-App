@@ -8,7 +8,7 @@ import type {WorkflowStore} from '../workflows/index.js';
 
 import type {LearningStore} from '../learning/index.js';
 
-import type { ClaimsStore, CatalogueStore } from '../skills/index.js';
+import { teamGapArguments, teamGapReport, type ClaimsStore, type CatalogueStore } from '../skills/index.js';
 
 import { assistantCapabilities } from './capabilities.js';
 
@@ -183,6 +183,20 @@ export class ToolRegistry {
 
       read:async({person})=>{const queue=await claims.reviews!(person.id,1);return {total:queue.total,page:queue.page,hasMore:queue.total>queue.pageSize,claims:queue.claims.slice(0,10).map(claim=>({skill:claim.skillName,person:claim.personName,proficiency:claim.levelName,status:claim.status})),source:'Assigned skill reviews'};},
 
+    });
+
+    if(claims?.team)this.entries.set('team_skill_gaps',{
+      definition:{type:'function',function:{name:'team_skill_gaps',description:'Analyse your current active direct reports’ manager-reviewed skill coverage. Pass the manager’s stated demand as requirements (skill name, minimum level 1-5, headcount) to get who qualifies, shortfall and people one level below. Without requirements, returns team skill strengths, level mix and thinnest coverage. Requirements are not saved. Cannot choose another manager, person or workspace.',parameters:{type:'object',additionalProperties:false,properties:{search:{type:'string',maxLength:100,description:'Optional name or employee-code filter within your direct reports.'},requirements:{type:'array',maxItems:10,items:{type:'object',additionalProperties:false,required:['skill','level'],properties:{skill:{type:'string',maxLength:80},level:{type:'integer',minimum:1,maximum:5},headcount:{type:'integer',minimum:1,maximum:500}}}}}}}},
+      validate:teamGapArguments,
+      permission:(state,person)=>can(state,person,'skill.view')&&canReviewAssigned(state,person),source:{label:'Team capability · direct reports',url:'/skill-reviews'},
+      read:async({state,person,args})=>{
+        const team=await claims.team!(person.id,{search:String(args.search),page:1,person:undefined});
+        if(!team.analytics)throw new AccessError(503,'Full-team analytics are unavailable. Refresh team capability and retry.');
+        const after=await this.access.snapshot({includeAudit:false});
+        if(after.revision!==state.revision)throw new AccessError(409,'Team assignments changed. Ask again for current results.');
+        const names=new Map(after.people.map(p=>[p.id.toLowerCase(),p.displayName]));
+        return {...teamGapReport(team.analytics,args.requirements as Parameters<typeof teamGapReport>[1],id=>names.get(id)??'Direct report'),search:String(args.search)||'All direct reports',source:'Team capability · direct reports'};
+      },
     });
 
     if(catalogue)this.entries.set('catalogue_search',{
