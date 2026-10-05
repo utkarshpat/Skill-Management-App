@@ -168,7 +168,7 @@ for path in sorted((ROOT/'database/migrations').glob('*.sql')):
 groups={
  'Identity foundation':['SchemaMigration','Account','DeliveryUnit','Department','Team','AppUser','TeamMembership','ReportingRelationship','AppRole','Permission','UserRole','RolePermission','UserPermission','AuditEvent'],
  'Access & organization':['AccessWorkspace','AccessRuntimeAccount','AccountRole','AccessPerson','AccountRolePermission','AccessPersonRole','AccessPersonOverride','AccessAudit','AccessOrgNode','AccessOrgAssignment','AccessImplementedScope'],
- 'Skills & claims':['SkillCatalogue','ProficiencyFramework','ProficiencyLevel','SkillDefinitionVersion','SkillVersionCriterion','SkillClaimDraft','SkillClaimNotification'],
+ 'Skills & claims':['SkillCatalogue','ProficiencyFramework','ProficiencyLevel','SkillDefinitionVersion','SkillVersionCriterion','SkillClaimDraft','SkillClaimNotification','SkillClaimEvidence'],
  'Learning & recommendations':['LearningPlan','LearningSession','LearningQuiz','LearningAttempt','LearningRecommendation','LearningRecommendationEvent'],
  'Requests & incidents':['WorkflowRecord','WorkflowEvent'],
  'AI & budget':['AiConversation','AiAccountBudget','AiActorBudget'],

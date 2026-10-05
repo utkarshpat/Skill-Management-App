@@ -1,6 +1,6 @@
 {
   "version": "2026-10-05",
-  "revision": "2451801ec084b2ca",
+  "revision": "d9bfa328114c37cb",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -52,7 +52,8 @@
       "046_own_skill_read_access.sql",
       "047_bounded_growth_claims.sql",
       "048_actor_access_context.sql",
-      "049_paginated_access_audit.sql"
+      "049_paginated_access_audit.sql",
+      "050_skill_evidence.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -4002,6 +4003,103 @@
         ],
         "indexes": [],
         "domain": "AI & budget"
+      },
+      "SkillClaimEvidence": {
+        "source": "050_skill_evidence.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "050_skill_evidence.sql"
+          },
+          "claim_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "claim_id uniqueidentifier NOT NULL",
+            "source": "050_skill_evidence.sql"
+          },
+          "evidence_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "evidence_id uniqueidentifier NOT NULL",
+            "source": "050_skill_evidence.sql"
+          },
+          "blob_name": {
+            "type": "varchar(160)",
+            "nullable": false,
+            "declaration": "blob_name varchar(160) NOT NULL",
+            "source": "050_skill_evidence.sql"
+          },
+          "bytes": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "bytes int NOT NULL",
+            "source": "050_skill_evidence.sql"
+          },
+          "width": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "width int NOT NULL",
+            "source": "050_skill_evidence.sql"
+          },
+          "height": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "height int NOT NULL",
+            "source": "050_skill_evidence.sql"
+          },
+          "created_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "created_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "050_skill_evidence.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "claim_id",
+          "evidence_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "claim_id"
+            ],
+            "target": "SkillClaimDraft",
+            "targetColumns": [
+              "account_id",
+              "claim_id"
+            ],
+            "source": "050_skill_evidence.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,claim_id,evidence_id)",
+            "source": "050_skill_evidence.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,claim_id) REFERENCES dbo.SkillClaimDraft(account_id,claim_id)",
+            "source": "050_skill_evidence.sql"
+          },
+          {
+            "sql": "CHECK(bytes BETWEEN 1 AND 1048576)",
+            "source": "050_skill_evidence.sql"
+          },
+          {
+            "sql": "CHECK(width BETWEEN 1 AND 1920)",
+            "source": "050_skill_evidence.sql"
+          },
+          {
+            "sql": "CHECK(height BETWEEN 1 AND 1920)",
+            "source": "050_skill_evidence.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Skills & claims"
       }
     },
     "views": {
@@ -4266,6 +4364,12 @@
       "path": "/api/recommendations/respond",
       "module": "recommendations",
       "source": "apps/api/src/modules/recommendations/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/my-skills/:claim/evidence",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/claims-routes.ts"
     },
     {
       "method": "GET",
@@ -4568,6 +4672,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@before int=NULL,@person_id uniqueidentifier=NULL,\n @query nvarchar(100)=N'',@page_size int=25,@include_details bit=0",
       "source": "database/migrations/049_paginated_access_audit.sql"
+    },
+    {
+      "name": "SkillEvidence",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL",
+      "source": "database/migrations/050_skill_evidence.sql"
     }
   ],
   "groups": {
@@ -4607,7 +4717,8 @@
       "SkillDefinitionVersion",
       "SkillVersionCriterion",
       "SkillClaimDraft",
-      "SkillClaimNotification"
+      "SkillClaimNotification",
+      "SkillClaimEvidence"
     ],
     "Learning & recommendations": [
       "LearningPlan",

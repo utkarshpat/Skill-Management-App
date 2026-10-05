@@ -13,6 +13,7 @@ import {can,readActorAccess} from './modules/access/index.js';
 import {AssistantService,configuredProvider} from './modules/ai/index.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
 import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
+import {configuredEvidence} from './modules/skills/evidence.js';
 import { SqlConversationsStore } from './modules/ai/conversations.js';
 import {SqlLearningStore,SqlPracticeStore,LearningPracticeService,LearningPlannerService,LearningRecoveryService,SqlRecoveryStore,type QuizGenerator} from './modules/learning/index.js';
 
@@ -24,6 +25,7 @@ const hostedDemo = hostedDemoConfig(process.env);
 const developmentStore = hostedDemo || developmentLoginEnabled(process.env) ? access : undefined;
 const organization=process.env.ACCESS_ACCOUNT_ID?new SqlOrganizationStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const claims=process.env.ACCESS_ACCOUNT_ID?new SqlClaimsStore(process.env.ACCESS_ACCOUNT_ID):undefined;
+const evidenceStore=configuredEvidence(process.env);
 const catalogue=process.env.ACCESS_ACCOUNT_ID?new SqlCatalogueStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const learning=process.env.ACCESS_ACCOUNT_ID?new SqlLearningStore(process.env.ACCESS_ACCOUNT_ID):undefined;
 const recommendations=process.env.ACCESS_ACCOUNT_ID?new SqlRecommendationStore(process.env.ACCESS_ACCOUNT_ID):undefined;
@@ -35,7 +37,7 @@ const learningGenerator:QuizGenerator|undefined=assistant?async(actor,prompt,sig
 const practice=learning&&process.env.ACCESS_ACCOUNT_ID?new LearningPracticeService(learning,new SqlPracticeStore(process.env.ACCESS_ACCOUNT_ID),learningGenerator):undefined;
 const planner=learning?new LearningPlannerService(learning,learningGenerator):undefined;
 const recovery=learning&&process.env.ACCESS_ACCOUNT_ID?new LearningRecoveryService(learning,new SqlRecoveryStore(process.env.ACCESS_ACCOUNT_ID),learningGenerator):undefined;
-const app = createApp(config ? { verify: tokenVerifier(config),access,organization,ownOrganization:organization?.ownOrganization.bind(organization),assistant,knowledgeTransfer,catalogue,claims,learning,practice,planner,recovery,workflows,recommendations,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
+const app = createApp(config ? { verify: tokenVerifier(config),access,organization,ownOrganization:organization?.ownOrganization.bind(organization),assistant,knowledgeTransfer,catalogue,claims,evidenceStore,learning,practice,planner,recovery,workflows,recommendations,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
   const id=await access?.resolveIdentity(identity);
   if(!id)return ownProfile(identity);
   const state=await readActorAccess(access!,id);const person=state.people.find(person=>person.id===id);

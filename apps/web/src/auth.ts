@@ -1,3 +1,4 @@
+import {notifyResponse,notify} from './toast';
 import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser';
 import { discoverDevelopmentLogin, parseDemoLogin, type DemoLoginState } from './development-login';
 
@@ -66,7 +67,8 @@ export async function authenticatedFetch(path:string,init:RequestInit={}) {
   const headers=new Headers(init.headers);
   if(!isDemoSession())headers.set('Authorization',`Bearer ${await profileToken()}`);
   const wasDemo=isDemoSession();
-  const response=await fetch(path,{...init,headers,signal:init.signal?AbortSignal.any([init.signal,AbortSignal.timeout(90000)]):AbortSignal.timeout(90000)});
+  const response=await fetch(path,{...init,headers,signal:init.signal?AbortSignal.any([init.signal,AbortSignal.timeout(90000)]):AbortSignal.timeout(90000)}).catch(error=>{if(!init.signal?.aborted)notify('Connection interrupted. Please try again.','error');throw error;});
   if(wasDemo&&response.status===401){demoSession=false;window.dispatchEvent(new Event('development-session-expired'));}
+  void notifyResponse(path,(init.method??'GET').toUpperCase(),response);
   return response;
 }

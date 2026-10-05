@@ -1,5 +1,6 @@
 import {readActorAccess} from '../access/index.js';
-import type { Express } from 'express';
+import {raw,type Express} from 'express';
+import type {EvidenceStore} from './evidence.js';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import { can, canReviewAssigned, effectiveClaimReview, effectiveAccess, type AccessStore } from '../access/index.js';
 
@@ -9,7 +10,7 @@ import { claimChange, claimCategory, claimResultSize, claimPage, claimSearch, cl
 export interface ClaimsHttpDependencies {
   verify:(authorization:string|undefined)=>Promise<Identity>;
   resolveAccess?:(identity:Identity)=>Promise<string|undefined>;
-  access?:AccessStore; claims?:ClaimsStore; aiConfigured?:boolean;
+  access?:AccessStore; claims?:ClaimsStore; aiConfigured?:boolean; evidenceStore?:EvidenceStore;
 }
 export function registerClaimsRoutes(app:Express, dependencies:ClaimsHttpDependencies|undefined, store?:AccessStore, demo?:DevelopmentSessions) {
   app.use(['/api/my-skills','/api/skill-reviews'],async(req,res,next)=>{
@@ -29,6 +30,11 @@ export function registerClaimsRoutes(app:Express, dependencies:ClaimsHttpDepende
     if(!state||!person||!can(state,person,'profile.view',true)||(review?!canReviewAssigned(state,person):(!can(state,person,'skill.view',true)||((req.method==='POST'||req.path==='/catalogue')&&(!can(state,person,'skill.claim',true)||!can(state,person,'skill.view')))))){res.sendStatus(403);return;}
     res.locals.claimActor=person.id;next();
   });
+  for(const root of ['/api/my-skills','/api/skill-reviews']){
+    app.get(root+'/:claim/evidence',async(req,res)=>{try{if(!dependencies?.evidenceStore)throw new AccessError(503,'Image evidence storage is not configured.');const state=await dependencies.evidenceStore.read(res.locals.claimActor,reviewIdentifier(req.params.claim));res.json({...state,canUpload:root==='/api/my-skills'&&state.canUpload,items:state.items.map(({blobName,...item})=>item)});}catch(e){if(e instanceof AccessError){res.status(e.status).json({error:{message:e.message}});return;}throw e;}});
+    app.get(root+'/:claim/evidence/:image',async(req,res)=>{try{if(!dependencies?.evidenceStore)throw new AccessError(503,'Image evidence storage is not configured.');res.type('image/webp').send(await dependencies.evidenceStore.image(res.locals.claimActor,reviewIdentifier(req.params.claim),reviewIdentifier(req.params.image)));}catch(e){if(e instanceof AccessError){res.status(e.status).json({error:{message:e.message}});return;}throw e;}});
+  }
+  app.post('/api/my-skills/:claim/evidence',raw({type:['image/jpeg','image/png','image/webp'],limit:'1mb'}),async(req,res)=>{try{if(!dependencies?.evidenceStore)throw new AccessError(503,'Image evidence storage is not configured.');const revision=Number(req.headers['x-claim-revision']);if(!Number.isSafeInteger(revision)||revision<1||!Buffer.isBuffer(req.body))throw new AccessError(400,'Choose an image and save the claim first.');const state=await dependencies.evidenceStore.upload(res.locals.claimActor,reviewIdentifier(req.params.claim),revision,req.body);res.json({...state,items:state.items.map(({blobName,...item})=>item)});}catch(e){if(e instanceof AccessError){res.status(e.status).json({error:{message:e.message}});return;}throw e;}});
   app.get('/api/my-skills/journey',async(req,res)=>{
     try {
       if(Object.keys(req.query).length)throw new AccessError(400,'Journey scope is resolved from your own learning plans.');
