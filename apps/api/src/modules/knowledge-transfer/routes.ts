@@ -1,3 +1,4 @@
+import {readActorAccess} from '../access/index.js';
 import type {Express} from 'express';
 import type {AccessStore} from '../access/index.js';
 import {AccessError} from '../../shared/errors.js';
@@ -12,7 +13,7 @@ export function registerKnowledgeRoutes(app:Express,deps:KnowledgeDependencies|u
   if(demo?.subject(req)){
    if(!demo.requestAllowed(req)||!['GET','HEAD'].includes(req.method)&&!demo.mutationAllowed(req)){res.sendStatus(403);return;}
    actor=demo.subject(req);
-   const person=(await deps.access?.snapshot({includeAudit:false}))?.people.find(p=>p.id===actor&&p.active&&!p.entraObjectId);
+   const person=(await readActorAccess(deps.access,actor))?.people.find(p=>p.id===actor&&p.active&&!p.entraObjectId);
    if(!person){res.sendStatus(403);return;}
   }else{
    try{actor=await deps.resolveAccess?.(await deps.verify(req.headers.authorization));}catch{res.status(401).json({error:{message:'Sign in to read the project handover.'}});return;}

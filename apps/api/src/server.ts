@@ -9,7 +9,7 @@ import { ownProfile } from './modules/identity/index.js';
 import { closeRuntimeDatabase } from './shared/database.js';
 import { developmentLoginEnabled, hostedDemoConfig } from './modules/identity/index.js';
 import { SqlAccessStore } from './modules/access/sql-access-store.js';
-import {can} from './modules/access/index.js';
+import {can,readActorAccess} from './modules/access/index.js';
 import {AssistantService,configuredProvider} from './modules/ai/index.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
 import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
@@ -38,7 +38,7 @@ const recovery=learning&&process.env.ACCESS_ACCOUNT_ID?new LearningRecoveryServi
 const app = createApp(config ? { verify: tokenVerifier(config),access,organization,ownOrganization:organization?.ownOrganization.bind(organization),assistant,knowledgeTransfer,catalogue,claims,learning,practice,planner,recovery,workflows,recommendations,resolveAccess:access?identity=>access.resolveIdentity(identity):undefined, profile:async identity=>{
   const id=await access?.resolveIdentity(identity);
   if(!id)return ownProfile(identity);
-  const state=await access!.snapshot({includeAudit:false});const person=state.people.find(person=>person.id===id);
+  const state=await readActorAccess(access!,id);const person=state.people.find(person=>person.id===id);
   if(!person||!can(state,person,'profile.view',true))return undefined;
   return {id:person.id,displayName:person.displayName,employeeCode:person.employeeCode,jobTitle:person.jobTitle,grade:person.grade,organization:'Development Workspace',status:person.active?'ACTIVE':'SUSPENDED',roles:state.roles.filter(role=>person.roleIds.includes(role.id)).map(role=>role.name),canManageAccess:can(state,person,'permissions.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage')};
 } } : undefined, { developmentStore, hostedDemo });

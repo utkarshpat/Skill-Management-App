@@ -1,3 +1,4 @@
+import {readActorAccess} from '../access/index.js';
 import content from './content.generated.js';
 import {AccessError} from '../../shared/errors.js';
 import {can,type AccessStore} from '../access/index.js';
@@ -29,7 +30,7 @@ export function projectContext(input:GuideInput){
 }
 export class KnowledgeTransferService {
  constructor(private access:AccessStore,private budget:AiBudget,private provider?:Provider){}
- private async authorize(actor:string){const s=await this.access.snapshot({includeAudit:false}),p=s.people.find(p=>p.id===actor&&p.active);if(!p||!can(s,p,'profile.view',true))throw new AccessError(403,'Project handover access is unavailable.');}
+ private async authorize(actor:string){const s=await readActorAccess(this.access,actor),p=s.people.find(p=>p.id===actor&&p.active);if(!p||!can(s,p,'profile.view',true))throw new AccessError(403,'Project handover access is unavailable.');}
  async read(actor:string){await this.authorize(actor);return {...content,ai:{configured:Boolean(this.provider),provider:this.provider?.name??null},temporary:true};}
  async explain(actor:string,input:unknown,signal:AbortSignal){
   const request=guideInput(input);await this.authorize(actor);

@@ -1,3 +1,4 @@
+import {readActorAccess} from '../access/index.js';
 import { AccessError } from '../../shared/errors.js';
 
 import { can, canReviewAssigned, permissionCatalogue, actionRegistry, effectiveAccessSummary, type AccessStore, type LocalAccessState, type LocalPerson } from '../access/index.js';
@@ -249,7 +250,7 @@ export class ToolRegistry {
 
       signal.throwIfAborted();
 
-      const state=await this.access.snapshot({includeAudit:false}),person=state.people.find(item=>item.id===actorId);
+      const state=await (['permission_design_options','workspace_summary'].includes(name)?this.access.snapshot({includeAudit:false}):readActorAccess(this.access,actorId)),person=state.people.find(item=>item.id===actorId);
 
       if(!tool||!person||!this.permits(state,person,name))throw new AccessError(403,'Current permission does not allow this assistant action.');
 

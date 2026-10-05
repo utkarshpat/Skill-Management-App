@@ -11,7 +11,7 @@ import {ArrowRight,CheckCheck,ChevronLeft,ChevronRight,ClipboardCheck,Clock3,Fil
 import './review-workbench.css';
 
 async function result<T>(response:Response):Promise<T>{const data=await response.json().catch(()=>undefined);if(!response.ok)throw Error(data?.error?.message??'This action could not finish. Reload to check the current state before retrying.');return data;}
-interface ReviewQueue {claims:Claim[];total:number;pageSize:number;canViewTeam?:boolean;canRecommend?:boolean;canReadHistory?:boolean;categories?:string[];summary?:{pending:number;approved:number;changes:number;rejected:number}}
+interface ReviewQueue {claims:Claim[];total:number;pageSize:number;canViewTeam?:boolean;canAskTeamAi?:boolean;canRecommend?:boolean;canReadHistory?:boolean;categories?:string[];summary?:{pending:number;approved:number;changes:number;rejected:number}}
 const reviewLabels:Record<string,string>={SUBMITTED:'Pending review',APPROVED:'Manager reviewed',CHANGES_REQUESTED:'Changes requested',REJECTED:'Not approved',ALL:'All review states'};
 export function SkillReviews(){
  const [params,setParams]=useSearchParams(),[view,setView]=useState<'queue'|'team'|'recommendations'>('queue');
@@ -32,7 +32,7 @@ export function SkillReviews(){
  const navigation=<nav className="review-workspace-tabs" aria-label="Skill review workspace"><button aria-pressed={view==='queue'} onClick={()=>{setView('queue');setAttempt(n=>n+1);}}><ClipboardCheck size={18}/>Review queue</button>{data?.canViewTeam&&<button aria-pressed={view==='team'} onClick={()=>setView('team')}><UsersRound size={18}/>Team analytics</button>}{data?.canRecommend&&<button aria-pressed={view==='recommendations'} onClick={()=>setView('recommendations')}><MessageSquareMore size={18}/>Recommendations</button>}</nav>;
  return <div className="review-shell">
   {!(view==='team'&&data?.canViewTeam)&&navigation}
-  {view==='recommendations'&&data?.canRecommend?<Recommendations sentOnly/>:view==='team'&&data?.canViewTeam?<TeamCapability navigation={navigation} onReviews={id=>{setPerson(id);setStatus('SUBMITTED');setPage(1);setQuery('');setSearch('');setView('queue');}}/>:<>
+  {view==='recommendations'&&data?.canRecommend?<Recommendations sentOnly/>:view==='team'&&data?.canViewTeam?<TeamCapability canAskAi={Boolean(data.canAskTeamAi)} navigation={navigation} onReviews={id=>{setPerson(id);setStatus('SUBMITTED');setPage(1);setQuery('');setSearch('');setView('queue');}}/>:<>
   {notice&&<p role="status" className="access-message">{notice}</p>}
   {error&&<div className="review-error" role="alert"><span>{error}</span><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></div>}
   {(data?.summary||loading)&&<div className="review-metrics" aria-label="Filter reviews by status">{metrics.map(item=><button className={'review-metric '+item.tone} key={item.key} disabled={loading} aria-pressed={status===item.key} onClick={()=>{setStatus(item.key);setPage(1);}}><span className="review-metric-icon"><item.icon size={22}/></span><span className="review-metric-copy"><strong>{loading?'—':item.value??'—'}</strong><span>{item.label}</span><small>{item.hint}</small></span><ArrowRight size={16} className="review-metric-arrow"/></button>)}</div>}

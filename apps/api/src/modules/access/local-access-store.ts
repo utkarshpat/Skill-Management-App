@@ -6,6 +6,7 @@ import type { Grant } from './domain/authorization.js';
 import { permissionCatalogue, type PermissionCode } from './access-catalogue.js';
 import { effectiveAccess, isAssignable, hasResolvedDirectReports } from './effective-access.js';
 import {employmentDetails,type EmploymentDetails} from './employment.js';
+import type {AuditQuery,AuditPage} from './audit.js';
 
 export interface Assignment { permission: PermissionCode; scope: 'OWN' | 'ORGANIZATION'; effect: 'ALLOW' | 'DENY'; validUntil?: string; reason?:string }
 export interface CustomRole { id: string; name: string; permissions: Assignment[] }
@@ -15,6 +16,8 @@ export { AccessError } from '../../shared/errors.js';
 export interface AccessStore {
   readonly storage?: 'azure-sql' | 'local-file';
   snapshot(options?:{includeAudit?:boolean;auditPersonId?:string}): LocalAccessState | Promise<LocalAccessState>;
+  actorSnapshot?(actorId:string,options?:{includeAudit?:boolean}):LocalAccessState|Promise<LocalAccessState>;
+  auditPage?(actorId:string,query:AuditQuery):Promise<AuditPage>;
   person(id: string): LocalPerson | undefined | Promise<LocalPerson | undefined>;
   save(actorId: string,input: unknown): Promise<LocalAccessState>;
 }
@@ -87,7 +90,11 @@ export class LocalAccessStore {
     try { await writeFile(temporary, JSON.stringify(state,null,2), { encoding:'utf8', mode:0o600 }); await rename(temporary,this.path); }
     finally { await rm(temporary,{force:true}); }
   }
-  snapshot() { return structuredClone(this.state); }
+  snapshot(options:{includeAudit?:boolean;auditPersonId?:string}={}) { const state=structuredClone(this.state);if(options.includeAudit===false)state.audit=[];else if(options.auditPersonId)state.audit=state.audit.filter(e=>e.targetId===options.auditPersonId&&e.action==='person.updated');return state; }
+  actorSnapshot(actorId:string,options:{includeAudit?:boolean}={}) {
+    const state=this.snapshot({includeAudit:options.includeAudit??false,auditPersonId:actorId}),person=state.people.find(p=>p.id===actorId);
+    return {...state,reporting:undefined,people:person?[{...person,hasDirectReports:hasResolvedDirectReports(state,person)}]:[],roles:state.roles.filter(role=>person?.roleIds.includes(role.id)),audit:options.includeAudit?state.audit.filter(e=>e.targetId===actorId&&e.action==='person.updated').slice(-30):[]};
+  }
   person(id: string) { return this.snapshot().people.find(person => person.id === id && person.active); }
   async save(actorId: string, input: unknown) {
     const operation = async () => {

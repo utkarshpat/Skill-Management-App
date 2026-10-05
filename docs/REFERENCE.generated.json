@@ -1,6 +1,6 @@
 {
   "version": "2026-10-05",
-  "revision": "1e64a386ff392461",
+  "revision": "2451801ec084b2ca",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -50,7 +50,9 @@
       "044_standard_proficiency.sql",
       "045_person_employment.sql",
       "046_own_skill_read_access.sql",
-      "047_bounded_growth_claims.sql"
+      "047_bounded_growth_claims.sql",
+      "048_actor_access_context.sql",
+      "049_paginated_access_audit.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -4015,6 +4017,12 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/api/dev-access/audit",
+      "module": "access",
+      "source": "apps/api/src/modules/access/routes.ts"
+    },
+    {
+      "method": "GET",
       "path": "/api/dev-access",
       "module": "access",
       "source": "apps/api/src/modules/access/routes.ts"
@@ -4034,6 +4042,12 @@
     {
       "method": "POST",
       "path": "/api/dev-access",
+      "module": "access",
+      "source": "apps/api/src/modules/access/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/access/audit",
       "module": "access",
       "source": "apps/api/src/modules/access/routes.ts"
     },
@@ -4542,6 +4556,18 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
       "source": "database/migrations/047_bounded_growth_claims.sql"
+    },
+    {
+      "name": "ReadActorAccessContext",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@include_notifications bit=0",
+      "source": "database/migrations/048_actor_access_context.sql"
+    },
+    {
+      "name": "ReadAccessAuditPage",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@before int=NULL,@person_id uniqueidentifier=NULL,\n @query nvarchar(100)=N'',@page_size int=25,@include_details bit=0",
+      "source": "database/migrations/049_paginated_access_audit.sql"
     }
   ],
   "groups": {

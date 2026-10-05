@@ -38,8 +38,8 @@ function Radar({analytics}:{analytics:TeamReportAnalytics}){
  </svg>;
 }
 
-export function TeamInsightCharts({analytics,people,minimumRank,skillFilter,onSkill,onPerson}:{analytics?:TeamReportAnalytics;people:TeamPerson[];minimumRank:number;skillFilter:string;onSkill:(skill:string)=>void;onPerson:(id:string)=>void}){
- if(!analytics)return <AskAi/>;
+export function TeamInsightCharts({analytics,people,minimumRank,skillFilter,onSkill,onPerson,canAskAi=false}:{canAskAi?:boolean;analytics?:TeamReportAnalytics;people:TeamPerson[];minimumRank:number;skillFilter:string;onSkill:(skill:string)=>void;onPerson:(id:string)=>void}){
+ if(!analytics)return canAskAi?<AskAi/>:null;
  const profiles=skillProfiles(analytics),without=membersWithoutReviewedSkills(analytics),average=teamAverageLevel(analytics);
  const gaps=analytics.coverage.filter(r=>r.rank===minimumRank).map(r=>({skill:r.skillName,holders:r.people,missing:analytics.members-r.people})).sort((a,b)=>b.missing-a.missing||a.skill.localeCompare(b.skill)).slice(0,8);
  const heatSkills=profiles.slice(0,6).map(p=>p.skill),heatPeople=people.slice(0,8);
@@ -52,7 +52,7 @@ export function TeamInsightCharts({analytics,people,minimumRank,skillFilter,onSk
    <div><strong>{without}</strong><span>Without reviewed skills</span><small>{analytics.members?Math.round(without/analytics.members*100):0}% of active members</small></div>
    <div><strong>{profiles[0]?.skill??'—'}</strong><span>Most covered skill</span><small>{profiles[0]?`${profiles[0].holders} holders · avg L${profiles[0].average}`:'No reviewed skills yet'}</small></div>
   </div>
-  <AskAi/>
+  {canAskAi&&<AskAi/>}
   <div className="team-insight-grid">
    <section className="team-chart"><header><div><h3>Team skill radar</h3><p>Average reviewed level of holders for the most covered skills.</p></div></header><Radar analytics={analytics}/><p className="team-chart-caption">Scale L1–L5+. Historical ranks above five are capped for this chart. This is a recorded-rank summary, not equivalence across frameworks. Averages include holders only.</p></section>
    <section className="team-chart"><header><div><h3>Recorded gaps at L{minimumRank}+</h3><p>Reviewed holders against members without recorded coverage. Select a skill to filter the member list.</p></div></header>

@@ -1,3 +1,5 @@
+import {renderToStaticMarkup} from 'react-dom/server';
+import {TeamInsightCharts} from '../src/TeamInsightCharts';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import type {TeamReportAnalytics} from '../src/team-reports';
@@ -45,4 +47,11 @@ test('historical ranks use an explicit capped scale consistently and identifying
  assert.equal(teamAverageLevel(legacy),5);assert.equal(skillProfiles(legacy)[0].average,5);
  const html=teamReportHtml(legacy,'Private Employee Name',new Date());
  assert.doesNotMatch(html,/Private Employee Name/);assert.match(html,/capped at L5/);assert.match(html,/identifying/);
+});
+
+
+test('manager AI demand actions appear only when the server advertises availability',()=>{
+ const props={analytics,people:[],minimumRank:3,skillFilter:'',onSkill:()=>{},onPerson:()=>{}};
+ assert.doesNotMatch(renderToStaticMarkup(<TeamInsightCharts {...props}/>),/Skill demand for the AI assistant|Ask AI about gaps and demand/);
+ assert.match(renderToStaticMarkup(<TeamInsightCharts {...props} canAskAi/>),/Skill demand for the AI assistant/);
 });

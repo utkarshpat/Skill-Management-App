@@ -1,3 +1,4 @@
+import {readActorAccess} from '../access/index.js';
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import { can, canReviewAssigned, effectiveClaimReview, effectiveAccess, type AccessStore } from '../access/index.js';
@@ -8,7 +9,7 @@ import { claimChange, claimCategory, claimResultSize, claimPage, claimSearch, cl
 export interface ClaimsHttpDependencies {
   verify:(authorization:string|undefined)=>Promise<Identity>;
   resolveAccess?:(identity:Identity)=>Promise<string|undefined>;
-  access?:AccessStore; claims?:ClaimsStore;
+  access?:AccessStore; claims?:ClaimsStore; aiConfigured?:boolean;
 }
 export function registerClaimsRoutes(app:Express, dependencies:ClaimsHttpDependencies|undefined, store?:AccessStore, demo?:DevelopmentSessions) {
   app.use(['/api/my-skills','/api/skill-reviews'],async(req,res,next)=>{
@@ -23,7 +24,7 @@ export function registerClaimsRoutes(app:Express, dependencies:ClaimsHttpDepende
       catch { res.status(401).json({error:{code:'NOT_AUTHORIZED',message:'Sign in to continue.',requestId:res.locals.requestId}});return; }
       actor=await dependencies!.resolveAccess!(identity);
     }
-    const state=await (dependencies?.access??store)?.snapshot({includeAudit:false}),person=state?.people.find(item=>item.id===actor&&item.active);
+    const state=await readActorAccess(dependencies?.access??store,actor),person=state?.people.find(item=>item.id===actor&&item.active);
     const review=req.baseUrl==='/api/skill-reviews';
     if(!state||!person||!can(state,person,'profile.view',true)||(review?!canReviewAssigned(state,person):(!can(state,person,'skill.view',true)||((req.method==='POST'||req.path==='/catalogue')&&(!can(state,person,'skill.claim',true)||!can(state,person,'skill.view')))))){res.sendStatus(403);return;}
     res.locals.claimActor=person.id;next();
@@ -31,7 +32,7 @@ export function registerClaimsRoutes(app:Express, dependencies:ClaimsHttpDepende
   app.get('/api/my-skills/journey',async(req,res)=>{
     try {
       if(Object.keys(req.query).length)throw new AccessError(400,'Journey scope is resolved from your own learning plans.');
-      const state=await (dependencies?.access??store)?.snapshot({includeAudit:false}),person=state?.people.find(p=>p.id===res.locals.claimActor&&p.active);
+      const state=await readActorAccess(dependencies?.access??store,res.locals.claimActor),person=state?.people.find(p=>p.id===res.locals.claimActor&&p.active);
       if(!state||!person||!can(state,person,'learning.view',true))throw new AccessError(403,'Learning access is unavailable.');
       if(!dependencies?.claims?.journey)throw new AccessError(503,'Growth claim status is unavailable.');
       res.json(await dependencies.claims.journey(person.id));
@@ -50,7 +51,7 @@ export function registerClaimsRoutes(app:Express, dependencies:ClaimsHttpDepende
     catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'SKILL_DRAFT_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
   app.get('/api/skill-reviews',async(req,res)=>{
-    try{if(!dependencies?.claims?.reviews)throw new AccessError(503,'Skill reviews are not configured.');const before=await (dependencies?.access??store)?.snapshot({includeAudit:false});if(!before)throw new AccessError(403,'Review access unavailable.');const revision=before.revision;const query=reviewQuery(req.query),data=await dependencies.claims.reviews(res.locals.claimActor,claimPage(req.query.page),query);const state=await (dependencies?.access??store)?.snapshot({includeAudit:false}),person=state?.people.find(p=>p.id===res.locals.claimActor&&p.active);if(!state||!person||!canReviewAssigned(state,person)||!can(state,person,'profile.view',true))throw new AccessError(403,'Review access changed.');if(state.revision!==revision)throw new AccessError(409,'Review assignments changed. Refresh before continuing.');res.json({...data,canRecommend:effectiveAccess(state,person,'learning.recommend','DIRECT_REPORTS').allowed,canViewTeam:Boolean(dependencies.claims.team&&can(state,person,'skill.view')),canReadHistory:Boolean(dependencies.claims.reviewDetail)});}
+    try{if(!dependencies?.claims?.reviews)throw new AccessError(503,'Skill reviews are not configured.');const before=await (dependencies?.access??store)?.snapshot({includeAudit:false});if(!before)throw new AccessError(403,'Review access unavailable.');const revision=before.revision;const query=reviewQuery(req.query),data=await dependencies.claims.reviews(res.locals.claimActor,claimPage(req.query.page),query);const state=await readActorAccess(dependencies?.access??store,res.locals.claimActor),person=state?.people.find(p=>p.id===res.locals.claimActor&&p.active);if(!state||!person||!canReviewAssigned(state,person)||!can(state,person,'profile.view',true))throw new AccessError(403,'Review access changed.');if(state.revision!==revision)throw new AccessError(409,'Review assignments changed. Refresh before continuing.');res.json({...data,canAskTeamAi:Boolean(dependencies.aiConfigured&&dependencies.claims.team&&can(state,person,'skill.view')&&canReviewAssigned(state,person)),canRecommend:effectiveAccess(state,person,'learning.recommend','DIRECT_REPORTS').allowed,canViewTeam:Boolean(dependencies.claims.team&&can(state,person,'skill.view')),canReadHistory:Boolean(dependencies.claims.reviewDetail)});}
     catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'SKILL_REVIEW_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
   for(const path of ['/api/my-skills/submit','/api/skill-reviews/decision'])app.post(path,async(req,res)=>{

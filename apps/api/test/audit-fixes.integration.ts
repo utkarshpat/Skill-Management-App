@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto';
 import sql from 'mssql';
 import {withDatabase} from '../src/shared/database.js';
 const account=process.env.ACCESS_ACCOUNT_ID;assert.ok(account);
-const files=['041_dashboard_top_skills.sql','042_skill_last_used.sql','043_own_organization_profile.sql','044_standard_proficiency.sql','045_person_employment.sql','046_own_skill_read_access.sql','047_bounded_growth_claims.sql'];
+const files=['041_dashboard_top_skills.sql','042_skill_last_used.sql','043_own_organization_profile.sql','044_standard_proficiency.sql','045_person_employment.sql','046_own_skill_read_access.sql','047_bounded_growth_claims.sql','048_actor_access_context.sql','049_paginated_access_audit.sql'];
 await withDatabase(async pool=>{
  for(const deniedProcedure of ['dbo.ReadOwnGrowthClaims','dbo.ReadOwnSkillClaims']){
   const tx=new sql.Transaction(pool);await tx.begin();

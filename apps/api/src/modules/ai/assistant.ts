@@ -1,3 +1,4 @@
+import {readActorAccess} from '../access/index.js';
 import {MemoryAiBudget,type AiBudget} from './budget.js';
 import { AccessError } from '../../shared/errors.js';
 import type {WorkflowStore} from '../workflows/index.js';
@@ -76,7 +77,7 @@ export class AssistantService {
   return {body:result.artifact.body,revision:after.record.revision};
  }
  async history(actor:string,id?:string,remove=false){
-  const state=await this.store.snapshot({includeAudit:false}),person=state.people.find(item=>item.id===actor);
+  const state=await readActorAccess(this.store,actor),person=state.people.find(item=>item.id===actor);
   if(!person||!this.registry.permits(state,person,'own_profile'))throw new AccessError(403,'Assistant access is not assigned.');
   if(!this.conversations)throw new AccessError(503,'Durable chat history is not configured.');
   if(id){conversationReference(id);if(remove){if(this.active.has(actor))throw new AccessError(409,'Wait for the current reply before deleting a chat.');await this.conversations.delete(actor,id);return {deleted:true};}
@@ -85,7 +86,7 @@ export class AssistantService {
  }
  status(){return {configured:Boolean(this.provider),provider:this.provider?.name??null,mode:'read-only'};}
  async navigation(actor:string,input?:unknown){
-  const state=await this.store.snapshot({includeAudit:false}),person=state.people.find(item=>item.id===actor);
+  const state=await readActorAccess(this.store,actor),person=state.people.find(item=>item.id===actor);
   if(!person||!this.registry.permits(state,person,'own_profile'))throw new AccessError(403,'Assistant access is not assigned.');
   const capabilities=assistantCapabilities(state,person);
   if(input===undefined)return {status:this.status(),pages:capabilities.pages,canReviewOwnSkill:capabilities.canDraftOwnSkill,suggestions:[{label:'What can I do?',destination:'/workspace',prompt:'Explain my current permissions and the actions available to me.'},...(capabilities.canDraftRequest?[{label:'Draft a request',destination:'/requests',prompt:'Help me draft a request. Ask what help I need, then prepare a request_draft for in-place review.'}]:[]),...(capabilities.canDraftIncident?[{label:'Report an incident',destination:'/requests',prompt:'Help me draft an incident report for review. Ask about the issue and its impact.'}]:[]),...(capabilities.canDraftOwnSkill?[{label:'Build my skill draft',destination:'/my-skills',prompt:'Help me prepare my skill draft interactively. Ask about my experience and published proficiency criteria.'}]:[]),...(capabilities.pages.some(p=>p.url==='/skill-reviews')?[{label:'Review my queue',destination:'/skill-reviews',prompt:'Read assigned_skill_reviews and guide me through the permitted review decisions. Never approve on my behalf.'}]:[]),...(this.registry.permits(state,person,'team_skill_gaps')?[{label:'Team skill gaps',destination:'/skill-reviews',prompt:'Use team_skill_gaps to summarise my direct reports’ skill strengths, level mix and thinnest coverage. Then ask which skill demand (skill, minimum level, headcount) I want compared.'}]:[]),...(capabilities.canManageCatalogue?[{label:'Design a catalogue skill',destination:'/skills',prompt:'Help me draft a catalogue skill definition and proficiency criteria, then guide me through reviewing and saving it.'}]:[]),...(capabilities.canManagePeople?[{label:'Maintain reporting lines',destination:'/access?view=organization',prompt:'Guide me through editing the current reporting manager and organizational placement. Explain checks and ask which relationship needs changing.'}]:[]),...(capabilities.canManageLearning?[{label:'Plan my learning',destination:'/learning',prompt:'Help me define my learning goal and guide me to AI planner with my available time.'}]:[]),...(capabilities.canManagePermissions?[{label:'Design permissions',destination:'/access?view=roles',prompt:'Help me design a permission set. Read permission_design_options and ask what actions and scope are needed. Do not change access.'}]:[]),...(capabilities.canManagePeople?[{label:'Assign access safely',destination:'/access?view=assignments',prompt:'Guide me through role assignment or individual permission overrides with scopes and expiry. Ask which changes I need and explain review steps.'}]:[])]};
@@ -105,7 +106,7 @@ export class AssistantService {
    let saved:SavedConversation|undefined;
    let request=input;
    if(input&&typeof input==='object'&&!('messages' in input)){
-    const state=await this.store.snapshot({includeAudit:false}),person=state.people.find(item=>item.id===actorId);
+    const state=await readActorAccess(this.store,actorId),person=state.people.find(item=>item.id===actorId);
     if(!person||!this.registry.permits(state,person,'own_profile'))throw new AccessError(403,'Assistant access is not assigned.');
     const policy=JSON.stringify({capabilities:assistantCapabilities(state,person),tools:this.registry.available(state,person)});
     const id=(input as {conversationId?:unknown}).conversationId;
@@ -114,13 +115,13 @@ export class AssistantService {
    }
    conversation(request);
    if(!this.provider)throw new AccessError(503,'AI model is not connected yet.');
-   const quotaState=await this.store.snapshot({includeAudit:false}),quotaPerson=quotaState.people.find(p=>p.id===actorId);
+   const quotaState=await readActorAccess(this.store,actorId),quotaPerson=quotaState.people.find(p=>p.id===actorId);
    if(!quotaPerson||!this.registry.permits(quotaState,quotaPerson,'own_profile'))throw new AccessError(403,'Assistant access is not assigned.');
    const initialPolicy=JSON.stringify({capabilities:assistantCapabilities(quotaState,quotaPerson),tools:this.registry.available(quotaState,quotaPerson)});
    signal.throwIfAborted();release=await this.budget.acquire(actorId);
    const result=await this.respond(actorId,request,signal,meter);
    {
-    const fresh=await this.store.snapshot({includeAudit:false}),person=fresh.people.find(item=>item.id===actorId);
+    const fresh=await readActorAccess(this.store,actorId),person=fresh.people.find(item=>item.id===actorId);
     if(!person||!this.registry.permits(fresh,person,'own_profile')||initialPolicy!==JSON.stringify({capabilities:assistantCapabilities(fresh,person),tools:this.registry.available(fresh,person)}))throw new AccessError(403,'Access changed during this reply. Please ask again with your current permissions.');
    }
    if(prepared){
@@ -140,14 +141,14 @@ export class AssistantService {
  private async respond(actorId:string,input:unknown,signal:AbortSignal,meter:UsageMeter) {
   const history=conversation(input);
   if(!this.provider)throw new AccessError(503,'AI model is not connected yet. Configure the server-side provider to enable chat.');
-  const initial=await this.store.snapshot({includeAudit:false}),person=initial.people.find(item=>item.id===actorId);
+  const initial=await readActorAccess(this.store,actorId),person=initial.people.find(item=>item.id===actorId);
   if(!person||!this.registry.permits(initial,person,'own_profile'))throw new AccessError(403,'Assistant access is not assigned.');
   const latestText=history.at(-1)!.content;
   const followup=/^(make it|change it|same|that|it |shorter|longer|isko|usko|aur\s+\d)/i.test(latestText);
   const preceding=history.filter(message=>message.role==='user').at(-2)?.content??'';
   const settings=taskSettings(followup?preceding+'\n'+latestText:latestText);
   const messages:Message[]=[{role:'system',content:coreInstructions+' '+taskInstructions(settings.kind)},...history];const sources:{label:string;url:string}[]=[];let executions=0;
-  const recheck=async(name:string)=>{const state=await this.store.snapshot({includeAudit:false});const current=state.people.find(item=>item.id===actorId);if(!current||!this.registry.permits(state,current,name))throw new AccessError(403,'Current permission does not allow this assistant action.');return {state,person:current};};
+  const recheck=async(name:string)=>{const state=await readActorAccess(this.store,actorId);const current=state.people.find(item=>item.id===actorId);if(!current||!this.registry.permits(state,current,name))throw new AccessError(403,'Current permission does not allow this assistant action.');return {state,person:current};};
    for(let round=0;round<3;round++) {
     const current=await recheck('own_profile');signal.throwIfAborted();
     const fullContext=assistantCapabilities(current.state,current.person);

@@ -34,7 +34,7 @@ export function createApp(dependencies?: AppDependencies, options: { development
   accessRoutes(app, dependencies, store, demo);
   organizationRoutes(app, dependencies);
   skillsRoutes(app, dependencies, store, demo);
-  registerClaimsRoutes(app, dependencies, store, demo);
+  registerClaimsRoutes(app, dependencies?{...dependencies,aiConfigured:dependencies.assistant?.status().configured}:undefined, store, demo);
   registerLearningRoutes(app, dependencies, store, demo);
   registerRecommendationRoutes(app, dependencies, store, demo);
   registerWorkflowRoutes(app, dependencies, store, demo);

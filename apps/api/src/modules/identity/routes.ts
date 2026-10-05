@@ -8,7 +8,7 @@ import { createDevelopmentSessions } from './development-login.js';
 import type { AccessStore } from '../access/index.js';
 import { workspaceFor } from './workspace.js';
 import { notificationsFor } from './notifications.js';
-import { can, effectiveAccessSummary } from '../access/index.js';
+import { can, readActorAccess, effectiveAccessSummary } from '../access/index.js';
 type DevelopmentSessions = ReturnType<typeof createDevelopmentSessions>;
 export interface HttpDependencies { verify: (authorization: string | undefined) => Promise<Identity>; profile: (identity: Identity) => Promise<Profile | undefined>; ownOrganization?: (actorId:string)=>Promise<NonNullable<Profile['organizationDetails']>>; resolveAccess?: (identity: Identity) => Promise<string | undefined>; access?: AccessStore; recommendationNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; workflowNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; skillNotifications?:(actorId:string)=>Promise<{id:string;at:string;title:string;body:string;href:string}[]>; }
 export function registerRoutes(app: Express, dependencies: HttpDependencies | undefined, store?: AccessStore, demo?: DevelopmentSessions) {
@@ -21,12 +21,12 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     if (demo!.requiresAccessCode && !await demo!.person(req)) {
       res.json({ people: [], signedIn: false, mode: 'local-demo', requiresAccessCode: true }); return;
     }
-    const state = await store!.snapshot();
+    const state = await store!.snapshot({includeAudit:false});
     res.json({ people: state.people.filter(person => person.active&&!person.entraObjectId).map(person => ({ id:person.id,displayName:person.displayName,employeeCode:person.employeeCode,roles:state.roles.filter(role=>person.roleIds.includes(role.id)).map(role=>role.name) })), signedIn: Boolean(await demo!.person(req)), mode:'local-demo', requiresAccessCode: demo!.requiresAccessCode });
   });
   app.post('/api/dev-login/people', async (req,res) => {
     if (!demo!.mutationAllowed(req) || !demo!.authorizeCode(req.body?.accessCode)) { res.sendStatus(403); return; }
-    const state=await store!.snapshot();
+    const state=await store!.snapshot({includeAudit:false});
     res.json({ people:state.people.filter(person=>person.active&&!person.entraObjectId).map(person=>({id:person.id,displayName:person.displayName,employeeCode:person.employeeCode,roles:state.roles.filter(role=>person.roleIds.includes(role.id)).map(role=>role.name)})), signedIn:false, mode:'local-demo', requiresAccessCode:demo!.requiresAccessCode });
   });
   app.post('/api/dev-login', async (req, res) => {
@@ -58,7 +58,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
       }
       actor = await dependencies!.resolveAccess!(identity);
     }
-    const state = await (dependencies?.access ?? store)?.snapshot({includeAudit:req.path==='/api/notifications',auditPersonId:actor});
+    const state = await readActorAccess(dependencies?.access ?? store,actor,{includeAudit:req.path==='/api/notifications'});
     const person = state?.people.find(item => item.id === actor && item.active && (!demo?.subject(req)||!item.entraObjectId));
     if (!state || !person) {
       res.status(403).json({ error: { code: 'ACCESS_NOT_PROVISIONED', message: 'Workspace access is not assigned.', requestId: res.locals.requestId } }); return;

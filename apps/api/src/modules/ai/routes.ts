@@ -1,3 +1,4 @@
+import {readActorAccess} from '../access/index.js';
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 
@@ -17,7 +18,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
       try{if(!dependencies?.resolveAccess)throw new Error();actor=await dependencies.resolveAccess(await dependencies.verify(req.headers.authorization));}
       catch{res.status(401).json({error:{code:'NOT_AUTHORIZED',message:'Sign in to continue.',requestId:res.locals.requestId}});return;}
     }
-    const state=await access?.snapshot(),person=state?.people.find(item=>item.id===actor&&item.active&&(!demo?.subject(req)||!item.entraObjectId));
+    const state=await readActorAccess(access,actor),person=state?.people.find(item=>item.id===actor&&item.active&&(!demo?.subject(req)||!item.entraObjectId));
     if(!state||!person||!can(state,person,'profile.view',true)){res.sendStatus(403);return;}
     res.locals.assistantActor=person.id;next();
   });

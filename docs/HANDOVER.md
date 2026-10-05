@@ -121,13 +121,15 @@ Do not treat catalogue publication, course completion, practice score or recomme
 
 ## Team Capability & Recommendations
 
-Skill Reviews provides Review Queue, Team Analytics and Recommendations. Team analytics uses current active direct reports, not arbitrary role-name routing. Roster search and chart filtering resolve the same scope. Aggregate exports omit identifying search text; filtered small cohorts can still be identifying. Recorded-rank chart averages consistently cap historical ranks above five at L5+, with explicit labels; they do not establish equivalence between different assessment frameworks. AI qualification requires an exact normalized published skill name; similar names require clarification before any qualification calculation. Pagination changes visible roster rows, not aggregate denominators.
+Skill Reviews provides Review Queue, Team Analytics and Recommendations. Team analytics uses current active direct reports, not arbitrary role-name routing. Roster search and chart filtering resolve the same scope. Aggregate exports omit identifying search text; filtered small cohorts can still be identifying. Recorded-rank chart averages consistently cap historical ranks above five at L5+, with explicit labels; they do not establish equivalence between different assessment frameworks. Manager AI demand actions appear only when server discovery advertises the configured model and implemented team tool. AI qualification requires an exact normalized published skill name; similar names require clarification before any qualification calculation. Pagination changes visible roster rows, not aggregate denominators.
 
 Coverage = distinct matching active direct reports with a manager-reviewed skill at or above selected level / all matching active direct reports. Members with no reviewed claim remain in the denominator. This measures recorded coverage, not a business gap without a requirement. Reviewed proficiency/category counts and assigned pending claims remain distinct from private drafts and other reviewers' submissions.
 
 View capability opens an individual manager-facing capability profile, separate from the employee's editable My Skills screen. It shows authorized records, not ownership transfer or permission to edit the employee's skills.
 
 Recommendation: eligible manager → search current report(s) → published skill + target defined proficiency → reason + optional HTTPS resource + target date → explicit Send → recipient notification. Recipient can Accept, Decline or Ask for Discussion. Acceptance reviews a new personal learning plan; its creation and response use the owning transaction. The flow does not create an approved skill claim.
+
+Migrations 048/049 integrate the pending access-read optimization with unique versions: actor-only effective-access projections preserve descriptive employment fields, and admin activity uses bounded cursor pagination. Personal authorization reads do not load the full directory/audit. Mutations and workflows still recheck current service/SQL authority. Installed restricted-runtime checks remain an explicit deployment gate; rollback setup tests are not evidence that the production procedures are installed.
 
 Migrations 046/047 enforce own skill-view access on claim reads and provide a bounded actor-owned projection for skill-linked active/paused learning plans. The journey reads one recent recommendation page and the bounded claim projection independently; unavailable claim status does not hide learning tasks or imply that no claim exists. Additional recommendations remain available through the full Recommendations view.
 
@@ -198,7 +200,7 @@ Knowledge Transfer AI uses the same configured provider and shared budget, retri
 
 The interactive Schema Explorer contains physical tables, every parsed column/type/nullability/declaration, exact primary and unique key tuples, declared foreign keys, explicit indexes, source migrations and related-entity navigation. The ERD draws only declared foreign keys, including composite account keys. It does not fabricate foreign keys from JSON fields or procedural checks.
 
-Schema reconstruction reads reviewed migrations 001–047. It is a repository-specific DDL extractor: literal CREATE TABLE, ALTER TABLE ADD, DROP TABLE, explicit indexes and CREATE VIEW are parsed. Dynamic CHECK removals in migrations 010/015/023/044 are reconciled explicitly. It is not a general T-SQL parser or a live database schema certification. Compare with DBA introspection before company migration.
+Schema reconstruction reads reviewed migrations 001–049. It is a repository-specific DDL extractor: literal CREATE TABLE, ALTER TABLE ADD, DROP TABLE, explicit indexes and CREATE VIEW are parsed. Dynamic CHECK removals in migrations 010/015/023/044 are reconciled explicitly. It is not a general T-SQL parser or a live database schema certification. Compare with DBA introspection before company migration.
 
 | Domain | Persistence |
 | --- | --- |

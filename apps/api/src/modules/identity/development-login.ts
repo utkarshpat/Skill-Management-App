@@ -2,7 +2,7 @@ import { randomBytes, createHmac, timingSafeEqual } from 'node:crypto';
 import type { Request } from 'express';
 import { localRequest, localMutation } from '../../shared/http-security.js';
 export { localRequest, localMutation } from '../../shared/http-security.js';
-import { can, type AccessStore } from '../access/index.js';
+import { can, readActorAccess, type AccessStore } from '../access/index.js';
 export interface HostedDemoConfig { origin: string; accessCode: string; sessionSecret: string }
 export function hostedDemoConfig(env: NodeJS.ProcessEnv): HostedDemoConfig | undefined {
   if (env.HOSTED_DEMO_LOGIN !== 'true') return undefined;
@@ -64,7 +64,7 @@ export function createDevelopmentSessions(store: AccessStore, now = Date.now, ho
     revoke(req: Request) { const value=token(req); if (value) sessions.delete(value); },
     async profile(req: Request) {
       const id=subject(req); if(!id)return undefined;
-      const state=await store.snapshot(); const user=state.people.find(person=>person.id===id&&person.active);
+      const state=await readActorAccess(store,id); const user=state.people.find(person=>person.id===id&&person.active);
       if (!user || user.entraObjectId || !can(state,user,'profile.view',true)) return undefined;
       return { id:user.id,displayName:user.displayName,employeeCode:user.employeeCode,jobTitle:user.jobTitle??null,grade:user.grade??null,organization:'Development Workspace',status:'ACTIVE',canViewSkills:can(state,user,'skill.view')||can(state,user,'skill.catalogue.manage'),roles:state.roles.filter(role => user.roleIds.includes(role.id)).map(role => role.name) };
     },

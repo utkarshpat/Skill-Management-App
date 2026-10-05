@@ -16,6 +16,8 @@
     "test:catalogue": "node --env-file-if-exists=.env --import tsx test/skill-catalogue.integration.ts",
     "test:sql": "node --env-file-if-exists=.env --import tsx test/sql-access.integration.ts",
     "test:employment": "node --env-file-if-exists=.env --import tsx test/employment.integration.ts",
+    "test:actor-access": "node --env-file-if-exists=.env --import tsx test/actor-access.integration.ts",
+    "bench:access": "node --env-file-if-exists=.env --import tsx test/access-read-benchmark.ts",
     "test:reviews": "node --env-file-if-exists=.env --import tsx test/reviews.integration.ts",
     "test:review-access": "node --env-file-if-exists=.env --import tsx test/review-access.integration.ts",
     "test:audit-fixes": "node --env-file-if-exists=.env --import tsx test/audit-fixes.integration.ts",
