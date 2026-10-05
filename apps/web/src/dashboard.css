@@ -67,3 +67,11 @@
  .dashboard-card{padding:16px}.dashboard-heading p{line-height:1.5}
  .dashboard-heading .secondary-button{font-size:0;padding:10px}
 }
+
+/* Independent columns let the next actionable card follow its actual content height. */
+body .dashboard-flow{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.dashboard-flow>.dashboard-attention{grid-column:1/-1}
+.dashboard-column{display:flex;flex-direction:column;gap:16px;min-width:0}
+.dashboard-column>.dashboard-card{width:100%;box-sizing:border-box}
+.dashboard-flow:not(:has(.dashboard-column~.dashboard-column))>.dashboard-column{grid-column:1/-1}
+@container dashboard (max-width:740px){body .dashboard-flow{grid-template-columns:minmax(0,1fr)}}

@@ -365,3 +365,25 @@ The browser accepts JPEG/PNG/WebP up to 10 MB, resizes and compresses before upl
 Configure server-only `EVIDENCE_STORAGE_CONNECTION_STRING` and `EVIDENCE_STORAGE_CONTAINER`; never use a VITE variable. Apply 050 before enabling upload. Container must have no public access. Storage created in the development resource group is not production deployment; local ignored environment is configured, hosted environment remains to be configured. New claims save first; Save draft opens evidence in place before submission. Review content and decisions share a single dialog; detailed criteria/history/AI are expandable.
 
 Application authenticated HTTP failures and successful business mutations emit shared dismissible toast feedback. Reads do not emit success toasts. AI generation/login successful requests do not masquerade as saved business changes. Inline errors and recovery controls remain present; toasts supplement them. Dialog-local toast hosts render inside the browser top layer, and the global host suppresses duplicate delivery while a dialog is open. Toast scope does not claim coverage for raw-fetch legacy login flows or every bespoke client validation path.
+
+
+## Short Requirements Audit — 6 October 2026
+
+Source: `apps/short requrement` (discussion-draft BRD). Technology recommendations (Power Apps, SharePoint, Power Automate, Power BI) are excluded from functional acceptance; resource-language requirements are deferred by the user. This is a repository implementation audit, not production acceptance.
+
+| Business requirement | Current state | Remaining acceptance work |
+| --- | --- | --- |
+| Employee profile | Partial | Work fields, organization and current manager are implemented; primary capability and profile completeness are not. |
+| Skill profile | Implemented, deployment gate | Published catalogue, saved proficiency, experience, last-used information, evidence links and private compressed images. Migration 050 and hosted storage configuration must precede image rollout. |
+| Assessment | Partial | Self-assessment, exact assigned current-manager review, feedback and audited decisions. Project/technical/certification/panel assessment are not implemented. |
+| Five-level proficiency | Supported with versioned definitions | Published levels govern each claim; historical frameworks must not be silently relabelled or treated as equivalent. |
+| Certification | Not implemented | Provider, issued/expiry dates, certificate evidence, verification and certification dashboards. A generic evidence attachment is not a certification record. |
+| Learning | Partial | Goals/plans/tasks, recommendations, acceptance-to-plan, progress and practice exist. Managed training catalogue/enrolment, formal course score and certification completion require dedicated workflows. |
+| Project demand and matching | Not implemented end to end | Team requirement analysis and scoped AI explanations exist; they do not establish persisted project/headcount/period demand, allocation or organization resource matching. |
+| Analytics | Partial | Own dashboard and current direct-report coverage/levels, requirement-based team gaps and drill-down. Certification, workforce/future-demand and organization-wide matrices remain pending. |
+| Automation | Partial | Workflow notifications and recommendation actions exist. Scheduled certification expiry reminders (90/60/30 days), incomplete-profile reminders and recurring skill-review cycles remain pending. |
+| Security and governance | Bounded implementation | Effective permissions, own scope and exact current-manager constraints are enforced. TEAM/DEPARTMENT/DELIVERY_UNIT/organization capability scopes remain unavailable until resource-specific SQL enforcement exists. Temporary demo authentication remains an explicitly deferred infrastructure concern. |
+
+Release assessment: core employee/manager MVP is on track, but neither the complete BRD nor production acceptance is finished. Code checks cannot certify deployed procedures, runtime database grants, storage secrets, response times, backups or rollback. Apply compatible required migrations, check the restricted runtime, and smoke-test the exact deployed commit before declaring a stable release. The primary `main` checkout has uncommitted work; reconcile that work explicitly before merging the audit branch. Do not discard it or deploy signature-dependent code ahead of SQL.
+
+Dashboard cards now form independent desktop columns: attention stays first; learning and requests share one stack, capability and permitted quick actions share the other. Narrow layouts stack those same groups in DOM order. No placeholder/fake card fills the height difference, and unauthorized cards remain absent.

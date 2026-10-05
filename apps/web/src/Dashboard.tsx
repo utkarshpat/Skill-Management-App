@@ -25,13 +25,18 @@ export function Dashboard(){
   window.addEventListener('focus',focus);window.addEventListener('notifications-updated',focus);window.addEventListener('own-skills-updated',focus);window.addEventListener('requests-updated',focus);
   return()=>{c.abort();clearInterval(timer);window.removeEventListener('focus',focus);window.removeEventListener('notifications-updated',focus);window.removeEventListener('own-skills-updated',focus);window.removeEventListener('requests-updated',focus);};
  },[attempt]);
+ const renderCard=(card:Card)=><DashboardCard key={manifest!.actorId+card.id} card={card} revision={manifest!.revision} refresh={cardRefresh} ai={manifest!.ai} onAccessChanged={()=>setAttempt(n=>n+1)}/>;
+ const leftCards=manifest?.cards.filter(card=>card.id==='learning'||card.id==='requests')??[];
+ const rightCards=manifest?.cards.filter(card=>card.id==='capability')??[];
  return <div className="dashboard-workspace">
   <div className="dashboard-heading"><div><h2>Your day, in focus</h2><p>Move work forward, build skills and keep track of what changes.</p></div><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)} aria-label="Refresh dashboard"><RefreshCw size={17}/>Refresh</button></div>
   {error&&<section className="dashboard-card" role="alert"><h3>{manifest?'Dashboard refresh failed':'Dashboard could not be loaded'}</h3><p>{error}{manifest?' The values below may be out of date.':''}</p><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></section>}
   {!manifest&&!error&&<div className="dashboard-grid" role="status" aria-label="Loading your dashboard">{[1,2,3].map(id=><div key={id} className="dashboard-card dashboard-skeleton"><i/><i/><i/></div>)}</div>}
   {manifest&&<>
-   <div className="dashboard-grid">{manifest.cards.map(card=><DashboardCard key={manifest.actorId+card.id} card={card} revision={manifest.revision} refresh={cardRefresh} ai={manifest.ai} onAccessChanged={()=>setAttempt(n=>n+1)}/>)}
-   <DashboardQuickActions actions={manifest.actions} onAssist={prompt=>window.dispatchEvent(new CustomEvent('assistant-context-request',{detail:{prompt}}))}/></div>
+   <div className="dashboard-grid dashboard-flow">{manifest.cards.filter(card=>card.id==='attention').map(renderCard)}
+    {leftCards.length>0&&<div className="dashboard-column">{leftCards.map(renderCard)}</div>}
+    {(rightCards.length>0||manifest.actions.length>0)&&<div className="dashboard-column">{rightCards.map(renderCard)}<DashboardQuickActions actions={manifest.actions} onAssist={prompt=>window.dispatchEvent(new CustomEvent('assistant-context-request',{detail:{prompt}}))}/></div>}
+   </div>
    {!manifest.cards.length&&<section className="dashboard-card"><h3>Your workspace is ready</h3><p>Your assigned features will appear here when access is available.</p></section>}
   </>}
  </div>;

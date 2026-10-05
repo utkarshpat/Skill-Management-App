@@ -1,6 +1,6 @@
 {
   "version": "2026-10-05",
-  "revision": "d9bfa328114c37cb",
+  "revision": "a75919df935ebb8e",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
