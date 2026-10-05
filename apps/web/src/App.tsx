@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router';
 
 
 import { ThemeSwitcher } from './Theme';
+import { toast } from './toast';
 import { authenticatedFetch, initializeAuth, signedIn, signIn, signInConfigured, refreshDevelopmentLogin } from './auth';
 import { DevelopmentLogin } from './DevelopmentLogin';
 import { BookOpen, BriefcaseBusiness, Compass, Layers3, ListChecks, Users } from 'lucide-react';
@@ -37,7 +38,7 @@ export function App() {
     window.addEventListener('workspace-access-updated',load);window.addEventListener('focus',focus);document.addEventListener('visibilitychange',focus);
     return()=>{controller.abort();clearInterval(timer);window.removeEventListener('workspace-access-updated',load);window.removeEventListener('focus',focus);document.removeEventListener('visibilitychange',focus);};
   },[session,workspaceAttempt,isKnowledgeTransfer]);
-  useEffect(()=>{let active=true;const expired=()=>{setSessionNotice('Your development session expired or the API restarted. Choose a test person to open a new demo session.');setSession('loading');refreshDevelopmentLogin().catch(()=>undefined).finally(()=>{if(active)setSession('anonymous');});};window.addEventListener('development-session-expired',expired);return()=>{active=false;window.removeEventListener('development-session-expired',expired);};},[]);
+  useEffect(()=>{let active=true;const expired=()=>{setSessionNotice('Your development session expired or the API restarted. Choose a test person to open a new demo session.');toast.error('Your development session expired or the API restarted. Choose a test person to open a new demo session.');setSession('loading');refreshDevelopmentLogin().catch(()=>undefined).finally(()=>{if(active)setSession('anonymous');});};window.addEventListener('development-session-expired',expired);return()=>{active=false;window.removeEventListener('development-session-expired',expired);};},[]);
   useEffect(() => { let active = true; initializeAuth().then(() => { if (active) setSession(signedIn() ? 'signed-in' : 'anonymous'); }).catch(() => { if (active) setSession('error'); }); return () => { active = false; }; }, []);
   if (pathname === '/preview') return <Overview />;
   if (session === 'loading') return <div className="session-loading" role="status">Preparing your workspace…</div>;

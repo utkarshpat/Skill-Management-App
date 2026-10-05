@@ -7,6 +7,7 @@ import type {Claim} from './MySkills';
 import {Recommendations} from './Recommendations';
 import {TeamCapability} from './TeamCapability';
 import type {ClaimReviewDecision} from './ClaimReviewAccess';
+import {toast} from './toast';
 import {ArrowRight,CheckCheck,ChevronLeft,ChevronRight,ClipboardCheck,Clock3,FileCheck2,MessageSquareMore,RefreshCw,Search,ShieldCheck,UsersRound,XCircle} from 'lucide-react';
 import './review-workbench.css';
 
@@ -15,7 +16,7 @@ interface ReviewQueue {claims:Claim[];total:number;pageSize:number;canViewTeam?:
 const reviewLabels:Record<string,string>={SUBMITTED:'Pending review',APPROVED:'Manager reviewed',CHANGES_REQUESTED:'Changes requested',REJECTED:'Not approved',ALL:'All review states'};
 export function SkillReviews(){
  const [params,setParams]=useSearchParams(),[view,setView]=useState<'queue'|'team'|'recommendations'>('queue');
- const [data,setData]=useState<ReviewQueue>(),[page,setPage]=useState(1),[attempt,setAttempt]=useState(0),[loading,setLoading]=useState(true),[opening,setOpening]=useState(false),[error,setError]=useState(''),[claim,setClaim]=useState<Claim>(),[notice,setNotice]=useState('');
+ const [data,setData]=useState<ReviewQueue>(),[page,setPage]=useState(1),[attempt,setAttempt]=useState(0),[loading,setLoading]=useState(true),[opening,setOpening]=useState(false),[error,setError]=useState(''),[claim,setClaim]=useState<Claim>();
  useEffect(()=>{if(params.get('tab')==='recommendations')setView('recommendations');},[params]);
  const [search,setSearch]=useState(''),[query,setQuery]=useState(''),[category,setCategory]=useState(''),[status,setStatus]=useState('SUBMITTED'),[person,setPerson]=useState<string>();
  useEffect(()=>{const controller=new AbortController();setLoading(true);setError('');setClaim(undefined);const filters=new URLSearchParams({page:String(page),search:query,category,status});if(person)filters.set('person',person);authenticatedFetch('/api/skill-reviews?'+filters,{signal:controller.signal}).then(result<ReviewQueue>).then(value=>{if(!controller.signal.aborted)setData(value);}).catch(reason=>{if(!controller.signal.aborted){setData(undefined);setClaim(undefined);setError(reason.message);}}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();},[page,attempt,query,category,status,person]);
@@ -33,7 +34,6 @@ export function SkillReviews(){
  return <div className="review-shell">
   {!(view==='team'&&data?.canViewTeam)&&navigation}
   {view==='recommendations'&&data?.canRecommend?<Recommendations sentOnly/>:view==='team'&&data?.canViewTeam?<TeamCapability canAskAi={Boolean(data.canAskTeamAi)} navigation={navigation} onReviews={id=>{setPerson(id);setStatus('SUBMITTED');setPage(1);setQuery('');setSearch('');setView('queue');}}/>:<>
-  {notice&&<p role="status" className="access-message">{notice}</p>}
   {error&&<div className="review-error" role="alert"><span>{error}</span><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></div>}
   {(data?.summary||loading)&&<div className="review-metrics" aria-label="Filter reviews by status">{metrics.map(item=><button className={'review-metric '+item.tone} key={item.key} disabled={loading} aria-pressed={status===item.key} onClick={()=>{setStatus(item.key);setPage(1);}}><span className="review-metric-icon"><item.icon size={22}/></span><span className="review-metric-copy"><strong>{loading?'—':item.value??'—'}</strong><span>{item.label}</span><small>{item.hint}</small></span><ArrowRight size={16} className="review-metric-arrow"/></button>)}</div>}
   <section className="review-workbench" aria-label="Assigned skill reviews" aria-busy={loading}>
@@ -53,7 +53,7 @@ export function SkillReviews(){
   </section>
   <p className="review-policy-note"><ShieldCheck size={15}/>Only assigned claims from your current direct reports appear here. Private drafts stay with the employee.</p>
   {!claim&&!error&&(opening||Boolean(params.get('claim')))&&<FormDialog title="Skill review" busy={opening} onClose={()=>{const next=new URLSearchParams(params);next.delete('claim');setParams(next,{replace:true});}}><div className="notification-destination-loading" role="status"><RefreshCw size={26} className="notification-spin"/><strong>Opening skill review…</strong><p>Checking the current claim and your available actions.</p></div></FormDialog>}
-  {claim&&<SkillClaimDialog claim={claim} mode={claim.status==='SUBMITTED'&&claim.reviewAccess?.allowed?'review':'view'} history={data?.canReadHistory} onClose={()=>setClaim(undefined)} onSaved={()=>{setClaim(undefined);setNotice('Review saved. The employee has been notified.');setAttempt(n=>n+1);window.dispatchEvent(new Event('notifications-updated'));}}/>}
+  {claim&&<SkillClaimDialog claim={claim} mode={claim.status==='SUBMITTED'&&claim.reviewAccess?.allowed?'review':'view'} history={data?.canReadHistory} onClose={()=>setClaim(undefined)} onSaved={()=>{setClaim(undefined);toast.success('Review saved. The employee has been notified.');setAttempt(n=>n+1);window.dispatchEvent(new Event('notifications-updated'));}}/>}
   </>}
  </div>;
 }

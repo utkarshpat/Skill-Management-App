@@ -1,0 +1,126 @@
+/* Global modern polish layer. Imported last so these refinements win the cascade.
+   Additive only: hover depth, motion, density, scrollbars, page transitions. */
+
+:root{--shadow-md:0 8px 24px rgb(16 24 40 / 8%);--shadow-lg:0 16px 48px rgb(16 24 40 / 12%);--ease-spring:cubic-bezier(.22,.8,.3,1)}
+:root[data-theme=dark]{--shadow-md:0 8px 24px rgb(0 0 0 / 35%);--shadow-lg:0 16px 48px rgb(0 0 0 / 45%)}
+
+/* --- Buttons: lift on hover, settle on press --- */
+.admin-primary,.secondary-button,.microsoft-button,.dashboard-item-action,.dashboard-request-tabs button,.org-view-switch button{
+ transition:transform .18s var(--ease-spring),box-shadow .18s ease,background-color .15s ease,border-color .15s ease,color .15s ease;
+}
+.admin-primary:not(:disabled):hover,.microsoft-button:not(:disabled):hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+.secondary-button:not(:disabled):hover,.dashboard-item-action:hover,.dashboard-request-tabs button:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.admin-primary:not(:disabled):active,.secondary-button:not(:disabled):active,.microsoft-button:not(:disabled):active{transform:translateY(0) scale(.98);box-shadow:none}
+button:not(:disabled),a{transition-property:background-color,border-color,color,transform,box-shadow,opacity;transition-duration:.15s}
+
+/* --- Cards: subtle elevation and accent edge on hover --- */
+.dashboard-card,.metric-card,.module-card,.org-summary>div,.dashboard-attention-group,.dashboard-metric,.dashboard-learning-stats a,.dashboard-request-metrics a,.dashboard-action-grid article{
+ transition:transform .2s var(--ease-spring),box-shadow .2s ease,border-color .15s ease,background-color .15s ease;
+}
+.dashboard-card:hover,.module-card:hover{box-shadow:var(--shadow-md);border-color:color-mix(in srgb,var(--focus,#167c80) 35%,var(--line,#dfe2e7))}
+.metric-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.dashboard-metric:hover,.dashboard-learning-stats a:hover,.dashboard-request-metrics a:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+.dashboard-action-grid article:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.module-card svg,.metric-label svg,.dashboard-icon{transition:transform .25s var(--ease-spring)}
+.module-card:hover svg,.dashboard-card:hover>header .dashboard-icon{transform:scale(1.08)}
+
+/* --- Sidebar navigation: sliding indicator, icon nudge, icon tint --- */
+.admin-sidebar nav button,.admin-sidebar .sidebar-nav-destination{position:relative;transition:background-color .18s ease,color .18s ease}
+.admin-sidebar nav button::before,.admin-sidebar .sidebar-nav-destination::before{
+ content:"";position:absolute;left:0;top:20%;bottom:20%;width:3px;border-radius:0 3px 3px 0;
+ background:#64c6bf;transform:scaleY(0);transform-origin:center;transition:transform .22s var(--ease-spring);
+}
+.admin-sidebar nav button[aria-current=page]::before,.admin-sidebar .sidebar-nav-destination[aria-current=page]::before{transform:scaleY(1)}
+.admin-sidebar nav button svg,.admin-sidebar .sidebar-nav-destination svg{transition:transform .2s var(--ease-spring)}
+.admin-sidebar nav button:hover svg,.admin-sidebar .sidebar-nav-destination:hover svg{transform:translateX(2px)}
+.admin-sidebar .sidebar-nav-row{border-radius:10px}
+.admin-sidebar .sidebar-nav-row.is-current{box-shadow:inset 0 0 0 1px color-mix(in srgb,#64c6bf 25%,transparent)}
+
+/* --- Sidebar shell polish --- */
+.admin-sidebar{box-shadow:1px 0 0 rgb(255 255 255 / 3%),4px 0 24px rgb(3 8 20 / 18%)}
+.admin-sidebar .admin-brand img{transition:transform .2s var(--ease-spring)}
+.admin-sidebar .admin-brand:hover img{transform:scale(1.02)}
+.sidebar-scroll{scrollbar-width:thin}
+.sidebar-scroll::-webkit-scrollbar{width:6px}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#008595,#7760bc);border-radius:8px}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover{background:#4d6183}
+
+/* --- Sticky topbar: frosted glass --- */
+.admin-topbar{backdrop-filter:saturate(1.4) blur(10px);background:color-mix(in srgb,var(--surface,#fff) 82%,transparent)}
+@supports not (backdrop-filter:blur(1px)){.admin-topbar{background:var(--surface,#fff)}}
+
+/* --- Page content entrance --- */
+.admin-content>*,.dashboard-workspace,.access-main,.catalogue-main,.profile-main>*{animation:ui-page-in .35s var(--ease-spring) both}
+@keyframes ui-page-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* --- Metric cards: gradient edge --- */
+.metric-card{position:relative;overflow:hidden}
+.metric-card::after{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--focus,#167c80),transparent 70%);opacity:0;transition:opacity .2s ease}
+.metric-card:hover::after{opacity:1}
+
+/* --- Tables: row hover and tighter headers --- */
+.audit-scroll tbody tr,.my-skills-table tbody tr,.catalogue-table tbody tr{transition:background-color .12s ease}
+.audit-scroll tbody tr:hover,.my-skills-table tbody tr:hover,.catalogue-table tbody tr:hover{background:color-mix(in srgb,var(--focus,#167c80) 4%,transparent)}
+
+/* --- Lists: selectable rows get clearer affordance --- */
+.access-list button{transition:background-color .15s ease,border-color .15s ease,transform .15s var(--ease-spring)}
+.access-list button:hover{transform:translateX(2px)}
+
+/* --- Skeleton shimmer upgrade (dashboard cards) --- */
+.dashboard-skeleton i{background:linear-gradient(90deg,color-mix(in srgb,var(--line,#dfe2e7) 55%,transparent) 25%,color-mix(in srgb,var(--line,#dfe2e7) 25%,var(--surface,#fff)) 50%,color-mix(in srgb,var(--line,#dfe2e7) 55%,transparent) 75%);background-size:200% 100%;animation:ui-shimmer 1.4s linear infinite}
+
+/* --- Pills, statuses, chips: consistent rounded look --- */
+.skill-status,.claim-status,.dashboard-claim-status,.dashboard-request-state,.dashboard-task-due{border-radius:99px;font-weight:600}
+
+/* --- Inputs: smooth focus glow --- */
+input:not([type=checkbox]),textarea,select{transition:border-color .15s ease,box-shadow .15s ease}
+input:not([type=checkbox]):focus-visible,textarea:focus-visible,select:focus-visible{box-shadow:0 0 0 3px color-mix(in srgb,var(--focus,#167c80) 18%,transparent)}
+
+/* --- Density: reclaim blank space (body prefix outranks lazy chunk CSS) --- */
+body .dashboard-workspace{gap:16px}
+body .dashboard-grid{gap:16px;align-items:start}
+body .dashboard-card{padding:18px}
+body .dashboard-card header{margin-bottom:14px}
+.access-main,.catalogue-main{padding-block:26px}
+.admin-metrics{gap:16px;margin-bottom:20px}
+body .dashboard-card footer{margin-top:14px;padding-top:14px}
+@media(max-width:650px){body .dashboard-card{padding:16px}}
+
+/* --- Dashboard chart rows --- */
+.dashboard-learning-overall{display:flex;align-items:center;gap:16px;margin-top:18px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--focus,#167c80) 3%,var(--surface))}
+.dashboard-learning-overall .dashboard-learning-caption{margin:0;flex:1;min-width:0}
+body .dashboard-capability-summary{display:flex;align-items:center;gap:14px}
+.dashboard-requests-ring{flex-shrink:0}
+body .dashboard-next-task .ui-progress{margin-top:9px}
+
+/* --- Main scrollbar --- */
+@media(pointer:fine){
+ ::-webkit-scrollbar{width:6px;height:6px}
+ ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--accent-ink,#008595),var(--ai-ink,#7760bc));border-radius:8px;border:2px solid transparent;background-clip:content-box}
+ ::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--muted,#687385) 65%,transparent);background-clip:content-box;border:2px solid transparent}
+ ::-webkit-scrollbar-track{background:transparent}
+}
+
+/* --- Assistant launcher: attention pulse --- */
+.assistant-launcher{transition:transform .2s var(--ease-spring),box-shadow .2s ease}
+.assistant-launcher:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 8px 26px #71101845}
+
+/* --- Session loading: branded spinner instead of bare text --- */
+.session-loading{display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center;font-size:14px}
+.session-loading::before{content:"";width:34px;height:34px;border-radius:50%;border:3px solid color-mix(in srgb,var(--focus,#167c80) 20%,transparent);border-top-color:var(--focus,#167c80);animation:ui-spin .8s linear infinite;flex-shrink:0}
+.session-loading button{margin-top:4px}
+
+/* --- Welcome page: gentle fade --- */
+.welcome-main>*{animation:ui-page-in .45s var(--ease-spring) both}
+.signin-card{animation-delay:.08s}
+
+@media(prefers-reduced-motion:reduce){
+ .admin-content>*,.dashboard-workspace,.access-main,.catalogue-main,.profile-main>*,.welcome-main>*{animation:none}
+ .session-loading::before{animation-duration:1.6s}
+ .admin-sidebar nav button::before,.admin-sidebar .sidebar-nav-destination::before{transition:none}
+}
+
+@media(prefers-reduced-motion:reduce){
+ button,a,.dashboard-card,.metric-card,.module-card,.access-list button{transition:none}
+ .session-loading::before{animation:none}
+}
