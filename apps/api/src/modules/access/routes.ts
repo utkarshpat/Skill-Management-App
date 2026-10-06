@@ -36,14 +36,40 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     const person=res.locals.accessState.people.find((item:{id:string})=>item.id===req.params.id);
     if(!person){res.sendStatus(404);return;}res.json(effectiveAccessSummary(res.locals.accessState,person));
   });
+  async function validatePrimary(access:AccessStore|undefined,state:import('./local-access-store.js').LocalAccessState,actorId:string,body:Record<string,unknown>){
+    if(body.kind!=='person'||body.primaryCapabilityId===undefined||body.primaryCapabilityId===null)return;
+    const current=state.people.find(p=>p.id===body.id);
+    if(current?.primaryCapabilityId===body.primaryCapabilityId)return {id:current.primaryCapabilityId,name:current.primaryCapabilityName??current.primaryCapabilityId};
+    if(typeof body.primaryCapabilityId!=='string'||! /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.primaryCapabilityId))throw new AccessError(400,'Choose a valid primary capability.');
+    if(!access?.primaryCapabilities)throw new AccessError(503,'Published capability storage is unavailable.');
+    const capability=(await access.primaryCapabilities(actorId,'',body.primaryCapabilityId)).find(p=>p.id.toLowerCase()===String(body.primaryCapabilityId).toLowerCase());
+    if(!capability)throw new AccessError(400,'Choose a currently published primary capability.');
+    return capability;
+  }
+  async function primaryPreview(access:AccessStore|undefined,state:import('./local-access-store.js').LocalAccessState,actorId:string,body:Record<string,unknown>){
+    const capability=await validatePrimary(access,state,actorId,body);
+    const preview=await previewAccessChange(state,actorId,body);
+    return {...preview,after:capability&&preview.kind==='person'?{...preview.after,primaryCapabilityName:capability.name}:preview.after};
+  }
+  const primaryHandler:import('express').RequestHandler=async(req,res)=>{
+    try{
+      if(!can(res.locals.accessState,res.locals.accessPerson,'users.manage'))throw new AccessError(403,'People administration is not assigned.');
+      const access=req.path.startsWith('/api/dev-access/')?store:dependencies?.access;
+      if(!access?.primaryCapabilities)throw new AccessError(503,'Published capability storage is unavailable.');
+      const query=req.query.q??'';
+      if(typeof query!=='string'||query.length>80||Object.keys(req.query).some(k=>k!=='q'))throw new AccessError(400,'Search with up to 80 characters.');
+      res.json({items:await access.primaryCapabilities(res.locals.accessPerson.id,query.trim())});
+    }catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{message:error.message}});return;}throw error;}
+  };
+  app.get('/api/dev-access/primary-capabilities',primaryHandler);
   app.post('/api/dev-access/preview',async(req,res)=>{
     if(!demo!.mutationAllowed(req)){res.sendStatus(403);return;}
-    try{res.json(await previewAccessChange(res.locals.accessState,res.locals.demoPersonId,req.body));}
+    try{res.json(await primaryPreview(store,res.locals.accessState,res.locals.demoPersonId,req.body??{}));}
     catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{message:error.message}});return;}throw error;}
   });
   app.post('/api/dev-access', async (req,res) => {
     if (!demo!.mutationAllowed(req)) { res.sendStatus(403); return; }
-    try { await recheckAccessChange(await store!.snapshot({includeAudit:false}),res.locals.demoPersonId,req.body); await store!.save(res.locals.demoPersonId,req.body); res.json({saved:true}); }
+    try { await validatePrimary(store,res.locals.accessState,res.locals.demoPersonId,req.body??{}); await recheckAccessChange(await store!.snapshot({includeAudit:false}),res.locals.demoPersonId,req.body); await store!.save(res.locals.demoPersonId,req.body); res.json({saved:true}); }
     catch (error) { if (error instanceof AccessError) { res.status(error.status).json({error:{code:'ACCESS_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}}); return; } throw error; }
   });
   app.use('/api/access',async(req,res,next)=>{
@@ -57,6 +83,7 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     res.locals.accessState=state;res.locals.accessPerson=person;next();
   });
   app.get('/api/access/audit',auditHandler);
+  app.get('/api/access/primary-capabilities',primaryHandler);
   app.get('/api/access',(_req,res)=>{
     const state=res.locals.accessState;const person=res.locals.accessPerson;
     res.json({...state,reporting:undefined,storage:dependencies!.access!.storage,currentPerson:person,authentication:'microsoft',audit:can(state,person,'audit.view')?state.audit:[],presets:rolePresets, catalogue:actionRegistry,canManageUsers:can(state,person,'users.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage'),canViewAudit:can(state,person,'audit.view')});
@@ -66,11 +93,11 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     if(!person){res.sendStatus(404);return;}res.json(effectiveAccessSummary(res.locals.accessState,person));
   });
   app.post('/api/access/preview',async(req,res)=>{
-    try{res.json(await previewAccessChange(res.locals.accessState,res.locals.accessPerson.id,req.body));}
+    try{res.json(await primaryPreview(dependencies?.access,res.locals.accessState,res.locals.accessPerson.id,req.body??{}));}
     catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{message:error.message}});return;}throw error;}
   });
   app.post('/api/access',async(req,res)=>{
-    try{await recheckAccessChange(await dependencies!.access!.snapshot({includeAudit:false}),res.locals.accessPerson.id,req.body);await dependencies!.access!.save(res.locals.accessPerson.id,req.body);res.json({saved:true});}
+    try{await validatePrimary(dependencies?.access,res.locals.accessState,res.locals.accessPerson.id,req.body??{});await recheckAccessChange(await dependencies!.access!.snapshot({includeAudit:false}),res.locals.accessPerson.id,req.body);await dependencies!.access!.save(res.locals.accessPerson.id,req.body);res.json({saved:true});}
     catch(error){if(error instanceof AccessError){res.status(error.status).json({error:{code:'ACCESS_CHANGE_REJECTED',message:error.message,requestId:res.locals.requestId}});return;}throw error;}
   });
 

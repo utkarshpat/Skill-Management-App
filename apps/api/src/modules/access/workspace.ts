@@ -12,7 +12,7 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
     person: { id: person.id, displayName: person.displayName, employeeCode: person.employeeCode,
       roles: state.roles.filter(role => person.roleIds.includes(role.id)).map(role => role.name) },
     capabilities: {
-      requests:available('request.view') || available('incident.view'), ownProfile, ownSkills, learning: can(state,person,'learning.view',true), claimSkills: ownSkills && can(state, person, 'skill.claim', true) && can(state, person, 'skill.view'),
+      requestProfileCorrection:ownProfile&&available('request.view')&&available('request.create'), requests:available('request.view') || available('incident.view'), ownProfile, ownSkills, learning: can(state,person,'learning.view',true), claimSkills: ownSkills && can(state, person, 'skill.claim', true) && can(state, person, 'skill.view'),
       reviewSkills:ownProfile&&canReviewAssigned(state,person), catalogue, administration, manageCatalogue: can(state, person, 'skill.catalogue.manage'),
     },
     upcoming: [

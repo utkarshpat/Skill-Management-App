@@ -57,3 +57,5 @@ Root `vercel.json` deploys services `api` (public `/api` and `/api/*`) and `web`
 KT is isolated in `apps/web/src/knowledge-transfer` and `apps/api/src/modules/knowledge-transfer`. Set **`KNOWLEDGE_TRANSFER_ENABLED=false`** in API deployment configuration and redeploy to disable its protected reader/AI endpoints. Removing it needs no SQL rollback, data deletion, new grants or core chat changes. Follow the handover's **Temporary Feature Removal** checklist and retain the permanent documentation.
 
 [Repository](https://github.com/utkarshpat/Skill-Management-App) · [Application](https://skill-management-app.vercel.app)
+
+Profile completion increment: migration `051_profile_capability.sql` is prepared but not applied to the quota-paused live source. Apply and verify it before deploying the dependent API; it adds the administrator-maintained primary capability reference and own six-field completeness. The local commit is intentionally held from production deployment until this prerequisite is met.

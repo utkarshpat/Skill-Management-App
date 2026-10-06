@@ -8,7 +8,7 @@ type ResultSets = [
   sql.IRecordSet<{revision:number}>,
   sql.IRecordSet<{id:string;name:string}>,
   sql.IRecordSet<PermissionRow & {roleId:string}>,
-  sql.IRecordSet<{id:string;displayName:string;employeeCode:string;jobTitle:string|null;grade:string|null;active:boolean;hasDirectReports:boolean;entraObjectId:string|null}>,
+  sql.IRecordSet<{id:string;displayName:string;employeeCode:string;jobTitle:string|null;grade:string|null;primaryCapabilityId:string|null;primaryCapabilityName:string|null;primaryCapabilityStatus:string|null;active:boolean;hasDirectReports:boolean;entraObjectId:string|null}>,
   sql.IRecordSet<{personId:string;roleId:string}>,
   sql.IRecordSet<PermissionRow & {personId:string}>,
   sql.IRecordSet<{actorId:string;action:string;targetId:string;at:Date;revision:number;before:string|null;after:string}>,
@@ -35,7 +35,7 @@ export class SqlAccessStore implements AccessStore {
         revision:sets[0][0].revision,
         reporting:actorOnly?undefined:sets[7].map(row=>({personId:row.personId.toLowerCase(),managerId:row.managerId?.toLowerCase()??null})),
         roles:sets[1].map(row=>({id:row.id.toLowerCase(),name:row.name,permissions:(permissions.get(row.id)??[]).map(assignment)})),
-        people:sets[3].map(row=>({id:row.id.toLowerCase(),displayName:row.displayName,employeeCode:row.employeeCode,jobTitle:row.jobTitle,grade:row.grade,active:row.active,hasDirectReports:Boolean(row.hasDirectReports),...(row.entraObjectId?{entraObjectId:row.entraObjectId.toLowerCase()}:{}),roleIds:(roles.get(row.id)??[]).map(item=>item.roleId.toLowerCase()),overrides:(overrides.get(row.id)??[]).map(assignment)})),
+        people:sets[3].map(row=>({id:row.id.toLowerCase(),displayName:row.displayName,employeeCode:row.employeeCode,jobTitle:row.jobTitle,grade:row.grade,primaryCapabilityId:row.primaryCapabilityId?.toLowerCase()??null,primaryCapabilityName:row.primaryCapabilityName??null,primaryCapabilityStatus:row.primaryCapabilityStatus??null,active:row.active,hasDirectReports:Boolean(row.hasDirectReports),...(row.entraObjectId?{entraObjectId:row.entraObjectId.toLowerCase()}:{}),roleIds:(roles.get(row.id)??[]).map(item=>item.roleId.toLowerCase()),overrides:(overrides.get(row.id)??[]).map(assignment)})),
         audit:sets[6].map(row=>({actorId:row.actorId.toLowerCase(),action:row.action,targetId:row.targetId.toLowerCase(),at:row.at.toISOString(),revision:row.revision,...(row.before?{before:JSON.parse(row.before)}:{}),after:JSON.parse(row.after)})),
       };
   }
@@ -44,6 +44,9 @@ export class SqlAccessStore implements AccessStore {
       const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId).input('include_notifications',sql.Bit,options.includeAudit??false).execute('dbo.ReadActorAccessContext');
       return this.decode(result.recordsets as unknown as ResultSets,true);
     });
+  }
+  async primaryCapabilities(actorId:string,query:string,skillId?:string){
+    return withRuntimeDatabase(async pool=>(await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId).input('query',sql.NVarChar(80),query).input('skill_id',sql.UniqueIdentifier,skillId??null).execute('dbo.ReadPrimaryCapabilities')).recordset as {id:string;name:string;category:string}[]);
   }
   async person(id: string) { return (await this.actorSnapshot(id)).people.find(person=>person.id===id&&person.active); }
   async auditPage(actorId:string,query:AuditQuery):Promise<AuditPage> {

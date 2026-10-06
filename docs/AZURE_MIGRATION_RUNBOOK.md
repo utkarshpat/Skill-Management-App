@@ -1,6 +1,6 @@
 # Azure migration with data — operator runbook
 
-Version: 2026-10-06. Applies to this repository on `main`, SQL migrations 001–050, Vercel Services (`api` + `web`), Microsoft Entra sign-in and private Blob evidence. This is a preparation/runbook document, **not evidence that a new environment or a data migration has been completed**. Follow [the handover](HANDOVER.md) and [the approved access baseline](ACCESS_MODEL_REDESIGN.md).
+Version: 2026-10-06. Applies to this repository on `main`, SQL migrations 001–050, Vercel Services (`api` + `web`), Microsoft Entra sign-in and private Blob evidence. This is a preparation/runbook document, **not evidence that a new environment or a data migration has been completed**. Migration 051 is a new profile increment pending live SQL acceptance; apply it after importing an older 001–050 snapshot and before deploying dependent API code. Never pre-apply it to the empty BACPAC target. Follow [the handover](HANDOVER.md) and [the approved access baseline](ACCESS_MODEL_REDESIGN.md).
 
 ## 1. Choose the path before creating anything
 

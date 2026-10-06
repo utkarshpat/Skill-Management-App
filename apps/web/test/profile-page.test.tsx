@@ -6,7 +6,7 @@ import {ProfileDetails} from '../src/ProfileDetails';
 import type {WorkspaceState} from '../src/Workspace';
 import {ProfileOrganization,type ProfileOrganizationDetails} from '../src/ProfileOrganization';
 test('profile shows real identity and independently permission-filtered workspace actions',()=>{
- const workspace:WorkspaceState={person:{id:'own',displayName:'Test Person',employeeCode:'EMP-1',roles:['Employee']},authentication:'microsoft',capabilities:{ownProfile:true,ownSkills:true,claimSkills:false,catalogue:false,administration:false,manageCatalogue:false,learning:false,requests:true},upcoming:[]};
+ const workspace:WorkspaceState={person:{id:'own',displayName:'Test Person',employeeCode:'EMP-1',roles:['Employee']},authentication:'microsoft',capabilities:{ownProfile:true,ownSkills:true,claimSkills:false,catalogue:false,administration:false,manageCatalogue:false,learning:false,requests:true,requestProfileCorrection:true},upcoming:[]};
  const html=renderToStaticMarkup(<MemoryRouter><ProfileDetails workspace={workspace} profile={{...workspace.person,organization:'Real workspace',status:'ACTIVE'}}/></MemoryRouter>);
  assert.match(html,/Real workspace/);assert.match(html,/EMP-1/);assert.match(html,/Microsoft account/);assert.match(html,/href="\/my-skills"/);assert.match(html,/href="\/requests\?action=create"/);assert.doesNotMatch(html,/href="\/learning"/);assert.doesNotMatch(html,/Edit profile/);
 });

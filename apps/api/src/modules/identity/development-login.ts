@@ -66,7 +66,7 @@ export function createDevelopmentSessions(store: AccessStore, now = Date.now, ho
       const id=subject(req); if(!id)return undefined;
       const state=await readActorAccess(store,id); const user=state.people.find(person=>person.id===id&&person.active);
       if (!user || user.entraObjectId || !can(state,user,'profile.view',true)) return undefined;
-      return { id:user.id,displayName:user.displayName,employeeCode:user.employeeCode,jobTitle:user.jobTitle??null,grade:user.grade??null,organization:'Development Workspace',status:'ACTIVE',canViewSkills:can(state,user,'skill.view')||can(state,user,'skill.catalogue.manage'),roles:state.roles.filter(role => user.roleIds.includes(role.id)).map(role => role.name) };
+      return { id:user.id,displayName:user.displayName,employeeCode:user.employeeCode,jobTitle:user.jobTitle??null,grade:user.grade??null,primaryCapabilityId:user.primaryCapabilityId??null,primaryCapabilityName:user.primaryCapabilityName??null,primaryCapabilityStatus:user.primaryCapabilityStatus??null,organization:'Development Workspace',status:'ACTIVE',canViewSkills:can(state,user,'skill.view')||can(state,user,'skill.catalogue.manage'),roles:state.roles.filter(role => user.roleIds.includes(role.id)).map(role => role.name) };
     },
   };
 }

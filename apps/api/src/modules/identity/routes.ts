@@ -1,3 +1,4 @@
+import {profileCompleteness} from './profile-completeness.js';
 import {loadNotificationFeed} from './notification-feed.js';
 import {AccessError} from '../../shared/errors.js';
 import type { Express } from 'express';
@@ -82,7 +83,8 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
     async function sendProfile(profile:Profile,mode?:string){
       try {
         const organizationDetails=await dependencies?.ownOrganization?.(profile.id);
-        res.json({profile:organizationDetails?{...profile,organization:organizationDetails.workspace,organizationDetails}:profile,...(mode?{mode}:{})});
+        const resolved=organizationDetails?{...profile,organization:organizationDetails.workspace,organizationDetails}:profile;
+        res.json({profile:{...resolved,completeness:profileCompleteness(resolved)},...(mode?{mode}:{})});
       }catch(error){
         if(error instanceof AccessError){res.status(error.status).json({error:{code:'PROFILE_UNAVAILABLE',message:error.message,requestId:res.locals.requestId}});return;}
         throw error;
