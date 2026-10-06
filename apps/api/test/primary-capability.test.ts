@@ -17,7 +17,7 @@ test('primary capability normalization preserves omitted/historical values, clea
  assert.deepEqual(primaryCapabilityDetails({primaryCapabilityId:null},selected),{primaryCapabilityId:null,primaryCapabilityName:null,primaryCapabilityStatus:null});
  assert.equal(primaryCapabilityDetails({primaryCapabilityId:id.toUpperCase()}).primaryCapabilityId,id);
  for(const value of [123,[],{},id+'suffix','unpublished free text'])assert.throws(()=>primaryCapabilityDetails({primaryCapabilityId:value}),/valid capability/);
- for(const query of [{actorId:id},{search:[]},{search:'x'.repeat(101)},{page:0},{page:100001},{page:1.5}])assert.throws(()=>primaryCapabilityQuery(query));
+ for(const query of [{actorId:id},{search:[]},{search:'x'.repeat(101)},{page:0},{page:100001},{page:1.5},{page:['2']},{page:true},{page:'2e1'}])assert.throws(()=>primaryCapabilityQuery(query));
  assert.deepEqual(primaryCapabilityQuery({search:' Cloud ',page:'2'}),{search:'Cloud',page:2});
 });
 test('new selections require published workspace catalogue validation, while unchanged archived selections survive unrelated edits',async()=>{

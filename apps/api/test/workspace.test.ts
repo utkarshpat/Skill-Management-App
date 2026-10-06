@@ -95,3 +95,17 @@ test('development workspace respects the selected person and revocation; linked 
     assert.equal((await fetch(base + '/api/workspace', { headers: { Cookie: cookie } })).status, 403);
   } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
 });
+
+ test('profile correction discovery requires own request read and create, including explicit denies',()=>{
+ const state:LocalAccessState={revision:1,audit:[],roles:[{id:'employee',name:'Renamed template',permissions:structuredClone(rolePresets[0].permissions)}],people:[{id:'own',displayName:'Person',employeeCode:'EMP',active:true,roleIds:['employee'],overrides:[]}]};
+ const person=state.people[0];
+ assert.equal(workspaceFor(state,person).capabilities.requestProfileCorrection,true);
+ person.overrides.push({permission:'request.create',scope:'OWN',effect:'DENY'});
+ assert.equal(workspaceFor(state,person).capabilities.requests,true);
+ assert.equal(workspaceFor(state,person).capabilities.requestProfileCorrection,false);
+ person.overrides=[];
+ person.overrides.push({permission:'request.view',scope:'OWN',effect:'DENY'});
+ assert.equal(workspaceFor(state,person).capabilities.requestProfileCorrection,false);
+ person.overrides=[];person.active=false;
+ assert.equal(workspaceFor(state,person).capabilities.requestProfileCorrection,false);
+ });

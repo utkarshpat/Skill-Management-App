@@ -6,7 +6,7 @@ import {ProfileDetails} from '../src/ProfileDetails';
 import type {WorkspaceState} from '../src/Workspace';
 import {ProfileOrganization,type ProfileOrganizationDetails} from '../src/ProfileOrganization';
 test('profile shows real identity and independently permission-filtered workspace actions',()=>{
- const workspace:WorkspaceState={person:{id:'own',displayName:'Test Person',employeeCode:'EMP-1',roles:['Employee']},authentication:'microsoft',capabilities:{ownProfile:true,ownSkills:true,claimSkills:false,catalogue:false,administration:false,manageCatalogue:false,learning:false,requests:true},upcoming:[]};
+ const workspace:WorkspaceState={person:{id:'own',displayName:'Test Person',employeeCode:'EMP-1',roles:['Employee']},authentication:'microsoft',capabilities:{ownProfile:true,ownSkills:true,claimSkills:false,catalogue:false,administration:false,manageCatalogue:false,learning:false,requests:true,requestProfileCorrection:true},upcoming:[]};
  const html=renderToStaticMarkup(<MemoryRouter><ProfileDetails workspace={workspace} profile={{...workspace.person,organization:'Real workspace',status:'ACTIVE'}}/></MemoryRouter>);
  assert.match(html,/Real workspace/);assert.match(html,/EMP-1/);assert.match(html,/Microsoft account/);assert.match(html,/href="\/my-skills"/);assert.match(html,/href="\/requests\?action=create"/);assert.doesNotMatch(html,/href="\/learning"/);assert.doesNotMatch(html,/Edit profile/);
 });
@@ -41,3 +41,12 @@ test('profile displays managed job title and grade separately from access templa
  const html=renderToStaticMarkup(<MemoryRouter><ProfileDetails workspace={workspace} profile={{...workspace.person,organization:'Company',status:'ACTIVE',jobTitle:'Business analyst',grade:'G4'}}/></MemoryRouter>);
  assert.match(html,/Business role/);assert.match(html,/Business analyst/);assert.match(html,/G4/);assert.match(html,/Admin template/);assert.doesNotMatch(html,/<input|Edit profile/);
 });
+
+ test('profile correction actions require explicit backend create capability and retain completeness',()=>{
+ const workspace:WorkspaceState={person:{id:'own',displayName:'Person',employeeCode:'EMP',roles:[]},authentication:'microsoft',capabilities:{ownProfile:true,ownSkills:false,claimSkills:false,catalogue:false,administration:false,manageCatalogue:false,requests:true,requestProfileCorrection:false},upcoming:[]};
+ const profile={...workspace.person,organization:'Company',status:'ACTIVE',completeness:{filled:0,total:6,status:'INCOMPLETE' as const,items:[]}};
+ const render=()=>renderToStaticMarkup(<MemoryRouter><ProfileDetails workspace={workspace} profile={profile}/></MemoryRouter>);
+ assert.match(render(),/Profile completeness/);assert.doesNotMatch(render(),/requests\?action=create/);
+ workspace.capabilities.requestProfileCorrection=true;
+ assert.match(render(),/requests\?action=create/);
+ });

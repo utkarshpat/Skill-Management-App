@@ -439,3 +439,22 @@ Source: `apps/short requrement` (discussion-draft BRD). Technology recommendatio
 Release assessment: core employee/manager MVP is on track, but neither the complete BRD nor production acceptance is finished. Code checks cannot certify deployed procedures, runtime database grants, storage secrets, response times, backups or rollback. Apply compatible required migrations, check the restricted runtime, and smoke-test the exact deployed commit before declaring a stable release. The audit branch and reviewed local cleanup were consolidated on `main` on 6 October 2026. The backup branch was removed after consolidation; earlier local changes remain preserved in a named local stash; their optimized readers were already integrated with migrations renumbered to 048/049. The merge itself did not apply SQL migrations or configure storage; subsequent release verification is recorded in the dated chapter above. Only main/origin/main remain after branch cleanup. Do not deploy signature-dependent code ahead of SQL.
 
 Dashboard cards now form independent desktop columns: attention stays first; learning and requests share one stack, capability and permitted quick actions share the other. Narrow layouts stack those same groups in DOM order. No placeholder/fake card fills the height difference, and unauthorized cards remain absent.
+
+
+## Post-baseline merge audit — 6 October 2026
+
+Reviewed commits after `d17126b74c31c31bf409425a1d2890f1dbb0c89e`: local `4f6a06f`, remote-main `535cfc7`, `a2b44db`, `e1314d5`, and dev1 `9b7d482`. Dev1 is based on an older shared ancestor; a two-tip file diff is not its incremental change set. The merge retains both histories while superseding the duplicate local primary-capability implementation with the deployed `primary_capability_id` contract. Migration 051 remains submitted evidence; migration 052 is primary capability. No duplicate migration number is retained.
+
+Accepted the profile card layout, organization chips, collapsible effective-access explanation, compact request/review controls, learning shortcuts and member heatmap. Preserved server-derived completeness, primary capability, assigned current-manager review constraints, evidence snapshots, AI discovery gates, exact skill-name matching, historical L5+ labels, own-skill response validation and the adaptive-refresh/cooldown implementation.
+
+Audit corrections:
+
+- Profile correction discovery now requires own profile access plus effective OWN-compatible `request.view` and `request.create`. Merely viewing requests or incidents cannot expose a create shortcut. API execution retains independent checks.
+- Rejected the dev1 workspace refresh fan-out, fixed 650 ms completion timer and optimistic “Updated” timestamp. Existing dashboard refresh/status remains; failed reads cannot masquerade as a successful refresh and the older unconditional minute polling is not reintroduced.
+- Primary-capability pagination rejects repeated/non-scalar and coercible page values. Its bound server query and SQL authorization remain unchanged.
+- Heatmap absence says “No reviewed record”, rather than claiming no skill claim exists. Current-team scoping and optional team AI authority remain separate.
+- Restored readable completeness/business-field styling in the new profile layout; unknown/missing data is not converted into a confirmed completeness score.
+
+Verification: architecture checks and all 312 tests passed (5 architecture, 197 API, 110 web); workspace typechecks and production builds passed. Configured SQL schema was independently checked through 052. Evidence-snapshot and primary-capability rollback-only SQL fixtures passed; no persistent fixture data, schema changes or Blob writes remain. These DDL-based fixtures must run sequentially; an overlapping initial run caused a deadlock, and the primary-capability fixture passed when rerun alone. The fixtures are not production load benchmarks.
+
+Chrome verification used a local synthetic fixture with the actual profile and heatmap components, not live employee edits. Desktop cards and a 390 px responsive layout were inspected; the mobile page had no horizontal overflow. Temporary preview files/server/tab were removed. This is regression evidence for the merged source, not a claim that every authenticated production workflow has received browser acceptance.

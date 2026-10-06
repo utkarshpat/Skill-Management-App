@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react';
 import {useSearchParams} from 'react-router';
-import {ArrowRight,Search,FileText,Clock3,XCircle,AlertCircle,Inbox,ChevronLeft,ChevronRight} from 'lucide-react';
+import {ArrowRight,Search,FileText,Clock3,XCircle,AlertCircle,Inbox,ChevronLeft,ChevronRight,Send} from 'lucide-react';
 import {authenticatedFetch} from './auth';
 import {requestRead,requestStatusLabel,categoryLabel,requestCategories,type RequestRecord} from './request-model';
 interface Summary{total:number;submitted:number;cancelled:number;inProgress:number;resolved:number;incidents:number;highPriority:number;myTotal:number;assignedTotal:number}
@@ -22,7 +22,7 @@ export function RequestList({active,refresh,onOpen}:{active:boolean;refresh:numb
  ];
  const selectedCard=(key:string)=>key===''?!filters:key==='INCIDENT'?kind==='INCIDENT'&&!status&&!priority&&!category&&!search:key==='HIGH'?priority==='HIGH'&&!status&&!kind&&!category&&!search:status===key&&!kind&&!priority&&!category&&!search;
  return <div hidden={!active} className="request-workbench">
- <nav className="request-tabs" aria-label="Request views"><button aria-current={!inbox?'page':undefined} onClick={()=>view(false)}>My requests{s?` (${s.myTotal})`:''}</button><button aria-current={inbox?'page':undefined} onClick={()=>view(true)}>Assigned to me{s?` (${s.assignedTotal})`:''}</button></nav>
+ <nav className="request-tabs" aria-label="Request views"><button aria-current={!inbox?'page':undefined} onClick={()=>view(false)}><Send size={17} aria-hidden="true"/><span>My requests</span>{s!==undefined&&<span className="request-tab-count">({s.myTotal})</span>}</button><button aria-current={inbox?'page':undefined} onClick={()=>view(true)}><Inbox size={17} aria-hidden="true"/><span>Assigned to me</span>{s!==undefined&&<span className="request-tab-count">({s.assignedTotal})</span>}</button></nav>
  <section className="request-summary" aria-label="Filter requests by summary">{cards.map(({key,label,value,Icon,tone})=><button key={key} className={'request-summary-card '+tone} aria-label={label+(value!==undefined?', '+value:'')} aria-pressed={selectedCard(key)} disabled={!s} onClick={()=>chooseCard(key)}><span className="request-summary-icon"><Icon size={24}/></span><span><strong>{value??'—'}</strong><small>{label}</small></span><ArrowRight size={18}/></button>)}</section>
  <section className="request-list profile-panel" aria-label={inbox?'Assigned requests':'Your requests'} aria-busy={busy}>
  <div className="request-filters"><label className="request-search"><Search size={19}/><span className="sr-only">Search requests</span><input type="search" value={search} maxLength={80} placeholder="Search subject, ID or description…" onChange={e=>setSearch(e.target.value)}/></label>

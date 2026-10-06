@@ -14,6 +14,7 @@ export function primaryCapabilityDetails(body:Record<string,unknown>,previous?:P
 }
 export function primaryCapabilityQuery(query:Record<string,unknown>){
  if(Object.keys(query).some(key=>!['search','page'].includes(key)))throw new AccessError(400,'Unsupported capability filter.');
+ if(query.page!==undefined&&(typeof query.page!=='string'||!/^\d+$/.test(query.page)))throw new AccessError(400,'Choose a valid capability page.');
  const search=query.search??'',page=query.page===undefined?1:Number(query.page);
  if(typeof search!=='string'||search.length>100||!Number.isSafeInteger(page)||page<1||page>100000)throw new AccessError(400,'Enter a search of up to 100 characters and a valid page.');
  return {search:search.trim(),page};
