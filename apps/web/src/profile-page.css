@@ -335,81 +335,147 @@
 }
 
 /* Quick Navigation Links */
-.profile-quick-links{
- display:grid;
- gap:10px;
-}
-.profile-link-card{
+/* Profile Action Banner & Related Chips */
+.profile-correction-banner{
  display:flex;
- align-items:center;
+ flex-direction:column;
  gap:14px;
- padding:13px 15px;
+ padding:16px 18px;
  border-radius:12px;
  background:var(--canvas);
  border:1px solid var(--line);
- text-decoration:none;
- color:var(--ink);
- transition:all .18s ease;
 }
-.profile-link-card:hover{
- transform:translateY(-1px);
- background:var(--surface);
- border-color:var(--accent-ink);
- box-shadow:0 3px 10px rgba(16,32,57,0.06);
-}
-.profile-link-icon-wrap{
- display:grid;
- place-items:center;
- width:38px;
- height:38px;
- border-radius:10px;
- background:var(--surface);
- color:var(--accent-ink);
- border:1px solid var(--line);
- flex-shrink:0;
-}
-.profile-link-text{
- display:grid;
- gap:2px;
- flex:1;
- min-width:0;
-}
-.profile-link-text strong{
+.profile-correction-info strong{
+ display:block;
  font-size:14px;
  font-weight:600;
  color:var(--ink);
 }
-.profile-link-text span{
+.profile-correction-info p{
+ margin:4px 0 0;
+ font-size:12.5px;
+ color:var(--muted);
+ line-height:1.45;
+}
+.profile-correction-btn{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ gap:8px;
+ padding:9px 14px;
+ border-radius:8px;
+ background:var(--accent-ink);
+ color:var(--surface);
+ text-decoration:none;
+ font-size:13px;
+ font-weight:600;
+ transition:all .15s ease;
+}
+.profile-correction-btn:hover{
+ opacity:.92;
+ transform:translateY(-1px);
+}
+.profile-related-links{
+ display:flex;
+ align-items:center;
+ gap:10px;
+ flex-wrap:wrap;
+ margin-top:14px;
+ padding-top:14px;
+ border-top:1px solid var(--line);
+}
+.profile-related-label{
  font-size:12px;
+ font-weight:600;
  color:var(--muted);
 }
-.profile-link-arrow{
- color:var(--muted);
- flex-shrink:0;
- transition:transform .15s ease;
+.profile-related-chip{
+ display:inline-flex;
+ align-items:center;
+ gap:6px;
+ padding:4px 10px;
+ border-radius:6px;
+ background:var(--canvas);
+ border:1px solid var(--line);
+ color:var(--ink);
+ text-decoration:none;
+ font-size:12.5px;
+ font-weight:500;
+ transition:all .15s ease;
 }
-.profile-link-card:hover .profile-link-arrow{
- transform:translateX(3px);
+.profile-related-chip:hover{
+ border-color:var(--accent-ink);
  color:var(--accent-ink);
+ background:var(--surface);
 }
 
-/* AI Guidance Card */
-.profile-guidance-card{
- background:linear-gradient(135deg,color-mix(in srgb,#7954d7 5%,var(--surface)),var(--surface));
- border-color:color-mix(in srgb,#7954d7 20%,var(--line));
+/* Effective Access Accordion */
+.profile-effective-accordion{
+ padding:0;
+ border-radius:14px;
+ background:var(--surface);
+ border:1px solid var(--line);
+ box-shadow:0 2px 8px rgba(16,32,57,0.03);
+ overflow:hidden;
+ transition:border-color .15s ease;
+ margin-top:10px;
 }
-.profile-guidance-text{
- font-size:13px;
- line-height:1.55;
+.profile-effective-accordion[open]{
+ border-color:color-mix(in srgb,var(--teal,#008595) 40%,var(--line));
+}
+.profile-effective-summary{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:16px;
+ padding:18px 22px;
+ cursor:pointer;
+ list-style:none;
+ user-select:none;
+ background:linear-gradient(135deg,color-mix(in srgb,var(--teal,#008595) 4%,var(--surface)),var(--surface));
+}
+.profile-effective-summary::-webkit-details-marker{
+ display:none;
+}
+.profile-effective-header-left{
+ display:flex;
+ align-items:center;
+ gap:14px;
+}
+.profile-effective-header-left strong{
+ display:block;
+ font-size:15px;
+ font-weight:700;
+ color:var(--ink);
+}
+.profile-effective-header-left small{
+ display:block;
+ font-size:12px;
  color:var(--muted);
- margin:0 0 16px;
+ margin-top:2px;
 }
-.profile-ai-btn{
- margin-top:auto;
- align-self:flex-start;
+.profile-effective-action{
  display:inline-flex;
  align-items:center;
  gap:8px;
+ font-size:12.5px;
+ font-weight:600;
+ color:var(--accent-ink);
+ padding:6px 12px;
+ border-radius:8px;
+ background:color-mix(in srgb,var(--accent-ink) 8%,var(--surface));
+ border:1px solid color-mix(in srgb,var(--accent-ink) 18%,transparent);
+}
+.profile-accordion-icon{
+ transition:transform .2s ease;
+}
+.profile-effective-accordion[open] .profile-accordion-icon{
+ transform:rotate(180deg);
+}
+.profile-effective-body{
+ padding:20px 24px;
+ border-top:1px solid var(--line);
+ background:var(--canvas);
 }
 
 /* Assistant legacy support */

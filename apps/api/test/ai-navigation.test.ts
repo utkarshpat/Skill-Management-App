@@ -5,6 +5,19 @@ import {createApp} from '../src/create-app.js';
 import {AssistantService} from '../src/modules/ai/assistant.js';
 import {LocalAccessStore} from '../src/modules/access/local-access-store.js';
 import {rolePresets} from '../src/modules/access/role-presets.js';
+test('learning creation discovery is actor-bound and requires effective manage plus view access',async()=>{
+ const access=await LocalAccessStore.open(),state=access.snapshot(),actor=state.people[0].id;
+ state.roles[0].permissions=structuredClone(rolePresets[0].permissions);access.snapshot=()=>structuredClone(state);
+ const service=new AssistantService(access,undefined,undefined);
+ const allowed=await service.navigation(actor);assert.ok('canManageLearning' in allowed);
+ assert.equal(allowed.actorId,actor);assert.equal(allowed.canManageLearning,true);
+ state.people[0].overrides.push({permission:'learning.manage',scope:'OWN',effect:'DENY'});
+ const viewOnly=await service.navigation(actor);assert.ok('canManageLearning' in viewOnly);
+ assert.equal(viewOnly.canManageLearning,false);assert.ok(viewOnly.pages?.some(page=>page.url==='/learning'));
+ state.people[0].overrides=[];
+ state.people[0].overrides.push({permission:'learning.view',scope:'OWN',effect:'DENY'});
+ const hidden=await service.navigation(actor);assert.ok('canManageLearning' in hidden);assert.equal(hidden.canManageLearning,false);
+});
 test('assistant navigation follows current permissions and forbids actor selectors, altered URLs and revoked actions',async()=>{
  const access=await LocalAccessStore.open(),state=access.snapshot(),actor=state.people[0].id;state.roles[0].permissions=structuredClone(rolePresets[0].permissions);state.roles[0].name='Super Admin';access.snapshot=()=>structuredClone(state);
  const service=new AssistantService(access,undefined,undefined);

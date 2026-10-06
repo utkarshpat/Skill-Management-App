@@ -1,3 +1,4 @@
+import {learningDraftHandoff} from './learning-draft-handoff';
 import {notifyResponse,notify} from './toast';
 import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser';
 import { discoverDevelopmentLogin, parseDemoLogin, type DemoLoginState } from './development-login';
@@ -26,6 +27,8 @@ export async function unlockDemoPeople(accessCode: string) {
   return parseDemoLogin(await response.json());
 }
 export async function directSignIn(personId: string, accessCode?: string) {
+  learningDraftHandoff.clear();
+  try{sessionStorage.removeItem('pending-learning-draft');}catch{/* Legacy handoff is never consumed. */}
   const response = await fetch('/api/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ personId, accessCode }),signal:AbortSignal.timeout(90000) });
   if (!response.ok) throw new Error('Direct login failed.');
   await refreshDevelopmentLogin();
@@ -45,6 +48,8 @@ export function initializeAuth() {
 export function signedIn() { return demoSession || Boolean(client?.getActiveAccount()); }
 export async function signIn() { await initializeAuth(); await client?.loginRedirect({ scopes, prompt: 'select_account' }); }
 export async function signOut() {
+  learningDraftHandoff.clear();
+  try{sessionStorage.removeItem('pending-learning-draft');}catch{/* Legacy handoff is never consumed. */}
   await initializeAuth();
   if (demoSession) {
     const response = await fetch('/api/dev-login', { method: 'DELETE' });

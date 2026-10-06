@@ -1,6 +1,16 @@
 # Cognitive Intelligence Lab — Project Handover
 
-Version: 2026-10-06. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
+Version: 2026-10-07. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
+
+## Learning planner update — 7 October 2026
+
+The AI planner previews editable daily tasks and their dates. Explicit confirmation creates one own learning plan and schedules its tasks in Calendar. Customization can link a published skill before saving; AI output does not independently write plans or verify skills.
+
+Assistant draft handoff uses a single-use, five-minute, in-memory ticket bound to the server-resolved actor. Only the opaque ticket appears in navigation; draft text is not persisted in browser storage. Reload, sign-out, expiry, a wrong ticket or another account invalidates the handoff. Both assistant navigation and learning responses identify the authenticated actor. The create shortcut requires effective learning management and page access, with a fresh click-time recheck; storage/API permission checks still authorize the write.
+
+One planner confirmation retains its plan and task IDs across retries. An uncertain write response is reconciled through the authenticated own-plan read. Retries recheck the same plan before another write; an unavailable read blocks retransmission, and unchanged IDs prevent duplicate creation. After confirmation begins, editing/customization is locked until the attempt completes or the user closes it. If save status remains uncertain, retry that confirmation or inspect Calendar before starting a separate plan. This protects one live confirmation; it is not a durable server idempotency ledger across reloads. Calendar's manual date shortcut opens the editable form; only complete drafts jump directly to review.
+
+This increment has no SQL migration or new grant scopes. Local regression and build evidence for this increment is recorded in its merge commit/task result; the deployment and SQL acceptance record below remains historical.
 
 ## Release Verification & Current Status
 
