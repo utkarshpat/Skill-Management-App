@@ -1,3 +1,5 @@
+import {indexCoverage} from './team-coverage';
+
 export interface TeamReportAnalytics {
  members:number;reviewed:number;pending:number;
  coverage:{skillName:string;rank:number;people:number;memberIds:string[]}[];
@@ -19,10 +21,9 @@ export async function fetchTeamReport(fetcher:Fetcher,kind:TeamReportKind,rank:n
  const {analytics,at}=await fetchTeamAnalytics(fetcher,query,signal);
  return {csv:teamReportCsv(analytics,kind,rank,query,at),at};
 }
-export function coverageRows(analytics:TeamReportAnalytics,rank:number){
- const names=[...new Set(analytics.coverage.map(s=>s.skillName))];
- return names.map(skillName=>{
-  const holders=analytics.coverage.find(s=>s.skillName===skillName&&s.rank===rank)?.people??0;
+export function coverageRows(analytics:TeamReportAnalytics,rank:number,index=indexCoverage(analytics)){
+ return [...index.keys()].map(skillName=>{
+  const holders=index.get(skillName)?.get(rank)?.people??0;
   return {skillName,holders,missing:analytics.members-holders,percent:analytics.members?Math.round(holders/analytics.members*100):0};
  }).sort((a,b)=>b.missing-a.missing||a.skillName.localeCompare(b.skillName));
 }

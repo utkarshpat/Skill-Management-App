@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {LocalAccessStore} from '../src/modules/access/local-access-store.js';
 import {ToolRegistry} from '../src/modules/ai/tool-registry.js';
-import {teamGapArguments,teamGapReport} from '../src/modules/skills/team-gaps.js';
+import {skillProfiles,teamGapArguments,teamGapReport} from '../src/modules/skills/team-gaps.js';
 import type {ClaimsStore,TeamCapability} from '../src/modules/skills/claims.js';
 
 const analytics:NonNullable<TeamCapability['analytics']>={members:4,reviewed:5,pending:1,categories:[{category:'Engineering',count:5}],levels:[],coverage:[
@@ -11,6 +11,49 @@ const analytics:NonNullable<TeamCapability['analytics']>={members:4,reviewed:5,p
  {skillName:'SQL',rank:1,people:1,memberIds:['c']},
 ]};
 const names:Record<string,string>={a:'Asha',b:'Bala',c:'Chen',d:'Dev'};
+
+test('single partial matches cannot infer qualification, and exact names preserve punctuation and Unicode',()=>{
+ const fixture={...analytics,coverage:[
+  ...[1,2,3].map(rank=>({skillName:'JavaScript',rank,people:1,memberIds:['a']})),
+  {skillName:'C++',rank:1,people:1,memberIds:['b']},
+  {skillName:'日本語',rank:1,people:1,memberIds:['c']},
+  {skillName:'中文',rank:1,people:1,memberIds:['d']},
+ ]};
+ const requirements=['Java','C+','日本語','中文',' JavaScript '].map(skill=>({skill,level:1,headcount:1}));
+ const results=teamGapReport(fixture,requirements,id=>names[id]).requirements;
+ for(const result of results.slice(0,2)){
+  assert.equal(result.status,'MATCH_CONFIRMATION_REQUIRED');
+  assert.ok(!('matchedSkill'in result));assert.ok(!('shortfall'in result));assert.ok(!('qualified'in result));
+ }
+ for(const [index,skill] of ['日本語','中文','JavaScript'].entries()){
+  const result=results[index+2];
+  assert.equal(result.status,'MET');assert.ok('matchedSkill'in result);assert.equal(result.matchedSkill,skill);
+ }
+ const java={...fixture,coverage:[...fixture.coverage,{skillName:'Java',rank:1,people:1,memberIds:['b']}]};
+ const [result]=teamGapReport(java,[{skill:'jAvA',level:1,headcount:1}],id=>names[id]).requirements;
+ assert.equal(result.status,'MET');assert.ok('matchedSkill'in result);assert.equal(result.matchedSkill,'Java');
+ const [c]=teamGapReport(fixture,[{skill:'C',level:1,headcount:1}],id=>names[id]).requirements;
+ assert.equal(c.status,'AMBIGUOUS');assert.ok(!('matchedSkill'in c));
+});
+
+test('historical ranks are explicitly capped in AI per-skill metrics and grouped as L5+',()=>{
+ const fixture={...analytics,members:1,reviewed:1,coverage:[1,2,3,4,5].map(rank=>({skillName:'Legacy',rank,people:1,memberIds:['a']})),levels:[{rank:8,count:1,memberIds:['a']}]};
+ const report=teamGapReport(fixture,[],id=>names[id]);
+ assert.equal(report.teamSkills[0].averageLevel,5);
+ assert.match(report.teamSkills[0].averageLevelBasis,/capped at L5.*not exact L5/);
+ assert.deepEqual(report.teamSkills[0].atLevel[4],{level:'L5+',people:1});
+ assert.match(report.thinnestCoverage[0].averageLevelBasis,/capped/);
+ assert.match(report.basis,/Per-skill holder averages are capped/);
+});
+
+test('API profiles index coverage once instead of rescanning for each skill and rank',()=>{
+ const rows=Array.from({length:1000},(_,i)=>({skillName:'Skill '+Math.floor(i/5),rank:i%5+1,people:1,memberIds:['a']}));
+ let reads=0;
+ const coverage=new Proxy(rows,{get(target,key,receiver){if(typeof key==='string'&&/^\d+$/.test(key))reads++;return Reflect.get(target,key,receiver);}});
+ const profiles=skillProfiles({...analytics,coverage});
+ assert.equal(profiles.length,200);assert.ok(profiles.every(p=>p.averageLevel===5));
+ assert.ok(reads<=rows.length*2,`Expected linear row reads, got ${reads}`);
+});
 
 test('team gap arguments reject actor/scope selection and invalid demand',()=>{
  assert.deepEqual(teamGapArguments({requirements:[{skill:' React ',level:4}]}),{search:'',requirements:[{skill:'React',level:4,headcount:1}]});

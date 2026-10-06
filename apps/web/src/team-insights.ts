@@ -1,25 +1,26 @@
 import type {TeamReportAnalytics} from './team-reports';
+import {indexCoverage,type CoverageIndex} from './team-coverage';
 
 export const LEVELS=[1,2,3,4,5] as const;
 export interface SkillProfile {skill:string;holders:number;percent:number;average:number;atLevel:number[]}
 
-function holders(analytics:TeamReportAnalytics,skill:string,rank:number){
- return analytics.coverage.find(row=>row.skillName===skill&&row.rank===rank)?.memberIds??[];
+function holders(index:CoverageIndex,skill:string,rank:number){
+ return index.get(skill)?.get(rank)?.memberIds??[];
 }
 
 // Coverage rows are cumulative thresholds (people at or above a level); exact counts are their differences.
-export function skillProfiles(analytics:TeamReportAnalytics):SkillProfile[]{
- return [...new Set(analytics.coverage.map(row=>row.skillName))].map(skill=>{
-  const counts=LEVELS.map(rank=>holders(analytics,skill,rank).length),total=counts[0];
+export function skillProfiles(analytics:TeamReportAnalytics,index=indexCoverage(analytics)):SkillProfile[]{
+ return [...index.keys()].map(skill=>{
+  const counts=LEVELS.map(rank=>holders(index,skill,rank).length),total=counts[0];
   return {skill,holders:total,percent:analytics.members?Math.round(total/analytics.members*100):0,
    average:total?Math.round(counts.reduce((sum,n)=>sum+n,0)/total*10)/10:0,
    atLevel:counts.map((count,index)=>count-(counts[index+1]??0))};
  }).sort((a,b)=>b.holders-a.holders||b.average-a.average||a.skill.localeCompare(b.skill));
 }
 
-export function memberLevel(analytics:TeamReportAnalytics,skill:string,memberId:string){
+export function memberLevel(analytics:TeamReportAnalytics,skill:string,memberId:string,index=indexCoverage(analytics)){
  let level=0;
- for(const rank of LEVELS)if(holders(analytics,skill,rank).includes(memberId))level=rank;
+ for(const rank of LEVELS)if(holders(index,skill,rank).includes(memberId))level=rank;
  return level;
 }
 

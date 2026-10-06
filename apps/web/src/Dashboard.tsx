@@ -1,6 +1,6 @@
 import {useEffect,useState,useRef} from 'react';
 import {Link} from 'react-router';
-import {ArrowUpRight,Bell,BookOpen,CheckCircle2,Clock3,Inbox,Layers,Plus,RefreshCw,Sparkles} from 'lucide-react';
+import {ArrowUpRight,Bell,BookOpen,CheckCircle2,Clock3,Inbox,Layers,Plus,Sparkles} from 'lucide-react';
 import {authenticatedFetch} from './auth';
 import './dashboard.css';
 import {DashboardQuickActions,type DashboardQuickAction} from './DashboardQuickActions';
@@ -20,13 +20,13 @@ export function openDashboardAssistant(card:Card['id']){
 export function Dashboard(){
  const [manifest,setManifest]=useState<Manifest>(),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[cardRefresh,setCardRefresh]=useState(0);
  useEffect(()=>{const c=new AbortController();let generation=0,running=false;
-  const load=()=>{if(running)return;running=true;const n=++generation;authenticatedFetch('/api/dashboard',{signal:c.signal}).then(read<Manifest>).then(value=>{if(!c.signal.aborted&&n===generation){setManifest(value);setCardRefresh(v=>v+1);setError('');}}).catch(e=>{if(!c.signal.aborted&&n===generation){setError(e.message);if([401,403,409].includes(e.status))setManifest(undefined);}}).finally(()=>{running=false;});};
+  const load=()=>{if(running)return;running=true;const n=++generation;authenticatedFetch('/api/dashboard',{signal:c.signal}).then(read<Manifest>).then(value=>{if(!c.signal.aborted&&n===generation){setManifest(value);setCardRefresh(v=>v+1);setError('');window.dispatchEvent(new CustomEvent('dashboard-updated',{detail:{at:new Date()}}));}}).catch(e=>{if(!c.signal.aborted&&n===generation){setError(e.message);if([401,403,409].includes(e.status))setManifest(undefined);}}).finally(()=>{running=false;});};
   load();const focus=()=>load(),timer=window.setInterval(()=>{if(document.visibilityState==='visible')load();},60000);
   window.addEventListener('focus',focus);window.addEventListener('notifications-updated',focus);window.addEventListener('own-skills-updated',focus);window.addEventListener('requests-updated',focus);
-  return()=>{c.abort();clearInterval(timer);window.removeEventListener('focus',focus);window.removeEventListener('notifications-updated',focus);window.removeEventListener('own-skills-updated',focus);window.removeEventListener('requests-updated',focus);};
+  window.addEventListener('dashboard-refresh',focus);
+  return()=>{c.abort();clearInterval(timer);window.removeEventListener('focus',focus);window.removeEventListener('notifications-updated',focus);window.removeEventListener('own-skills-updated',focus);window.removeEventListener('requests-updated',focus);window.removeEventListener('dashboard-refresh',focus);};
  },[attempt]);
  return <div className="dashboard-workspace">
-  <div className="dashboard-heading"><div><h2>Your day, in focus</h2><p>Move work forward, build skills and keep track of what changes.</p></div><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)} aria-label="Refresh dashboard"><RefreshCw size={17}/>Refresh</button></div>
   {error&&<section className="dashboard-card" role="alert"><h3>{manifest?'Dashboard refresh failed':'Dashboard could not be loaded'}</h3><p>{error}{manifest?' The values below may be out of date.':''}</p><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></section>}
   {!manifest&&!error&&<div className="dashboard-grid" role="status" aria-label="Loading your dashboard">{[1,2,3].map(id=><div key={id} className="dashboard-card dashboard-skeleton"><i/><i/><i/></div>)}</div>}
   {manifest&&<>

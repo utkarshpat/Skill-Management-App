@@ -1,17 +1,105 @@
 import {Link} from 'react-router';
-import {Building2,ShieldCheck,UserRound,Compass,BookOpen,MessageSquare,Sparkles} from 'lucide-react';
+import {ShieldCheck,UserRound,Compass,BookOpen,MessageSquare,Briefcase,ArrowRight} from 'lucide-react';
 import type {WorkspaceState} from './Workspace';
 import {ProfileOrganization,type ProfileOrganizationDetails} from './ProfileOrganization';
 import {EmploymentSummary,type Employment} from './EmploymentDetails';
-export interface Profile extends Employment {id:string;displayName:string;employeeCode:string;organization:string;status:string;roles:string[];organizationDetails?:ProfileOrganizationDetails}
+
+export interface Profile extends Employment {
+ id:string;
+ displayName:string;
+ employeeCode:string;
+ organization:string;
+ status:string;
+ roles:string[];
+ organizationDetails?:ProfileOrganizationDetails;
+}
+
 export function ProfileDetails({workspace,profile,failed=false}:{workspace:WorkspaceState;profile?:Profile;failed?:boolean}){
  const person=profile??workspace.person,initials=person.displayName.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join('');
  const demo=workspace.authentication==='local-demo';
- return <div className="personal-profile-page"><section className="profile-hero"><div className="profile-identity"><span className="profile-avatar" aria-hidden="true">{initials}</span><div><h2>{person.displayName}</h2><p>{person.employeeCode}</p></div></div><span className="profile-auth-badge"><ShieldCheck size={17}/>{demo?'Demo account':'Microsoft account'}</span></section>
- <div className="personal-profile-grid"><section className="profile-information"><header><UserRound size={20}/><h3>Work identity</h3></header><dl><div><dt>Full name</dt><dd>{person.displayName}</dd></div><div><dt>Employee ID</dt><dd>{person.employeeCode}</dd></div><div><dt>Workspace</dt><dd>{profile?.organization??(failed?'Unavailable':'Loading workspace details…')}</dd></div><div><dt>Account status</dt><dd>{profile?.status==='ACTIVE'?'Active':profile?.status??(failed?'Unavailable':'Checking…')}</dd></div></dl></section>
- <ProfileOrganization details={profile?.organizationDetails} loading={!profile&&!failed} failed={failed}/>
- <section className="profile-information"><header><Building2 size={20}/><h3>Business role</h3></header><EmploymentSummary value={profile} loading={!profile&&!failed} failed={failed}/></section>
- <section className="profile-information"><header><ShieldCheck size={20}/><h3>Access & sign-in</h3></header><dl><div><dt>Sign-in method</dt><dd>{demo?'Temporary demo session':'Microsoft'}</dd></div><div><dt>Access templates</dt><dd className="profile-role-tags">{person.roles.length?person.roles.map(role=><span key={role}>{role}</span>):'No access templates assigned'}</dd></div></dl><p>These templates describe access, not your job title or grade. Available actions follow your effective permissions and scope.</p></section>
- <section className="profile-information profile-destinations"><header><Building2 size={20}/><h3>Your workspace</h3></header>{workspace.capabilities.ownSkills&&<Link to="/my-skills"><Compass size={20}/><div><strong>My skills</strong><span>Experience, evidence and review status</span></div></Link>}{workspace.capabilities.learning&&<Link to="/learning"><BookOpen size={20}/><div><strong>Learn & Grow</strong><span>Goals, daily tasks and progress</span></div></Link>}{workspace.capabilities.requests&&<Link to="/requests?action=create"><MessageSquare size={20}/><div><strong>Request a profile correction</strong><span>Send an update to the right person</span></div></Link>}</section>
- <section className="profile-information"><header><Sparkles size={20}/><h3>Need guidance?</h3></header><p>Get help understanding your profile, available actions or the next step in your development.</p><button className="secondary-button" onClick={()=>window.dispatchEvent(new CustomEvent('assistant-context-request',{detail:{prompt:'Help me understand my own profile and available actions. Use my current effective permissions; ask what I want to update before preparing any draft.'}}))}>Ask AI assistant</button></section></div></div>;
+ const isActive=profile?.status==='ACTIVE';
+
+ return <div className="personal-profile-page">
+  <section className="profile-hero">
+   <div className="profile-hero-content">
+    <div className="profile-identity">
+     <div className="profile-avatar-wrapper">
+      <span className="profile-avatar" aria-hidden="true">{initials}</span>
+      {isActive&&<span className="profile-avatar-status" title="Active account"><span className="status-dot-pulse"/></span>}
+     </div>
+     <div className="profile-identity-details">
+      <div className="profile-name-row">
+       <h2>{person.displayName}</h2>
+       <span className="profile-auth-badge"><ShieldCheck size={16}/>{demo?'Demo account':'Microsoft account'}</span>
+      </div>
+      <div className="profile-meta-chips">
+       <span className="profile-meta-chip code-chip">ID: {person.employeeCode}</span>
+       {isActive&&<span className="profile-meta-chip status-chip"><span className="status-dot"/>Active</span>}
+      </div>
+     </div>
+    </div>
+   </div>
+  </section>
+
+  <div className="personal-profile-grid">
+   <div className="profile-column-primary">
+    <section className="profile-information">
+     <header>
+      <span className="profile-card-icon"><UserRound size={19}/></span>
+      <div>
+       <h3>Work identity</h3>
+       <p className="profile-card-subtitle">Assigned workspace and account details</p>
+      </div>
+     </header>
+     <dl className="profile-info-grid">
+      <div className="profile-info-tile"><dt>Employee ID</dt><dd><span className="profile-id-badge">{person.employeeCode}</span></dd></div>
+      <div className="profile-info-tile"><dt>Workspace</dt><dd>{profile?.organization??(failed?'Unavailable':'Loading workspace details…')}</dd></div>
+      <div className="profile-info-tile"><dt>Account status</dt><dd>{profile?.status==='ACTIVE'?<span className="profile-active-pill"><span className="status-dot"/>Active</span>:profile?.status??(failed?'Unavailable':'Checking…')}</dd></div>
+      <div className="profile-info-tile"><dt>Sign-in session</dt><dd><span className="profile-auth-method">{demo?'Temporary demo session':'Microsoft'}</span></dd></div>
+     </dl>
+    </section>
+
+    <ProfileOrganization details={profile?.organizationDetails} loading={!profile&&!failed} failed={failed}/>
+
+    <section className="profile-information">
+     <header>
+      <span className="profile-card-icon"><Briefcase size={19}/></span>
+      <div>
+       <h3>Business role</h3>
+       <p className="profile-card-subtitle">Organizational role designation</p>
+      </div>
+     </header>
+     <EmploymentSummary value={profile} loading={!profile&&!failed} failed={failed}/>
+    </section>
+   </div>
+
+   <div className="profile-column-secondary">
+    <section className="profile-information">
+     <header>
+      <span className="profile-card-icon"><ShieldCheck size={19}/></span>
+      <div>
+       <h3>Access & governance</h3>
+       <p className="profile-card-subtitle">Assigned access templates and security scope</p>
+      </div>
+     </header>
+     <dl className="profile-info-grid single-col">
+      <div className="profile-info-tile full-width"><dt>Access templates</dt><dd className="profile-role-tags">{person.roles.length?person.roles.map(role=><span key={role} className="profile-role-pill"><ShieldCheck size={13}/>{role}</span>):<span className="profile-no-roles">No access templates assigned</span>}</dd></div>
+     </dl>
+     <div className="profile-policy-notice"><p>These templates describe access, not your job title or grade. Available actions follow your effective permissions and scope.</p></div>
+    </section>
+
+    <section className="profile-information profile-destinations">
+     <header>
+      <span className="profile-card-icon"><MessageSquare size={19}/></span>
+      <div>
+       <h3>Profile actions</h3>
+       <p className="profile-card-subtitle">Manage record updates and related areas</p>
+      </div>
+     </header>
+     {workspace.capabilities.requests&&<div className="profile-correction-banner"><div className="profile-correction-info"><strong>Need an update or noticed an error?</strong><p>Profile details are maintained by administrators. Submit an update request.</p></div><Link to="/requests?action=create" className="profile-correction-btn"><span>Request a profile correction</span><ArrowRight size={15}/></Link></div>}
+     {(workspace.capabilities.ownSkills||workspace.capabilities.learning)&&<div className="profile-related-links" aria-label="Related workspace areas"><span className="profile-related-label">Related workspace:</span>{workspace.capabilities.ownSkills&&<Link to="/my-skills" className="profile-related-chip"><Compass size={14}/><span>My skills</span></Link>}{workspace.capabilities.learning&&<Link to="/learning" className="profile-related-chip"><BookOpen size={14}/><span>Learn & Grow</span></Link>}</div>}
+    </section>
+   </div>
+  </div>
+ </div>;
 }

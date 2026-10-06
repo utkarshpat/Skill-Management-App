@@ -4,7 +4,7 @@ export function EmploymentFields({value,onChange}:{value:Employment;onChange:(va
 }
 export function EmploymentSummary({value,loading=false,failed=false}:{value?:Employment;loading?:boolean;failed?:boolean}) {
  const display=(key:keyof Employment)=>loading?'Loading work details...':failed?'Unavailable':!value||value[key]===undefined?'Unavailable':value[key]||'Not assigned';
- return <><dl><div><dt>Business job title</dt><dd>{display('jobTitle')}</dd></div><div><dt>Grade</dt><dd>{display('grade')}</dd></div></dl><p>Maintained by people administrators. Job title and grade describe your work; they do not grant access.</p></>;
+ return <><dl className="profile-info-grid"><div className="profile-info-tile"><dt>Business job title</dt><dd>{display('jobTitle')}</dd></div><div className="profile-info-tile"><dt>Grade</dt><dd>{display('grade')}</dd></div></dl><div className="profile-policy-notice"><p>Maintained by people administrators. Job title and grade describe your work; they do not grant access.</p></div></>;
 }
 export function EmploymentChange({before,after}:{before?:Employment|null;after?:Employment}) {
  return <div className="employment-change"><h3>Work information changes</h3><dl>{(['jobTitle','grade'] as const).map(key=><div key={key}><dt>{key==='jobTitle'?'Business job title':'Grade'}</dt><dd><span>{before?.[key]||'Not assigned'}</span><span aria-hidden="true"> → </span><span className="sr-only"> changes to </span><strong>{after?.[key]||'Not assigned'}</strong></dd></div>)}</dl><p className="access-help">Descriptive only. These fields do not change effective access.</p></div>;

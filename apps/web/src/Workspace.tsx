@@ -30,6 +30,27 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
   const [error, setError] = useState(''), [attempt, setAttempt] = useState(0);
   const [navigationOpen, setNavigationOpen] = useState(false), [actions, setActions] = useState<HTMLDivElement | null>(null);
   const view = currentView(pathname);
+  const [lastUpdated, setLastUpdated] = useState<Date>(() => new Date());
+  const [refreshing, setRefreshing] = useState(false);
+  useEffect(() => {
+    const handleDashboardUpdated = (e: Event) => {
+      const at = (e as CustomEvent<{ at?: Date }>).detail?.at;
+      if (at instanceof Date) setLastUpdated(at);
+      else setLastUpdated(new Date());
+    };
+    window.addEventListener('dashboard-updated', handleDashboardUpdated);
+    return () => window.removeEventListener('dashboard-updated', handleDashboardUpdated);
+  }, []);
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setLastUpdated(new Date());
+    window.dispatchEvent(new Event('dashboard-refresh'));
+    window.dispatchEvent(new Event('notifications-updated'));
+    window.dispatchEvent(new Event('own-skills-updated'));
+    window.dispatchEvent(new Event('requests-updated'));
+    window.dispatchEvent(new Event('learning-updated'));
+    setTimeout(() => setRefreshing(false), 650);
+  };
   useEffect(() => {
     if(initialWorkspace&&attempt===0){setState(initialWorkspace);return;}
     const controller = new AbortController();
@@ -61,7 +82,7 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
     <SidebarNavigation actorId={state?.person.id} label="Personal workspace sections" onNavigate={close} items={[
       ...sections.filter(section=>section.visible).map(({id,label,href,icon})=>({id:id==='overview'?'dashboard':id,label,href,icon,active:view===id})),
       ...(state?.capabilities.administration?[{id:'administration',label:'Administration',href:'/access',icon:ShieldCheck}]:[])
-    ]}/>
+    ]} updatedTime={`Updated ${lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} · Auto-refresh while active`}/>
 
   </>;
   if(embedded)return <>
@@ -86,9 +107,21 @@ export function Workspace({embedded=false,actionsContainer,initialWorkspace}:{em
     {navigationOpen && <NavigationDrawer onClose={() => setNavigationOpen(false)}>{close => <Sidebar>{sidebarContent(close)}</Sidebar>}</NavigationDrawer>}
     <div className="admin-content"><header className="admin-topbar">
       <button className="navigation-toggle secondary-button" aria-label="Open navigation" aria-expanded={navigationOpen} aria-controls="workspace-navigation" onClick={() => setNavigationOpen(true)}><Menu size={20} /></button>
-      <div className="page-location navbar-context"><div className="navbar-greeting"><span className="greeting-hello">Hello,</span><strong className="greeting-name" title={name}>{firstName}</strong></div><h1>{view==='requests'?'Requests & incidents':sections.find(section => section.id === view)?.label}</h1></div>
+      <div className="page-location navbar-context">
+        <div className="navbar-greeting">
+          <span className="greeting-hello">Hello,</span>
+          <strong className="greeting-name" title={name}>{firstName}</strong>
+        </div>
+        <h1>{view==='requests'?'Requests & incidents':sections.find(section => section.id === view)?.label}</h1>
+      </div>
       <div className="page-actions" role="group" aria-label="Page actions" ref={setActions} />
-      <NavbarAccount name={name} identity={state?.authentication === 'local-demo' ? 'Development session' : 'Microsoft account'} workspaceLink={state?.capabilities.administration ? { href: '/access', label: 'Administration' } : undefined} />
+      <NavbarAccount
+        name={name}
+        identity={state?.authentication === 'local-demo' ? 'Development session' : 'Microsoft account'}
+        workspaceLink={state?.capabilities.administration ? { href: '/access', label: 'Administration' } : undefined}
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
+      />
     </header>
     <main id="workspace-main" className="access-main" tabIndex={-1}>
       {error && <section className="profile-panel"><h2>Workspace access</h2><p role="alert">{error}</p><button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>Retry</button></section>}

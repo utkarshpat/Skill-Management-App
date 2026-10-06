@@ -219,6 +219,9 @@ html[data-theme] .navbar-avatar {border-radius:50%;background:var(--accent-soft)
 .greeting-hello {flex-shrink:0;font:inherit;color:var(--muted)}
 .navbar-context .greeting-name {min-width:0;font:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent-ink);background:linear-gradient(110deg,var(--heading) 25%,var(--accent-ink));background-clip:text;-webkit-text-fill-color:transparent}
 html[data-theme] .navbar-context h1 {font-size:12px;color:var(--muted);text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+@keyframes spin-once {from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.spin-icon {animation:spin-once 0.65s cubic-bezier(0.4, 0, 0.2, 1)}
+@media (prefers-reduced-motion: reduce) {.spin-icon {animation:none}}
 .admin-sidebar>.nav-caption {margin:26px 12px 12px}
 .navbar-popover {position:fixed;inset:76px 24px auto auto;width:min(300px,calc(100vw - 32px));padding:20px;margin:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);box-shadow:0 8px 28px rgb(10 18 31 / 15%)}
 .notification-popover {right:76px}

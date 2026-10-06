@@ -125,6 +125,12 @@ Skill Reviews provides Review Queue, Team Analytics and Recommendations. Team an
 
 Coverage = distinct matching active direct reports with a manager-reviewed skill at or above selected level / all matching active direct reports. Members with no reviewed claim remain in the denominator. This measures recorded coverage, not a business gap without a requirement. Reviewed proficiency/category counts and assigned pending claims remain distinct from private drafts and other reviewers' submissions.
 
+Team charts and exports include reviewed skills with zero holders at the selected threshold. Per-skill holder averages use cumulative L1–L5 coverage and are explicitly capped at L5; heatmaps and final level buckets display L5+ for historical higher ranks. The overall reviewed-claim average retains actual historical ranks. AI demand evaluation requires an exact, case/whitespace-insensitive skill name; partial matches require confirmation rather than inferred qualification. Coverage calculations share indexed rows instead of repeated per-skill scans.
+
+My Skills catalogue results are bound to the draft and current search/category/page before suggested-skill selection. If saving succeeds but submission fails, the draft remains persisted, the notification is a warning rather than success, and My Skills offers a saved-draft review/retry action using refreshed claim data.
+
+Own-profile refreshes abort superseded requests and reject stale completions. Saved-draft recovery fetches the current profile and revision before opening submission; a failed refresh leaves the recovery request retryable, not classified as a missing claim. AI skill-draft submission failures are passed to the assistant as a distinct outcome and retained as a persistent warning with the same recovery link after the draft dialog closes.
+
 View capability opens an individual manager-facing capability profile, separate from the employee's editable My Skills screen. It shows authorized records, not ownership transfer or permission to edit the employee's skills.
 
 Recommendation: eligible manager → search current report(s) → published skill + target defined proficiency → reason + optional HTTPS resource + target date → explicit Send → recipient notification. Recipient can Accept, Decline or Ask for Discussion. Acceptance reviews a new personal learning plan; its creation and response use the owning transaction. The flow does not create an approved skill claim.

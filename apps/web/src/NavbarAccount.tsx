@@ -1,14 +1,37 @@
 import { useId, useState } from 'react';
 import { Link } from 'react-router';
-import { LogOut } from 'lucide-react';
+import { LogOut, RefreshCw } from 'lucide-react';
 import { Notifications } from './Notifications';
 import { ThemeSwitcher } from './Theme';
 import { signOut } from './auth';
 
-export function NavbarAccount({name,identity,workspaceLink}:{name:string;identity:string;workspaceLink?:{href:string;label:string}}) {
+export function NavbarAccount({
+  name,
+  identity,
+  workspaceLink,
+  onRefresh,
+  refreshing,
+}: {
+  name: string;
+  identity: string;
+  workspaceLink?: { href: string; label: string };
+  onRefresh?: () => void;
+  refreshing?: boolean;
+}) {
   const id=useId(),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const initials=name.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join('');
   return <div className="navbar-account-controls">
+    {onRefresh && (
+      <button
+        className="navbar-icon navbar-refresh-btn"
+        type="button"
+        aria-label="Refresh dashboard"
+        title="Refresh dashboard"
+        onClick={onRefresh}
+      >
+        <RefreshCw size={18} className={refreshing ? 'spin-icon' : ''} />
+      </button>
+    )}
     <ThemeSwitcher/>
     <Notifications id={id+'-notifications'}/>
     <button className="navbar-avatar" type="button" aria-label={'Account menu for '+name} popoverTarget={id+'-account'}><span aria-hidden="true">{initials}</span></button>
