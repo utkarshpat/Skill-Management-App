@@ -33,7 +33,7 @@ Web: `http://localhost:5173/`. API: `http://127.0.0.1:3001/api/health` (liveness
 - Participant-scoped requests/incidents, searchable recipients, reassignment, resolution and notifications.
 - Authorized dashboard cards, personal navigation ordering and contextual AI with bounded context, recent durable conversations and shared SQL request budgets.
 
-Private compressed claim images are implemented and verified in the personal/demo deployment. File scanning, retention and delete/replace remain pending. Formal assessments, demand/matching and broader team/department/subtree grant scopes are not implemented. The handover records the dated 6 October 2026 Microsoft sign-in, SQL/runtime and image round-trip verification. This remains a personal/demo deployment; deferred login hardening and production prerequisites are documented in the handover.
+Private compressed claim images are implemented and verified in the personal/demo deployment. File scanning, retention and delete/replace remain pending. Formal assessments, demand/matching and broader team/department/subtree grant scopes are not implemented. The handover records the dated 6 October 2026 Microsoft sign-in, SQL/runtime and image round-trip verification. A subsequent check on 6 October found Azure SQL paused after exhausting October's free quota; database-backed flows are currently unavailable until approved paid resumption or the 1 November quota renewal. This remains a personal/demo deployment; deferred login hardening and production prerequisites are documented in the handover.
 
 ## Verification and schema changes
 
