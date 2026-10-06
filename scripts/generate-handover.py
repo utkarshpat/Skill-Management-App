@@ -176,7 +176,7 @@ groups={
 assert set(sum(groups.values(), []))==set(tables), 'Update schema domain groups for new tables'
 for name,t in tables.items():
     t['domain']=next(group for group,names in groups.items() if name in names)
-data={'title':'Cognitive Intelligence Lab','version':'2026-10-05','basis':'Repository source and migrations; not live introspection',
+data={'title':'Cognitive Intelligence Lab','version':re.search(r'^Version: (\d{4}-\d{2}-\d{2})',document,re.M)[1],'basis':'Repository source and migrations; not live introspection',
  'revision':hashlib.sha256((document+baseline+json.dumps(tables,sort_keys=True)+json.dumps(routes)+json.dumps(procedures,sort_keys=True)).encode()).hexdigest()[:16],
  'sections':sections,'schema':{'migrations':inputs,'tables':tables,'views':views,'removedTables':removed},
  'routes':routes,'procedures':list(procedures.values()),'groups':groups}

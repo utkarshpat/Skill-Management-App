@@ -1,6 +1,31 @@
 # Cognitive Intelligence Lab — Project Handover
 
-Version: 2026-10-05. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
+Version: 2026-10-06. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
+
+## Release Verification & Current Status
+
+Recorded on 6 October 2026 (Asia/Calcutta). This is dated acceptance evidence, not live health monitoring. The verified application baseline is `main` commit `e1d1f3fa42484a5131b950813d0ae0e75d717e63`, deployed as `dpl_Cn6p1hQ2S8BAeHefdEhb4HaUCrZp` on https://skill-management-app.vercel.app. Later documentation deployments carry their own commit; do not substitute this historical record for a new deployment check.
+
+| Gate | Observed result | Boundary |
+| --- | --- | --- |
+| Source consolidation | Only main/origin/main remain; clean worktree after consolidation | A local preserved stash is not an unmerged feature branch |
+| Regression baseline | 271 tests passed; typecheck, build, architecture and generated-document checks passed | Tests establish tested behavior, not complete BRD delivery |
+| Hosted SQL | Migrations 001–050 installed; 041–050 applied during release preparation | No startup seed/import or automatic application migration |
+| Restricted runtime | Actor-access parity, audit denial, cross-account isolation, evidence procedure integration passed | Fixture transactions rolled back; does not certify every API path |
+| SQL grants | SkillEvidence and ReadOwnOrganization execution verified; direct claim-table SELECT absent | Runtime remains separate from setup identity |
+| Hosting | Vercel Ready and correct main source/domain verified | Ready is build/deployment status; runtime smoke is separate |
+| Microsoft sign-in | User completed device authentication; real mapped account reached its authorized dashboard | One account tested; provisioning, consent and company tenant migration remain separate |
+| Employee Chrome smoke | Dashboard, skills, profile, learning, requests, exact-claim notification link and AI response loaded | No blanket claim of all workflow mutation acceptance |
+| Manager Chrome smoke | Assigned review/access explanation, team analytics, individual capability and recommendations loaded | No live proficiency decision submitted during this smoke |
+| Private image round-trip | Synthetic QA PNG uploaded through UI; persisted after full reload and decoded preview verified | Existing synthetic demo draft stayed DRAFT; no submission or approval |
+| Storage | PNG 15,672 bytes → stored WebP 11,504 bytes, 1600 × 900; private/no-store; anonymous direct blob request denied | Public Blob access disabled, HTTPS required, TLS 1.2; no retention/scanning policy implied |
+| Anonymous API | Health 200; me/dashboard/my-skills/skill-reviews 401 without a session | Health is liveness only |
+
+The uploaded sample is clearly labelled synthetic QA evidence on an existing demo draft. It is not employee capability evidence or a customer file. Verification screenshots and the detailed local run record are ignored local artifacts; credentials, cookies, identity tokens, employee rows and storage secrets are excluded from this handbook.
+
+Core tested employee/manager flows are stable enough to continue incremental work. Company production certification, exhaustive browser/accessibility acceptance, performance SLOs and the outstanding functional backlog are not complete. Temporary demo authentication remains deliberately deferred. AI uses read tools and reviewable drafts; it does not autonomously commit business actions.
+
+Next work, one reviewed increment at a time: (1) primary capability and an explicit profile-completeness denominator; (2) certification records and expiry reminders with an approved verifier policy; (3) managed training catalogue/enrolment; (4) persisted project demand and matching; (5) formal assessment and broader scope enforcement. In parallel, measure latency and establish monitoring, recovery, secret rotation and evidence lifecycle operations before company hosting. See Short requirements delivery backlog for functional acceptance and Risks, Gaps & Production Readiness for operational gates.
 
 ## Product & Business Requirements
 
@@ -8,7 +33,7 @@ Cognitive Intelligence Lab is a workforce capability and personal learning platf
 
 | Requirement | Implemented behavior | Acceptance rule |
 | --- | --- | --- |
-| BR-01 Personal capability | Published-skill selection, proficiency criteria, experience, projects and evidence references | Own drafts stay private; submitted claims follow current assigned-manager checks |
+| BR-01 Personal capability | Published-skill selection, proficiency criteria, experience, projects, evidence references and private compressed images | Own drafts stay private; submitted claims follow current assigned-manager checks |
 | BR-02 Review governance | Review queue, decision feedback, direct-report capability profiles and analytics | No self-review; current active manager and exact reviewer assignment required |
 | BR-03 Personal development | Plans, daily tasks, study sessions, practice, logs, backlog and recovery | Opening a task, saving study notes or passing practice never completes or verifies a skill |
 | BR-04 Recommendations | Scoped manager recommendations and employee Accept / Decline / Discuss | Acceptance creates a reviewed personal learning plan; does not create an approved skill |
@@ -85,7 +110,7 @@ Migration 043 adds a read-only own-organization profile projection. `/api/me` re
 
 Migration 045 adds nullable business job title (100 characters) and grade (40 characters) to AccessPerson. People administrators maintain them in the existing person Details editor, using Preview → Recheck → Transaction → Audit; the confirmation shows server-normalized before/after values separately from effective-access impacts. The existing person-administration prerequisite remains both `permissions.manage` and `users.manage`; this increment does not enable a users-only administration surface. Assigned templates, exceptions, identity bindings and reporting policy remain unchanged. SQL independently validates input type and unbounded JSON length, preserves omitted values on legacy/bulk updates, and clears explicit null/blank values. Existing people start unassigned; titles/grades are not inferred from templates or hierarchy and do not grant authority.
 
-Microsoft and configured demo `/api/me` projections return only the authenticated person's work fields. My Profile shows them read-only, with distinct unassigned, loading, unavailable and failed states. Legacy AppUser-only profiles without an AccessPerson link do not have these managed fields and are shown as unavailable, not guessed. No self-service profile write endpoint is added. Apply 045 before deploying; the opt-in `test:employment` setup-identity fixture runs against a migrated workspace and rolls all writes/audits back. No live migration has been performed by the code increment.
+Microsoft and configured demo `/api/me` projections return only the authenticated person's work fields. My Profile shows them read-only, with distinct unassigned, loading, unavailable and failed states. Legacy AppUser-only profiles without an AccessPerson link do not have these managed fields and are shown as unavailable, not guessed. No self-service profile write endpoint is added. Apply 045 before deploying; the opt-in `test:employment` setup-identity fixture runs against a migrated workspace and rolls all writes/audits back. The code increment did not apply migrations automatically; the dated release verification below records subsequent installation through 050.
 
 The everyday workflow is Search person → Organization/reporting → Assigned templates → Effective access / Why → Exceptions → History. Exceptions require reason and future expiry for new/changed entries. Role names remain compatible with existing stored IDs.
 
@@ -107,7 +132,7 @@ Employee flow: Search published skill → choose defined level → enter actual 
 
 Migration 042 adds optional employee-reported `lastUsedOn` (`YYYY-MM-DD`) to skill claims. The experience step offers a date picker with inline validation and an explicit unknown/blank state; review and claim detail display the date separately from proficiency. API and SQL reject invalid calendar dates and dates after the current UTC day. Existing records remain unknown; an omitted field preserves the date on legacy updates, while explicit null clears it. Historical manager reads use the submitted audit snapshot, never a subsequent private draft edit. Recency is descriptive, not verification or an expiry rule. Deploy migration 042 before deploying this form/API increment; no new permission or scope is enabled.
 
-Manager flow: Review queue → open assigned submitted claim → inspect evidence references and criteria → Verify/Approve, Request Changes or Reject with feedback → final current relationship/permission/revision recheck → SQL commit + audit + notification. Evidence references are not uploaded, scanned or independently verified files.
+Manager flow: Review queue → open assigned submitted claim → inspect evidence references and criteria → Verify/Approve, Request Changes or Reject with feedback → final current relationship/permission/revision recheck → SQL commit + audit + notification. Text/link references and private uploaded images are distinct. Images are decoded and re-encoded, but are not malware-scanned or independently certified evidence.
 
 | Claim state | Meaning | Next authorized step |
 | --- | --- | --- |
@@ -200,14 +225,14 @@ Knowledge Transfer AI uses the same configured provider and shared budget, retri
 
 The interactive Schema Explorer contains physical tables, every parsed column/type/nullability/declaration, exact primary and unique key tuples, declared foreign keys, explicit indexes, source migrations and related-entity navigation. The ERD draws only declared foreign keys, including composite account keys. It does not fabricate foreign keys from JSON fields or procedural checks.
 
-Schema reconstruction reads reviewed migrations 001–049. It is a repository-specific DDL extractor: literal CREATE TABLE, ALTER TABLE ADD, DROP TABLE, explicit indexes and CREATE VIEW are parsed. Dynamic CHECK removals in migrations 010/015/023/044 are reconciled explicitly. It is not a general T-SQL parser or a live database schema certification. Compare with DBA introspection before company migration.
+Schema reconstruction reads reviewed migrations 001–050. It is a repository-specific DDL extractor: literal CREATE TABLE, ALTER TABLE ADD, DROP TABLE, explicit indexes and CREATE VIEW are parsed. Dynamic CHECK removals in migrations 010/015/023/044 are reconciled explicitly. It is not a general T-SQL parser or a live database schema certification. Compare with DBA introspection before company migration.
 
 | Domain | Persistence |
 | --- | --- |
 | Original identity foundation | Account, AppUser, AppRole, grants, membership and AuditEvent |
 | Current workspace access | AccessWorkspace, AccessPerson, AccountRole, assignments/overrides, AccessAudit and implementation registry |
 | Organization/reporting | AccessOrgNode and AccessOrgAssignment; not aliases for original Team/Department tables |
-| Catalogue/claims | SkillCatalogue, framework/levels, immutable definition/criterion versions, SkillClaimDraft and claim notifications |
+| Catalogue/claims | SkillCatalogue, framework/levels, immutable definition/criterion versions, SkillClaimDraft, claim notifications and SkillClaimEvidence |
 | Learning | LearningPlan JSON task/log payload plus LearningSession, LearningQuiz and LearningAttempt |
 | Recommendations | LearningRecommendation and LearningRecommendationEvent |
 | Requests/incidents | WorkflowRecord and WorkflowEvent |
@@ -215,7 +240,7 @@ Schema reconstruction reads reviewed migrations 001–049. It is a repository-sp
 
 Important distinctions: SkillProficiencyLevel is a view after migration 012, not a physical table. Claim definition_revision has no declared FK to definition versions. Some actor/person/task fields are validated in procedures without a physical FK. AI budget tables intentionally have no declared person/account FK. Do not draw these as enforced relationships. JSON payload shape is a domain contract; migration presence alone does not establish successful deployment.
 
-Migration 039 removes audit data from routine authorization snapshots when requested and changes workspace read to shared serializable locks. Notification audit is addressed-person filtered. Hydration uses Maps instead of repeated per-person filters. Administrative snapshots still load full audit, and authorization snapshots still load workspace-wide people/roles/reporting: dedicated actor-context reads and paginated admin audit remain open optimization work.
+Migration 039 removes audit data from routine authorization snapshots when requested and changes workspace read to shared serializable locks. Notification audit is addressed-person filtered. Hydration uses Maps instead of repeated per-person filters. Migrations 048/049 subsequently add actor-only authorization reads and bounded cursor-based admin audit. Full workspace snapshots remain for flows that explicitly require them; neither optimization removes execution-time access checks.
 
 Migration 040 adds the atomic shared AI quota/lease procedure and runtime execution grant. Apply 039/040 before deploying code depending on those signatures; no silent fail-open fallback exists. Neither migration grants new business authority or deletes historical grants.
 
@@ -249,6 +274,7 @@ Use Node 24, npm workspaces and the pinned package lock. Copy `apps/api/.env.exa
 | AZURE_SQL_SERVER, AZURE_SQL_DATABASE | Target SQL endpoint/database |
 | AZURE_SQL_RUNTIME_AUTH, AZURE_SQL_CLIENT_ID, AZURE_SQL_CLIENT_SECRET, AZURE_SQL_MANAGED_IDENTITY_CLIENT_ID | Restricted runtime credential; managed identity for future Azure hosting |
 | AI_PROVIDER, AI_MODEL, AI_ENDPOINT, AI_API_KEY, GEMINI_API / GEMINI_API_KEY | Server-only model configuration; never VITE variables |
+| EVIDENCE_STORAGE_CONNECTION_STRING, EVIDENCE_STORAGE_CONTAINER | Server-only private Blob configuration; never expose credentials or raw blob paths to the browser |
 | DEV_DIRECT_LOGIN | Development-only direct login flag, false in production |
 | HOSTED_DEMO_LOGIN, PUBLIC_APP_ORIGIN, DEMO_LOGIN_ACCESS_CODE, DEMO_SESSION_SECRET | Temporary gated hosted demo; exact trusted origin and server-only secrets |
 
@@ -270,7 +296,7 @@ Release: review diff → test/build/typecheck/architecture → apply required co
 
 ## Operations, Testing & Runbooks
 
-Run `npm run architecture:check`, `npm run typecheck`, `npm test`, `npm run build`. CI installs with npm ci and enforces its configured checks. Before this KT increment, 202 automated tests passed; use the latest run output for current counts. Do not freeze a historical count as an acceptance promise.
+Run `npm run architecture:check`, `npm run typecheck`, `npm test`, `npm run build`. CI installs with npm ci and enforces its configured checks. The consolidated main baseline passed 271 automated tests (5 architecture, 179 API, 87 web); use the latest run output for current counts. Do not freeze a historical count as an acceptance promise.
 
 Opt-in SQL integration suites in apps/api/package.json cover organization, catalogue, access, reviews/review-access, claims, conversations, learning, recovery, practice, workflows/lifecycle and recommendations. They require configured Azure identity/network/runtime. Read each fixture's mutation/rollback behavior before running it against any live workspace. `runtime-optimization.integration.ts` verifies 039/040 inside rollback-only test transactions and supports installed migrations.
 
@@ -294,7 +320,7 @@ Current hosting is a personal/demo deployment, not enterprise production certifi
 
 Implemented hardening includes restricted runtime procedures, input validation, revision/audit checks, exact-manager policy, bounded provider context, shared request budgets and protected read tools. This does not prove all paths secure or establish an exact AI cost ceiling.
 
-Remaining work: dedicated actor/resource authorization queries; paginated admin audit; measured production latency budgets; stronger demo/real SSO onboarding and revocation; company tenant/network review; secret rotation; private evidence storage/scanning/retention; readiness/monitoring/alerts; backups/restore exercise; formal assessments; external calendar/rest-day scheduling; real demand/matching and wider-scope analytics; durable approved AI proposals/idempotent executors; comprehensive phone/browser accessibility acceptance.
+Remaining work: further resource-query optimization based on measurements; measured production latency budgets; stronger demo/real SSO onboarding and revocation; company tenant/network review; secret rotation; evidence scanning, retention, delete/replace and orphan reconciliation; readiness/monitoring/alerts; backups/restore exercise; formal assessments; external calendar/rest-day scheduling; real demand/matching and wider-scope analytics; durable approved AI proposals/idempotent executors; comprehensive phone/browser accessibility acceptance.
 
 Unsupported grant scopes and mockup-only modules must remain unavailable. Recommendations are not verification; missing evidence is not proof of inability. Do not treat top-down hierarchy as unrestricted access. See approved baseline before implementing any new scope or approval workflow.
 
@@ -362,7 +388,7 @@ Migration 050 adds `SkillClaimEvidence` and `SkillEvidence`. Images live in the 
 
 The browser accepts JPEG/PNG/WebP up to 10 MB, resizes and compresses before uploading; the server decodes again, rejects other/animated formats, strips metadata and encodes WebP. Blob references never become public URLs or SAS links: authenticated API image reads recheck current access. Original images are not retained. A failed SQL attach triggers best-effort Blob cleanup; interrupted requests can leave an orphan requiring an operational reconciliation job (not yet implemented). No evidence delete/replace UI is offered yet. No image content is sent to AI.
 
-Configure server-only `EVIDENCE_STORAGE_CONNECTION_STRING` and `EVIDENCE_STORAGE_CONTAINER`; never use a VITE variable. Apply 050 before enabling upload. Container must have no public access. Storage created in the development resource group is not production deployment; local ignored environment is configured, hosted environment remains to be configured. New claims save first; Save draft opens evidence in place before submission. Review content and decisions share a single dialog; detailed criteria/history/AI are expandable.
+Configure server-only `EVIDENCE_STORAGE_CONNECTION_STRING` and `EVIDENCE_STORAGE_CONTAINER`; never use a VITE variable. Apply 050 before enabling upload. Container must have no public access. The personal/demo production deployment has hosted storage configuration and a verified upload/read round-trip as recorded below. This does not establish company-approved storage governance, retention, scanning or recovery. New claims save first; Save draft opens evidence in place before submission. Review content and decisions share a single dialog; detailed criteria/history/AI are expandable.
 
 Application authenticated HTTP failures and successful business mutations emit shared dismissible toast feedback. Reads do not emit success toasts. AI generation/login successful requests do not masquerade as saved business changes. Inline errors and recovery controls remain present; toasts supplement them. Dialog-local toast hosts render inside the browser top layer, and the global host suppresses duplicate delivery while a dialog is open. Toast scope does not claim coverage for raw-fetch legacy login flows or every bespoke client validation path.
 
@@ -374,7 +400,7 @@ Source: `apps/short requrement` (discussion-draft BRD). Technology recommendatio
 | Business requirement | Current state | Remaining acceptance work |
 | --- | --- | --- |
 | Employee profile | Partial | Work fields, organization and current manager are implemented; primary capability and profile completeness are not. |
-| Skill profile | Implemented, deployment gate | Published catalogue, saved proficiency, experience, last-used information, evidence links and private compressed images. Migration 050 and hosted storage configuration must precede image rollout. |
+| Skill profile | Implemented in the personal/demo release | Published catalogue, saved proficiency, experience, last-used information, evidence links and private compressed images. Migrations through 050 and hosted storage were verified; evidence retention/scanning/delete remain separate gaps. |
 | Assessment | Partial | Self-assessment, exact assigned current-manager review, feedback and audited decisions. Project/technical/certification/panel assessment are not implemented. |
 | Five-level proficiency | Supported with versioned definitions | Published levels govern each claim; historical frameworks must not be silently relabelled or treated as equivalent. |
 | Certification | Not implemented | Provider, issued/expiry dates, certificate evidence, verification and certification dashboards. A generic evidence attachment is not a certification record. |
@@ -384,6 +410,6 @@ Source: `apps/short requrement` (discussion-draft BRD). Technology recommendatio
 | Automation | Partial | Workflow notifications and recommendation actions exist. Scheduled certification expiry reminders (90/60/30 days), incomplete-profile reminders and recurring skill-review cycles remain pending. |
 | Security and governance | Bounded implementation | Effective permissions, own scope and exact current-manager constraints are enforced. TEAM/DEPARTMENT/DELIVERY_UNIT/organization capability scopes remain unavailable until resource-specific SQL enforcement exists. Temporary demo authentication remains an explicitly deferred infrastructure concern. |
 
-Release assessment: core employee/manager MVP is on track, but neither the complete BRD nor production acceptance is finished. Code checks cannot certify deployed procedures, runtime database grants, storage secrets, response times, backups or rollback. Apply compatible required migrations, check the restricted runtime, and smoke-test the exact deployed commit before declaring a stable release. The audit branch and reviewed local cleanup were consolidated on `main` on 6 October 2026. Earlier local changes were preserved in `codex/pre-main-merge-local-backup` and a named stash; their optimized readers were already integrated with migrations renumbered to 048/049. This merge does not apply SQL migrations, configure hosted storage or certify a production deployment. Do not deploy signature-dependent code ahead of SQL.
+Release assessment: core employee/manager MVP is on track, but neither the complete BRD nor production acceptance is finished. Code checks cannot certify deployed procedures, runtime database grants, storage secrets, response times, backups or rollback. Apply compatible required migrations, check the restricted runtime, and smoke-test the exact deployed commit before declaring a stable release. The audit branch and reviewed local cleanup were consolidated on `main` on 6 October 2026. The backup branch was removed after consolidation; earlier local changes remain preserved in a named local stash; their optimized readers were already integrated with migrations renumbered to 048/049. The merge itself did not apply SQL migrations or configure storage; subsequent release verification is recorded in the dated chapter above. Only main/origin/main remain after branch cleanup. Do not deploy signature-dependent code ahead of SQL.
 
 Dashboard cards now form independent desktop columns: attention stays first; learning and requests share one stack, capability and permitted quick actions share the other. Narrow layouts stack those same groups in DOM order. No placeholder/fake card fills the height difference, and unauthorized cards remain absent.
