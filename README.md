@@ -5,6 +5,7 @@ Permission-driven workforce capability and learning platform. React/TypeScript +
 ## Project reference
 
 - [Complete project handover](docs/HANDOVER.md): requirements, architecture, module ownership, workflows, AI, schema, deployment, testing, limitations and removal instructions.
+- [Azure migration with data](docs/AZURE_MIGRATION_RUNBOOK.md): step-by-step free-offer eligibility, SQL export/import, private evidence copy, identity/runtime remapping, deployment, acceptance and rollback. A paused source needs a verified backup or must resume before full export.
 - [Approved Access Management baseline](docs/ACCESS_MODEL_REDESIGN.md): mandatory policy for access-related changes. Approved target scopes are distinct from implemented enforcement.
 - [Interactive knowledge transfer](https://skill-management-app.vercel.app/knowledgetransfer): authenticated temporary reader, searchable chapters, schema/FK explorer, API/SQL inventory and source-grounded AI guide.
 
