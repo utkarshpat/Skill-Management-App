@@ -163,6 +163,8 @@ body{cursor:default;caret-color:transparent}input,textarea,[contenteditable=true
 
 .assistant-collapse-handle{position:absolute;right:min(420px,100%);top:50%;transform:translateY(-50%);z-index:1;display:grid;place-items:center;width:36px;height:64px;padding:0;border:1px solid var(--line,#dfe2e7);border-right:0;border-radius:12px 0 0 12px;background:var(--surface,#fff);color:var(--ai-ink,#7850cc);box-shadow:-4px 2px 12px #20232912;pointer-events:auto;cursor:pointer}
 .assistant-collapse-handle[hidden]{display:none}
+.refresh-indicator{display:block;color:var(--muted,#64748b);font-size:.8rem;line-height:1.5;margin:0 0 12px}
+.notification-popover .refresh-indicator{margin:12px 16px 4px}
 .assistant-collapse-handle:hover{background:color-mix(in srgb,var(--color-ai,#7850cc) 9%,var(--surface,#fff))}
 .assistant-collapse-handle:focus-visible{outline:3px solid var(--color-ai,#7850cc);outline-offset:3px}
 @media(max-width:650px){.assistant-collapse-handle{right:auto;left:0;width:32px;height:56px;border-right:1px solid var(--line);border-left:0;border-radius:0 12px 12px 0}}

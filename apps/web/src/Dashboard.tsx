@@ -2,7 +2,8 @@ import {useEffect,useState,useRef} from 'react';
 import {Link} from 'react-router';
 import {ArrowUpRight,Bell,BookOpen,CheckCircle2,Clock3,Inbox,Layers,Plus,RefreshCw,Sparkles} from 'lucide-react';
 import {authenticatedFetch} from './auth';
-import {startActivityRefresh} from './activity-refresh';
+import {startActivityRefresh,type RefreshStatus} from './activity-refresh';
+import {RefreshIndicator} from './RefreshIndicator';
 import './dashboard.css';
 import {DashboardQuickActions,type DashboardQuickAction} from './DashboardQuickActions';
 import {DashboardRequests,type DashboardRequestsData,type RequestPreview} from './DashboardRequests';
@@ -20,9 +21,10 @@ export function openDashboardAssistant(card:Card['id']){
 }
 export function Dashboard(){
  const [manifest,setManifest]=useState<Manifest>(),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[cardRefresh,setCardRefresh]=useState(0);
+ const [freshness,setFreshness]=useState<RefreshStatus>();
  useEffect(()=>{const c=new AbortController();let generation=0,running=false;
-  const load=async()=>{if(running)return;running=true;const n=++generation;return authenticatedFetch('/api/dashboard',{signal:c.signal}).then(read<Manifest>).then(value=>{if(!c.signal.aborted&&n===generation){setManifest(value);setCardRefresh(v=>v+1);setError('');}}).catch(e=>{if(!c.signal.aborted&&n===generation){setError(e.message);if([401,403,409].includes(e.status))setManifest(undefined);}}).finally(()=>{running=false;});};
-  const stop=startActivityRefresh(load,['notifications-updated','own-skills-updated','requests-updated','workspace-access-updated']);
+  const load=async()=>{if(running)return;running=true;const n=++generation;return authenticatedFetch('/api/dashboard',{signal:c.signal}).then(read<Manifest>).then(value=>{if(!c.signal.aborted&&n===generation){setManifest(value);setCardRefresh(v=>v+1);setError('');}}).catch(e=>{if(!c.signal.aborted&&n===generation){setError(e.message);if([401,403,409].includes(e.status))setManifest(undefined);}return false;}).finally(()=>{running=false;});};
+  const stop=startActivityRefresh(load,['notifications-updated','notifications-remote-updated','own-skills-updated','requests-updated','learning-updated','workspace-access-updated'],undefined,{pollMs:300_000,onStatus:setFreshness});
   return()=>{stop();c.abort();};
  },[attempt]);
  const renderCard=(card:Card)=><DashboardCard key={manifest!.actorId+card.id} card={card} revision={manifest!.revision} refresh={cardRefresh} ai={manifest!.ai} onAccessChanged={()=>setAttempt(n=>n+1)}/>;
@@ -30,6 +32,7 @@ export function Dashboard(){
  const rightCards=manifest?.cards.filter(card=>card.id==='capability')??[];
  return <div className="dashboard-workspace">
   <div className="dashboard-heading"><div><h2>Your day, in focus</h2><p>Move work forward, build skills and keep track of what changes.</p></div><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)} aria-label="Refresh dashboard"><RefreshCw size={17}/>Refresh</button></div>
+  <RefreshIndicator status={freshness}/>
   {error&&<section className="dashboard-card" role="alert"><h3>{manifest?'Dashboard refresh failed':'Dashboard could not be loaded'}</h3><p>{error}{manifest?' The values below may be out of date.':''}</p><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></section>}
   {!manifest&&!error&&<div className="dashboard-grid" role="status" aria-label="Loading your dashboard">{[1,2,3].map(id=><div key={id} className="dashboard-card dashboard-skeleton"><i/><i/><i/></div>)}</div>}
   {manifest&&<>
