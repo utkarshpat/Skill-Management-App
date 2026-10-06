@@ -1,6 +1,6 @@
 {
   "version": "2026-10-06",
-  "revision": "bd0b729ab386f847",
+  "revision": "747c46afd6cf0986",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -53,7 +53,8 @@
       "047_bounded_growth_claims.sql",
       "048_actor_access_context.sql",
       "049_paginated_access_audit.sql",
-      "050_skill_evidence.sql"
+      "050_skill_evidence.sql",
+      "051_submitted_skill_evidence.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -4677,7 +4678,7 @@
       "name": "SkillEvidence",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL",
-      "source": "database/migrations/050_skill_evidence.sql"
+      "source": "database/migrations/051_submitted_skill_evidence.sql"
     }
   ],
   "groups": {

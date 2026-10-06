@@ -1,6 +1,6 @@
 # Azure migration with data — operator runbook
 
-Version: 2026-10-06. Applies to this repository on `main`, SQL migrations 001–050, Vercel Services (`api` + `web`), Microsoft Entra sign-in and private Blob evidence. This is a preparation/runbook document, **not evidence that a new environment or a data migration has been completed**. Follow [the handover](HANDOVER.md) and [the approved access baseline](ACCESS_MODEL_REDESIGN.md).
+Version: 2026-10-06. Applies to this repository on `main`, SQL migrations 001–051, Vercel Services (`api` + `web`), Microsoft Entra sign-in and private Blob evidence. This is a preparation/runbook document, **not evidence that a new environment or a data migration has been completed**. Follow [the handover](HANDOVER.md) and [the approved access baseline](ACCESS_MODEL_REDESIGN.md).
 
 ## 1. Choose the path before creating anything
 
@@ -252,7 +252,7 @@ npm run dev
 
 ## 13. Fresh empty setup alternative — not a data migration
 
-If deliberately starting fresh: create the canonical restricted SQL user **before** `db:migrate` because migrations grant procedures to it; apply 001–050 as setup administrator. Explicitly provision the application account, initial authorized workspace/admin and reporting/access configuration using a separately reviewed setup plan. `access:import` is a development-only bootstrap for an existing prepared account and requires ignored `apps/api/.local/dev-access.json`, `NODE_ENV=development`, `DEV_DIRECT_LOGIN=true`; it refuses to overwrite an initialized workspace. Such a local file is not guaranteed to exist in a clean clone. It is not a complete live-data import and does not restore claims/history/learning.
+If deliberately starting fresh: create the canonical restricted SQL user **before** `db:migrate` because migrations grant procedures to it; apply 001–051 as setup administrator. Explicitly provision the application account, initial authorized workspace/admin and reporting/access configuration using a separately reviewed setup plan. `access:import` is a development-only bootstrap for an existing prepared account and requires ignored `apps/api/.local/dev-access.json`, `NODE_ENV=development`, `DEV_DIRECT_LOGIN=true`; it refuses to overwrite an initialized workspace. Such a local file is not guaranteed to exist in a clean clone. It is not a complete live-data import and does not restore claims/history/learning.
 
 Do not fabricate an administrator from any person named "Admin" or a hierarchy position. Catalogue seed is a separate explicit operation after provisioning; never run it over imported business data. Fresh bootstrap and new cross-tenant identity provisioning are operator-reviewed work, not one-click implemented migration tools. Mark this environment **fresh** and record the missing historical data.
 
@@ -271,7 +271,7 @@ Do not fabricate an administrator from any person named "Admin" or a hierarchy p
 | --- | --- |
 | Data parity | All user-table counts match pre-remap snapshot; preserve business IDs/revisions/content. Document runtime binding and approved identity differences |
 | Integrity | FK/CHECK constraints trusted/enabled; no orphan claims/events/reporting/evidence; `DBCC CHECKCONSTRAINTS WITH ALL_CONSTRAINTS` returns no violations |
-| Schema | Pinned migrations through 050, expected procedures/signatures, no unintended extra schema |
+| Schema | Pinned migrations through 051, expected procedures/signatures, no unintended extra schema |
 | Runtime | Correct target principal/account binding; procedure-only grants; no owner/direct-table access; wrong account denied |
 | Identity | Correct tenant/API audience/delegated scope/SPA caller, mapped active admin and employee; unmapped user denied |
 | Employee | Dashboard, own profile/skills, claim draft/image reload, learning, requests and notification deep links |
