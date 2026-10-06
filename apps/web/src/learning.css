@@ -2,3 +2,12 @@
 .learning-page .learning-tabs .secondary-button[aria-current]{background:var(--primary-button);color:#fff;border-color:var(--primary-button)}
 .learning-toolbar{display:flex;justify-content:flex-end}
 html{scrollbar-gutter:stable}
+.learning-review-schedule{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;margin:16px 0;border:1px solid var(--line);border-radius:12px;background:var(--raised)}.learning-review-schedule strong{display:block;margin-bottom:4px}.learning-review-schedule small{color:var(--muted)}@media(max-width:600px){.learning-review-schedule{align-items:flex-start;flex-direction:column}}
+.calendar-selected-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:20px 0 12px;padding-top:16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.calendar-selected-header h3{margin:0;font-size:16px}
+.calendar-selected-count{font-size:13px;color:var(--muted);display:block;margin-top:2px}
+.calendar-quick-actions{display:flex;align-items:center;gap:10px}
+.calendar-empty-actions{display:flex;justify-content:center;gap:12px;margin-top:16px;flex-wrap:wrap}
+.calendar-grid button:hover{border-color:var(--primary-button);cursor:pointer}
+.calendar-grid button[aria-pressed=true]{border-color:var(--primary-button);background:var(--accent-soft);box-shadow:0 0 0 1px var(--primary-button)}
+

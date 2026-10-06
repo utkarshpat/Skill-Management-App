@@ -4,7 +4,7 @@ export interface Artifact {
   kind:'task_draft'|'skill_draft'|'request_draft'|'incident_draft'|'practice_quiz';title:string;summary:string;body:string;steps:string[];
   questions:{prompt:string;options:string[];correctIndex:number;explanation:string}[];
 }
-export function AssistantOutput({artifact,onReview,onDocument,onReviewRequest}:{artifact:Artifact;onReview?:(description:string)=>void;onDocument?:(content:string)=>void;onReviewRequest?:(draft:{kind:'REQUEST'|'INCIDENT';title:string;description:string})=>void}) {
+export function AssistantOutput({artifact,onReview,onDocument,onReviewRequest,onReviewPlan}:{artifact:Artifact;onReview?:(description:string)=>void;onDocument?:(content:string)=>void;onReviewRequest?:(draft:{kind:'REQUEST'|'INCIDENT';title:string;description:string})=>void;onReviewPlan?:(draft:{title:string;goal:string;tasks:string[];dailyMinutes?:number})=>void}) {
   const id=useId();
   const [page,setPage]=useState(0),[answers,setAnswers]=useState<Record<number,number>>({}),[finished,setFinished]=useState(false),[copied,setCopied]=useState(false),[copyError,setCopyError]=useState(false);
   const [body,setBody]=useState(artifact.body),[editing,setEditing]=useState(false);
@@ -21,6 +21,7 @@ export function AssistantOutput({artifact,onReview,onDocument,onReviewRequest}:{
       {artifact.body&&<>{editing?<textarea className="assistant-draft-text" aria-label="Draft text" value={body} onChange={event=>{setBody(event.target.value);setCopied(false);}} rows={5} maxLength={2000}/>:<AssistantRichText>{body}</AssistantRichText>}<button className="assistant-document-button" onClick={()=>setEditing(!editing)}>{editing?'Preview draft':'Edit draft'}</button></>}
       {artifact.steps.length>0&&<AssistantRichText>{artifact.steps.map((step,index)=>`${index+1}. ${step}`).join('\n')}</AssistantRichText>}
       {onDocument&&<button className="assistant-document-button" onClick={()=>onDocument(`# ${artifact.title}\n\n${body}\n\n${artifact.steps.map((step,index)=>`${index+1}. ${step}`).join('\n')}`)}>Open draft document</button>}
+      {artifact.kind==='task_draft'&&onReviewPlan&&<button className="admin-primary" onClick={()=>onReviewPlan({title:artifact.title,goal:body||artifact.summary,tasks:artifact.steps.length?artifact.steps:[artifact.title],dailyMinutes:30})}>Review plan & add to calendar</button>}
       {['request_draft','incident_draft'].includes(artifact.kind)&&onReviewRequest&&<button className="admin-primary" onClick={()=>onReviewRequest({kind:artifact.kind==='incident_draft'?'INCIDENT':'REQUEST',title:artifact.title,description:body})}>{artifact.kind==='incident_draft'?'Review incident draft':'Review request draft'}</button>}
       {artifact.kind==='skill_draft'&&onReview&&<button className="admin-primary" onClick={()=>onReview(body)}>Review skill draft</button>}
       <button className="secondary-button" onClick={async()=>{try{await navigator.clipboard.writeText([artifact.title,body,...artifact.steps].filter(Boolean).join('\n'));setCopied(true);setCopyError(false);}catch{setCopyError(true);}}}>{copied?'Copied':'Copy draft'}</button>
