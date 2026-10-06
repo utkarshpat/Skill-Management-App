@@ -1,6 +1,6 @@
 {
   "version": "2026-10-06",
-  "revision": "990a396aea8aac3f",
+  "revision": "4e26dab44a5636c5",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -54,7 +54,8 @@
       "048_actor_access_context.sql",
       "049_paginated_access_audit.sql",
       "050_skill_evidence.sql",
-      "051_profile_capability.sql"
+      "051_submitted_skill_evidence.sql",
+      "052_primary_capability.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -1407,11 +1408,11 @@
             "declaration": "grade nvarchar(40) NULL",
             "source": "045_person_employment.sql"
           },
-          "primary_skill_id": {
+          "primary_capability_id": {
             "type": "uniqueidentifier",
             "nullable": true,
-            "declaration": "primary_skill_id uniqueidentifier NULL",
-            "source": "051_profile_capability.sql"
+            "declaration": "primary_capability_id uniqueidentifier NULL",
+            "source": "052_primary_capability.sql"
           }
         },
         "pk": [
@@ -1438,14 +1439,14 @@
           {
             "columns": [
               "account_id",
-              "primary_skill_id"
+              "primary_capability_id"
             ],
             "target": "SkillCatalogue",
             "targetColumns": [
               "account_id",
               "skill_id"
             ],
-            "source": "051_profile_capability.sql"
+            "source": "052_primary_capability.sql"
           }
         ],
         "constraints": [
@@ -1458,8 +1459,8 @@
             "source": "003_custom_access.sql"
           },
           {
-            "sql": "CONSTRAINT FK_AccessPerson_PrimarySkill FOREIGN KEY(account_id,primary_skill_id) REFERENCES dbo.SkillCatalogue(account_id,skill_id)",
-            "source": "051_profile_capability.sql"
+            "sql": "CONSTRAINT FK_AccessPerson_PrimaryCapability FOREIGN KEY(account_id,primary_capability_id) REFERENCES dbo.SkillCatalogue(account_id,skill_id)",
+            "source": "052_primary_capability.sql"
           }
         ],
         "indexes": [
@@ -4155,12 +4156,6 @@
       "source": "apps/api/src/modules/access/routes.ts"
     },
     {
-      "method": "GET",
-      "path": "/api/dev-access/primary-capabilities",
-      "module": "access",
-      "source": "apps/api/src/modules/access/routes.ts"
-    },
-    {
       "method": "POST",
       "path": "/api/dev-access/preview",
       "module": "access",
@@ -4181,6 +4176,12 @@
     {
       "method": "GET",
       "path": "/api/access/primary-capabilities",
+      "module": "access",
+      "source": "apps/api/src/modules/access/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dev-access/primary-capabilities",
       "module": "access",
       "source": "apps/api/src/modules/access/routes.ts"
     },
@@ -4507,14 +4508,14 @@
     {
       "name": "ReadAccessWorkspace",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier, @include_audit bit=1, @audit_person_id uniqueidentifier=NULL",
-      "source": "database/migrations/051_profile_capability.sql"
+      "signature": "@account_id uniqueidentifier,@include_audit bit=1,@audit_person_id uniqueidentifier=NULL",
+      "source": "database/migrations/052_primary_capability.sql"
     },
     {
       "name": "SaveAccessChange",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,\n @kind varchar(10),@target_id uniqueidentifier,@is_new bit,@payload nvarchar(max)",
-      "source": "database/migrations/051_profile_capability.sql"
+      "source": "database/migrations/052_primary_capability.sql"
     },
     {
       "name": "ResolveAccessIdentity",
@@ -4700,7 +4701,7 @@
       "name": "ReadActorAccessContext",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@include_notifications bit=0",
-      "source": "database/migrations/051_profile_capability.sql"
+      "source": "database/migrations/052_primary_capability.sql"
     },
     {
       "name": "ReadAccessAuditPage",
@@ -4712,13 +4713,13 @@
       "name": "SkillEvidence",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL",
-      "source": "database/migrations/050_skill_evidence.sql"
+      "source": "database/migrations/051_submitted_skill_evidence.sql"
     },
     {
       "name": "ReadPrimaryCapabilities",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@query nvarchar(80)=N'',@skill_id uniqueidentifier=NULL",
-      "source": "database/migrations/051_profile_capability.sql"
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@query nvarchar(100)=N'',@page int=1,@skill_id uniqueidentifier=NULL",
+      "source": "database/migrations/052_primary_capability.sql"
     }
   ],
   "groups": {

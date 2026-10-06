@@ -18,7 +18,7 @@ const Dashboard=lazy(()=>import('./Dashboard').then(module=>({default:module.Das
 export interface WorkspaceState {
   person: { id: string; displayName: string; employeeCode: string; roles: string[] };
   authentication: 'microsoft' | 'local-demo';
-  capabilities: { ownProfile: boolean; ownSkills: boolean; claimSkills: boolean; catalogue: boolean; administration: boolean; manageCatalogue: boolean; reviewSkills?:boolean; learning?:boolean; requests?:boolean;requestProfileCorrection?:boolean };
+  capabilities: { ownProfile: boolean; ownSkills: boolean; claimSkills: boolean; catalogue: boolean; administration: boolean; manageCatalogue: boolean; reviewSkills?:boolean; learning?:boolean; requests?:boolean };
   upcoming: { id: string; label: string; assigned: boolean; implemented: boolean }[];
 }
 type View = 'requests' | 'learning' | 'overview' | 'profile' | 'my-skills' | 'skills' | 'skill-reviews';

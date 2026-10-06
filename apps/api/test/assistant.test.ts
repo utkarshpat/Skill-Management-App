@@ -43,7 +43,7 @@ test('AI own-only person cannot obtain workspace context and sources come from t
   assert.ok(messages.some(message=>message.role==='tool'&&message.content.includes(state.people[0].displayName)));
   return {content:'Your current profile is available.',calls:[]};
  }});
- const result=await service.chat(actor,{messages:[{role:'user',content:'My profile'}]});assert.deepEqual(result.sources,[{label:'My profile',url:'/'}]);
+ const result=await service.chat(actor,{messages:[{role:'user',content:'My profile'}]});assert.deepEqual(result.sources,[{label:'My profile',url:'/profile'}]);
  const denied=new AssistantService(store,undefined,{name:'test',complete:async()=>({content:'',calls:[call('workspace_summary')]})});
  await assert.rejects(denied.chat(actor,{messages:[{role:'user',content:'All employees'}]}),error=>error instanceof AccessError&&error.status===403);
 });

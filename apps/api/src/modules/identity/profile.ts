@@ -2,8 +2,10 @@ import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import type { Identity } from './auth.js';
 import type {OwnOrganization} from '../organization/index.js';
+import type {PrimaryCapabilityDetails} from '../access/index.js';
+import type {ProfileCompleteness} from './profile-completeness.js';
 
-export interface Profile { id: string; displayName: string; employeeCode: string; jobTitle?:string|null;grade?:string|null;primaryCapabilityId?:string|null;primaryCapabilityName?:string|null;primaryCapabilityStatus?:string|null;organization: string; status: string; roles: string[]; canManageAccess?:boolean; canViewSkills?:boolean; organizationDetails?:OwnOrganization }
+export interface Profile extends PrimaryCapabilityDetails { id: string; displayName: string; employeeCode: string; jobTitle?:string|null;grade?:string|null;organization: string; status: string; roles: string[]; canManageAccess?:boolean; canViewSkills?:boolean; organizationDetails?:OwnOrganization;completeness?:ProfileCompleteness }
 export async function ownProfile(identity: Identity): Promise<Profile | undefined> {
   return withRuntimeDatabase(async pool => {
     const result = await pool.request().input('tenant_id', sql.UniqueIdentifier, identity.tenantId)
