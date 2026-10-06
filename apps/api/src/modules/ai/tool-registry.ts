@@ -135,11 +135,11 @@ export class ToolRegistry {
 
     this.entries.set('own_profile',{
 
-      definition:definition('own_profile','Read the signed-in personâ€™s own current profile and role labels.'),
+      definition:definition('own_profile','Read the signed-in person\'s own work information, primary capability and role labels. Descriptive only; not verified proficiency or authority. The full completeness checklist is on My profile.'),
 
-      permission:()=>true,source:{label:'My profile',url:'/'},
+      permission:()=>true,source:{label:'My profile',url:'/profile'},
 
-      read:async({state,person})=>({displayName:person.displayName,employeeCode:person.employeeCode,roles:state.roles.filter(role=>person.roleIds.includes(role.id)).map(role=>role.name),source:'My profile'}),
+      read:async({state,person})=>({displayName:person.displayName,employeeCode:person.employeeCode,jobTitle:person.jobTitle,grade:person.grade,primaryCapabilityId:person.primaryCapabilityId,primaryCapabilityName:person.primaryCapabilityName,primaryCapabilityStatus:person.primaryCapabilityStatus,roles:state.roles.filter(role=>person.roleIds.includes(role.id)).map(role=>role.name),policy:'Work information, capability selection and role labels do not establish proficiency or authority. Missing or archived capability needs administrator review. See My profile for the server-derived completeness checklist.',source:'My profile'}),
 
     });
 

@@ -1,5 +1,6 @@
 import type {TeamReportAnalytics} from './team-reports';
-import {LEVELS,membersWithoutReviewedSkills,skillProfiles,teamAverageLevel} from './team-insights';
+import {LEVELS,membersWithoutReviewedSkills,skillProfiles,teamAverageLevel,type SkillProfile} from './team-insights';
+import {indexCoverage} from './team-coverage';
 
 const LEVEL_COLORS=['#9cc9cf','#5fb0ba','#008595','#0b5f6b','#123c44'];
 const CATEGORY_COLORS=['#008595','#357ac2','#b87b11','#7b5ea7','#3f8a4f','#c4573a','#5d6b78','#a0466b'];
@@ -25,20 +26,20 @@ function levelColumns(analytics:TeamReportAnalytics){
   <line x1="10" y1="140" x2="290" y2="140" class="rule"/></svg>`;
 }
 
-function radar(analytics:TeamReportAnalytics){
- const skills=skillProfiles(analytics).slice(0,6);
+function radar(profiles:SkillProfile[]){
+ const skills=profiles.slice(0,6);
  if(skills.length<3)return '<p class="empty">At least three reviewed skills are needed for the radar view.</p>';
  const point=(i:number,value:number,r=90)=>{const a=i*2*Math.PI/skills.length-Math.PI/2;return [150+Math.cos(a)*r*value/5,130+Math.sin(a)*r*value/5];};
  const ring=(v:number)=>skills.map((_,i)=>point(i,v).map(n=>n.toFixed(1)).join(',')).join(' ');
- return `<svg viewBox="0 0 300 260" role="img" aria-label="${escapeHtml('Average reviewed level of holders: '+skills.map(s=>`${s.skill} ${s.average}`).join(', '))}">
+ return `<svg viewBox="0 0 300 260" role="img" aria-label="${escapeHtml('Holder averages capped at L5 (historical ranks above 5 grouped as L5+): '+skills.map(s=>`${s.skill} ${s.average}`).join(', '))}">
   ${LEVELS.map(v=>`<polygon points="${ring(v)}" class="ring"/>`).join('')}
   ${skills.map((s,i)=>{const [x,y]=point(i,5),[lx,ly]=point(i,5,112);return `<line x1="150" y1="130" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="ring"/><text x="${lx.toFixed(1)}" y="${(ly+4).toFixed(1)}" text-anchor="middle" class="axis">${escapeHtml(s.skill.length>14?s.skill.slice(0,13)+'…':s.skill)}</text>`;}).join('')}
   <polygon points="${skills.map((s,i)=>point(i,s.average).map(n=>n.toFixed(1)).join(',')).join(' ')}" class="area"/>
-  ${skills.map((s,i)=>{const [x,y]=point(i,s.average);return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="dot"><title>${escapeHtml(`${s.skill}: average L${s.average} across ${s.holders} holders`)}</title></circle>`;}).join('')}</svg>`;
+  ${skills.map((s,i)=>{const [x,y]=point(i,s.average);return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="dot"><title>${escapeHtml(`${s.skill}: capped holder average ${s.average} across ${s.holders} holders (L5+)`)}</title></circle>`;}).join('')}</svg>`;
 }
 
-function levelMix(analytics:TeamReportAnalytics){
- const skills=skillProfiles(analytics).slice(0,10);
+function levelMix(profiles:SkillProfile[]){
+ const skills=profiles.slice(0,10);
  if(!skills.length)return '<p class="empty">No reviewed skills yet.</p>';
  return `<div class="mix">${skills.map(s=>`<div class="mix-row"><span title="${escapeHtml(s.skill)}">${escapeHtml(s.skill)}</span><div class="mix-track" role="img" aria-label="${escapeHtml(`${s.skill}: ${s.atLevel.map((n,i)=>`L${i+1}${i===4?'+':''} ${n}`).join(', ')}`)}">${s.atLevel.map((n,i)=>n?`<i style="flex:${n};background:${LEVEL_COLORS[i]}" title="L${i+1}${i===4?'+':''}: ${n}"></i>`:'').join('')}</div><b>${s.holders}</b></div>`).join('')}</div>
   <p class="legend">${LEVELS.map((l,i)=>`<span><i style="background:${LEVEL_COLORS[i]}"></i>L${l}${l===5?'+':''}</span>`).join('')}</p>`;
@@ -51,8 +52,8 @@ function categories(analytics:TeamReportAnalytics){
 }
 
 export function teamReportHtml(analytics:TeamReportAnalytics,query:string,at:Date){
- const profiles=skillProfiles(analytics),without=membersWithoutReviewedSkills(analytics);
- const data=JSON.stringify({members:analytics.members,skills:analytics.coverage.length?[...new Set(analytics.coverage.map(r=>r.skillName))].map(skill=>({skill,levels:LEVELS.map(rank=>analytics.coverage.find(r=>r.skillName===skill&&r.rank===rank)?.people??0)})):[]}).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+ const index=indexCoverage(analytics),profiles=skillProfiles(analytics,index),without=membersWithoutReviewedSkills(analytics);
+ const data=JSON.stringify({members:analytics.members,skills:[...index].map(([skill,ranks])=>({skill,levels:LEVELS.map(rank=>ranks.get(rank)?.people??0)}))}).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
  const kpis:[string,string|number,string][]=[
   ['Active direct reports',analytics.members,query?'Filtered current direct reports':'All current direct reports'],
   ['Manager-reviewed claims',analytics.reviewed,'Verified proficiency records'],
@@ -103,8 +104,8 @@ footer{margin-top:24px;color:var(--muted);font-size:.8rem;max-width:75ch}
 <p class="empty" id="none" hidden>No skills match these filters.</p></section>
 <section class="panel span-4"><h2>Claim status</h2><p class="sub">Reviewed claims against your assigned pending reviews.</p><div class="donut-wrap">${donut(analytics.reviewed,analytics.pending)}<p class="legend"><span><i style="background:#008595"></i>Reviewed ${analytics.reviewed}</span><span><i style="background:#e7c58a"></i>Pending ${analytics.pending}</span></p></div></section>
 <section class="panel span-4"><h2>Level distribution</h2><p class="sub">All reviewed claims by proficiency level.</p>${levelColumns(analytics)}</section>
-<section class="panel span-4"><h2>Skill radar</h2><p class="sub">Average reviewed level of holders, top skills.</p>${radar(analytics)}</section>
-<section class="panel span-7"><h2>Level mix by skill</h2><p class="sub">How reviewed holders spread across levels.</p>${levelMix(analytics)}</section>
+<section class="panel span-4"><h2>Skill radar</h2><p class="sub">Holder averages capped at L5, top skills. Historical ranks above 5 are grouped as L5+, not exact L5. Recorded-rank summaries do not establish equivalence across frameworks.</p>${radar(profiles)}</section>
+<section class="panel span-7"><h2>Level mix by skill</h2><p class="sub">How reviewed holders spread across levels. L5+ includes historical ranks above 5.</p>${levelMix(profiles)}</section>
 <section class="panel span-5"><h2>Category share</h2><p class="sub">Reviewed claims by skill category.</p>${categories(analytics)}</section>
 </div>
 <footer>Based on manager-reviewed claims for current active direct reports. Assigned pending reviews are shown separately and never counted as proficiency; private drafts are excluded. Missing recorded coverage is not proof of a skill deficiency, and no role-based targets are configured. This report contains aggregate counts only, without names or employee IDs. Small filtered groups can still be identifying; share only with authorized recipients.</footer>

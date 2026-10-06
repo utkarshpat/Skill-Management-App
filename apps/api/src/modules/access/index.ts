@@ -6,3 +6,4 @@ export { workspaceFor } from './workspace.js';
 
 export {effectiveAccess,effectiveAccessSummary,effectiveClaimReview,actionRegistry} from './effective-access.js';
 export {readActorAccess} from './actor-context.js';
+export type {PrimaryCapabilityDetails} from './primary-capability.js';

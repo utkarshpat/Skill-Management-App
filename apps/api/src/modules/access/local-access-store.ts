@@ -7,10 +7,11 @@ import { permissionCatalogue, type PermissionCode } from './access-catalogue.js'
 import { effectiveAccess, isAssignable, hasResolvedDirectReports } from './effective-access.js';
 import {employmentDetails,type EmploymentDetails} from './employment.js';
 import type {AuditQuery,AuditPage} from './audit.js';
+import {primaryCapabilityDetails,type PrimaryCapabilityDetails,type PrimaryCapabilityPage} from './primary-capability.js';
 
 export interface Assignment { permission: PermissionCode; scope: 'OWN' | 'ORGANIZATION'; effect: 'ALLOW' | 'DENY'; validUntil?: string; reason?:string }
 export interface CustomRole { id: string; name: string; permissions: Assignment[] }
-export interface LocalPerson extends EmploymentDetails { id: string; displayName: string; employeeCode: string; active: boolean; hasDirectReports?:boolean; entraObjectId?:string; roleIds: string[]; overrides: Assignment[] }
+export interface LocalPerson extends EmploymentDetails,PrimaryCapabilityDetails { id: string; displayName: string; employeeCode: string; active: boolean; hasDirectReports?:boolean; entraObjectId?:string; roleIds: string[]; overrides: Assignment[] }
 export interface LocalAccessState { reporting?:{personId:string;managerId:string|null}[]; revision: number; roles: CustomRole[]; people: LocalPerson[]; audit: { actorId: string; action: string; targetId: string; at: string; revision: number; before?: CustomRole | LocalPerson; after?: CustomRole | LocalPerson }[] }
 export { AccessError } from '../../shared/errors.js';
 export interface AccessStore {
@@ -18,6 +19,7 @@ export interface AccessStore {
   snapshot(options?:{includeAudit?:boolean;auditPersonId?:string}): LocalAccessState | Promise<LocalAccessState>;
   actorSnapshot?(actorId:string,options?:{includeAudit?:boolean}):LocalAccessState|Promise<LocalAccessState>;
   auditPage?(actorId:string,query:AuditQuery):Promise<AuditPage>;
+  primaryCapabilities?(actorId:string,query:{search:string;page:number;id?:string}):Promise<PrimaryCapabilityPage>;
   person(id: string): LocalPerson | undefined | Promise<LocalPerson | undefined>;
   save(actorId: string,input: unknown): Promise<LocalAccessState>;
 }
@@ -118,7 +120,7 @@ export class LocalAccessStore {
         const previous = state.people.find(person => person.id === id);
         if (body.id !== undefined && !previous) throw new AccessError(404,'Person not found.');
         if (typeof body.active !== 'boolean' || !Array.isArray(body.roleIds) || body.roleIds.length > 100 || body.roleIds.some(roleId => typeof roleId !== 'string' || !state.roles.some(role => role.id === roleId))) throw new AccessError(400,'Invalid status or roles.');
-        const person: LocalPerson = { id, displayName:text(body.displayName,100), employeeCode:text(body.employeeCode,40), ...employmentDetails(body,previous), active:body.active, ...(previous?.entraObjectId?{entraObjectId:previous.entraObjectId}:{}), ...(previous?.hasDirectReports!==undefined?{hasDirectReports:previous.hasDirectReports}:{}), roleIds:[...new Set(body.roleIds as string[])], overrides:assignments(body.overrides) };
+        const person: LocalPerson = { id, displayName:text(body.displayName,100), employeeCode:text(body.employeeCode,40), ...employmentDetails(body,previous),...primaryCapabilityDetails(body,previous), active:body.active, ...(previous?.entraObjectId?{entraObjectId:previous.entraObjectId}:{}), ...(previous?.hasDirectReports!==undefined?{hasDirectReports:previous.hasDirectReports}:{}), roleIds:[...new Set(body.roleIds as string[])], overrides:assignments(body.overrides) };
         validateAssignmentChanges(person.overrides,previous?.overrides??[],true);
         const newRoles=person.roleIds.filter(roleId=>!previous?.roleIds.includes(roleId));
         if(newRoles.some(roleId=>state.roles.find(role=>role.id===roleId)?.permissions.some(grant=>!isAssignable(grant))))throw new AccessError(400,'This template contains unsupported assignments. Review it before assigning to another person.');

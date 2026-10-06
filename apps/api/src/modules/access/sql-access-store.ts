@@ -3,12 +3,13 @@ import type {Identity} from '../identity/index.js';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { LocalAccessStore, AccessError, type AccessStore, type LocalAccessState, type Assignment } from './local-access-store.js';
 import type {AuditQuery,AuditPage,AuditItem} from './audit.js';
+import {validatePrimaryCapabilityChange,type PrimaryCapability,type PrimaryCapabilityDetails,type PrimaryCapabilityPage} from './primary-capability.js';
 type PermissionRow = { permission:Assignment['permission'];scope:Assignment['scope'];effect:Assignment['effect'];validUntil:Date|null;reason:string|null };
 type ResultSets = [
   sql.IRecordSet<{revision:number}>,
   sql.IRecordSet<{id:string;name:string}>,
   sql.IRecordSet<PermissionRow & {roleId:string}>,
-  sql.IRecordSet<{id:string;displayName:string;employeeCode:string;jobTitle:string|null;grade:string|null;active:boolean;hasDirectReports:boolean;entraObjectId:string|null}>,
+  sql.IRecordSet<PrimaryCapabilityDetails & {id:string;displayName:string;employeeCode:string;jobTitle:string|null;grade:string|null;active:boolean;hasDirectReports:boolean;entraObjectId:string|null}>,
   sql.IRecordSet<{personId:string;roleId:string}>,
   sql.IRecordSet<PermissionRow & {personId:string}>,
   sql.IRecordSet<{actorId:string;action:string;targetId:string;at:Date;revision:number;before:string|null;after:string}>,
@@ -35,7 +36,7 @@ export class SqlAccessStore implements AccessStore {
         revision:sets[0][0].revision,
         reporting:actorOnly?undefined:sets[7].map(row=>({personId:row.personId.toLowerCase(),managerId:row.managerId?.toLowerCase()??null})),
         roles:sets[1].map(row=>({id:row.id.toLowerCase(),name:row.name,permissions:(permissions.get(row.id)??[]).map(assignment)})),
-        people:sets[3].map(row=>({id:row.id.toLowerCase(),displayName:row.displayName,employeeCode:row.employeeCode,jobTitle:row.jobTitle,grade:row.grade,active:row.active,hasDirectReports:Boolean(row.hasDirectReports),...(row.entraObjectId?{entraObjectId:row.entraObjectId.toLowerCase()}:{}),roleIds:(roles.get(row.id)??[]).map(item=>item.roleId.toLowerCase()),overrides:(overrides.get(row.id)??[]).map(assignment)})),
+        people:sets[3].map(row=>({id:row.id.toLowerCase(),displayName:row.displayName,employeeCode:row.employeeCode,jobTitle:row.jobTitle,grade:row.grade,primaryCapabilityId:row.primaryCapabilityId===undefined?undefined:row.primaryCapabilityId?.toLowerCase()??null,primaryCapabilityName:row.primaryCapabilityName,primaryCapabilityStatus:row.primaryCapabilityStatus,active:row.active,hasDirectReports:Boolean(row.hasDirectReports),...(row.entraObjectId?{entraObjectId:row.entraObjectId.toLowerCase()}:{}),roleIds:(roles.get(row.id)??[]).map(item=>item.roleId.toLowerCase()),overrides:(overrides.get(row.id)??[]).map(assignment)})),
         audit:sets[6].map(row=>({actorId:row.actorId.toLowerCase(),action:row.action,targetId:row.targetId.toLowerCase(),at:row.at.toISOString(),revision:row.revision,...(row.before?{before:JSON.parse(row.before)}:{}),after:JSON.parse(row.after)})),
       };
   }
@@ -46,6 +47,19 @@ export class SqlAccessStore implements AccessStore {
     });
   }
   async person(id: string) { return (await this.actorSnapshot(id)).people.find(person=>person.id===id&&person.active); }
+  async primaryCapabilities(actorId:string,query:{search:string;page:number;id?:string}):Promise<PrimaryCapabilityPage>{
+    try{return await withRuntimeDatabase(async pool=>{
+      const result=await pool.request().input('account_id',sql.UniqueIdentifier,this.accountId).input('actor_id',sql.UniqueIdentifier,actorId).input('query',sql.NVarChar(100),query.search).input('page',sql.Int,query.page).input('skill_id',sql.UniqueIdentifier,query.id??null).execute('dbo.ReadPrimaryCapabilities');
+      const sets=result.recordsets as unknown as [{total:number;page:number;pageSize:number}[],PrimaryCapability[]];
+      return {...sets[0][0],items:sets[1].map(item=>({...item,id:item.id.toLowerCase()}))};
+    });}catch(error){
+      const number=error&&typeof error==='object'&&'number' in error?Number(error.number):undefined;
+      if(number===51003)throw new AccessError(403,'People and access administration are required.');
+      if(number===51004)throw new AccessError(404,'Your workspace is unavailable.');
+      if(number===51000)throw new AccessError(400,'Invalid capability search.');
+      throw error;
+    }
+  }
   async auditPage(actorId:string,query:AuditQuery):Promise<AuditPage> {
     return withRuntimeDatabase(async pool=>{
       try {
@@ -66,6 +80,7 @@ export class SqlAccessStore implements AccessStore {
     // Reuse the validated permission model, then recheck authority/revision inside the SQL transaction.
     const current=await this.snapshot({includeAudit:false});
     const candidate=await LocalAccessStore.fromState(current).save(actorId,input);
+    await validatePrimaryCapabilityChange(this,current,actorId,input);
     const event=candidate.audit.at(-1)!;
     const payload=event.action.startsWith('role.') ? candidate.roles.find(role=>role.id===event.targetId)! : candidate.people.find(person=>person.id===event.targetId)!;
     try {
@@ -79,6 +94,7 @@ export class SqlAccessStore implements AccessStore {
       if(number===51009)throw new AccessError(409,'Configuration changed. Reload and try again.');
       if(number===51003)throw new AccessError(403,'Permission administration is not allowed.');
       if(number===51004)throw new AccessError(404,'Workspace or record is unavailable.');
+      if(number===51010)throw new AccessError(400,'Choose a currently published capability from this workspace. Reload and preview again.');
       if([51000,2601,2627,547].includes(number??0))throw new AccessError(400,'Access change rejected. Check assignments and keep an active administrator.');
       throw error;
     }

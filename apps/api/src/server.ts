@@ -42,7 +42,7 @@ const app = createApp(config ? { verify: tokenVerifier(config),access,organizati
   if(!id)return ownProfile(identity);
   const state=await readActorAccess(access!,id);const person=state.people.find(person=>person.id===id);
   if(!person||!can(state,person,'profile.view',true))return undefined;
-  return {id:person.id,displayName:person.displayName,employeeCode:person.employeeCode,jobTitle:person.jobTitle,grade:person.grade,organization:'Development Workspace',status:person.active?'ACTIVE':'SUSPENDED',roles:state.roles.filter(role=>person.roleIds.includes(role.id)).map(role=>role.name),canManageAccess:can(state,person,'permissions.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage')};
+  return {id:person.id,displayName:person.displayName,employeeCode:person.employeeCode,jobTitle:person.jobTitle,grade:person.grade,primaryCapabilityId:person.primaryCapabilityId,primaryCapabilityName:person.primaryCapabilityName,primaryCapabilityStatus:person.primaryCapabilityStatus,organization:'Development Workspace',status:person.active?'ACTIVE':'SUSPENDED',roles:state.roles.filter(role=>person.roleIds.includes(role.id)).map(role=>role.name),canManageAccess:can(state,person,'permissions.manage'),canViewSkills:can(state,person,'skill.view')||can(state,person,'skill.catalogue.manage')};
 } } : undefined, { developmentStore, hostedDemo });
 // Vercel owns the listener and lifecycle; local/Azure Node hosting keeps its server.
 export default app;
