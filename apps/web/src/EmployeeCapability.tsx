@@ -1,44 +1,414 @@
-import {useEffect,useRef,useState} from 'react';
-import {ArrowRight,ClipboardCheck,FileCheck2,History,Search,ShieldCheck} from 'lucide-react';
-import {authenticatedFetch} from './auth';
-import type {Claim} from './MySkills';
-import type {TeamPerson,TeamSkill} from './team-analytics';
-import type {ClaimReviewDecision} from './ClaimReviewAccess';
-import {SkillClaimDialog} from './SkillClaimDialog';
-import {assignedSkillClaim} from './employee-capability';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, ClipboardCheck, FileCheck2, History, Search, ShieldCheck } from 'lucide-react';
+import { authenticatedFetch } from './auth';
+import type { Claim } from './MySkills';
+import type { TeamPerson, TeamSkill } from './team-analytics';
+import type { ClaimReviewDecision } from './ClaimReviewAccess';
+import { SkillClaimDialog } from './SkillClaimDialog';
+import { assignedSkillClaim } from './employee-capability';
 import './employee-capability.css';
-interface Assigned {claims:Claim[];total:number;pageSize:number;canReadHistory?:boolean}
-const labels:Record<string,string>={APPROVED:'Manager reviewed',SUBMITTED:'Awaiting review',CHANGES_REQUESTED:'Changes requested',REJECTED:'Not approved'};
-export function EmployeeCapability({person,skills,onReviews,onSaved}:{person:TeamPerson;skills:TeamSkill[];onReviews:()=>void;onSaved:()=>void}){
- const heading=useRef<HTMLHeadingElement>(null);
- const [tab,setTab]=useState<'skills'|'history'>('skills'),[filter,setFilter]=useState('ALL'),[search,setSearch]=useState('');
- const [assigned,setAssigned]=useState<Claim[]>([]),[total,setTotal]=useState(0),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(25),[canRead,setCanRead]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[attempt,setAttempt]=useState(0);
- const [claim,setClaim]=useState<Claim>(),[opening,setOpening]=useState(false);
- useEffect(()=>{heading.current?.focus({preventScroll:true});heading.current?.closest('.team-analytics-shell')?.scrollIntoView({block:'start',behavior:'instant'});},[person.id]);
- useEffect(()=>{const controller=new AbortController();setLoading(true);setError('');
-  const params=new URLSearchParams({person:person.id,status:'ALL',page:String(page)});
-  authenticatedFetch('/api/skill-reviews?'+params,{signal:controller.signal}).then(async r=>{const body=await r.json();if(!r.ok)throw Error(body?.error?.message??'Assigned claim details could not be loaded.');return body as Assigned;}).then(v=>{if(controller.signal.aborted)return;setAssigned(old=>page===1?v.claims:[...old,...v.claims]);setTotal(v.total);setPageSize(v.pageSize);setCanRead(Boolean(v.canReadHistory));}).catch(e=>{if(!controller.signal.aborted){setAssigned([]);setCanRead(false);setError(e.message);}}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});return()=>controller.abort();
- },[person.id,page,attempt]);
- async function open(id:string){if(opening)return;setOpening(true);setError('');setClaim(undefined);try{
-  const response=await authenticatedFetch('/api/skill-reviews/'+encodeURIComponent(id));const body=await response.json();if(!response.ok)throw Error(body?.error?.message??'Claim access changed. Refresh the employee profile.');
-  const detail=body as {claim:Claim;reviewAccess:ClaimReviewDecision};if(detail.claim.personId!==person.id)throw Error('This claim is unavailable in this employee profile.');setClaim({...detail.claim,reviewAccess:detail.reviewAccess});
- }catch(e){setError(e instanceof Error?e.message:'Claim unavailable.');}finally{setOpening(false);}}
- const term=search.trim().toLowerCase();
- const matches=(name:string,category:string,status:string)=>(filter==='ALL'||filter===status)&&(!term||`${name} ${category}`.toLowerCase().includes(term));
- const visibleSkills=skills.filter(s=>s.personId===person.id&&matches(s.skillName,s.category,s.status));
- const visibleHistory=assigned.filter(c=>c.personId===person.id&&matches(c.skillName,c.category,c.status));
- function selectStatus(status:string){setTab('skills');setFilter(status);}
- return <article className="employee-capability" aria-label="Employee capability profile">
-  <header className="employee-capability-header"><span className="employee-capability-avatar">{person.name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]).join('')}</span><div><p>Employee capability</p><h2 ref={heading} tabIndex={-1}>{person.name}</h2><span>{person.employeeCode}</span></div><span className="employee-reporting"><ShieldCheck size={16}/>Current direct report</span></header>
-  <div className="employee-capability-summary"><button aria-pressed={tab==='skills'&&filter==='ALL'} onClick={()=>selectStatus('ALL')}><span className="employee-summary-icon"><ClipboardCheck size={21}/></span><span><strong>{person.reviewed+person.pending}</strong><small>Visible skill claims</small></span><ArrowRight size={16}/></button><button aria-pressed={tab==='skills'&&filter==='APPROVED'} onClick={()=>selectStatus('APPROVED')}><span className="employee-summary-icon reviewed"><FileCheck2 size={21}/></span><span><strong>{person.reviewed}</strong><small>Manager reviewed</small></span><ArrowRight size={16}/></button><button aria-pressed={tab==='skills'&&filter==='SUBMITTED'} onClick={()=>selectStatus('SUBMITTED')}><span className="employee-summary-icon pending"><ClipboardCheck size={21}/></span><span><strong>{person.pending}</strong><small>Assigned pending reviews</small></span><ArrowRight size={16}/></button></div>
-  <section className="employee-skills-panel"><header><nav aria-label="Employee capability sections"><button aria-pressed={tab==='skills'} onClick={()=>{setTab('skills');setFilter('ALL');}}>Skills</button><button aria-pressed={tab==='history'} onClick={()=>{setTab('history');setFilter('ALL');}}><History size={16}/>Review records</button></nav>{person.pending>0&&<button className="admin-primary" onClick={onReviews}>Open pending reviews<ArrowRight size={16}/></button>}</header>
-   <div className="employee-skill-filters"><label><Search size={18}/><input aria-label="Search employee skills" placeholder="Search skill or category" value={search} maxLength={100} onChange={e=>setSearch(e.target.value)}/></label><select aria-label="Employee skill status" value={filter} onChange={e=>setFilter(e.target.value)}><option value="ALL">All statuses</option><option value="APPROVED">Manager reviewed</option><option value="SUBMITTED">Awaiting review</option>{tab==='history'&&<><option value="CHANGES_REQUESTED">Changes requested</option><option value="REJECTED">Not approved</option></>}</select>{(filter!=='ALL'||search)&&<button className="secondary-button" onClick={()=>{setFilter('ALL');setSearch('');}}>Clear</button>}</div>
-   {error&&<div className="review-error" role="alert"><span>{error}</span><button className="secondary-button" onClick={()=>{setPage(1);setAttempt(n=>n+1);}}>Retry details</button></div>}
-   {loading&&<p role="status" className="employee-details-loading">Loading assigned review records…</p>}
-   {(tab==='skills'?visibleSkills.length:visibleHistory.length)>0?<div className="my-skills-table-wrap"><table className="my-skills-table employee-capability-table"><thead><tr><th>Skill / category</th><th>{tab==='skills'?'Proficiency':'Recorded proficiency'}</th><th>Status</th><th>Last update</th><th>Action</th></tr></thead><tbody>{tab==='skills'?visibleSkills.map((s,i)=>{const record=assignedSkillClaim(s,assigned,person.id);return <tr key={`${s.skillName}-${i}`}><td><strong>{s.skillName}</strong><span className="review-subtext">{s.category}</span></td><td><span className="employee-level">L{s.rank}</span><span className="review-subtext">{s.levelName}{s.status==='SUBMITTED'?' · Claimed':''}</span></td><td><span className={'review-status '+s.status.toLowerCase()}>{labels[s.status]}</span></td><td>{record?new Date(record.updatedAt).toLocaleDateString():'—'}</td><td>{record&&canRead?<button className="secondary-button" disabled={opening} onClick={()=>void open(record.id)}>{s.status==='SUBMITTED'?'Open review':'View evidence & history'}<ArrowRight size={15}/></button>:<span className="employee-summary-only">{loading?'Loading details…':'Reviewed summary'}</span>}</td></tr>;}):visibleHistory.map(c=><tr key={c.id}><td><strong>{c.skillName}</strong><span className="review-subtext">{c.category}</span></td><td><span className="employee-level">L{c.rank}</span><span className="review-subtext">{c.levelName}</span></td><td><span className={'review-status '+c.status.toLowerCase()}>{labels[c.status]??c.status}</span></td><td>{new Date(c.updatedAt).toLocaleDateString()}</td><td>{canRead&&<button className="secondary-button" disabled={opening} onClick={()=>void open(c.id)}>{c.status==='SUBMITTED'?'Open review':'View evidence & history'}<ArrowRight size={15}/></button>}</td></tr>)}</tbody></table></div>:!loading&&<div className="employee-capability-empty"><ClipboardCheck size={30}/><h3>{search||filter!=='ALL'?'No matching skills':tab==='history'?'No assigned review records':'No reviewed or assigned pending skills yet'}</h3><p>{search||filter!=='ALL'?'Try another skill, category or status.':'Submitted claims assigned to you will appear here for review.'}</p></div>}
-   <footer><span>{tab==='skills'?`${visibleSkills.length} visible skill ${visibleSkills.length===1?'claim':'claims'}`:`${assigned.length} of ${total} assigned records loaded`}</span>{assigned.length<total&&<button className="secondary-button" disabled={loading||page*pageSize>=total} onClick={()=>setPage(n=>n+1)}>Load more review records</button>}</footer>
-  </section>
-  <p className="employee-access-note"><ShieldCheck size={16}/>Evidence and history are available for claims assigned to you. Private drafts stay with the employee. Review eligibility is checked again when you open a claim.</p>
-  {claim&&<SkillClaimDialog claim={claim} mode={claim.status==='SUBMITTED'&&claim.reviewAccess?.allowed?'review':'view'} history onClose={()=>setClaim(undefined)} onSaved={()=>{setClaim(undefined);onSaved();window.dispatchEvent(new Event('notifications-updated'));}}/>}
- </article>;
+interface Assigned {
+  claims: Claim[];
+  total: number;
+  pageSize: number;
+  canReadHistory?: boolean;
+}
+const labels: Record<string, string> = {
+  APPROVED: 'Manager reviewed',
+  SUBMITTED: 'Awaiting review',
+  CHANGES_REQUESTED: 'Changes requested',
+  REJECTED: 'Not approved',
+};
+export function EmployeeCapability({
+  person,
+  skills,
+  onReviews,
+  onSaved,
+}: {
+  person: TeamPerson;
+  skills: TeamSkill[];
+  onReviews: () => void;
+  onSaved: () => void;
+}) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  const [tab, setTab] = useState<'skills' | 'history'>('skills'),
+    [filter, setFilter] = useState('ALL'),
+    [search, setSearch] = useState('');
+  const [assigned, setAssigned] = useState<Claim[]>([]),
+    [total, setTotal] = useState(0),
+    [page, setPage] = useState(1),
+    [pageSize, setPageSize] = useState(25),
+    [canRead, setCanRead] = useState(false),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(''),
+    [attempt, setAttempt] = useState(0);
+  const [claim, setClaim] = useState<Claim>(),
+    [opening, setOpening] = useState(false);
+  useEffect(() => {
+    heading.current?.focus({ preventScroll: true });
+    heading.current
+      ?.closest('.team-analytics-shell')
+      ?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }, [person.id]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError('');
+    const params = new URLSearchParams({ person: person.id, status: 'ALL', page: String(page) });
+    authenticatedFetch('/api/skill-reviews?' + params, { signal: controller.signal })
+      .then(async r => {
+        const body = await r.json();
+        if (!r.ok)
+          throw Error(body?.error?.message ?? 'Assigned claim details could not be loaded.');
+        return body as Assigned;
+      })
+      .then(v => {
+        if (controller.signal.aborted) return;
+        setAssigned(old => (page === 1 ? v.claims : [...old, ...v.claims]));
+        setTotal(v.total);
+        setPageSize(v.pageSize);
+        setCanRead(Boolean(v.canReadHistory));
+      })
+      .catch(e => {
+        if (!controller.signal.aborted) {
+          setAssigned([]);
+          setCanRead(false);
+          setError(e.message);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [person.id, page, attempt]);
+  async function open(id: string) {
+    if (opening) return;
+    setOpening(true);
+    setError('');
+    setClaim(undefined);
+    try {
+      const response = await authenticatedFetch('/api/skill-reviews/' + encodeURIComponent(id));
+      const body = await response.json();
+      if (!response.ok)
+        throw Error(body?.error?.message ?? 'Claim access changed. Refresh the employee profile.');
+      const detail = body as { claim: Claim; reviewAccess: ClaimReviewDecision };
+      if (detail.claim.personId !== person.id)
+        throw Error('This claim is unavailable in this employee profile.');
+      setClaim({ ...detail.claim, reviewAccess: detail.reviewAccess });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Claim unavailable.');
+    } finally {
+      setOpening(false);
+    }
+  }
+  const term = search.trim().toLowerCase();
+  const matches = (name: string, category: string, status: string) =>
+    (filter === 'ALL' || filter === status) &&
+    (!term || `${name} ${category}`.toLowerCase().includes(term));
+  const visibleSkills = skills.filter(
+    s => s.personId === person.id && matches(s.skillName, s.category, s.status),
+  );
+  const visibleHistory = assigned.filter(
+    c => c.personId === person.id && matches(c.skillName, c.category, c.status),
+  );
+  function selectStatus(status: string) {
+    setTab('skills');
+    setFilter(status);
+  }
+  return (
+    <article className="employee-capability" aria-label="Employee capability profile">
+      <header className="employee-capability-header">
+        <span className="employee-capability-avatar">
+          {person.name
+            .split(' ')
+            .filter(Boolean)
+            .slice(0, 2)
+            .map(n => n[0])
+            .join('')}
+        </span>
+        <div>
+          <p>Employee capability</p>
+          <h2 ref={heading} tabIndex={-1}>
+            {person.name}
+          </h2>
+          <span>{person.employeeCode}</span>
+        </div>
+        <span className="employee-reporting">
+          <ShieldCheck size={16} />
+          Current direct report
+        </span>
+      </header>
+      <div className="employee-capability-summary">
+        <button
+          aria-pressed={tab === 'skills' && filter === 'ALL'}
+          onClick={() => selectStatus('ALL')}
+        >
+          <span className="employee-summary-icon">
+            <ClipboardCheck size={21} />
+          </span>
+          <span>
+            <strong>{person.reviewed + person.pending}</strong>
+            <small>Visible skill claims</small>
+          </span>
+          <ArrowRight size={16} />
+        </button>
+        <button
+          aria-pressed={tab === 'skills' && filter === 'APPROVED'}
+          onClick={() => selectStatus('APPROVED')}
+        >
+          <span className="employee-summary-icon reviewed">
+            <FileCheck2 size={21} />
+          </span>
+          <span>
+            <strong>{person.reviewed}</strong>
+            <small>Manager reviewed</small>
+          </span>
+          <ArrowRight size={16} />
+        </button>
+        <button
+          aria-pressed={tab === 'skills' && filter === 'SUBMITTED'}
+          onClick={() => selectStatus('SUBMITTED')}
+        >
+          <span className="employee-summary-icon pending">
+            <ClipboardCheck size={21} />
+          </span>
+          <span>
+            <strong>{person.pending}</strong>
+            <small>Assigned pending reviews</small>
+          </span>
+          <ArrowRight size={16} />
+        </button>
+      </div>
+      <section className="employee-skills-panel">
+        <header>
+          <nav aria-label="Employee capability sections">
+            <button
+              aria-pressed={tab === 'skills'}
+              onClick={() => {
+                setTab('skills');
+                setFilter('ALL');
+              }}
+            >
+              Skills
+            </button>
+            <button
+              aria-pressed={tab === 'history'}
+              onClick={() => {
+                setTab('history');
+                setFilter('ALL');
+              }}
+            >
+              <History size={16} />
+              Review records
+            </button>
+          </nav>
+          {person.pending > 0 && (
+            <button className="admin-primary" onClick={onReviews}>
+              Open pending reviews
+              <ArrowRight size={16} />
+            </button>
+          )}
+        </header>
+        <div className="employee-skill-filters">
+          <label>
+            <Search size={18} />
+            <input
+              aria-label="Search employee skills"
+              placeholder="Search skill or category"
+              value={search}
+              maxLength={100}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </label>
+          <select
+            aria-label="Employee skill status"
+            value={filter}
+            onChange={e => setFilter(e.target.value)}
+          >
+            <option value="ALL">All statuses</option>
+            <option value="APPROVED">Manager reviewed</option>
+            <option value="SUBMITTED">Awaiting review</option>
+            {tab === 'history' && (
+              <>
+                <option value="CHANGES_REQUESTED">Changes requested</option>
+                <option value="REJECTED">Not approved</option>
+              </>
+            )}
+          </select>
+          {(filter !== 'ALL' || search) && (
+            <button
+              className="secondary-button"
+              onClick={() => {
+                setFilter('ALL');
+                setSearch('');
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {error && (
+          <div className="review-error" role="alert">
+            <span>{error}</span>
+            <button
+              className="secondary-button"
+              onClick={() => {
+                setPage(1);
+                setAttempt(n => n + 1);
+              }}
+            >
+              Retry details
+            </button>
+          </div>
+        )}
+        {loading && (
+          <p role="status" className="employee-details-loading">
+            Loading assigned review records…
+          </p>
+        )}
+        {(tab === 'skills' ? visibleSkills.length : visibleHistory.length) > 0 ? (
+          <div className="my-skills-table-wrap">
+            <table className="my-skills-table employee-capability-table">
+              <thead>
+                <tr>
+                  <th>Skill / category</th>
+                  <th>{tab === 'skills' ? 'Proficiency' : 'Recorded proficiency'}</th>
+                  <th>Status</th>
+                  <th>Last update</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tab === 'skills'
+                  ? visibleSkills.map((s, i) => {
+                      const record = assignedSkillClaim(s, assigned, person.id);
+                      return (
+                        <tr key={`${s.skillName}-${i}`}>
+                          <td>
+                            <strong>{s.skillName}</strong>
+                            <span className="review-subtext">{s.category}</span>
+                          </td>
+                          <td>
+                            <span className="employee-level">L{s.rank}</span>
+                            <span className="review-subtext">
+                              {s.levelName}
+                              {s.status === 'SUBMITTED' ? ' · Claimed' : ''}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={'review-status ' + s.status.toLowerCase()}>
+                              {labels[s.status]}
+                            </span>
+                          </td>
+                          <td>{record ? new Date(record.updatedAt).toLocaleDateString() : '—'}</td>
+                          <td>
+                            {record && canRead ? (
+                              <button
+                                className="secondary-button"
+                                disabled={opening}
+                                onClick={() => void open(record.id)}
+                              >
+                                {s.status === 'SUBMITTED'
+                                  ? 'Open review'
+                                  : 'View evidence & history'}
+                                <ArrowRight size={15} />
+                              </button>
+                            ) : (
+                              <span className="employee-summary-only">
+                                {loading ? 'Loading details…' : 'Reviewed summary'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  : visibleHistory.map(c => (
+                      <tr key={c.id}>
+                        <td>
+                          <strong>{c.skillName}</strong>
+                          <span className="review-subtext">{c.category}</span>
+                        </td>
+                        <td>
+                          <span className="employee-level">L{c.rank}</span>
+                          <span className="review-subtext">{c.levelName}</span>
+                        </td>
+                        <td>
+                          <span className={'review-status ' + c.status.toLowerCase()}>
+                            {labels[c.status] ?? c.status}
+                          </span>
+                        </td>
+                        <td>{new Date(c.updatedAt).toLocaleDateString()}</td>
+                        <td>
+                          {canRead && (
+                            <button
+                              className="secondary-button"
+                              disabled={opening}
+                              onClick={() => void open(c.id)}
+                            >
+                              {c.status === 'SUBMITTED' ? 'Open review' : 'View evidence & history'}
+                              <ArrowRight size={15} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          !loading && (
+            <div className="employee-capability-empty">
+              <ClipboardCheck size={30} />
+              <h3>
+                {search || filter !== 'ALL'
+                  ? 'No matching skills'
+                  : tab === 'history'
+                    ? 'No assigned review records'
+                    : 'No reviewed or assigned pending skills yet'}
+              </h3>
+              <p>
+                {search || filter !== 'ALL'
+                  ? 'Try another skill, category or status.'
+                  : 'Submitted claims assigned to you will appear here for review.'}
+              </p>
+            </div>
+          )
+        )}
+        <footer>
+          <span>
+            {tab === 'skills'
+              ? `${visibleSkills.length} visible skill ${visibleSkills.length === 1 ? 'claim' : 'claims'}`
+              : `${assigned.length} of ${total} assigned records loaded`}
+          </span>
+          {assigned.length < total && (
+            <button
+              className="secondary-button"
+              disabled={loading || page * pageSize >= total}
+              onClick={() => setPage(n => n + 1)}
+            >
+              Load more review records
+            </button>
+          )}
+        </footer>
+      </section>
+      <p className="employee-access-note">
+        <ShieldCheck size={16} />
+        Evidence and history are available for claims assigned to you. Private drafts stay with the
+        employee. Review eligibility is checked again when you open a claim.
+      </p>
+      {claim && (
+        <SkillClaimDialog
+          claim={claim}
+          mode={claim.status === 'SUBMITTED' && claim.reviewAccess?.allowed ? 'review' : 'view'}
+          history
+          onClose={() => setClaim(undefined)}
+          onSaved={() => {
+            setClaim(undefined);
+            onSaved();
+            window.dispatchEvent(new Event('notifications-updated'));
+          }}
+        />
+      )}
+    </article>
+  );
 }

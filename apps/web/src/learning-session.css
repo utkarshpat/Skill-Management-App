@@ -1,2 +1,178 @@
-.learning-session-dialog .form-dialog-header h2{font-size:18px;overflow-wrap:anywhere}.session-context,.practice-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted)}.session-context span,.practice-heading strong,.practice-heading .ld-ai-badge{display:flex;align-items:center;gap:7px}.session-goal{font-size:13px;line-height:1.5;margin:12px 0}.learning-session-dialog p{font-size:13px;line-height:1.5;overflow-wrap:anywhere}.learning-session-dialog h3{font-size:15px;line-height:1.5;margin:14px 0;overflow-wrap:anywhere}.learning-resource,.learning-practice-row{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--line);padding:12px;border-radius:9px;margin:10px 0}.learning-resource a{display:flex;gap:8px;color:var(--accent-ink);overflow-wrap:anywhere}.learning-practice-row>div{min-width:0}.learning-practice-row strong{font-size:13px;display:block;overflow-wrap:anywhere}.learning-practice-row small{display:block;color:var(--muted);margin-top:5px;font-size:12px}.learning-practice-row button{flex-shrink:0;font-size:12px}.practice-generate{display:flex;align-items:flex-end;gap:16px}.practice-generate label{max-width:180px}.practice-generate button{margin-bottom:8px}.practice-options{display:grid;gap:9px}.practice-options label{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.4;cursor:pointer}.practice-options label.selected{border-color:var(--color-secondary);background:var(--accent-soft)}.practice-options input{accent-color:var(--color-secondary);flex-shrink:0}.learning-session-pagination{display:flex;justify-content:flex-end;align-items:center;gap:12px;margin:12px 0;font-size:12px}.learning-session-pagination button{font-size:12px;padding:7px 12px;min-height:32px}.practice-correct{background:var(--accent-soft);padding:12px;border-radius:8px}.practice-incorrect{border-left:3px solid var(--color-ai);padding:8px 12px}.learning-session-dialog .form-dialog-message:empty{display:none}@media(max-width:650px){.learning-practice-row{flex-wrap:wrap}.practice-generate{flex-wrap:wrap;gap:6px}.session-context,.practice-heading{gap:8px}.learning-session-dialog .form-dialog-footer{gap:7px}.learning-session-dialog .form-dialog-footer button{font-size:12px}}
-.learning-practice-question h3{margin:10px 0;font-size:14px;line-height:1.4}.learning-practice-question .practice-options{gap:6px}.learning-practice-question .practice-options label{padding:8px 10px;font-size:13px}.learning-practice-question p{margin:8px 0;font-size:12px}.learning-practice-question .learning-session-pagination{margin:8px 0}.learning-attempt-review h3{margin:10px 0}.learning-attempt-review p{margin:8px 0}.learning-attempt-review .learning-session-pagination{margin:8px 0}
+.learning-session-dialog .form-dialog-header h2 {
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.session-context,
+.practice-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--muted);
+}
+.session-context span,
+.practice-heading strong,
+.practice-heading .ld-ai-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.session-goal {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 12px 0;
+}
+.learning-session-dialog p {
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.learning-session-dialog h3 {
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 14px 0;
+  overflow-wrap: anywhere;
+}
+.learning-resource,
+.learning-practice-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  padding: 12px;
+  border-radius: 9px;
+  margin: 10px 0;
+}
+.learning-resource a {
+  display: flex;
+  gap: 8px;
+  color: var(--accent-ink);
+  overflow-wrap: anywhere;
+}
+.learning-practice-row > div {
+  min-width: 0;
+}
+.learning-practice-row strong {
+  font-size: 13px;
+  display: block;
+  overflow-wrap: anywhere;
+}
+.learning-practice-row small {
+  display: block;
+  color: var(--muted);
+  margin-top: 5px;
+  font-size: 12px;
+}
+.learning-practice-row button {
+  flex-shrink: 0;
+  font-size: 12px;
+}
+.practice-generate {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.practice-generate label {
+  max-width: 180px;
+}
+.practice-generate button {
+  margin-bottom: 8px;
+}
+.practice-options {
+  display: grid;
+  gap: 9px;
+}
+.practice-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.practice-options label.selected {
+  border-color: var(--color-secondary);
+  background: var(--accent-soft);
+}
+.practice-options input {
+  accent-color: var(--color-secondary);
+  flex-shrink: 0;
+}
+.learning-session-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  font-size: 12px;
+}
+.learning-session-pagination button {
+  font-size: 12px;
+  padding: 7px 12px;
+  min-height: 32px;
+}
+.practice-correct {
+  background: var(--accent-soft);
+  padding: 12px;
+  border-radius: 8px;
+}
+.practice-incorrect {
+  border-left: 3px solid var(--color-ai);
+  padding: 8px 12px;
+}
+.learning-session-dialog .form-dialog-message:empty {
+  display: none;
+}
+@media (max-width: 650px) {
+  .learning-practice-row {
+    flex-wrap: wrap;
+  }
+  .practice-generate {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .session-context,
+  .practice-heading {
+    gap: 8px;
+  }
+  .learning-session-dialog .form-dialog-footer {
+    gap: 7px;
+  }
+  .learning-session-dialog .form-dialog-footer button {
+    font-size: 12px;
+  }
+}
+.learning-practice-question h3 {
+  margin: 10px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.learning-practice-question .practice-options {
+  gap: 6px;
+}
+.learning-practice-question .practice-options label {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.learning-practice-question p {
+  margin: 8px 0;
+  font-size: 12px;
+}
+.learning-practice-question .learning-session-pagination {
+  margin: 8px 0;
+}
+.learning-attempt-review h3 {
+  margin: 10px 0;
+}
+.learning-attempt-review p {
+  margin: 8px 0;
+}
+.learning-attempt-review .learning-session-pagination {
+  margin: 8px 0;
+}

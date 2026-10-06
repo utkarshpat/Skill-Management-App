@@ -1,13 +1,299 @@
-.learning-page{display:grid;gap:22px}.learning-page>.panel-title h2{margin:0}.learning-page>.panel-title p{margin:8px 0 0}.learning-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.learning-metrics .profile-panel{display:grid;grid-template-columns:1fr auto;gap:12px;padding:22px}.learning-metrics svg{grid-column:2;grid-row:1;color:var(--accent-ink)}.learning-metrics strong{font-size:28px;grid-row:1}.learning-metrics span{grid-column:1/3;color:var(--muted)}.learning-workbench{padding:24px}.learning-tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:20px;flex-wrap:wrap}.learning-tabs [aria-current]{background:var(--accent-ink);color:var(--surface);border-color:transparent}.learning-task-list{display:grid;gap:12px}.learning-task-list article{display:flex;align-items:center;gap:16px;padding:18px;border:1px solid var(--line);border-radius:12px}.learning-task-list article>div:first-of-type{flex:1;min-width:0}.learning-task-list h3,.learning-plans h3{margin:0;font-size:16px}.learning-task-list p{margin:6px 0 0;font-size:14px;overflow-wrap:anywhere}.learning-task-icon{display:grid;place-items:center;flex-shrink:0;width:36px;height:36px;background:var(--raised);border-radius:50%;color:var(--muted)}.learning-task-icon.complete{background:#d9f4e9;color:#087d5c}.learning-actions{display:flex;gap:10px;align-items:center}.learning-plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.learning-plans article{border:1px solid var(--line);padding:22px;border-radius:12px;overflow-wrap:anywhere}.learning-plans progress{width:100%;height:8px;accent-color:#078591}.learning-plans .learning-actions{margin-top:16px}.learning-empty{text-align:center;grid-column:1/-1;padding:50px 15px}.learning-empty svg{color:var(--muted)}.learning-empty h3{margin:16px 0 8px}.learning-empty p{color:var(--muted)}.learning-calendar{max-width:900px;margin:0 auto 22px}.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin:18px 0}.calendar-grid>span{text-align:center;font-size:13px;color:var(--muted)}.calendar-grid button{min-height:66px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:10px;background:var(--surface);color:inherit;border:1px solid var(--line);border-radius:8px}.calendar-grid button[aria-pressed=true]{border-color:#078591;background:var(--accent-soft)}.calendar-grid small{font-size:12px;color:#087e8b}.learning-form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}.learning-footnote{font-size:13px;line-height:1.6;margin:0;max-width:900px}@media(max-width:1000px){.learning-task-list article{flex-wrap:wrap}.learning-task-list .learning-actions{margin-left:52px}.learning-metrics{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.learning-plans{grid-template-columns:1fr}.learning-workbench{padding:14px}.learning-page>.panel-title{align-items:flex-start;gap:12px;flex-wrap:wrap}.learning-metrics{gap:10px}.learning-metrics .profile-panel{padding:16px}.calendar-grid{gap:3px}.calendar-grid button{padding:6px;min-height:55px}.calendar-grid small{font-size:10px}.learning-form-row{grid-template-columns:1fr}.learning-task-list .learning-actions{margin-left:0;width:100%;flex-wrap:wrap}}
-.learning-page .learning-tabs .secondary-button[aria-current]{background:var(--primary-button);color:#fff;border-color:var(--primary-button)}
-.learning-toolbar{display:flex;justify-content:flex-end}
-html{scrollbar-gutter:stable}
-.learning-review-schedule{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;margin:16px 0;border:1px solid var(--line);border-radius:12px;background:var(--raised)}.learning-review-schedule strong{display:block;margin-bottom:4px}.learning-review-schedule small{color:var(--muted)}@media(max-width:600px){.learning-review-schedule{align-items:flex-start;flex-direction:column}}
-.calendar-selected-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:20px 0 12px;padding-top:16px;border-top:1px solid var(--line);flex-wrap:wrap}
-.calendar-selected-header h3{margin:0;font-size:16px}
-.calendar-selected-count{font-size:13px;color:var(--muted);display:block;margin-top:2px}
-.calendar-quick-actions{display:flex;align-items:center;gap:10px}
-.calendar-empty-actions{display:flex;justify-content:center;gap:12px;margin-top:16px;flex-wrap:wrap}
-.calendar-grid button:hover{border-color:var(--primary-button);cursor:pointer}
-.calendar-grid button[aria-pressed=true]{border-color:var(--primary-button);background:var(--accent-soft);box-shadow:0 0 0 1px var(--primary-button)}
-
+.learning-page {
+  display: grid;
+  gap: 22px;
+}
+.learning-page > .panel-title h2 {
+  margin: 0;
+}
+.learning-page > .panel-title p {
+  margin: 8px 0 0;
+}
+.learning-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.learning-metrics .profile-panel {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 22px;
+}
+.learning-metrics svg {
+  grid-column: 2;
+  grid-row: 1;
+  color: var(--accent-ink);
+}
+.learning-metrics strong {
+  font-size: 28px;
+  grid-row: 1;
+}
+.learning-metrics span {
+  grid-column: 1/3;
+  color: var(--muted);
+}
+.learning-workbench {
+  padding: 24px;
+}
+.learning-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 18px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.learning-tabs [aria-current] {
+  background: var(--accent-ink);
+  color: var(--surface);
+  border-color: transparent;
+}
+.learning-task-list {
+  display: grid;
+  gap: 12px;
+}
+.learning-task-list article {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.learning-task-list article > div:first-of-type {
+  flex: 1;
+  min-width: 0;
+}
+.learning-task-list h3,
+.learning-plans h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.learning-task-list p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.learning-task-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  background: var(--raised);
+  border-radius: 50%;
+  color: var(--muted);
+}
+.learning-task-icon.complete {
+  background: #d9f4e9;
+  color: #087d5c;
+}
+.learning-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.learning-plans {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.learning-plans article {
+  border: 1px solid var(--line);
+  padding: 22px;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.learning-plans progress {
+  width: 100%;
+  height: 8px;
+  accent-color: #078591;
+}
+.learning-plans .learning-actions {
+  margin-top: 16px;
+}
+.learning-empty {
+  text-align: center;
+  grid-column: 1/-1;
+  padding: 50px 15px;
+}
+.learning-empty svg {
+  color: var(--muted);
+}
+.learning-empty h3 {
+  margin: 16px 0 8px;
+}
+.learning-empty p {
+  color: var(--muted);
+}
+.learning-calendar {
+  max-width: 900px;
+  margin: 0 auto 22px;
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin: 18px 0;
+}
+.calendar-grid > span {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+.calendar-grid button {
+  min-height: 66px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  background: var(--surface);
+  color: inherit;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.calendar-grid button[aria-pressed='true'] {
+  border-color: #078591;
+  background: var(--accent-soft);
+}
+.calendar-grid small {
+  font-size: 12px;
+  color: #087e8b;
+}
+.learning-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.learning-footnote {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 900px;
+}
+@media (max-width: 1000px) {
+  .learning-task-list article {
+    flex-wrap: wrap;
+  }
+  .learning-task-list .learning-actions {
+    margin-left: 52px;
+  }
+  .learning-metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .learning-plans {
+    grid-template-columns: 1fr;
+  }
+  .learning-workbench {
+    padding: 14px;
+  }
+  .learning-page > .panel-title {
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .learning-metrics {
+    gap: 10px;
+  }
+  .learning-metrics .profile-panel {
+    padding: 16px;
+  }
+  .calendar-grid {
+    gap: 3px;
+  }
+  .calendar-grid button {
+    padding: 6px;
+    min-height: 55px;
+  }
+  .calendar-grid small {
+    font-size: 10px;
+  }
+  .learning-form-row {
+    grid-template-columns: 1fr;
+  }
+  .learning-task-list .learning-actions {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}
+.learning-page .learning-tabs .secondary-button[aria-current] {
+  background: var(--primary-button);
+  color: #fff;
+  border-color: var(--primary-button);
+}
+.learning-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+html {
+  scrollbar-gutter: stable;
+}
+.learning-review-schedule {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  margin: 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+}
+.learning-review-schedule strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.learning-review-schedule small {
+  color: var(--muted);
+}
+@media (max-width: 600px) {
+  .learning-review-schedule {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+.calendar-selected-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 20px 0 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.calendar-selected-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.calendar-selected-count {
+  font-size: 13px;
+  color: var(--muted);
+  display: block;
+  margin-top: 2px;
+}
+.calendar-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.calendar-empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.calendar-grid button:hover {
+  border-color: var(--primary-button);
+  cursor: pointer;
+}
+.calendar-grid button[aria-pressed='true'] {
+  border-color: var(--primary-button);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--primary-button);
+}

@@ -1,18 +1,137 @@
-import type {Express} from 'express';
-import type {Identity,DevelopmentSessions} from '../identity/index.js';
-import type {AccessStore} from '../access/index.js';
-import {AccessError} from '../../shared/errors.js';
-import {workflowChange,workflowId,workflowPage,workflowFilters,type WorkflowStore} from './workflows.js';
-export interface WorkflowDependencies{verify:(authorization:string|undefined)=>Promise<Identity>;resolveAccess?:(identity:Identity)=>Promise<string|undefined>;access?:AccessStore;workflows?:WorkflowStore}
-export function registerWorkflowRoutes(app:Express,deps:WorkflowDependencies|undefined,store?:AccessStore,demo?:DevelopmentSessions){
- app.use('/api/workflows',async(req,res,next)=>{res.setHeader('Cache-Control','no-store');let actor:string|undefined;
-  if(demo?.subject(req)){if(!demo.requestAllowed(req)||(req.method!=='GET'&&!demo.mutationAllowed(req))){res.sendStatus(403);return;}actor=(await demo.person(req))?.id;}
-  else try{if(!deps?.resolveAccess)throw Error();actor=await deps.resolveAccess(await deps.verify(req.headers.authorization));}catch{res.status(401).json({error:{message:'Sign in to continue.'}});return;}
-  const state=await(deps?.access??store)?.snapshot({includeAudit:false});if(!state?.people.some(p=>p.id===actor&&p.active)){res.sendStatus(403);return;}res.locals.workflowActor=actor;next();
- });
- app.get('/api/workflows/options',async(req,res)=>{try{if(Object.keys(req.query).some(k=>k!=='q')||(req.query.q!==undefined&&(typeof req.query.q!=='string'||req.query.q.length>80)))throw new AccessError(400,'Search by name using up to 80 characters.');if(!deps?.workflows)throw new AccessError(503,'Workflow storage is not configured.');res.json(await deps.workflows.options(res.locals.workflowActor,req.query.q as string|undefined));}catch(e){if(e instanceof AccessError){res.status(e.status).json({error:{message:e.message}});return;}throw e;}});
- app.get('/api/workflows',async(req,res)=>{try{if(!deps?.workflows)throw new AccessError(503,'Workflow storage is not configured.');const filters=workflowFilters(req.query);res.json(await deps.workflows.list(res.locals.workflowActor,workflowPage(req.query.page),req.query.inbox==='true',filters));}catch(e){if(e instanceof AccessError){res.status(e.status).json({error:{message:e.message}});return;}throw e;}});
- app.get('/api/workflows/:id/recipients',async(req,res)=>{try{if(!deps?.workflows?.reassignmentOptions)throw new AccessError(503,'Workflow storage is not configured.');if(Object.keys(req.query).some(k=>k!=='q')||(req.query.q!==undefined&&(typeof req.query.q!=='string'||req.query.q.length>80)))throw new AccessError(400,'Search by name using up to 80 characters.');res.json({recipients:await deps.workflows.reassignmentOptions(res.locals.workflowActor,workflowId(req.params.id),req.query.q as string|undefined)});}catch(e){if(e instanceof AccessError){res.status(e.status).json({error:{message:e.message}});return;}throw e;}});
- app.get('/api/workflows/:id',async(req,res)=>{try{if(!deps?.workflows)throw new AccessError(503,'Workflow storage is not configured.');res.json(await deps.workflows.detail(res.locals.workflowActor,workflowId(req.params.id)));}catch(e){if(e instanceof AccessError){res.status(e.status).json({error:{message:e.message}});return;}throw e;}});
- app.post('/api/workflows',async(req,res)=>{try{if(!deps?.workflows)throw new AccessError(503,'Workflow storage is not configured.');await deps.workflows.change(res.locals.workflowActor,workflowChange(req.body));res.json({saved:true});}catch(e){if(e instanceof AccessError){res.status(e.status).json({error:{message:e.message}});return;}throw e;}});
+import type { Express } from 'express';
+import type { Identity, DevelopmentSessions } from '../identity/index.js';
+import type { AccessStore } from '../access/index.js';
+import { AccessError } from '../../shared/errors.js';
+import {
+  workflowChange,
+  workflowId,
+  workflowPage,
+  workflowFilters,
+  type WorkflowStore,
+} from './workflows.js';
+export interface WorkflowDependencies {
+  verify: (authorization: string | undefined) => Promise<Identity>;
+  resolveAccess?: (identity: Identity) => Promise<string | undefined>;
+  access?: AccessStore;
+  workflows?: WorkflowStore;
+}
+export function registerWorkflowRoutes(
+  app: Express,
+  deps: WorkflowDependencies | undefined,
+  store?: AccessStore,
+  demo?: DevelopmentSessions,
+) {
+  app.use('/api/workflows', async (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    let actor: string | undefined;
+    if (demo?.subject(req)) {
+      if (!demo.requestAllowed(req) || (req.method !== 'GET' && !demo.mutationAllowed(req))) {
+        res.sendStatus(403);
+        return;
+      }
+      actor = (await demo.person(req))?.id;
+    } else
+      try {
+        if (!deps?.resolveAccess) throw Error();
+        actor = await deps.resolveAccess(await deps.verify(req.headers.authorization));
+      } catch {
+        res.status(401).json({ error: { message: 'Sign in to continue.' } });
+        return;
+      }
+    const state = await (deps?.access ?? store)?.snapshot({ includeAudit: false });
+    if (!state?.people.some(p => p.id === actor && p.active)) {
+      res.sendStatus(403);
+      return;
+    }
+    res.locals.workflowActor = actor;
+    next();
+  });
+  app.get('/api/workflows/options', async (req, res) => {
+    try {
+      if (
+        Object.keys(req.query).some(k => k !== 'q') ||
+        (req.query.q !== undefined && (typeof req.query.q !== 'string' || req.query.q.length > 80))
+      )
+        throw new AccessError(400, 'Search by name using up to 80 characters.');
+      if (!deps?.workflows) throw new AccessError(503, 'Workflow storage is not configured.');
+      res.json(
+        await deps.workflows.options(res.locals.workflowActor, req.query.q as string | undefined),
+      );
+    } catch (e) {
+      if (e instanceof AccessError) {
+        res.status(e.status).json({ error: { message: e.message } });
+        return;
+      }
+      throw e;
+    }
+  });
+  app.get('/api/workflows', async (req, res) => {
+    try {
+      if (!deps?.workflows) throw new AccessError(503, 'Workflow storage is not configured.');
+      const filters = workflowFilters(req.query);
+      res.json(
+        await deps.workflows.list(
+          res.locals.workflowActor,
+          workflowPage(req.query.page),
+          req.query.inbox === 'true',
+          filters,
+        ),
+      );
+    } catch (e) {
+      if (e instanceof AccessError) {
+        res.status(e.status).json({ error: { message: e.message } });
+        return;
+      }
+      throw e;
+    }
+  });
+  app.get('/api/workflows/:id/recipients', async (req, res) => {
+    try {
+      if (!deps?.workflows?.reassignmentOptions)
+        throw new AccessError(503, 'Workflow storage is not configured.');
+      if (
+        Object.keys(req.query).some(k => k !== 'q') ||
+        (req.query.q !== undefined && (typeof req.query.q !== 'string' || req.query.q.length > 80))
+      )
+        throw new AccessError(400, 'Search by name using up to 80 characters.');
+      res.json({
+        recipients: await deps.workflows.reassignmentOptions(
+          res.locals.workflowActor,
+          workflowId(req.params.id),
+          req.query.q as string | undefined,
+        ),
+      });
+    } catch (e) {
+      if (e instanceof AccessError) {
+        res.status(e.status).json({ error: { message: e.message } });
+        return;
+      }
+      throw e;
+    }
+  });
+  app.get('/api/workflows/:id', async (req, res) => {
+    try {
+      if (!deps?.workflows) throw new AccessError(503, 'Workflow storage is not configured.');
+      res.json(await deps.workflows.detail(res.locals.workflowActor, workflowId(req.params.id)));
+    } catch (e) {
+      if (e instanceof AccessError) {
+        res.status(e.status).json({ error: { message: e.message } });
+        return;
+      }
+      throw e;
+    }
+  });
+  app.post('/api/workflows', async (req, res) => {
+    try {
+      if (!deps?.workflows) throw new AccessError(503, 'Workflow storage is not configured.');
+      await deps.workflows.change(res.locals.workflowActor, workflowChange(req.body));
+      res.json({ saved: true });
+    } catch (e) {
+      if (e instanceof AccessError) {
+        res.status(e.status).json({ error: { message: e.message } });
+        return;
+      }
+      throw e;
+    }
+  });
 }

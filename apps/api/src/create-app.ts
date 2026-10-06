@@ -3,21 +3,57 @@ import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
 import { createDevelopmentSessions, type HostedDemoConfig } from './modules/identity/index.js';
 import type { AccessStore } from './modules/access/index.js';
-import { registerRoutes as identityRoutes, type HttpDependencies as IdentityDependencies } from './modules/identity/routes.js';
-import { registerRoutes as accessRoutes, type HttpDependencies as AccessDependencies } from './modules/access/routes.js';
-import { registerRoutes as organizationRoutes, type HttpDependencies as OrganizationDependencies } from './modules/organization/routes.js';
-import { registerRoutes as skillsRoutes, type HttpDependencies as SkillsDependencies } from './modules/skills/routes.js';
-import { registerRoutes as aiRoutes, type HttpDependencies as AiDependencies } from './modules/ai/routes.js';
-import { registerClaimsRoutes, type ClaimsHttpDependencies } from './modules/skills/claims-routes.js';
-import {registerLearningRoutes,type LearningDependencies} from './modules/learning/index.js';
-import {registerWorkflowRoutes,type WorkflowDependencies} from './modules/workflows/index.js';
-import {registerRecommendationRoutes,type RecommendationDependencies} from './modules/recommendations/index.js';
-import {registerDashboardRoutes} from './modules/dashboard/index.js';
-import {registerKnowledgeRoutes,type KnowledgeDependencies} from './modules/knowledge-transfer/index.js';
+import {
+  registerRoutes as identityRoutes,
+  type HttpDependencies as IdentityDependencies,
+} from './modules/identity/routes.js';
+import {
+  registerRoutes as accessRoutes,
+  type HttpDependencies as AccessDependencies,
+} from './modules/access/routes.js';
+import {
+  registerRoutes as organizationRoutes,
+  type HttpDependencies as OrganizationDependencies,
+} from './modules/organization/routes.js';
+import {
+  registerRoutes as skillsRoutes,
+  type HttpDependencies as SkillsDependencies,
+} from './modules/skills/routes.js';
+import {
+  registerRoutes as aiRoutes,
+  type HttpDependencies as AiDependencies,
+} from './modules/ai/routes.js';
+import {
+  registerClaimsRoutes,
+  type ClaimsHttpDependencies,
+} from './modules/skills/claims-routes.js';
+import { registerLearningRoutes, type LearningDependencies } from './modules/learning/index.js';
+import { registerWorkflowRoutes, type WorkflowDependencies } from './modules/workflows/index.js';
+import {
+  registerRecommendationRoutes,
+  type RecommendationDependencies,
+} from './modules/recommendations/index.js';
+import { registerDashboardRoutes } from './modules/dashboard/index.js';
+import {
+  registerKnowledgeRoutes,
+  type KnowledgeDependencies,
+} from './modules/knowledge-transfer/index.js';
 
-export type AppDependencies = IdentityDependencies & AccessDependencies & OrganizationDependencies & SkillsDependencies & AiDependencies & ClaimsHttpDependencies & LearningDependencies & WorkflowDependencies & RecommendationDependencies & KnowledgeDependencies;
+export type AppDependencies = IdentityDependencies &
+  AccessDependencies &
+  OrganizationDependencies &
+  SkillsDependencies &
+  AiDependencies &
+  ClaimsHttpDependencies &
+  LearningDependencies &
+  WorkflowDependencies &
+  RecommendationDependencies &
+  KnowledgeDependencies;
 
-export function createApp(dependencies?: AppDependencies, options: { developmentStore?: AccessStore; hostedDemo?: HostedDemoConfig } = {}) {
+export function createApp(
+  dependencies?: AppDependencies,
+  options: { developmentStore?: AccessStore; hostedDemo?: HostedDemoConfig } = {},
+) {
   const app = express();
   const store = options.developmentStore;
   const demo = store ? createDevelopmentSessions(store, Date.now, options.hostedDemo) : undefined;
@@ -29,7 +65,21 @@ export function createApp(dependencies?: AppDependencies, options: { development
     next();
   });
   app.use(express.json({ limit: '128kb' }));
-  identityRoutes(app, dependencies ? {...dependencies,skillNotifications:dependencies.claims?.notifications?.bind(dependencies.claims),workflowNotifications:dependencies.workflows?.notifications.bind(dependencies.workflows),recommendationNotifications:dependencies.recommendations?.notifications.bind(dependencies.recommendations)} : undefined, store, demo);
+  identityRoutes(
+    app,
+    dependencies
+      ? {
+          ...dependencies,
+          skillNotifications: dependencies.claims?.notifications?.bind(dependencies.claims),
+          workflowNotifications: dependencies.workflows?.notifications.bind(dependencies.workflows),
+          recommendationNotifications: dependencies.recommendations?.notifications.bind(
+            dependencies.recommendations,
+          ),
+        }
+      : undefined,
+    store,
+    demo,
+  );
   // Access middleware authenticates /api/access before organization routes run.
   accessRoutes(app, dependencies, store, demo);
   organizationRoutes(app, dependencies);
@@ -38,7 +88,14 @@ export function createApp(dependencies?: AppDependencies, options: { development
   registerLearningRoutes(app, dependencies, store, demo);
   registerRecommendationRoutes(app, dependencies, store, demo);
   registerWorkflowRoutes(app, dependencies, store, demo);
-  registerDashboardRoutes(app, dependencies?{...dependencies,aiConfigured:dependencies.assistant?.status().configured}:undefined, store, demo);
+  registerDashboardRoutes(
+    app,
+    dependencies
+      ? { ...dependencies, aiConfigured: dependencies.assistant?.status().configured }
+      : undefined,
+    store,
+    demo,
+  );
   aiRoutes(app, dependencies, store, demo);
   // Temporary KT feature: no business persistence or changes to core policy.
   registerKnowledgeRoutes(app, dependencies, demo);
@@ -50,10 +107,18 @@ export function createApp(dependencies?: AppDependencies, options: { development
 
   // Other workflows remain closed until their authorization is implemented.
   app.use('/api', (_req, res) => {
-    res.status(401).json({ error: { code: 'NOT_AUTHORIZED', message: 'Organizational sign-in is required.', requestId: res.locals.requestId } });
+    res.status(401).json({
+      error: {
+        code: 'NOT_AUTHORIZED',
+        message: 'Organizational sign-in is required.',
+        requestId: res.locals.requestId,
+      },
+    });
   });
   app.use((_req, res) => {
-    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found.', requestId: res.locals.requestId } });
+    res.status(404).json({
+      error: { code: 'NOT_FOUND', message: 'Route not found.', requestId: res.locals.requestId },
+    });
   });
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     const malformed = error instanceof SyntaxError && 'body' in error;
@@ -61,7 +126,11 @@ export function createApp(dependencies?: AppDependencies, options: { development
     res.status(malformed ? 400 : tooLarge ? 413 : 500).json({
       error: {
         code: malformed || tooLarge ? 'VALIDATION' : 'INTERNAL_ERROR',
-        message: malformed ? 'Invalid JSON body.' : tooLarge ? 'Request body is too large.' : 'An unexpected error occurred.',
+        message: malformed
+          ? 'Invalid JSON body.'
+          : tooLarge
+            ? 'Request body is too large.'
+            : 'An unexpected error occurred.',
         requestId: res.locals.requestId,
       },
     });

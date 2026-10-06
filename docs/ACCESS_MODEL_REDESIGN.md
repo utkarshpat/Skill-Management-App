@@ -38,12 +38,12 @@ Migration 030 gives current direct reporting managers review capability independ
 
 ## Four separate concepts
 
-| Concept | Purpose | Example |
-| --- | --- | --- |
-| Person | Verified identity and active status | Khushi's employee record |
-| Organization and reporting | Placement and current reporting relationships | Department, team, direct manager |
-| Access template | Reusable actions with explicitly supported scopes | Personal learning, catalogue administration |
-| Assignment or exception | Bind a template/scope to a person, or a documented temporary exception | Department reporting for one specific department |
+| Concept                    | Purpose                                                                | Example                                          |
+| -------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------ |
+| Person                     | Verified identity and active status                                    | Khushi's employee record                         |
+| Organization and reporting | Placement and current reporting relationships                          | Department, team, direct manager                 |
+| Access template            | Reusable actions with explicitly supported scopes                      | Personal learning, catalogue administration      |
+| Assignment or exception    | Bind a template/scope to a person, or a documented temporary exception | Department reporting for one specific department |
 
 An organizational title is descriptive. It does not grant access. Higher placement in the hierarchy does not automatically grant access to everything below it. A direct reporting relationship has one defined policy: the current manager can review the employee's assigned skill claim, subject to explicit deny, active status, the exact reviewer assignment and no self-approval. It does not imply profile editing, department administration or organization-wide browsing.
 
@@ -55,10 +55,10 @@ Each decision should expose: action, availability, allowed/denied status, scope 
 
 Example explanations:
 
-* Skill review: allowed for assigned claims of current direct reports; source is the reporting policy.
-* Personal learning: allowed for this person's plans; source is the Personal learning template.
-* Catalogue administration: denied; no applicable assignment.
-* Skill review blocked: an applicable explicit deny overrides the reporting policy.
+- Skill review: allowed for assigned claims of current direct reports; source is the reporting policy.
+- Personal learning: allowed for this person's plans; source is the Personal learning template.
+- Catalogue administration: denied; no applicable assignment.
+- Skill review blocked: an applicable explicit deny overrides the reporting policy.
 
 Evaluate implementation availability, actor/account status, current resource scope and workflow constraints, then applicable grants and denies. An expired or revoked assignment does not apply. An explicit deny wins inside its matching scope. Independent template allows combine; there is no role priority or "highest role wins" rule. An OWN deny must not silently become an organization-wide deny. Missing or ambiguous resource relationships fail closed.
 

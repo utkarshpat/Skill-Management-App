@@ -15,6 +15,17 @@ import './ui-kit.css';
 import './toast.css';
 import './modern-ui.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><WorkspaceRecovery><BrowserRouter><ThemeProvider><App /><ToastHost /></ThemeProvider></BrowserRouter></WorkspaceRecovery></React.StrictMode>);
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <WorkspaceRecovery>
+      <BrowserRouter>
+        <ThemeProvider>
+          <App />
+          <ToastHost />
+        </ThemeProvider>
+      </BrowserRouter>
+    </WorkspaceRecovery>
+  </React.StrictMode>,
+);
 
 import './effective-access.css';

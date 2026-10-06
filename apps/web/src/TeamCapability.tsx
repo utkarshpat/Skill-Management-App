@@ -1,57 +1,592 @@
-import {useEffect,useState,type ReactNode} from 'react';
-import {ArrowLeft,ArrowUpRight,Search,UsersRound,Layers3,Clock3,FileCheck2,RefreshCw,ChevronRight} from 'lucide-react';
-import {authenticatedFetch} from './auth';
-import {teamAnalytics,type TeamPerson,type TeamSkill} from './team-analytics';
+import { useEffect, useState, type ReactNode } from 'react';
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Search,
+  UsersRound,
+  Layers3,
+  Clock3,
+  FileCheck2,
+  RefreshCw,
+  ChevronRight,
+} from 'lucide-react';
+import { authenticatedFetch } from './auth';
+import { teamAnalytics, type TeamPerson, type TeamSkill } from './team-analytics';
 import './team-capability.css';
-import {EmployeeCapability} from './EmployeeCapability';
-import {TeamReports} from './TeamReports';
-import {TeamInsightCharts} from './TeamInsightCharts';
-interface Team {total:number;pageSize:number;people:TeamPerson[];skills:TeamSkill[];analytics?:{members:number;reviewed:number;pending:number;coverage:{skillName:string;rank:number;people:number;memberIds:string[]}[];levels:{rank:number;count:number;memberIds:string[]}[];categories:{category:string;count:number}[]}}
-export function TeamCapability({onReviews,navigation}:{onReviews:(personId:string)=>void;navigation?:ReactNode}){
- const [data,setData]=useState<Team>(),[search,setSearch]=useState(''),[query,setQuery]=useState(''),[page,setPage]=useState(1),[person,setPerson]=useState<string>(),[attempt,setAttempt]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState('');
- const [minimumRank,setMinimumRank]=useState(1),[memberFilter,setMemberFilter]=useState<'all'|'reviewed'|'pending'>('all'),[skillFilter,setSkillFilter]=useState(''),[levelFilter,setLevelFilter]=useState<number>();
- useEffect(()=>{const c=new AbortController();setLoading(true);setData(undefined);setError('');const params=new URLSearchParams({page:String(page),search:query});if(person)params.set('person',person);
- authenticatedFetch('/api/skill-reviews/team?'+params,{signal:c.signal}).then(async response=>{const body=await response.json().catch(()=>undefined);if(!response.ok)throw Error(body?.error?.message??'Team capability could not be loaded.');return body as Team;}).then(value=>{if(!c.signal.aborted)setData(value);}).catch(reason=>{if(!c.signal.aborted)setError(reason.message);}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();},[query,page,person,attempt]);
- const selected=person?data?.people[0]:undefined;
- const derived=teamAnalytics(data?.people??[],data?.skills??[],minimumRank),stats=data?.analytics;
- const reviewed=stats?.reviewed??derived.reviewed,pending=stats?.pending??derived.pending,totalClaims=reviewed+pending,members=stats?.members??data?.people.length??0;
- const reviewedPercent=totalClaims?Math.round(reviewed/totalClaims*100):0;
- const coverage=stats?.coverage.filter(s=>s.rank===minimumRank)??derived.coverage.map(s=>({skillName:s.skill,rank:minimumRank,people:s.count}));
- const levels=stats?.levels??derived.levels,categories=stats?.categories??derived.categories.map(c=>({category:c.label,count:c.count}));
- const skillMembers=stats?.coverage.find(s=>s.rank===minimumRank&&s.skillName===skillFilter)?.memberIds;
- const levelMembers=stats?.levels.find(s=>s.rank===levelFilter)?.memberIds;
- const visiblePeople=(data?.people??[]).filter(p=>(memberFilter==='all'||(memberFilter==='reviewed'?p.reviewed>0:p.pending>0))&&(!skillFilter||skillMembers?.includes(p.id))&&(!levelFilter||levelMembers?.includes(p.id)));
- function openPerson(id:string){setPerson(id);setPage(1);setQuery('');setSearch('');setSkillFilter('');setLevelFilter(undefined);}
- function reset(){setPerson(undefined);setPage(1);setQuery('');setSearch('');setMemberFilter('all');setSkillFilter('');setLevelFilter(undefined);}
- return <section className="team-analytics-shell" aria-label="Direct report capability" aria-busy={loading}>
- <div className="team-analytics-toolbar">{person?<button className="team-back" onClick={reset}><ArrowLeft size={16}/>All direct reports</button>:<form className="team-search" onSubmit={event=>{event.preventDefault();setPage(1);setQuery(search.trim());setMemberFilter('all');}}><Search size={19}/><input aria-label="Search direct reports" placeholder="Search name or employee code" maxLength={100} value={search} onChange={e=>setSearch(e.target.value)}/><button className="secondary-button" disabled={loading}>Search</button>{query&&<button type="button" className="secondary-button" onClick={reset}>Clear</button>}</form>}<button className="secondary-button team-refresh" disabled={loading} onClick={()=>setAttempt(n=>n+1)}><RefreshCw size={16}/>Refresh</button>{navigation}</div>
- {loading&&<div className="review-loading" role="status"><RefreshCw className="review-spin" size={24}/><strong>{person?'Loading employee capability':'Loading team analytics'}</strong><p>Resolving current reporting assignments.</p></div>}
- {error&&<div className="review-error" role="alert"><span>{error}</span><button className="secondary-button" onClick={()=>setAttempt(n=>n+1)}>Retry</button></div>}
- {!loading&&data&&selected?<EmployeeCapability key={selected.id} person={selected} skills={data.skills} onReviews={()=>onReviews(selected.id)} onSaved={()=>setAttempt(n=>n+1)}/>:!loading&&data&&!person&&<>
-
- <div className="team-stat-grid">
- <button className="team-stat blue" aria-pressed={memberFilter==='all'} onClick={()=>setMemberFilter('all')}><UsersRound size={23}/><span><strong>{members}</strong><small>{person?'Team member':stats?'Team members':'Members on this page'}</small></span></button>
- <button className="team-stat teal" aria-pressed={memberFilter==='reviewed'} onClick={()=>{setMemberFilter('reviewed');setLevelFilter(undefined);}}><FileCheck2 size={23}/><span><strong>{reviewed}</strong><small>Manager reviewed claims</small></span></button>
- <button className="team-stat amber" aria-pressed={memberFilter==='pending'} onClick={()=>{if(selected)onReviews(selected.id);else setMemberFilter('pending');}}><Clock3 size={23}/><span><strong>{pending}</strong><small>Assigned pending reviews</small></span></button>
- </div>
- {!person&&<p className="team-note team-analytics-scope">{stats?'Analytics cover all active direct reports matching your search; the member table is paginated.':'Summary covers members on this page.'} Private drafts are excluded.</p>}
- <div className="team-chart-grid">
- <section className="team-chart"><header><div><h3>Reviewed skill coverage</h3><p>Members with a manager-reviewed claim at or above the selected level.</p></div><select aria-label="Minimum reviewed proficiency" value={minimumRank} onChange={e=>{setMinimumRank(Number(e.target.value));setSkillFilter('');}}>{[1,2,3,4,5].map(rank=><option key={rank} value={rank}>L{rank} and above</option>)}</select></header>
- <p className="team-chart-caption">Denominator: {members} active {members===1?'member':'members'}{query?' matching your search':''}. This measures recorded coverage, not skill gaps.</p>
- {coverage.length?<div className="team-coverage-bars">{coverage.slice(0,8).map(s=><button key={s.skillName} aria-pressed={skillFilter===s.skillName} onClick={()=>{setSkillFilter(skillFilter===s.skillName?'':s.skillName);setLevelFilter(undefined);setMemberFilter('all');}}><span>{s.skillName}</span><span className="team-bar-track"><span style={{width:(members?s.people/members*100:0)+'%'}}/></span><strong>{members?Math.round(s.people/members*100):0}%<small>{s.people}/{members}</small></strong></button>)}</div>:<div className="team-chart-empty"><Layers3 size={28}/><strong>No reviewed coverage at this level</strong><p>Coverage appears after a claim is manager reviewed.</p></div>}
- {skillFilter&&<button className="team-clear-filter" onClick={()=>setSkillFilter('')}>Clear skill selection: {skillFilter}</button>}
- </section>
- <section className="team-chart"><header><div><h3>Claim status distribution</h3><p>Manager-reviewed and assigned pending claims.</p></div></header><div className="team-donut-layout"><div className="team-donut" role="img" aria-label={`${reviewed} manager-reviewed and ${pending} assigned pending claims`} style={{background:totalClaims?`conic-gradient(var(--teal,#008595) 0 ${reviewedPercent}%,#d49a38 ${reviewedPercent}% 100%)`:'var(--line)'}}><div><strong>{totalClaims}</strong><small>Visible claims</small></div></div><div className="team-chart-legend"><button aria-pressed={memberFilter==='reviewed'} onClick={()=>setMemberFilter('reviewed')}><i className="teal"/><span>Manager reviewed</span><strong>{reviewed}</strong></button><button aria-pressed={memberFilter==='pending'} onClick={()=>{if(selected)onReviews(selected.id);else setMemberFilter('pending');}}><i className="amber"/><span>Assigned pending</span><strong>{pending}</strong></button><button className="team-clear-filter" onClick={()=>setMemberFilter('all')}>Show all members</button></div></div><p className="team-chart-caption">Pending claims are self-assessments awaiting a decision. Learning completion does not verify proficiency.</p></section>
- </div>
- <div className="team-chart-grid team-chart-secondary">
- <section className="team-chart"><header><div><h3>Reviewed proficiency</h3><p>Claim counts by reviewed level.</p></div></header><div className="team-level-chart">{Array.from({length:Math.max(5,...levels.map(l=>l.rank))},(_,i)=>i+1).map(rank=>{const count=levels.find(l=>l.rank===rank)?.count??0,max=Math.max(1,...levels.map(l=>l.count));return <button key={rank} aria-pressed={levelFilter===rank} onClick={()=>{setLevelFilter(levelFilter===rank?undefined:rank);setSkillFilter('');setMemberFilter('reviewed');}}><strong>{count}</strong><span className="team-level-track"><span style={{height:count/max*100+'%'}}/></span><span>L{rank}</span></button>;})}</div>{levelFilter&&<button className="team-clear-filter" onClick={()=>{setLevelFilter(undefined);setMemberFilter('all');}}>Clear level selection</button>}</section>
- <section className="team-chart"><header><div><h3>Reviewed categories</h3><p>Recorded claims grouped by category.</p></div></header>{categories.length?<div className="team-category-list">{categories.slice(0,6).map(c=><div key={c.category}><span>{c.category}</span><span className="team-bar-track"><span style={{width:c.count/Math.max(1,reviewed)*100+'%'}}/></span><strong>{c.count}</strong></div>)}</div>:<div className="team-chart-empty"><Layers3 size={25}/><p>No manager-reviewed categories yet.</p></div>}</section>
- </div>
- <TeamInsightCharts analytics={stats} people={data.people} minimumRank={minimumRank} skillFilter={skillFilter} onSkill={skill=>{setSkillFilter(skillFilter===skill?'':skill);setLevelFilter(undefined);setMemberFilter('all');}} onPerson={openPerson}/>
- <section className="team-members-panel"><header><div><h3>Team members <span>({data.total})</span></h3><p>{memberFilter==='all'?'Select an employee to explore their capability.':`Showing members on this page with ${memberFilter==='reviewed'?'reviewed claims':'assigned pending claims'}.`}</p></div><div className="team-members-actions">{(memberFilter!=='all'||skillFilter||levelFilter)&&<button className="secondary-button" onClick={()=>{setMemberFilter('all');setSkillFilter('');setLevelFilter(undefined);}}>Clear chart filters</button>}<TeamReports analytics={stats} query={query} onAccessChanged={()=>setAttempt(n=>n+1)}/></div></header>
- {skillFilter||levelFilter?<p className="team-chart-caption">Showing members on this page with reviewed {skillFilter||`L${levelFilter}`} claims{skillFilter?` at L${minimumRank} or above`:""}.</p>:null}
- {!visiblePeople.length?<div className="team-chart-empty"><UsersRound size={28}/><h3>{query?'No matching direct reports':memberFilter==='all'?'No active direct reports':'No members match this status on the current page'}</h3><p>{memberFilter==='all'?'Try another search or check current reporting assignments.':'Choose Show all members or check another page.'}</p></div>:<div className="my-skills-table-wrap"><table className="my-skills-table team-members-table"><thead><tr><th>Employee</th><th>Manager reviewed</th><th>Assigned pending</th><th>Actions</th></tr></thead><tbody>{visiblePeople.map(p=><tr key={p.id}><td><div className="review-person"><span className="team-avatar">{p.name.split(' ').map(s=>s[0]).slice(0,2).join('')}</span><div><strong>{p.name}</strong><span className="review-subtext">{p.employeeCode}</span></div></div></td><td><span className="team-count reviewed">{p.reviewed}</span></td><td><span className="team-count pending">{p.pending}</span></td><td><div className="team-row-actions"><button className="secondary-button" onClick={()=>openPerson(p.id)}>View capability<ArrowUpRight size={15}/></button>{p.pending>0&&<button className="team-clear-filter" onClick={()=>onReviews(p.id)}>Review claims</button>}</div></td></tr>)}</tbody></table></div>}
- {data.total>0&&<footer><span>Showing {(page-1)*data.pageSize+1}–{Math.min(page*data.pageSize,data.total)} of {data.total} members</span><button className="secondary-button" disabled={page===1} onClick={()=>setPage(n=>n-1)}>Previous</button><button className="secondary-button" disabled={page*data.pageSize>=data.total} onClick={()=>setPage(n=>n+1)}>Next</button></footer>}</section>
- </>}
- </section>;
+import { EmployeeCapability } from './EmployeeCapability';
+import { TeamReports } from './TeamReports';
+import { TeamInsightCharts } from './TeamInsightCharts';
+interface Team {
+  total: number;
+  pageSize: number;
+  people: TeamPerson[];
+  skills: TeamSkill[];
+  analytics?: {
+    members: number;
+    reviewed: number;
+    pending: number;
+    coverage: { skillName: string; rank: number; people: number; memberIds: string[] }[];
+    levels: { rank: number; count: number; memberIds: string[] }[];
+    categories: { category: string; count: number }[];
+  };
+}
+export function TeamCapability({
+  onReviews,
+  navigation,
+}: {
+  onReviews: (personId: string) => void;
+  navigation?: ReactNode;
+}) {
+  const [data, setData] = useState<Team>(),
+    [search, setSearch] = useState(''),
+    [query, setQuery] = useState(''),
+    [page, setPage] = useState(1),
+    [person, setPerson] = useState<string>(),
+    [attempt, setAttempt] = useState(0),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState('');
+  const [minimumRank, setMinimumRank] = useState(1),
+    [memberFilter, setMemberFilter] = useState<'all' | 'reviewed' | 'pending'>('all'),
+    [skillFilter, setSkillFilter] = useState(''),
+    [levelFilter, setLevelFilter] = useState<number>();
+  useEffect(() => {
+    const c = new AbortController();
+    setLoading(true);
+    setData(undefined);
+    setError('');
+    const params = new URLSearchParams({ page: String(page), search: query });
+    if (person) params.set('person', person);
+    authenticatedFetch('/api/skill-reviews/team?' + params, { signal: c.signal })
+      .then(async response => {
+        const body = await response.json().catch(() => undefined);
+        if (!response.ok)
+          throw Error(body?.error?.message ?? 'Team capability could not be loaded.');
+        return body as Team;
+      })
+      .then(value => {
+        if (!c.signal.aborted) setData(value);
+      })
+      .catch(reason => {
+        if (!c.signal.aborted) setError(reason.message);
+      })
+      .finally(() => {
+        if (!c.signal.aborted) setLoading(false);
+      });
+    return () => c.abort();
+  }, [query, page, person, attempt]);
+  const selected = person ? data?.people[0] : undefined;
+  const derived = teamAnalytics(data?.people ?? [], data?.skills ?? [], minimumRank),
+    stats = data?.analytics;
+  const reviewed = stats?.reviewed ?? derived.reviewed,
+    pending = stats?.pending ?? derived.pending,
+    totalClaims = reviewed + pending,
+    members = stats?.members ?? data?.people.length ?? 0;
+  const reviewedPercent = totalClaims ? Math.round((reviewed / totalClaims) * 100) : 0;
+  const coverage =
+    stats?.coverage.filter(s => s.rank === minimumRank) ??
+    derived.coverage.map(s => ({ skillName: s.skill, rank: minimumRank, people: s.count }));
+  const levels = stats?.levels ?? derived.levels,
+    categories =
+      stats?.categories ?? derived.categories.map(c => ({ category: c.label, count: c.count }));
+  const skillMembers = stats?.coverage.find(
+    s => s.rank === minimumRank && s.skillName === skillFilter,
+  )?.memberIds;
+  const levelMembers = stats?.levels.find(s => s.rank === levelFilter)?.memberIds;
+  const visiblePeople = (data?.people ?? []).filter(
+    p =>
+      (memberFilter === 'all' || (memberFilter === 'reviewed' ? p.reviewed > 0 : p.pending > 0)) &&
+      (!skillFilter || skillMembers?.includes(p.id)) &&
+      (!levelFilter || levelMembers?.includes(p.id)),
+  );
+  function openPerson(id: string) {
+    setPerson(id);
+    setPage(1);
+    setQuery('');
+    setSearch('');
+    setSkillFilter('');
+    setLevelFilter(undefined);
+  }
+  function reset() {
+    setPerson(undefined);
+    setPage(1);
+    setQuery('');
+    setSearch('');
+    setMemberFilter('all');
+    setSkillFilter('');
+    setLevelFilter(undefined);
+  }
+  return (
+    <section
+      className="team-analytics-shell"
+      aria-label="Direct report capability"
+      aria-busy={loading}
+    >
+      <div className="team-analytics-toolbar">
+        {person ? (
+          <button className="team-back" onClick={reset}>
+            <ArrowLeft size={16} />
+            All direct reports
+          </button>
+        ) : (
+          <form
+            className="team-search"
+            onSubmit={event => {
+              event.preventDefault();
+              setPage(1);
+              setQuery(search.trim());
+              setMemberFilter('all');
+            }}
+          >
+            <Search size={19} />
+            <input
+              aria-label="Search direct reports"
+              placeholder="Search name or employee code"
+              maxLength={100}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <button className="secondary-button" disabled={loading}>
+              Search
+            </button>
+            {query && (
+              <button type="button" className="secondary-button" onClick={reset}>
+                Clear
+              </button>
+            )}
+          </form>
+        )}
+        <button
+          className="secondary-button team-refresh"
+          disabled={loading}
+          onClick={() => setAttempt(n => n + 1)}
+        >
+          <RefreshCw size={16} />
+          Refresh
+        </button>
+        {navigation}
+      </div>
+      {loading && (
+        <div className="review-loading" role="status">
+          <RefreshCw className="review-spin" size={24} />
+          <strong>{person ? 'Loading employee capability' : 'Loading team analytics'}</strong>
+          <p>Resolving current reporting assignments.</p>
+        </div>
+      )}
+      {error && (
+        <div className="review-error" role="alert">
+          <span>{error}</span>
+          <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
+            Retry
+          </button>
+        </div>
+      )}
+      {!loading && data && selected ? (
+        <EmployeeCapability
+          key={selected.id}
+          person={selected}
+          skills={data.skills}
+          onReviews={() => onReviews(selected.id)}
+          onSaved={() => setAttempt(n => n + 1)}
+        />
+      ) : (
+        !loading &&
+        data &&
+        !person && (
+          <>
+            <div className="team-stat-grid">
+              <button
+                className="team-stat blue"
+                aria-pressed={memberFilter === 'all'}
+                onClick={() => setMemberFilter('all')}
+              >
+                <UsersRound size={23} />
+                <span>
+                  <strong>{members}</strong>
+                  <small>
+                    {person ? 'Team member' : stats ? 'Team members' : 'Members on this page'}
+                  </small>
+                </span>
+              </button>
+              <button
+                className="team-stat teal"
+                aria-pressed={memberFilter === 'reviewed'}
+                onClick={() => {
+                  setMemberFilter('reviewed');
+                  setLevelFilter(undefined);
+                }}
+              >
+                <FileCheck2 size={23} />
+                <span>
+                  <strong>{reviewed}</strong>
+                  <small>Manager reviewed claims</small>
+                </span>
+              </button>
+              <button
+                className="team-stat amber"
+                aria-pressed={memberFilter === 'pending'}
+                onClick={() => {
+                  if (selected) onReviews(selected.id);
+                  else setMemberFilter('pending');
+                }}
+              >
+                <Clock3 size={23} />
+                <span>
+                  <strong>{pending}</strong>
+                  <small>Assigned pending reviews</small>
+                </span>
+              </button>
+            </div>
+            {!person && (
+              <p className="team-note team-analytics-scope">
+                {stats
+                  ? 'Analytics cover all active direct reports matching your search; the member table is paginated.'
+                  : 'Summary covers members on this page.'}{' '}
+                Private drafts are excluded.
+              </p>
+            )}
+            <div className="team-chart-grid">
+              <section className="team-chart">
+                <header>
+                  <div>
+                    <h3>Reviewed skill coverage</h3>
+                    <p>Members with a manager-reviewed claim at or above the selected level.</p>
+                  </div>
+                  <select
+                    aria-label="Minimum reviewed proficiency"
+                    value={minimumRank}
+                    onChange={e => {
+                      setMinimumRank(Number(e.target.value));
+                      setSkillFilter('');
+                    }}
+                  >
+                    {[1, 2, 3, 4, 5].map(rank => (
+                      <option key={rank} value={rank}>
+                        L{rank} and above
+                      </option>
+                    ))}
+                  </select>
+                </header>
+                <p className="team-chart-caption">
+                  Denominator: {members} active {members === 1 ? 'member' : 'members'}
+                  {query ? ' matching your search' : ''}. This measures recorded coverage, not skill
+                  gaps.
+                </p>
+                {coverage.length ? (
+                  <div className="team-coverage-bars">
+                    {coverage.slice(0, 8).map(s => (
+                      <button
+                        key={s.skillName}
+                        aria-pressed={skillFilter === s.skillName}
+                        onClick={() => {
+                          setSkillFilter(skillFilter === s.skillName ? '' : s.skillName);
+                          setLevelFilter(undefined);
+                          setMemberFilter('all');
+                        }}
+                      >
+                        <span>{s.skillName}</span>
+                        <span className="team-bar-track">
+                          <span
+                            style={{ width: (members ? (s.people / members) * 100 : 0) + '%' }}
+                          />
+                        </span>
+                        <strong>
+                          {members ? Math.round((s.people / members) * 100) : 0}%
+                          <small>
+                            {s.people}/{members}
+                          </small>
+                        </strong>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="team-chart-empty">
+                    <Layers3 size={28} />
+                    <strong>No reviewed coverage at this level</strong>
+                    <p>Coverage appears after a claim is manager reviewed.</p>
+                  </div>
+                )}
+                {skillFilter && (
+                  <button className="team-clear-filter" onClick={() => setSkillFilter('')}>
+                    Clear skill selection: {skillFilter}
+                  </button>
+                )}
+              </section>
+              <section className="team-chart">
+                <header>
+                  <div>
+                    <h3>Claim status distribution</h3>
+                    <p>Manager-reviewed and assigned pending claims.</p>
+                  </div>
+                </header>
+                <div className="team-donut-layout">
+                  <div
+                    className="team-donut"
+                    role="img"
+                    aria-label={`${reviewed} manager-reviewed and ${pending} assigned pending claims`}
+                    style={{
+                      background: totalClaims
+                        ? `conic-gradient(var(--teal,#008595) 0 ${reviewedPercent}%,#d49a38 ${reviewedPercent}% 100%)`
+                        : 'var(--line)',
+                    }}
+                  >
+                    <div>
+                      <strong>{totalClaims}</strong>
+                      <small>Visible claims</small>
+                    </div>
+                  </div>
+                  <div className="team-chart-legend">
+                    <button
+                      aria-pressed={memberFilter === 'reviewed'}
+                      onClick={() => setMemberFilter('reviewed')}
+                    >
+                      <i className="teal" />
+                      <span>Manager reviewed</span>
+                      <strong>{reviewed}</strong>
+                    </button>
+                    <button
+                      aria-pressed={memberFilter === 'pending'}
+                      onClick={() => {
+                        if (selected) onReviews(selected.id);
+                        else setMemberFilter('pending');
+                      }}
+                    >
+                      <i className="amber" />
+                      <span>Assigned pending</span>
+                      <strong>{pending}</strong>
+                    </button>
+                    <button className="team-clear-filter" onClick={() => setMemberFilter('all')}>
+                      Show all members
+                    </button>
+                  </div>
+                </div>
+                <p className="team-chart-caption">
+                  Pending claims are self-assessments awaiting a decision. Learning completion does
+                  not verify proficiency.
+                </p>
+              </section>
+            </div>
+            <div className="team-chart-grid team-chart-secondary">
+              <section className="team-chart">
+                <header>
+                  <div>
+                    <h3>Reviewed proficiency</h3>
+                    <p>Claim counts by reviewed level.</p>
+                  </div>
+                </header>
+                <div className="team-level-chart">
+                  {Array.from(
+                    { length: Math.max(5, ...levels.map(l => l.rank)) },
+                    (_, i) => i + 1,
+                  ).map(rank => {
+                    const count = levels.find(l => l.rank === rank)?.count ?? 0,
+                      max = Math.max(1, ...levels.map(l => l.count));
+                    return (
+                      <button
+                        key={rank}
+                        aria-pressed={levelFilter === rank}
+                        onClick={() => {
+                          setLevelFilter(levelFilter === rank ? undefined : rank);
+                          setSkillFilter('');
+                          setMemberFilter('reviewed');
+                        }}
+                      >
+                        <strong>{count}</strong>
+                        <span className="team-level-track">
+                          <span style={{ height: (count / max) * 100 + '%' }} />
+                        </span>
+                        <span>L{rank}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {levelFilter && (
+                  <button
+                    className="team-clear-filter"
+                    onClick={() => {
+                      setLevelFilter(undefined);
+                      setMemberFilter('all');
+                    }}
+                  >
+                    Clear level selection
+                  </button>
+                )}
+              </section>
+              <section className="team-chart">
+                <header>
+                  <div>
+                    <h3>Reviewed categories</h3>
+                    <p>Recorded claims grouped by category.</p>
+                  </div>
+                </header>
+                {categories.length ? (
+                  <div className="team-category-list">
+                    {categories.slice(0, 6).map(c => (
+                      <div key={c.category}>
+                        <span>{c.category}</span>
+                        <span className="team-bar-track">
+                          <span style={{ width: (c.count / Math.max(1, reviewed)) * 100 + '%' }} />
+                        </span>
+                        <strong>{c.count}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="team-chart-empty">
+                    <Layers3 size={25} />
+                    <p>No manager-reviewed categories yet.</p>
+                  </div>
+                )}
+              </section>
+            </div>
+            <TeamInsightCharts
+              analytics={stats}
+              people={data.people}
+              minimumRank={minimumRank}
+              skillFilter={skillFilter}
+              onSkill={skill => {
+                setSkillFilter(skillFilter === skill ? '' : skill);
+                setLevelFilter(undefined);
+                setMemberFilter('all');
+              }}
+              onPerson={openPerson}
+            />
+            <section className="team-members-panel">
+              <header>
+                <div>
+                  <h3>
+                    Team members <span>({data.total})</span>
+                  </h3>
+                  <p>
+                    {memberFilter === 'all'
+                      ? 'Select an employee to explore their capability.'
+                      : `Showing members on this page with ${memberFilter === 'reviewed' ? 'reviewed claims' : 'assigned pending claims'}.`}
+                  </p>
+                </div>
+                <div className="team-members-actions">
+                  {(memberFilter !== 'all' || skillFilter || levelFilter) && (
+                    <button
+                      className="secondary-button"
+                      onClick={() => {
+                        setMemberFilter('all');
+                        setSkillFilter('');
+                        setLevelFilter(undefined);
+                      }}
+                    >
+                      Clear chart filters
+                    </button>
+                  )}
+                  <TeamReports
+                    analytics={stats}
+                    query={query}
+                    onAccessChanged={() => setAttempt(n => n + 1)}
+                  />
+                </div>
+              </header>
+              {skillFilter || levelFilter ? (
+                <p className="team-chart-caption">
+                  Showing members on this page with reviewed {skillFilter || `L${levelFilter}`}{' '}
+                  claims{skillFilter ? ` at L${minimumRank} or above` : ''}.
+                </p>
+              ) : null}
+              {!visiblePeople.length ? (
+                <div className="team-chart-empty">
+                  <UsersRound size={28} />
+                  <h3>
+                    {query
+                      ? 'No matching direct reports'
+                      : memberFilter === 'all'
+                        ? 'No active direct reports'
+                        : 'No members match this status on the current page'}
+                  </h3>
+                  <p>
+                    {memberFilter === 'all'
+                      ? 'Try another search or check current reporting assignments.'
+                      : 'Choose Show all members or check another page.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="my-skills-table-wrap">
+                  <table className="my-skills-table team-members-table">
+                    <thead>
+                      <tr>
+                        <th>Employee</th>
+                        <th>Manager reviewed</th>
+                        <th>Assigned pending</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visiblePeople.map(p => (
+                        <tr key={p.id}>
+                          <td>
+                            <div className="review-person">
+                              <span className="team-avatar">
+                                {p.name
+                                  .split(' ')
+                                  .map(s => s[0])
+                                  .slice(0, 2)
+                                  .join('')}
+                              </span>
+                              <div>
+                                <strong>{p.name}</strong>
+                                <span className="review-subtext">{p.employeeCode}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="team-count reviewed">{p.reviewed}</span>
+                          </td>
+                          <td>
+                            <span className="team-count pending">{p.pending}</span>
+                          </td>
+                          <td>
+                            <div className="team-row-actions">
+                              <button className="secondary-button" onClick={() => openPerson(p.id)}>
+                                View capability
+                                <ArrowUpRight size={15} />
+                              </button>
+                              {p.pending > 0 && (
+                                <button
+                                  className="team-clear-filter"
+                                  onClick={() => onReviews(p.id)}
+                                >
+                                  Review claims
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {data.total > 0 && (
+                <footer>
+                  <span>
+                    Showing {(page - 1) * data.pageSize + 1}–
+                    {Math.min(page * data.pageSize, data.total)} of {data.total} members
+                  </span>
+                  <button
+                    className="secondary-button"
+                    disabled={page === 1}
+                    onClick={() => setPage(n => n - 1)}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={page * data.pageSize >= data.total}
+                    onClick={() => setPage(n => n + 1)}
+                  >
+                    Next
+                  </button>
+                </footer>
+              )}
+            </section>
+          </>
+        )
+      )}
+    </section>
+  );
 }
