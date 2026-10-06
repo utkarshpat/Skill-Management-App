@@ -2,6 +2,7 @@ import {useEffect,useState,useRef} from 'react';
 import {Link} from 'react-router';
 import {ArrowUpRight,Bell,BookOpen,CheckCircle2,Clock3,Inbox,Layers,Plus,RefreshCw,Sparkles} from 'lucide-react';
 import {authenticatedFetch} from './auth';
+import {startActivityRefresh} from './activity-refresh';
 import './dashboard.css';
 import {DashboardQuickActions,type DashboardQuickAction} from './DashboardQuickActions';
 import {DashboardRequests,type DashboardRequestsData,type RequestPreview} from './DashboardRequests';
@@ -20,10 +21,9 @@ export function openDashboardAssistant(card:Card['id']){
 export function Dashboard(){
  const [manifest,setManifest]=useState<Manifest>(),[error,setError]=useState(''),[attempt,setAttempt]=useState(0),[cardRefresh,setCardRefresh]=useState(0);
  useEffect(()=>{const c=new AbortController();let generation=0,running=false;
-  const load=()=>{if(running)return;running=true;const n=++generation;authenticatedFetch('/api/dashboard',{signal:c.signal}).then(read<Manifest>).then(value=>{if(!c.signal.aborted&&n===generation){setManifest(value);setCardRefresh(v=>v+1);setError('');}}).catch(e=>{if(!c.signal.aborted&&n===generation){setError(e.message);if([401,403,409].includes(e.status))setManifest(undefined);}}).finally(()=>{running=false;});};
-  load();const focus=()=>load(),timer=window.setInterval(()=>{if(document.visibilityState==='visible')load();},60000);
-  window.addEventListener('focus',focus);window.addEventListener('notifications-updated',focus);window.addEventListener('own-skills-updated',focus);window.addEventListener('requests-updated',focus);
-  return()=>{c.abort();clearInterval(timer);window.removeEventListener('focus',focus);window.removeEventListener('notifications-updated',focus);window.removeEventListener('own-skills-updated',focus);window.removeEventListener('requests-updated',focus);};
+  const load=async()=>{if(running)return;running=true;const n=++generation;return authenticatedFetch('/api/dashboard',{signal:c.signal}).then(read<Manifest>).then(value=>{if(!c.signal.aborted&&n===generation){setManifest(value);setCardRefresh(v=>v+1);setError('');}}).catch(e=>{if(!c.signal.aborted&&n===generation){setError(e.message);if([401,403,409].includes(e.status))setManifest(undefined);}}).finally(()=>{running=false;});};
+  const stop=startActivityRefresh(load,['notifications-updated','own-skills-updated','requests-updated','workspace-access-updated']);
+  return()=>{stop();c.abort();};
  },[attempt]);
  const renderCard=(card:Card)=><DashboardCard key={manifest!.actorId+card.id} card={card} revision={manifest!.revision} refresh={cardRefresh} ai={manifest!.ai} onAccessChanged={()=>setAttempt(n=>n+1)}/>;
  const leftCards=manifest?.cards.filter(card=>card.id==='learning'||card.id==='requests')??[];

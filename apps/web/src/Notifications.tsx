@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { ArrowUpRight, Bell, Check, RefreshCw, X } from 'lucide-react';
 import {notificationDestination} from './notification-model';
 import { authenticatedFetch } from './auth';
+import {startActivityRefresh} from './activity-refresh';
 interface Item {id:string;at:string;title:string;body:string;href:string}
 interface Feed {personId:string;items:Item[];partial?:boolean}
 const key=(personId:string)=>`skill-notifications-read:${personId}`;
@@ -12,19 +13,19 @@ export function Notifications({id}:{id:string}) {
   useEffect(()=>{
     const controller=new AbortController();let running=false;
     const load=async()=>{if(running||document.visibilityState==='hidden')return;running=true;setLoading(true);
-      try{const response=await authenticatedFetch('/api/notifications',{signal:controller.signal});if(!response.ok){if([401,403].includes(response.status))setFeed(undefined);throw new Error('Notifications could not be loaded.');}const body:Feed=await response.json();if(!controller.signal.aborted){setFeed(body);setRead(readIds(body.personId));setError('');}}
-      catch{if(!controller.signal.aborted){setError('Notifications could not be refreshed. Try again.');}}
+      try{const response=await authenticatedFetch('/api/notifications',{signal:controller.signal});if(!response.ok){if([401,403].includes(response.status))setFeed(undefined);const body=await response.json().catch(()=>undefined);throw new Error(body?.error?.message??'Notifications could not be loaded.');}const body:Feed=await response.json();if(!controller.signal.aborted){setFeed(body);setRead(readIds(body.personId));setError('');}}
+      catch(error){if(!controller.signal.aborted){setError(error instanceof Error?error.message:'Notifications could not be refreshed. Try again.');}}
       finally{running=false;if(!controller.signal.aborted)setLoading(false);}
     };
-    void load();const timer=setInterval(()=>void load(),60000),refresh=()=>void load();document.addEventListener('visibilitychange',refresh);window.addEventListener('notifications-updated',refresh);
-    return()=>{controller.abort();clearInterval(timer);document.removeEventListener('visibilitychange',refresh);window.removeEventListener('notifications-updated',refresh);};
+    const stop=startActivityRefresh(load,['notifications-updated','notifications-opened']);
+    return()=>{stop();controller.abort();};
   },[attempt]);
   useEffect(()=>{const changed=(event:StorageEvent)=>{if(feed&&event.key===key(feed.personId))setRead(readIds(feed.personId));};window.addEventListener('storage',changed);return()=>window.removeEventListener('storage',changed);},[feed?.personId]);
   function mark(ids:string[],isRead=true){if(!feed)return;const next=isRead?[...new Set([...read,...ids])].slice(-100):read.filter(id=>!ids.includes(id));setRead(next);try{localStorage.setItem(key(feed.personId),JSON.stringify(next));}catch{/* Read state still works in this session. */}}
   function opened(event:MouseEvent<HTMLAnchorElement>,itemId:string){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;mark([itemId]);event.currentTarget.closest<HTMLElement>('[popover]')?.hidePopover();}
   const unread=feed?.items.filter(item=>!read.includes(item.id)).length??0;
   const items=feed?.items.filter(item=>filter==='all'||!read.includes(item.id))??[];
-  return <><button className="navbar-icon notification-trigger" type="button" aria-label={unread?`Notifications, ${unread} unread`:'Notifications'} popoverTarget={id}><Bell size={21}/>{unread>0&&<span className="notification-count" aria-hidden="true">{unread}</span>}</button>
+  return <><button className="navbar-icon notification-trigger" type="button" aria-label={unread?`Notifications, ${unread} unread`:'Notifications'} popoverTarget={id} onClick={()=>window.dispatchEvent(new Event('notifications-opened'))}><Bell size={21}/>{unread>0&&<span className="notification-count" aria-hidden="true">{unread}</span>}</button>
     <section id={id} popover="auto" className="navbar-popover notification-popover" aria-label="Notifications">
       <div className="notification-heading"><div><h2>Notifications</h2><p>{unread?`${unread} unread updates`:'You’re up to date'}</p></div><div><button className="navbar-icon" type="button" aria-label="Refresh notifications" disabled={loading} onClick={()=>setAttempt(value=>value+1)}><RefreshCw size={17} className={loading?'notification-spin':''}/></button><button className="navbar-icon" type="button" aria-label="Close notifications" popoverTarget={id} popoverTargetAction="hide"><X size={18}/></button></div></div>
       {error&&<div className="notification-error"><p role="alert">{error}</p><button className="admin-text-button" disabled={loading} onClick={()=>setAttempt(value=>value+1)}>Retry</button></div>}

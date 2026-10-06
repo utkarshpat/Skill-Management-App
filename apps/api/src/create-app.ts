@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
+import {DatabaseQuotaUnavailable} from './shared/database-availability.js';
 import { createDevelopmentSessions, type HostedDemoConfig } from './modules/identity/index.js';
 import type { AccessStore } from './modules/access/index.js';
 import { registerRoutes as identityRoutes, type HttpDependencies as IdentityDependencies } from './modules/identity/routes.js';
@@ -56,6 +57,11 @@ export function createApp(dependencies?: AppDependencies, options: { development
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found.', requestId: res.locals.requestId } });
   });
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+    if(error instanceof DatabaseQuotaUnavailable){
+      res.setHeader('Retry-After',error.retryAfter);
+      res.status(503).json({error:{code:'DATABASE_QUOTA_EXHAUSTED',message:error.message,requestId:res.locals.requestId}});
+      return;
+    }
     const malformed = error instanceof SyntaxError && 'body' in error;
     const tooLarge = error?.type === 'entity.too.large';
     res.status(malformed ? 400 : tooLarge ? 413 : 500).json({

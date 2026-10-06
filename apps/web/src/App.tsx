@@ -5,6 +5,7 @@ import { Link, useLocation } from 'react-router';
 
 
 import { ThemeSwitcher } from './Theme';
+import {startActivityRefresh} from './activity-refresh';
 import { toast } from './toast';
 import { authenticatedFetch, initializeAuth, signedIn, signIn, signInConfigured, refreshDevelopmentLogin } from './auth';
 import { DevelopmentLogin } from './DevelopmentLogin';
@@ -31,12 +32,10 @@ export function App() {
   const [workspace,setWorkspace]=useState<WorkspaceState>(),[workspaceError,setWorkspaceError]=useState(''),[workspaceAttempt,setWorkspaceAttempt]=useState(0);
   useEffect(()=>{
     setWorkspaceError('');if(isKnowledgeTransfer)return;if(session!=='signed-in'){setWorkspace(undefined);return;}
-    const controller=new AbortController();let generation=0,lastLoad=0;
-    const load=()=>{lastLoad=Date.now();const request=++generation;authenticatedFetch('/api/workspace',{signal:controller.signal}).then(async response=>{if(!response.ok)throw Object.assign(Error('Workspace navigation could not be refreshed.'),{status:response.status});const body=await response.json();if(!controller.signal.aborted&&request===generation){setWorkspace(body);setWorkspaceError('');}}).catch(error=>{if(!controller.signal.aborted&&request===generation){if([401,403].includes(error.status))setWorkspace(undefined);setWorkspaceError(error.message);}});};
-    const focus=()=>{if(document.visibilityState==='visible'&&Date.now()-lastLoad>15000)load();};
-    load();const timer=setInterval(()=>{if(document.visibilityState==='visible')load();},60000);
-    window.addEventListener('workspace-access-updated',load);window.addEventListener('focus',focus);document.addEventListener('visibilitychange',focus);
-    return()=>{controller.abort();clearInterval(timer);window.removeEventListener('workspace-access-updated',load);window.removeEventListener('focus',focus);document.removeEventListener('visibilitychange',focus);};
+    const controller=new AbortController();let generation=0;
+    const load=()=>{const request=++generation;return authenticatedFetch('/api/workspace',{signal:controller.signal}).then(async response=>{const body=await response.json();if(!response.ok)throw Object.assign(Error(body?.error?.message??'Workspace navigation could not be refreshed.'),{status:response.status});if(!controller.signal.aborted&&request===generation){setWorkspace(body);setWorkspaceError('');}}).catch(error=>{if(!controller.signal.aborted&&request===generation){if([401,403].includes(error.status))setWorkspace(undefined);setWorkspaceError(error.message);}});};
+    const stop=startActivityRefresh(load,['workspace-access-updated']);
+    return()=>{stop();controller.abort();};
   },[session,workspaceAttempt,isKnowledgeTransfer]);
   useEffect(()=>{let active=true;const expired=()=>{setSessionNotice('Your development session expired or the API restarted. Choose a test person to open a new demo session.');toast.error('Your development session expired or the API restarted. Choose a test person to open a new demo session.');setSession('loading');refreshDevelopmentLogin().catch(()=>undefined).finally(()=>{if(active)setSession('anonymous');});};window.addEventListener('development-session-expired',expired);return()=>{active=false;window.removeEventListener('development-session-expired',expired);};},[]);
   useEffect(() => { let active = true; initializeAuth().then(() => { if (active) setSession(signedIn() ? 'signed-in' : 'anonymous'); }).catch(() => { if (active) setSession('error'); }); return () => { active = false; }; }, []);

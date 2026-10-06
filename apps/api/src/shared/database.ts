@@ -1,5 +1,6 @@
 import { DefaultAzureCredential, ClientSecretCredential, ManagedIdentityCredential } from '@azure/identity';
 import sql from 'mssql';
+import {DatabaseAvailability} from './database-availability.js';
 
 export function databaseConfig(env: NodeJS.ProcessEnv): sql.config {
   const server = env.AZURE_SQL_SERVER?.trim();
@@ -29,6 +30,7 @@ export async function withDatabase<T>(action: (pool: sql.ConnectionPool) => Prom
 }
 
 let runtimePool: Promise<sql.ConnectionPool> | undefined;
+const availability=new DatabaseAvailability();
 async function connectRuntime() {
   const { ENTRA_TENANT_ID: tenant, AZURE_SQL_CLIENT_ID: client, AZURE_SQL_CLIENT_SECRET: secret } = process.env;
   const config = databaseConfig(process.env);
@@ -43,8 +45,10 @@ async function connectRuntime() {
   catch (error) { await pool.close(); throw error; }
 }
 export async function withRuntimeDatabase<T>(action: (pool: sql.ConnectionPool) => Promise<T>): Promise<T> {
-  runtimePool ??= connectRuntime().catch(error => { runtimePool = undefined; throw error; });
-  return action(await runtimePool);
+  return availability.run(async()=>{
+    runtimePool ??= connectRuntime().catch(error => { runtimePool = undefined; throw error; });
+    return action(await runtimePool);
+  });
 }
 export async function closeRuntimeDatabase() {
   const pending = runtimePool; runtimePool = undefined;
