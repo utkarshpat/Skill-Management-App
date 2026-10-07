@@ -16,6 +16,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run db:generate
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
