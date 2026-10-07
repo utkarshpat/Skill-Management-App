@@ -47,7 +47,7 @@ import type {
   UserRole,
   WorkflowEvent,
   WorkflowRecord,
-} from '@prisma/client';
+} from './generated/prisma/client.js';
 
 export type {
   AccessAudit,

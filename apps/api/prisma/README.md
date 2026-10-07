@@ -13,6 +13,26 @@ and checks that the filtered unique indexes and `rowversion` columns required by
 existing SQL migrations are present. It does not claim that every table, check
 constraint, procedure, or view has been compared with the Prisma schema.
 
-Until the SQL-only features have a reviewed migration-generation and application
+## Schema-driven migration workflow
+
+`schema.prisma` is the source for new schema changes; the SQL files in
+`database/migrations` stay the executed, reviewed artifacts (the 001-052 history is
+unchanged).
+
+1. Edit `schema.prisma`.
+2. Run `npm run db:migration:new -- <snake_case_name>`. It diffs the schema against
+   `prisma/applied-schema.prisma` (the snapshot of what migrations already cover),
+   writes the next numbered `database/migrations/NNN_name.sql` (Prisma's own
+   transaction wrapper removed; the runner supplies it), and updates the snapshot.
+3. Review the SQL and hand-add anything Prisma cannot express (filtered unique
+   indexes, `rowversion`, check constraints). Add matching entries to
+   `src/database-baseline.ts` when new SQL-only invariants are introduced.
+4. Run `npm run db:migrate`; migrations are discovered from the directory.
+
+`npm run db:schema:check` (also run in CI) fails if `schema.prisma` changed without a
+generated migration. Prisma's `migrate dev` is intentionally not used: it needs a
+shadow database and cannot reproduce the SQL-only features above.
+
+have a reviewed migration-generation and application
 path, `database/migrations` remains authoritative for database changes. Run `db:validate`,
 `db:generate`, and `db:baseline` before relying on the schema/client artifacts.

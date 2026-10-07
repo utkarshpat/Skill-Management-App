@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { readFile } from 'node:fs/promises';
+import { listMigrationFiles } from '../src/migration-files.js';
 import { createApp } from '../src/create-app.js';
 import { AccessError } from '../src/shared/errors.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
@@ -130,6 +131,10 @@ test('own organization SQL limits output to actor-bound placement and valid curr
   assert.ok(output);
   assert.doesNotMatch(output, /personId|managerId|employee_code|role|permission/i);
   assert.doesNotMatch(sql, /INSERT|UPDATE dbo|DELETE|CREATE TABLE/);
-  const runner = await readFile(new URL('../src/database-cli.ts', import.meta.url), 'utf8');
-  assert.match(runner.replace(/\s+/g, ''), /\[43,'043_own_organization_profile.sql'\]/);
+  const migrations = await listMigrationFiles(
+    new URL('../../../database/migrations/', import.meta.url),
+  );
+  assert.ok(
+    migrations.some(migration => migration.filename === '043_own_organization_profile.sql'),
+  );
 });

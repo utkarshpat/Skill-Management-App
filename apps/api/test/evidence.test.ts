@@ -9,6 +9,7 @@ import {
 } from '../src/modules/skills/evidence.js';
 import { AccessError } from '../src/shared/errors.js';
 import { readFile } from 'node:fs/promises';
+import { listMigrationFiles } from '../src/migration-files.js';
 test('Evidence compression validates decoded image, limits dimensions and strips metadata', async () => {
   const input = await sharp({
     create: { width: 2500, height: 1200, channels: 3, background: '#198596' },
@@ -71,8 +72,12 @@ test('Submitted evidence migration retains access guards and uses claim-bound au
   ])
     assert.ok(source.includes(guard), guard);
   assert.doesNotMatch(source, /DELETE|UPDATE dbo\.AccessAudit|ALTER TABLE|created_at\s*[<>=]/i);
-  const runner = await readFile(new URL('../src/database-cli.ts', import.meta.url), 'utf8');
-  assert.ok(runner.replace(/\s+/g, '').includes("[51,'051_submitted_skill_evidence.sql']"));
+  const migrations = await listMigrationFiles(
+    new URL('../../../database/migrations/', import.meta.url),
+  );
+  assert.ok(
+    migrations.some(migration => migration.filename === '051_submitted_skill_evidence.sql'),
+  );
 });
 const item = {
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',

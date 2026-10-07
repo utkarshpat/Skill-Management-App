@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { listMigrationFiles } from '../src/migration-files.js';
 
 test('last-used migration preserves ownership, CAS, workflow gates, audit and historical privacy', async () => {
   const text = await readFile(
@@ -34,9 +35,12 @@ test('last-used migration preserves ownership, CAS, workflow gates, audit and hi
     text,
     /UPDATE dbo.SkillClaimDraft SET status|TransitionSkillClaim|INSERT dbo.AccountRolePermission/,
   );
-  const runner = await readFile(new URL('../src/database-cli.ts', import.meta.url), 'utf8');
-  assert.match(
-    runner.replace(/\s+/g, ''),
-    /\[41,'041_dashboard_top_skills.sql'\],\[42,'042_skill_last_used.sql'\]/,
+  const migrations = await listMigrationFiles(
+    new URL('../../../database/migrations/', import.meta.url),
+  );
+  assert.ok(
+    ['041_dashboard_top_skills.sql', '042_skill_last_used.sql'].every(file =>
+      migrations.some(migration => migration.filename === file),
+    ),
   );
 });
