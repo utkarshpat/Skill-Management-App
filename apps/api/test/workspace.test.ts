@@ -2,31 +2,97 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createApp } from '../src/create-app.js';
-import { LocalAccessStore, type LocalAccessState } from '../src/modules/access/local-access-store.js';
+import {
+  LocalAccessStore,
+  type LocalAccessState,
+} from '../src/modules/access/local-access-store.js';
 import { workspaceFor } from '../src/modules/identity/workspace.js';
 import { rolePresets } from '../src/modules/access/role-presets.js';
 
-test('current direct reporting relationships enable reviews without a manager role and explicit deny wins',()=>{
- const state:LocalAccessState={revision:1,audit:[],roles:[{id:'employee',name:'Employee',permissions:structuredClone(rolePresets[0].permissions)}],people:[{id:'manager',displayName:'Any title',employeeCode:'EMP',active:true,hasDirectReports:true,roleIds:['employee'],overrides:[]}]};
- const person=state.people[0];
- assert.equal(workspaceFor(state,person).capabilities.reviewSkills,true);
- person.hasDirectReports=false;assert.equal(workspaceFor(state,person).capabilities.reviewSkills,false);
- person.hasDirectReports=true;person.overrides.push({permission:'skill.verify',scope:'ORGANIZATION',effect:'DENY'});
- assert.equal(workspaceFor(state,person).capabilities.reviewSkills,false);
- person.overrides[0].validUntil='2020-01-01T00:00:00Z';assert.equal(workspaceFor(state,person).capabilities.reviewSkills,true);
- person.active=false;assert.equal(workspaceFor(state,person).capabilities.reviewSkills,false);
- person.active=true;person.overrides.push({permission:'profile.view',scope:'OWN',effect:'DENY'});assert.equal(workspaceFor(state,person).capabilities.reviewSkills,false);
+test('current direct reporting relationships enable reviews without a manager role and explicit deny wins', () => {
+  const state: LocalAccessState = {
+    revision: 1,
+    audit: [],
+    roles: [
+      {
+        id: 'employee',
+        name: 'Employee',
+        permissions: structuredClone(rolePresets[0].permissions),
+      },
+    ],
+    people: [
+      {
+        id: 'manager',
+        displayName: 'Any title',
+        employeeCode: 'EMP',
+        active: true,
+        hasDirectReports: true,
+        roleIds: ['employee'],
+        overrides: [],
+      },
+    ],
+  };
+  const person = state.people[0];
+  assert.equal(workspaceFor(state, person).capabilities.reviewSkills, true);
+  person.hasDirectReports = false;
+  assert.equal(workspaceFor(state, person).capabilities.reviewSkills, false);
+  person.hasDirectReports = true;
+  person.overrides.push({ permission: 'skill.verify', scope: 'ORGANIZATION', effect: 'DENY' });
+  assert.equal(workspaceFor(state, person).capabilities.reviewSkills, false);
+  person.overrides[0].validUntil = '2020-01-01T00:00:00Z';
+  assert.equal(workspaceFor(state, person).capabilities.reviewSkills, true);
+  person.active = false;
+  assert.equal(workspaceFor(state, person).capabilities.reviewSkills, false);
+  person.active = true;
+  person.overrides.push({ permission: 'profile.view', scope: 'OWN', effect: 'DENY' });
+  assert.equal(workspaceFor(state, person).capabilities.reviewSkills, false);
 });
 
-test('a manager title or broad review grant cannot create actual direct-report scope',()=>{
- const state:LocalAccessState={revision:1,audit:[],roles:[{id:'manager-role',name:'Manager',permissions:structuredClone(rolePresets[1].permissions)}],people:[{id:'person',displayName:'Title only',employeeCode:'EMP',active:true,hasDirectReports:false,roleIds:['manager-role'],overrides:[]}]};
- assert.equal(workspaceFor(state,state.people[0]).capabilities.reviewSkills,false);
- state.people[0].hasDirectReports=true;assert.equal(workspaceFor(state,state.people[0]).capabilities.reviewSkills,true);
+test('a manager title or broad review grant cannot create actual direct-report scope', () => {
+  const state: LocalAccessState = {
+    revision: 1,
+    audit: [],
+    roles: [
+      {
+        id: 'manager-role',
+        name: 'Manager',
+        permissions: structuredClone(rolePresets[1].permissions),
+      },
+    ],
+    people: [
+      {
+        id: 'person',
+        displayName: 'Title only',
+        employeeCode: 'EMP',
+        active: true,
+        hasDirectReports: false,
+        roleIds: ['manager-role'],
+        overrides: [],
+      },
+    ],
+  };
+  assert.equal(workspaceFor(state, state.people[0]).capabilities.reviewSkills, false);
+  state.people[0].hasDirectReports = true;
+  assert.equal(workspaceFor(state, state.people[0]).capabilities.reviewSkills, true);
 });
 
 test('workspace capabilities use permissions, never role names; every preset gets only supported workflows', () => {
   for (const preset of rolePresets) {
-    const state: LocalAccessState = { revision: 1, audit: [], roles: [{ id: 'role', name: preset.name, permissions: structuredClone(preset.permissions) }], people: [{ id: 'person', displayName: 'A person', employeeCode: 'EMP', active: true, roleIds: ['role'], overrides: [] }] };
+    const state: LocalAccessState = {
+      revision: 1,
+      audit: [],
+      roles: [{ id: 'role', name: preset.name, permissions: structuredClone(preset.permissions) }],
+      people: [
+        {
+          id: 'person',
+          displayName: 'A person',
+          employeeCode: 'EMP',
+          active: true,
+          roleIds: ['role'],
+          overrides: [],
+        },
+      ],
+    };
     const workspace = workspaceFor(state, state.people[0]);
     assert.equal(workspace.capabilities.ownSkills, true, preset.name);
     assert.equal(workspace.capabilities.claimSkills, true, preset.name);
@@ -38,74 +104,172 @@ test('workspace capabilities use permissions, never role names; every preset get
     assert.equal(workspaceFor(state, state.people[0]).capabilities.administration, false);
     state.people[0].overrides.push({ permission: 'skill.claim', scope: 'OWN', effect: 'DENY' });
     assert.equal(workspaceFor(state, state.people[0]).capabilities.claimSkills, false);
-    state.roles[0].permissions.forEach(grant => { grant.validUntil = '2020-01-01T00:00:00Z'; });
+    state.roles[0].permissions.forEach(grant => {
+      grant.validUntil = '2020-01-01T00:00:00Z';
+    });
     assert.equal(workspaceFor(state, state.people[0]).capabilities.ownSkills, false);
   }
 });
 
 test('admin does not receive personal skill authority; explicit self-service assignment enables it', async () => {
-  const store = await LocalAccessStore.open(), state = store.snapshot(), person = state.people[0];
+  const store = await LocalAccessStore.open(),
+    state = store.snapshot(),
+    person = state.people[0];
   assert.equal(workspaceFor(state, person).capabilities.administration, true);
   assert.equal(workspaceFor(state, person).capabilities.ownSkills, false);
-  person.overrides.push({ permission: 'skill.view', scope: 'ORGANIZATION', effect: 'ALLOW' }, { permission: 'skill.claim', scope: 'OWN', effect: 'ALLOW' });
+  person.overrides.push(
+    { permission: 'skill.view', scope: 'ORGANIZATION', effect: 'ALLOW' },
+    { permission: 'skill.claim', scope: 'OWN', effect: 'ALLOW' },
+  );
   assert.equal(workspaceFor(state, person).capabilities.claimSkills, true);
   person.overrides.push({ permission: 'profile.view', scope: 'OWN', effect: 'DENY' });
   assert.equal(workspaceFor(state, person).capabilities.ownSkills, false);
 });
 
 test('workspace HTTP binds verified identity, ignores forged person/role and rechecks deactivation', async () => {
-  const store = await LocalAccessStore.open(), state = store.snapshot();
+  const store = await LocalAccessStore.open(),
+    state = store.snapshot();
   const actor = state.people[0].id;
-  state.people.push({ id: 'other', displayName: 'Hidden other person', employeeCode: 'PRIVATE', active: true, roleIds: [], overrides: [] });
+  state.people.push({
+    id: 'other',
+    displayName: 'Hidden other person',
+    employeeCode: 'PRIVATE',
+    active: true,
+    roleIds: [],
+    overrides: [],
+  });
   store.snapshot = () => structuredClone(state);
-  const server = createApp({ verify: async header => { if (header !== 'Bearer human') throw new Error(); return { tenantId: 'trusted', objectId: 'human' }; }, resolveAccess: async identity => { assert.equal(identity.objectId, 'human'); return actor; }, profile: async () => undefined, access: store }).listen(0, '127.0.0.1');
-  await once(server, 'listening'); const address = server.address(); assert.ok(address && typeof address !== 'string');
+  const server = createApp({
+    verify: async header => {
+      if (header !== 'Bearer human') throw new Error();
+      return { tenantId: 'trusted', objectId: 'human' };
+    },
+    resolveAccess: async identity => {
+      assert.equal(identity.objectId, 'human');
+      return actor;
+    },
+    profile: async () => undefined,
+    access: store,
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
   const url = `http://127.0.0.1:${address.port}/api/workspace?personId=other&role=CHRO`;
   try {
     assert.equal((await fetch(url)).status, 401);
     const response = await fetch(url, { headers: { Authorization: 'Bearer human' } });
-    assert.equal(response.status, 200); assert.equal(response.headers.get('cache-control'), 'no-store');
-    const result = await response.json(); assert.equal(result.person.id, actor);
-    assert.doesNotMatch(JSON.stringify(result), /Hidden other person|PRIVATE|entraObjectId|overrides/);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    const result = await response.json();
+    assert.equal(result.person.id, actor);
+    assert.doesNotMatch(
+      JSON.stringify(result),
+      /Hidden other person|PRIVATE|entraObjectId|overrides/,
+    );
     state.people[0].active = false;
     assert.equal((await fetch(url, { headers: { Authorization: 'Bearer human' } })).status, 403);
-  } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close(error => (error ? reject(error) : resolve())),
+    );
+  }
 });
 
 test('development workspace respects the selected person and revocation; linked owner cannot use direct login', async () => {
-  const store = await LocalAccessStore.open(), state = store.snapshot();
+  const store = await LocalAccessStore.open(),
+    state = store.snapshot();
   state.people[0].entraObjectId = 'linked-owner';
-  state.roles.push({ id: 'employee', name: 'Editable employee set', permissions: structuredClone(rolePresets[0].permissions) });
-  state.people.push({ id: 'person', displayName: 'Selected person', employeeCode: 'DEV', active: true, roleIds: ['employee'], overrides: [] });
-  store.snapshot = () => structuredClone(state); store.person = id => structuredClone(state.people.find(person => person.id === id && person.active));
+  state.roles.push({
+    id: 'employee',
+    name: 'Editable employee set',
+    permissions: structuredClone(rolePresets[0].permissions),
+  });
+  state.people.push({
+    id: 'person',
+    displayName: 'Selected person',
+    employeeCode: 'DEV',
+    active: true,
+    roleIds: ['employee'],
+    overrides: [],
+  });
+  store.snapshot = () => structuredClone(state);
+  store.person = id =>
+    structuredClone(state.people.find(person => person.id === id && person.active));
   const server = createApp(undefined, { developmentStore: store }).listen(0, '127.0.0.1');
-  await once(server, 'listening'); const address = server.address(); assert.ok(address && typeof address !== 'string');
+  await once(server, 'listening');
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
   const base = `http://127.0.0.1:${address.port}`;
-  const login = (personId: string) => fetch(base + '/api/dev-login', { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: JSON.stringify({ personId }) });
+  const login = (personId: string) =>
+    fetch(base + '/api/dev-login', {
+      method: 'POST',
+      headers: { Origin: base, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ personId }),
+    });
   try {
     const people = await (await fetch(base + '/api/dev-login')).json();
-    assert.deepEqual(people.people.map((person: { roles: string[] }) => person.roles), [['Editable employee set']]);
+    assert.deepEqual(
+      people.people.map((person: { roles: string[] }) => person.roles),
+      [['Editable employee set']],
+    );
     assert.equal((await login(state.people[0].id)).status, 400);
-    const response = await login('person'), cookie = response.headers.get('set-cookie')!.split(';')[0];
-    const result = await (await fetch(base + '/api/workspace', { headers: { Cookie: cookie } })).json();
-    assert.equal(result.person.id, 'person'); assert.equal(result.authentication, 'local-demo'); assert.equal(result.capabilities.claimSkills, true);
+    const response = await login('person'),
+      cookie = response.headers.get('set-cookie')!.split(';')[0];
+    const result = await (
+      await fetch(base + '/api/workspace', { headers: { Cookie: cookie } })
+    ).json();
+    assert.equal(result.person.id, 'person');
+    assert.equal(result.authentication, 'local-demo');
+    assert.equal(result.capabilities.claimSkills, true);
     state.people[1].overrides.push({ permission: 'skill.claim', scope: 'OWN', effect: 'DENY' });
-    assert.equal((await (await fetch(base + '/api/workspace', { headers: { Cookie: cookie } })).json()).capabilities.claimSkills, false);
+    assert.equal(
+      (await (await fetch(base + '/api/workspace', { headers: { Cookie: cookie } })).json())
+        .capabilities.claimSkills,
+      false,
+    );
     state.people[1].active = false;
-    assert.equal((await fetch(base + '/api/workspace', { headers: { Cookie: cookie } })).status, 403);
-  } finally { await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())); }
+    assert.equal(
+      (await fetch(base + '/api/workspace', { headers: { Cookie: cookie } })).status,
+      403,
+    );
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close(error => (error ? reject(error) : resolve())),
+    );
+  }
 });
 
- test('profile correction discovery requires own request read and create, including explicit denies',()=>{
- const state:LocalAccessState={revision:1,audit:[],roles:[{id:'employee',name:'Renamed template',permissions:structuredClone(rolePresets[0].permissions)}],people:[{id:'own',displayName:'Person',employeeCode:'EMP',active:true,roleIds:['employee'],overrides:[]}]};
- const person=state.people[0];
- assert.equal(workspaceFor(state,person).capabilities.requestProfileCorrection,true);
- person.overrides.push({permission:'request.create',scope:'OWN',effect:'DENY'});
- assert.equal(workspaceFor(state,person).capabilities.requests,true);
- assert.equal(workspaceFor(state,person).capabilities.requestProfileCorrection,false);
- person.overrides=[];
- person.overrides.push({permission:'request.view',scope:'OWN',effect:'DENY'});
- assert.equal(workspaceFor(state,person).capabilities.requestProfileCorrection,false);
- person.overrides=[];person.active=false;
- assert.equal(workspaceFor(state,person).capabilities.requestProfileCorrection,false);
- });
+test('profile correction discovery requires own request read and create, including explicit denies', () => {
+  const state: LocalAccessState = {
+    revision: 1,
+    audit: [],
+    roles: [
+      {
+        id: 'employee',
+        name: 'Renamed template',
+        permissions: structuredClone(rolePresets[0].permissions),
+      },
+    ],
+    people: [
+      {
+        id: 'own',
+        displayName: 'Person',
+        employeeCode: 'EMP',
+        active: true,
+        roleIds: ['employee'],
+        overrides: [],
+      },
+    ],
+  };
+  const person = state.people[0];
+  assert.equal(workspaceFor(state, person).capabilities.requestProfileCorrection, true);
+  person.overrides.push({ permission: 'request.create', scope: 'OWN', effect: 'DENY' });
+  assert.equal(workspaceFor(state, person).capabilities.requests, true);
+  assert.equal(workspaceFor(state, person).capabilities.requestProfileCorrection, false);
+  person.overrides = [];
+  person.overrides.push({ permission: 'request.view', scope: 'OWN', effect: 'DENY' });
+  assert.equal(workspaceFor(state, person).capabilities.requestProfileCorrection, false);
+  person.overrides = [];
+  person.active = false;
+  assert.equal(workspaceFor(state, person).capabilities.requestProfileCorrection, false);
+});

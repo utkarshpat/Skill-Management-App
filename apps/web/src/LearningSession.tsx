@@ -1,35 +1,619 @@
-import {useEffect,useState} from 'react';
-import {BookOpen,Clock3,ExternalLink,Plus,Trash2,Sparkles,CheckCircle2} from 'lucide-react';
-import {authenticatedFetch} from './auth';
-import {FormDialog} from './FormDialog';
-import type {Plan,Task} from './Learning';
+import { useEffect, useState } from 'react';
+import { BookOpen, Clock3, ExternalLink, Plus, Trash2, Sparkles, CheckCircle2 } from 'lucide-react';
+import { authenticatedFetch } from './auth';
+import { FormDialog } from './FormDialog';
+import type { Plan, Task } from './Learning';
 import './learning-session.css';
 
-interface Resource{label:string;url:string}
-interface Question{prompt:string;options:string[]}
-interface Quiz{id:string;title:string;provider:string;createdAt:string;questions:Question[]}
-interface Review extends Question{answer:number;correctIndex:number;explanation:string}
-interface Attempt{id:string;quizId:string;answers:number[];score:number;total:number;submittedAt:string;review:Review[]}
-interface Practice{session:{revision:number;notes:string;minutes:number;resources:Resource[]};quizzes:Quiz[];attempts:Omit<Attempt,'review'>[]}
-async function parse(response:Response):Promise<Practice>{const body=await response.json().catch(()=>undefined);if(!response.ok)throw Error(body?.error?.message??'This learning session could not be loaded.');return body;}
-export function LearningSession({plan,task,canManage,onClose,onComplete}:{plan:Plan;task:Task;canManage:boolean;onClose:()=>void;onComplete:(minutes:number,notes:string)=>void}){
- const editable=canManage&&plan.status==='ACTIVE';
- const [state,setState]=useState<Practice>(),[page,setPage]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[retry,setRetry]=useState(0);
- const [notes,setNotes]=useState(''),[minutes,setMinutes]=useState(task.actualMinutes??task.estimatedMinutes),[resources,setResources]=useState<Resource[]>([]),[resourcePage,setResourcePage]=useState(0),[label,setLabel]=useState(''),[url,setUrl]=useState(''),[addingResource,setAddingResource]=useState(false);
- const [count,setCount]=useState(5),[quiz,setQuiz]=useState<Quiz>(),[questionIndex,setQuestionIndex]=useState(0),[answers,setAnswers]=useState<(number|undefined)[]>([]),[attemptId,setAttemptId]=useState(''),[review,setReview]=useState<Attempt>(),[reviewIndex,setReviewIndex]=useState(0),[quizPage,setQuizPage]=useState(0),[historyPage,setHistoryPage]=useState(0);
- useEffect(()=>{const controller=new AbortController();authenticatedFetch('/api/learning/practice?planId='+plan.id+'&taskId='+task.id,{signal:controller.signal}).then(parse).then(value=>{if(!controller.signal.aborted){setState(value);setNotes(value.session.revision?value.session.notes:task.notes??'');setMinutes(value.session.revision?value.session.minutes:task.actualMinutes??task.estimatedMinutes);setResources(value.session.resources);setError('');}}).catch(e=>{if(!controller.signal.aborted)setError(e.message);});return()=>controller.abort();},[plan.id,task.id,retry]);
- async function post(action:'session'|'quiz'|'attempt',payload:object){if(busy||!state)return;setBusy(true);setError('');setNotice('');try{const next=await parse(await authenticatedFetch('/api/learning/practice/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({planId:plan.id,taskId:task.id,...payload})}));setState(next);return next;}catch(e){setError(e instanceof Error?e.message:'Could not save.');}finally{setBusy(false);}}
- async function save(){const next=await post('session',{revision:state!.session.revision,notes,minutes,resources});if(next)setNotice('Session saved. Completion is logged separately.');}
- function startQuiz(value:Quiz){setQuiz(value);setQuestionIndex(0);setAnswers(Array(value.questions.length).fill(undefined));setAttemptId(crypto.randomUUID());setReview(undefined);setPage(2);setError('');setNotice('');}
- async function generate(){const next=await post('quiz',{count});if(next){setQuizPage(0);setNotice('AI practice ready. Review the topic and start when you are ready.');}}
- async function loadReview(id:string){setBusy(true);setError('');try{const response=await authenticatedFetch('/api/learning/practice/review?planId='+plan.id+'&taskId='+task.id+'&id='+id);const body=await response.json();if(!response.ok)throw Error(body?.error?.message??'Could not load your attempt.');setReview(body);setReviewIndex(0);setPage(3);}catch(e){setError(e instanceof Error?e.message:'Could not load your attempt.');}finally{setBusy(false);}}
- async function submit(){if(!quiz||answers.some(a=>a===undefined)){setError('Answer every question before submitting.');return;}const next=await post('attempt',{id:attemptId,quizId:quiz.id,answers});const result=next?.attempts.find(a=>a.id===attemptId);if(result){setQuiz(undefined);setPage(3);setHistoryPage(0);await loadReview(result.id);setNotice('Attempt saved. This is informal learning practice.');}}
- function addResource(){setError('');if(resources.length>=5){setError('Use up to five resources per task.');return;}let parsed:URL;try{parsed=new URL(url);}catch{setError('Enter a full HTTPS resource URL.');return;}if(!label.trim()||label.length>120||url.length>1000||parsed.protocol!=='https:'||parsed.username||parsed.password){setError('Use a resource name and an HTTPS URL without credentials.');return;}setResources([...resources,{label:label.trim(),url:parsed.href}]);setResourcePage(Math.floor(resources.length/2));setLabel('');setUrl('');setAddingResource(false);setNotice('Resource added to your draft. Save session to keep it.');}
- const q=quiz?.questions[questionIndex],r=review?.review[reviewIndex];
- const session=<div className="access-form learning-session-fields"><div className="session-context"><span><BookOpen size={17}/>{plan.skillName??plan.focus??'General'}</span><span><Clock3 size={17}/>{task.estimatedMinutes} min planned</span></div><p className="session-goal">{plan.goal.slice(0,240)}{plan.goal.length>240?'…':''}</p><label>Study notes<textarea rows={4} maxLength={2000} value={notes} disabled={!editable||busy} onChange={e=>setNotes(e.target.value)} placeholder="What did you learn? What needs more practice?"/></label><label>Actual study minutes<input type="number" min={0} max={480} value={minutes} disabled={!editable||busy} onChange={e=>setMinutes(Number(e.target.value))}/></label><p className="workspace-muted">Saving keeps a study draft. “Log completion” records the task once you finish.</p></div>;
- const resourceView=addingResource?<div className="access-form"><h3>Add study resource</h3><label>Resource name<input maxLength={120} value={label} disabled={busy} onChange={e=>setLabel(e.target.value)}/></label><label>HTTPS URL<input type="url" maxLength={1000} value={url} disabled={busy} onChange={e=>setUrl(e.target.value)} placeholder="https://…"/></label><div className="learning-actions"><button className="secondary-button" disabled={busy} onClick={()=>setAddingResource(false)}>Cancel resource</button><button className="secondary-button" disabled={busy} onClick={addResource}>Add to draft</button></div><p>Save session after adding a resource to keep it.</p></div>:<div className="learning-resource-view"><p>Your course, documentation and exercise links. AI does not invent or fetch resources.</p>{resources.slice(resourcePage*2,resourcePage*2+2).map((item,i)=><article className="learning-resource" key={resourcePage*2+i}><a href={item.url} target="_blank" rel="noopener noreferrer">{item.label}<ExternalLink size={15}/></a>{editable&&<button className="admin-text-button" aria-label={'Remove '+item.label} disabled={busy} onClick={()=>{setResources(resources.filter((_,n)=>n!==resourcePage*2+i));setResourcePage(0);}}><Trash2 size={16}/></button>}</article>)}{resources.length>2&&<Pagination page={resourcePage} count={Math.ceil(resources.length/2)} change={setResourcePage}/>}<p>{resources.length}/5 resources · Save session to persist changes.</p>{editable&&<button className="secondary-button" disabled={busy||resources.length>=5} onClick={()=>{setAddingResource(true);setError('');setNotice('');}}><Plus size={15}/>Add resource</button>}</div>;
- const practice=quiz&&q?<div className="learning-practice-question"><div className="practice-heading"><span className="ld-ai-badge">AI practice</span><span>Question {questionIndex+1}/{quiz.questions.length}</span></div><h3>{q.prompt}</h3><div role="radiogroup" aria-label={'Question '+(questionIndex+1)} className="practice-options">{q.options.map((option,i)=><label key={i} className={answers[questionIndex]===i?'selected':''}><input type="radio" name={'practice-'+questionIndex} checked={answers[questionIndex]===i} disabled={busy} onChange={()=>setAnswers(v=>v.map((answer,n)=>n===questionIndex?i:answer))}/><span>{option}</span></label>)}</div><Pagination page={questionIndex} count={quiz.questions.length} change={setQuestionIndex}/><p className="workspace-muted">{answers.filter(a=>a!==undefined).length}/{quiz.questions.length} answered. Results appear only after submission.</p></div>:<div className="learning-practice-list"><div className="practice-heading"><span className="ld-ai-badge"><Sparkles size={14}/>AI practice</span><small>Informal practice · no skill verification</small></div><div className="access-form practice-generate"><label>Number of questions<input type="number" min={1} max={20} value={count} disabled={!editable||busy} onChange={e=>setCount(Number(e.target.value))}/></label>{editable&&<button className="secondary-button" disabled={busy||!state||!Number.isInteger(count)||count<1||count>20} onClick={()=>void generate()}>{busy?'Generating…':'Generate practice'}</button>}</div>{state?.quizzes.slice(quizPage*3,quizPage*3+3).map(value=><article className="learning-practice-row" key={value.id}><div><strong>{value.title}</strong><small>{value.questions.length} questions · {new Date(value.createdAt).toLocaleDateString()} · AI generated</small></div><button className="secondary-button" disabled={!editable||busy} onClick={()=>startQuiz(value)}>Start practice</button></article>)}{!state?.quizzes.length&&<p>No practice quiz yet. Generate one for this task when you are ready.</p>}{(state?.quizzes.length??0)>3&&<Pagination page={quizPage} count={Math.ceil(state!.quizzes.length/3)} change={setQuizPage}/>}<p className="workspace-muted">AI answers may be imperfect. Use the explanations as study guidance and check your learning resources.</p></div>;
- const history=review&&r?<div className="learning-attempt-review"><div className="practice-heading"><strong><CheckCircle2 size={17}/>{review.score}/{review.total} · {Math.round(review.score/review.total*100)}%</strong><span>Question {reviewIndex+1}/{review.total}</span></div><h3>{r.prompt}</h3><p className={r.answer===r.correctIndex?'practice-correct':'practice-incorrect'}>Your answer: {r.options[r.answer]}</p><p><strong>Correct answer:</strong> {r.options[r.correctIndex]}</p><p>{r.explanation}</p><Pagination page={reviewIndex} count={review.total} change={setReviewIndex}/><button className="admin-text-button" onClick={()=>setReview(undefined)}>Back to attempts</button></div>:<div className="learning-attempt-list"><p>Saved attempts for this task. Retaking a quiz creates another attempt; previous scores stay readable.</p>{state?.attempts.slice(historyPage*4,historyPage*4+4).map(a=><article className="learning-practice-row" key={a.id}><div><strong>{a.score}/{a.total} · {Math.round(a.score/a.total*100)}%</strong><small>{new Date(a.submittedAt).toLocaleString()}</small></div><button className="secondary-button" disabled={busy} onClick={()=>void loadReview(a.id)}>View explanations</button></article>)}{!state?.attempts.length&&<p>No attempts yet. Complete a practice quiz to see your results.</p>}{(state?.attempts.length??0)>4&&<Pagination page={historyPage} count={Math.ceil(state!.attempts.length/4)} change={setHistoryPage}/>}</div>;
- return <FormDialog title={task.title} subtitle={plan.title} className="learning-session-dialog" busy={busy} onClose={onClose} page={page} onPageChange={setPage} pages={[{label:'Session',content:session},{label:'Resources',content:resourceView},{label:'Practice',content:practice},{label:'History',content:history}]} message={<>{!state&&!error&&<p role="status">Loading session…</p>}{error&&<p role="alert">{error}{!state&&<button className="admin-text-button" onClick={()=>setRetry(n=>n+1)}>Retry</button>}</p>}{notice&&<p role="status">{notice}</p>}</>} footer={<><button className="secondary-button" disabled={busy} onClick={onClose}>Close</button>{editable&&state&&page<2&&<button className="secondary-button" disabled={busy} onClick={()=>void save()}>{busy?'Saving…':'Save session'}</button>}{editable&&state&&page===0&&!task.completedAt&&<button className="admin-primary" disabled={busy||!Number.isInteger(minutes)||minutes<1||minutes>480} onClick={()=>void post('session',{revision:state.session.revision,notes,minutes,resources}).then(next=>{if(next)onComplete(minutes,notes);})}>Log completion</button>}{editable&&quiz&&page===2&&<><button className="secondary-button" disabled={busy} onClick={()=>setQuiz(undefined)}>Back to quizzes</button><button className="admin-primary" disabled={busy||answers.some(a=>a===undefined)} onClick={()=>void submit()}>{busy?'Submitting…':'Submit answers'}</button></>}</>}/>;
+interface Resource {
+  label: string;
+  url: string;
 }
-function Pagination({page,count,change}:{page:number;count:number;change:(n:number)=>void}){return <div className="learning-session-pagination"><button className="secondary-button" disabled={page===0} onClick={()=>change(page-1)}>Previous</button><span>{page+1}/{count}</span><button className="secondary-button" disabled={page+1>=count} onClick={()=>change(page+1)}>Next</button></div>;}
+interface Question {
+  prompt: string;
+  options: string[];
+}
+interface Quiz {
+  id: string;
+  title: string;
+  provider: string;
+  createdAt: string;
+  questions: Question[];
+}
+interface Review extends Question {
+  answer: number;
+  correctIndex: number;
+  explanation: string;
+}
+interface Attempt {
+  id: string;
+  quizId: string;
+  answers: number[];
+  score: number;
+  total: number;
+  submittedAt: string;
+  review: Review[];
+}
+interface Practice {
+  session: { revision: number; notes: string; minutes: number; resources: Resource[] };
+  quizzes: Quiz[];
+  attempts: Omit<Attempt, 'review'>[];
+}
+async function parse(response: Response): Promise<Practice> {
+  const body = await response.json().catch(() => undefined);
+  if (!response.ok)
+    throw Error(body?.error?.message ?? 'This learning session could not be loaded.');
+  return body;
+}
+export function LearningSession({
+  plan,
+  task,
+  canManage,
+  onClose,
+  onComplete,
+}: {
+  plan: Plan;
+  task: Task;
+  canManage: boolean;
+  onClose: () => void;
+  onComplete: (minutes: number, notes: string) => void;
+}) {
+  const editable = canManage && plan.status === 'ACTIVE';
+  const [state, setState] = useState<Practice>(),
+    [page, setPage] = useState(0),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(''),
+    [notice, setNotice] = useState(''),
+    [retry, setRetry] = useState(0);
+  const [notes, setNotes] = useState(''),
+    [minutes, setMinutes] = useState(task.actualMinutes ?? task.estimatedMinutes),
+    [resources, setResources] = useState<Resource[]>([]),
+    [resourcePage, setResourcePage] = useState(0),
+    [label, setLabel] = useState(''),
+    [url, setUrl] = useState(''),
+    [addingResource, setAddingResource] = useState(false);
+  const [count, setCount] = useState(5),
+    [quiz, setQuiz] = useState<Quiz>(),
+    [questionIndex, setQuestionIndex] = useState(0),
+    [answers, setAnswers] = useState<(number | undefined)[]>([]),
+    [attemptId, setAttemptId] = useState(''),
+    [review, setReview] = useState<Attempt>(),
+    [reviewIndex, setReviewIndex] = useState(0),
+    [quizPage, setQuizPage] = useState(0),
+    [historyPage, setHistoryPage] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    authenticatedFetch('/api/learning/practice?planId=' + plan.id + '&taskId=' + task.id, {
+      signal: controller.signal,
+    })
+      .then(parse)
+      .then(value => {
+        if (!controller.signal.aborted) {
+          setState(value);
+          setNotes(value.session.revision ? value.session.notes : (task.notes ?? ''));
+          setMinutes(
+            value.session.revision
+              ? value.session.minutes
+              : (task.actualMinutes ?? task.estimatedMinutes),
+          );
+          setResources(value.session.resources);
+          setError('');
+        }
+      })
+      .catch(e => {
+        if (!controller.signal.aborted) setError(e.message);
+      });
+    return () => controller.abort();
+  }, [plan.id, task.id, retry]);
+  async function post(action: 'session' | 'quiz' | 'attempt', payload: object) {
+    if (busy || !state) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const next = await parse(
+        await authenticatedFetch('/api/learning/practice/' + action, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planId: plan.id, taskId: task.id, ...payload }),
+        }),
+      );
+      setState(next);
+      return next;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function save() {
+    const next = await post('session', {
+      revision: state!.session.revision,
+      notes,
+      minutes,
+      resources,
+    });
+    if (next) setNotice('Session saved. Completion is logged separately.');
+  }
+  function startQuiz(value: Quiz) {
+    setQuiz(value);
+    setQuestionIndex(0);
+    setAnswers(Array(value.questions.length).fill(undefined));
+    setAttemptId(crypto.randomUUID());
+    setReview(undefined);
+    setPage(2);
+    setError('');
+    setNotice('');
+  }
+  async function generate() {
+    const next = await post('quiz', { count });
+    if (next) {
+      setQuizPage(0);
+      setNotice('AI practice ready. Review the topic and start when you are ready.');
+    }
+  }
+  async function loadReview(id: string) {
+    setBusy(true);
+    setError('');
+    try {
+      const response = await authenticatedFetch(
+        '/api/learning/practice/review?planId=' + plan.id + '&taskId=' + task.id + '&id=' + id,
+      );
+      const body = await response.json().catch(() => undefined);
+      if (!response.ok || !body)
+        throw Error(body?.error?.message ?? 'Could not load your attempt.');
+      setReview(body);
+      setReviewIndex(0);
+      setPage(3);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load your attempt.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function submit() {
+    if (!quiz || answers.some(a => a === undefined)) {
+      setError('Answer every question before submitting.');
+      return;
+    }
+    const next = await post('attempt', { id: attemptId, quizId: quiz.id, answers });
+    const result = next?.attempts.find(a => a.id === attemptId);
+    if (result) {
+      setQuiz(undefined);
+      setPage(3);
+      setHistoryPage(0);
+      await loadReview(result.id);
+      setNotice('Attempt saved. This is informal learning practice.');
+    }
+  }
+  function addResource() {
+    setError('');
+    if (resources.length >= 5) {
+      setError('Use up to five resources per task.');
+      return;
+    }
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      setError('Enter a full HTTPS resource URL.');
+      return;
+    }
+    if (
+      !label.trim() ||
+      label.length > 120 ||
+      url.length > 1000 ||
+      parsed.protocol !== 'https:' ||
+      parsed.username ||
+      parsed.password
+    ) {
+      setError('Use a resource name and an HTTPS URL without credentials.');
+      return;
+    }
+    setResources([...resources, { label: label.trim(), url: parsed.href }]);
+    setResourcePage(Math.floor(resources.length / 2));
+    setLabel('');
+    setUrl('');
+    setAddingResource(false);
+    setNotice('Resource added to your draft. Save session to keep it.');
+  }
+  const q = quiz?.questions[questionIndex],
+    r = review?.review[reviewIndex];
+  const session = (
+    <div className="access-form learning-session-fields">
+      <div className="session-context">
+        <span>
+          <BookOpen size={17} />
+          {plan.skillName ?? plan.focus ?? 'General'}
+        </span>
+        <span>
+          <Clock3 size={17} />
+          {task.estimatedMinutes} min planned
+        </span>
+      </div>
+      <p className="session-goal">
+        {plan.goal.slice(0, 240)}
+        {plan.goal.length > 240 ? '…' : ''}
+      </p>
+      <label>
+        Study notes
+        <textarea
+          rows={4}
+          maxLength={2000}
+          value={notes}
+          disabled={!editable || busy}
+          onChange={e => setNotes(e.target.value)}
+          placeholder="What did you learn? What needs more practice?"
+        />
+      </label>
+      <label>
+        Actual study minutes
+        <input
+          type="number"
+          min={0}
+          max={480}
+          value={minutes}
+          disabled={!editable || busy}
+          onChange={e => setMinutes(Number(e.target.value))}
+        />
+      </label>
+      <p className="workspace-muted">
+        Saving keeps a study draft. “Log completion” records the task once you finish.
+      </p>
+    </div>
+  );
+  const resourceView = addingResource ? (
+    <div className="access-form">
+      <h3>Add study resource</h3>
+      <label>
+        Resource name
+        <input
+          maxLength={120}
+          value={label}
+          disabled={busy}
+          onChange={e => setLabel(e.target.value)}
+        />
+      </label>
+      <label>
+        HTTPS URL
+        <input
+          type="url"
+          maxLength={1000}
+          value={url}
+          disabled={busy}
+          onChange={e => setUrl(e.target.value)}
+          placeholder="https://…"
+        />
+      </label>
+      <div className="learning-actions">
+        <button
+          className="secondary-button"
+          disabled={busy}
+          onClick={() => setAddingResource(false)}
+        >
+          Cancel resource
+        </button>
+        <button className="secondary-button" disabled={busy} onClick={addResource}>
+          Add to draft
+        </button>
+      </div>
+      <p>Save session after adding a resource to keep it.</p>
+    </div>
+  ) : (
+    <div className="learning-resource-view">
+      <p>Your course, documentation and exercise links. AI does not invent or fetch resources.</p>
+      {resources.slice(resourcePage * 2, resourcePage * 2 + 2).map((item, i) => (
+        <article className="learning-resource" key={resourcePage * 2 + i}>
+          <a href={item.url} target="_blank" rel="noopener noreferrer">
+            {item.label}
+            <ExternalLink size={15} />
+          </a>
+          {editable && (
+            <button
+              className="admin-text-button"
+              aria-label={'Remove ' + item.label}
+              disabled={busy}
+              onClick={() => {
+                setResources(resources.filter((_, n) => n !== resourcePage * 2 + i));
+                setResourcePage(0);
+              }}
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
+        </article>
+      ))}
+      {resources.length > 2 && (
+        <Pagination
+          page={resourcePage}
+          count={Math.ceil(resources.length / 2)}
+          change={setResourcePage}
+        />
+      )}
+      <p>{resources.length}/5 resources · Save session to persist changes.</p>
+      {editable && (
+        <button
+          className="secondary-button"
+          disabled={busy || resources.length >= 5}
+          onClick={() => {
+            setAddingResource(true);
+            setError('');
+            setNotice('');
+          }}
+        >
+          <Plus size={15} />
+          Add resource
+        </button>
+      )}
+    </div>
+  );
+  const practice =
+    quiz && q ? (
+      <div className="learning-practice-question">
+        <div className="practice-heading">
+          <span className="ld-ai-badge">AI practice</span>
+          <span>
+            Question {questionIndex + 1}/{quiz.questions.length}
+          </span>
+        </div>
+        <h3>{q.prompt}</h3>
+        <div
+          role="radiogroup"
+          aria-label={'Question ' + (questionIndex + 1)}
+          className="practice-options"
+        >
+          {q.options.map((option, i) => (
+            <label key={i} className={answers[questionIndex] === i ? 'selected' : ''}>
+              <input
+                type="radio"
+                name={'practice-' + questionIndex}
+                checked={answers[questionIndex] === i}
+                disabled={busy}
+                onChange={() =>
+                  setAnswers(v => v.map((answer, n) => (n === questionIndex ? i : answer)))
+                }
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+        </div>
+        <Pagination page={questionIndex} count={quiz.questions.length} change={setQuestionIndex} />
+        <p className="workspace-muted">
+          {answers.filter(a => a !== undefined).length}/{quiz.questions.length} answered. Results
+          appear only after submission.
+        </p>
+      </div>
+    ) : (
+      <div className="learning-practice-list">
+        <div className="practice-heading">
+          <span className="ld-ai-badge">
+            <Sparkles size={14} />
+            AI practice
+          </span>
+          <small>Informal practice · no skill verification</small>
+        </div>
+        <div className="access-form practice-generate">
+          <label>
+            Number of questions
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={count}
+              disabled={!editable || busy}
+              onChange={e => setCount(Number(e.target.value))}
+            />
+          </label>
+          {editable && (
+            <button
+              className="secondary-button"
+              disabled={busy || !state || !Number.isInteger(count) || count < 1 || count > 20}
+              onClick={() => void generate()}
+            >
+              {busy ? 'Generating…' : 'Generate practice'}
+            </button>
+          )}
+        </div>
+        {state?.quizzes.slice(quizPage * 3, quizPage * 3 + 3).map(value => (
+          <article className="learning-practice-row" key={value.id}>
+            <div>
+              <strong>{value.title}</strong>
+              <small>
+                {value.questions.length} questions ·{' '}
+                {new Date(value.createdAt).toLocaleDateString()} · AI generated
+              </small>
+            </div>
+            <button
+              className="secondary-button"
+              disabled={!editable || busy}
+              onClick={() => startQuiz(value)}
+            >
+              Start practice
+            </button>
+          </article>
+        ))}
+        {!state?.quizzes.length && (
+          <p>No practice quiz yet. Generate one for this task when you are ready.</p>
+        )}
+        {(state?.quizzes.length ?? 0) > 3 && (
+          <Pagination
+            page={quizPage}
+            count={Math.ceil(state!.quizzes.length / 3)}
+            change={setQuizPage}
+          />
+        )}
+        <p className="workspace-muted">
+          AI answers may be imperfect. Use the explanations as study guidance and check your
+          learning resources.
+        </p>
+      </div>
+    );
+  const history =
+    review && r ? (
+      <div className="learning-attempt-review">
+        <div className="practice-heading">
+          <strong>
+            <CheckCircle2 size={17} />
+            {review.score}/{review.total} · {Math.round((review.score / review.total) * 100)}%
+          </strong>
+          <span>
+            Question {reviewIndex + 1}/{review.total}
+          </span>
+        </div>
+        <h3>{r.prompt}</h3>
+        <p className={r.answer === r.correctIndex ? 'practice-correct' : 'practice-incorrect'}>
+          Your answer: {r.options[r.answer]}
+        </p>
+        <p>
+          <strong>Correct answer:</strong> {r.options[r.correctIndex]}
+        </p>
+        <p>{r.explanation}</p>
+        <Pagination page={reviewIndex} count={review.total} change={setReviewIndex} />
+        <button className="admin-text-button" onClick={() => setReview(undefined)}>
+          Back to attempts
+        </button>
+      </div>
+    ) : (
+      <div className="learning-attempt-list">
+        <p>
+          Saved attempts for this task. Retaking a quiz creates another attempt; previous scores
+          stay readable.
+        </p>
+        {state?.attempts.slice(historyPage * 4, historyPage * 4 + 4).map(a => (
+          <article className="learning-practice-row" key={a.id}>
+            <div>
+              <strong>
+                {a.score}/{a.total} · {Math.round((a.score / a.total) * 100)}%
+              </strong>
+              <small>{new Date(a.submittedAt).toLocaleString()}</small>
+            </div>
+            <button
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => void loadReview(a.id)}
+            >
+              View explanations
+            </button>
+          </article>
+        ))}
+        {!state?.attempts.length && (
+          <p>No attempts yet. Complete a practice quiz to see your results.</p>
+        )}
+        {(state?.attempts.length ?? 0) > 4 && (
+          <Pagination
+            page={historyPage}
+            count={Math.ceil(state!.attempts.length / 4)}
+            change={setHistoryPage}
+          />
+        )}
+      </div>
+    );
+  return (
+    <FormDialog
+      title={task.title}
+      subtitle={plan.title}
+      className="learning-session-dialog"
+      busy={busy}
+      onClose={onClose}
+      page={page}
+      onPageChange={setPage}
+      pages={[
+        { label: 'Session', content: session },
+        { label: 'Resources', content: resourceView },
+        { label: 'Practice', content: practice },
+        { label: 'History', content: history },
+      ]}
+      message={
+        <>
+          {!state && !error && <p role="status">Loading session…</p>}
+          {error && (
+            <p role="alert">
+              {error}
+              {!state && (
+                <button className="admin-text-button" onClick={() => setRetry(n => n + 1)}>
+                  Retry
+                </button>
+              )}
+            </p>
+          )}
+          {notice && <p role="status">{notice}</p>}
+        </>
+      }
+      footer={
+        <>
+          <button className="secondary-button" disabled={busy} onClick={onClose}>
+            Close
+          </button>
+          {editable && state && page < 2 && (
+            <button className="secondary-button" disabled={busy} onClick={() => void save()}>
+              {busy ? 'Saving…' : 'Save session'}
+            </button>
+          )}
+          {editable && state && page === 0 && !task.completedAt && (
+            <button
+              className="admin-primary"
+              disabled={busy || !Number.isInteger(minutes) || minutes < 1 || minutes > 480}
+              onClick={() =>
+                void post('session', {
+                  revision: state.session.revision,
+                  notes,
+                  minutes,
+                  resources,
+                }).then(next => {
+                  if (next) onComplete(minutes, notes);
+                })
+              }
+            >
+              Log completion
+            </button>
+          )}
+          {editable && quiz && page === 2 && (
+            <>
+              <button
+                className="secondary-button"
+                disabled={busy}
+                onClick={() => setQuiz(undefined)}
+              >
+                Back to quizzes
+              </button>
+              <button
+                className="admin-primary"
+                disabled={busy || answers.some(a => a === undefined)}
+                onClick={() => void submit()}
+              >
+                {busy ? 'Submitting…' : 'Submit answers'}
+              </button>
+            </>
+          )}
+        </>
+      }
+    />
+  );
+}
+function Pagination({
+  page,
+  count,
+  change,
+}: {
+  page: number;
+  count: number;
+  change: (n: number) => void;
+}) {
+  return (
+    <div className="learning-session-pagination">
+      <button className="secondary-button" disabled={page === 0} onClick={() => change(page - 1)}>
+        Previous
+      </button>
+      <span>
+        {page + 1}/{count}
+      </span>
+      <button
+        className="secondary-button"
+        disabled={page + 1 >= count}
+        onClick={() => change(page + 1)}
+      >
+        Next
+      </button>
+    </div>
+  );
+}

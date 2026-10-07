@@ -1,47 +1,646 @@
-import {ClaimEvidence} from './ClaimEvidence';
-import type {Claim} from './MySkills';
-import {useEffect,useRef,useState} from 'react';
-import {ArrowLeft,ArrowRight,BookOpen,Check,Code2,Database,Cloud,Layers,Monitor,Shield,Brain,Briefcase,Users,Search,Info,Paperclip,Send} from 'lucide-react';
-import {FormDialog} from './FormDialog';
+import { ClaimEvidence } from './ClaimEvidence';
+import type { Claim } from './MySkills';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  Check,
+  Code2,
+  Database,
+  Cloud,
+  Layers,
+  Monitor,
+  Shield,
+  Brain,
+  Briefcase,
+  Users,
+  Search,
+  Info,
+  Paperclip,
+  Send,
+} from 'lucide-react';
+import { FormDialog } from './FormDialog';
 import './skill-wizard.css';
-import {formatSkillDate,skillDateError} from './skill-dates';
-import {SkillExperienceDates} from './SkillExperienceDates';
-export interface SkillChoice {id:string;name:string;category:string;description?:string;businessCode?:string|null;definitionRevision:number;levels:{rank:number;name:string;description:string}[]}
-export interface SkillDraft {id:string;revision:number;skillId:string;definitionRevision:number;rank:number;experienceMonths:number;lastUsedOn?:string|null;description:string;projects?:string;evidence?:string}
-export interface SkillChoices {skills:SkillChoice[];total:number;page:number;pageSize:number;categories?:{name:string;count:number}[]}
-function CategoryIcon({category,size=18}:{category:string;size?:number}){const Icon=category.includes('Programming')?Code2:category.includes('Frontend')?Monitor:category.includes('Backend')?Layers:category.includes('Database')?Database:category.includes('Cloud')?Cloud:category.includes('Cyber')?Shield:category.includes('AI')?Brain:category.includes('Project')?Briefcase:category.includes('Professional')?Users:BookOpen;return <Icon size={size} aria-hidden="true"/>;}
-export function SkillClaimWizard({draft,onDraft,selected,onSelect,options,loading,busy:saving,error,page,onPage,search,onSearch,category,onCategory,onResultsPage,onSave,onClose,aiDraft=false}:{draft:SkillDraft;onDraft:(draft:SkillDraft)=>void;selected?:SkillChoice;onSelect:(skill:SkillChoice)=>void;options?:SkillChoices;loading:boolean;busy:boolean;error:string;page:number;onPage:(page:number)=>void;search:string;onSearch:(search:string)=>void;category:string;onCategory:(category:string)=>void;onResultsPage:(page:number)=>void;onSave:(submit:boolean)=>void;onClose:()=>void;aiDraft?:boolean}){
- const [uploading,setUploading]=useState(false);
- const busy=saving||uploading;
- const initial=useRef(JSON.stringify(draft)),[discard,setDiscard]=useState(false),[categoryPage,setCategoryPage]=useState(0),[validation,setValidation]=useState('');
- const [categorySize,setCategorySize]=useState(12);
- useEffect(()=>{const wide=window.matchMedia('(min-width:801px)'),short=window.matchMedia('(min-width:801px) and (max-height:800px)');const update=()=>{setCategorySize(!wide.matches?9:short.matches?8:12);setCategoryPage(0);};update();wide.addEventListener('change',update);short.addEventListener('change',update);return()=>{wide.removeEventListener('change',update);short.removeEventListener('change',update);};},[]);
- const level=selected?.levels.find(item=>item.rank===draft.rank),categories=options?.categories??[],visibleCategories=categories.slice(categoryPage*categorySize,categoryPage*categorySize+categorySize);
- const close=()=>{if(busy)return;if(JSON.stringify(draft)!==initial.current&&!busy)setDiscard(true);else onClose();};
- function change(next:number){if(busy)return;if(next>0&&!selected){setValidation('Select a published skill to continue.');onPage(0);return;}if(next===2){if(!level){setValidation('Select your current proficiency level.');onPage(1);return;}if(!Number.isInteger(draft.experienceMonths)||draft.experienceMonths<0||draft.experienceMonths>600||!draft.description.trim()){setValidation('Enter your experience and describe how you used this skill.');onPage(1);requestAnimationFrame(()=>document.getElementById('skill-experience-description')?.focus());return;}const dateError=skillDateError(draft.lastUsedOn);if(dateError){setValidation(dateError);onPage(1);requestAnimationFrame(()=>document.getElementById('skill-last-used')?.focus());return;}}setValidation('');onPage(next);}
- const summary=(label:string,value:string|undefined)=> <section className="skill-review-section"><header><h3>{label}</h3><button type="button" className="skill-text-button" onClick={()=>change(1)} aria-label={'Edit '+label}>Edit</button></header><p className="skill-summary-text">{value?.trim()||'Not provided'}</p></section>;
- return <FormDialog title={aiDraft?'Review AI skill draft':draft.revision?'Edit skill':'Add skill'} className="skill-wizard" subtitle={page===0?'Find a skill, describe your experience and review before saving.':selected?.name} stepNavigation busy={busy} onClose={close} page={page} onPageChange={change} formId="skill-claim-form" onSubmit={()=>{if(busy)return;if(page===2)onSave(false);else change(page+1);}}
- message={(error||validation)&&<p role="alert">{error||validation}</p>}
- pages={[
- {label:'Select skill',content:<div className="skill-selection-layout">
-  <section className="skill-discovery" aria-label="Find a published skill"><label className="skill-search"><Search size={18} aria-hidden="true"/><input aria-label="Search published skills" name="skillSearch" autoComplete="off" maxLength={100} value={search} onChange={event=>onSearch(event.target.value)} placeholder="Search Java, Azure, project management…"/></label>
-  <div className="skill-section-heading"><h3>Categories</h3><button type="button" className="skill-text-button" onClick={()=>{onCategory('');onSearch('');}}>View all skills</button></div>
-  <div className="skill-category-grid">{visibleCategories.map(item=><button type="button" key={item.name} aria-pressed={category===item.name} className={'skill-category-card'+(category===item.name?' selected':'')} onClick={()=>{onCategory(category===item.name?'':item.name);onSearch('');}}><span className="skill-icon"><CategoryIcon category={item.name}/></span><span><strong>{item.name}</strong><small>{item.count} skills</small></span></button>)}</div>
-  {categories.length>categorySize&&<div className="skill-category-pages"><button type="button" className="skill-text-button" onClick={()=>setCategoryPage((categoryPage+1)%Math.ceil(categories.length/categorySize))}>More categories <ArrowRight size={12} aria-hidden="true"/></button></div>}
-  <div className="skill-section-heading"><h3>{category||'Published skills'}</h3>{loading&&<span role="status">Searching…</span>}</div>
-  <div className="skill-results" aria-label="Published skill choices" aria-busy={loading}>{options?.skills.map(skill=><button type="button" key={skill.id} disabled={loading||draft.revision>0&&draft.skillId!==skill.id} className={'skill-result'+(selected?.id===skill.id?' selected':'')} aria-pressed={selected?.id===skill.id} onClick={()=>{onSelect(skill);setValidation('');}}><span className="skill-icon"><CategoryIcon category={skill.category}/></span><span><strong>{skill.name}</strong><small>{skill.businessCode?skill.businessCode+' · ':''}{skill.category}</small></span><span className="skill-result-check">{selected?.id===skill.id?<Check size={16} aria-hidden="true"/>:<span aria-hidden="true">+</span>}</span></button>)}{!loading&&options&&!options.skills.length&&<p className="skill-no-results">No published skills match. Try another search or category.</p>}</div>
-  {options&&options.total>0&&<div className="skill-results-pages"><span>{(options.page-1)*options.pageSize+1}–{Math.min(options.page*options.pageSize,options.total)} of {options.total}</span><button type="button" disabled={loading||options.page===1} onClick={()=>onResultsPage(options.page-1)} aria-label="Previous skill results"><ArrowLeft size={15}/></button><button type="button" disabled={loading||options.page*options.pageSize>=options.total} onClick={()=>onResultsPage(options.page+1)} aria-label="Next skill results"><ArrowRight size={15}/></button></div>}
-  </section>
- </div>},
- {label:'Proficiency & details',content:<div className="skill-details-layout">
-  <section className="skill-proficiency"><h3>Proficiency level</h3><p className="skill-helper">Select the level that best describes your current proficiency.</p><fieldset className="skill-level-choices"><legend className="sr-only">Proficiency level</legend>{selected?.levels.map(item=><label className={'skill-level-card'+(item.rank===draft.rank?' selected':'')} key={item.rank}><input type="radio" name="proficiency" checked={item.rank===draft.rank} onChange={()=>onDraft({...draft,rank:item.rank})}/><span>L{item.rank}</span><strong>{item.name}</strong></label>)}</fieldset><div className="skill-criteria"><Info size={20} aria-hidden="true"/><div><h3>{level?'Level '+level.rank+' · '+level.name:'Choose your proficiency'}</h3><p>{level?.description||'Read the criteria and select the level you can support with practical experience.'}</p></div></div><div className="skill-guidance subtle"><Shield size={18} aria-hidden="true"/><p>Self-assessment records your experience. Manager review is a separate step, and learning quizzes do not verify proficiency.</p></div></section>
-  <section className="skill-details-form"><h3>Your experience</h3>
-   <SkillExperienceDates value={draft} onChange={value=>onDraft({...draft,...value})}/>
-   <label>Describe your experience <span className="skill-required">Required</span><textarea id="skill-experience-description" name="experienceDescription" autoComplete="off" maxLength={2000} rows={3} value={draft.description} onChange={event=>onDraft({...draft,description:event.target.value})} placeholder="What did you deliver and how did you use this skill?…"/></label><div className="skill-text-count">{draft.description.length}/2,000</div>
-   <label>Projects <span className="skill-optional">Optional</span><textarea name="projects" autoComplete="off" rows={2} maxLength={2000} value={draft.projects??''} onChange={event=>onDraft({...draft,projects:event.target.value})} placeholder="Project, your contribution and outcome…"/></label>
-   <label><span className="skill-evidence-label"><Paperclip size={15} aria-hidden="true"/>Evidence references <span className="skill-optional">Optional</span></span><textarea name="evidence" autoComplete="off" rows={2} maxLength={2000} value={draft.evidence??''} onChange={event=>onDraft({...draft,evidence:event.target.value})} placeholder="Approved project link or certificate reference…"/></label><p className="skill-helper">Use references your reviewer can access.</p>{draft.revision>0?<ClaimEvidence claim={{...draft,status:'DRAFT'} as Claim} onRevision={revision=>onDraft({...draft,revision})} onBusy={setUploading}/>:<div className="skill-guidance"><Paperclip size={18}/><p>Save your draft to add compressed evidence images before submitting.</p></div>}
-  </section></div>},
- {label:'Review & save',content:<div className="skill-review-layout"><section><div className="skill-section-heading"><h3>Review your skill information</h3><button type="button" className="skill-text-button" onClick={()=>change(0)}>Edit selection</button></div><div className="skill-review-selection"><span className="skill-icon"><CategoryIcon category={selected?.category??''}/></span><div><h3>{selected?.name}</h3><span className="skill-category-tag">{selected?.category}</span></div></div><div className="skill-review-facts"><div><span>Proficiency</span><strong>L{draft.rank} · {level?.name}</strong></div><div><span>Experience</span><strong>{draft.experienceMonths} months</strong></div></div>{summary('Last used',formatSkillDate(draft.lastUsedOn))}{summary('Experience description',draft.description)}{summary('Projects',draft.projects)}{summary('Evidence references',draft.evidence)}</section><aside className="skill-save-preview"><h3>Skill preview</h3><p className="skill-helper">How this draft will appear in your profile.</p><div className="skill-preview-card"><div className="skill-section-heading"><h3>{selected?.name}</h3><span className="claim-status">Self-assessed</span></div><p>{selected?.category}</p><strong>{level?.name}</strong><span>Level {draft.rank}</span><div className="skill-progress" aria-hidden="true">{selected?.levels.map(item=><span className={item.rank<=draft.rank?'filled':''} key={item.rank}/>)}</div><small>{draft.experienceMonths} months of experience</small><small>Last used: {formatSkillDate(draft.lastUsedOn)}</small></div><div className="skill-next-steps"><h3>What happens next</h3><ol><li>Save your self-assessed draft.</li><li>Submit when you are ready for your reporting manager’s review.</li><li>Track feedback and status in My skills.</li></ol></div></aside></div>}
- ]}
- footer={<><button type="button" className="secondary-button skill-back" disabled={busy||page===0} onClick={()=>change(page-1)}><ArrowLeft size={16} aria-hidden="true"/>Back</button><span>{selected?.name??'No skill selected'}</span><button type="button" className="secondary-button" disabled={busy} onClick={close}>Cancel</button>{page<2?<button key="advance" type="button" className="admin-primary skill-next" disabled={busy||loading} onClick={()=>change(page+1)}>Next<ArrowRight size={16} aria-hidden="true"/></button>:<button key="save" type="submit" form="skill-claim-form" className="secondary-button" disabled={busy}>{busy?'Saving…':draft.revision?'Save changes':'Save draft'}</button>}{page===2&&<button key="submit" type="button" className="admin-primary skill-next skill-submit" disabled={busy} onClick={()=>onSave(true)}>{busy?'Submitting…':'Submit for review'}<Send size={16} aria-hidden="true"/></button>}{discard&&<div className="skill-discard-backdrop" onKeyDown={event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();setDiscard(false);}else if(event.key==='Tab'){const buttons=Array.from(event.currentTarget.querySelectorAll('button'));const index=buttons.indexOf(document.activeElement as HTMLButtonElement);event.preventDefault();event.stopPropagation();buttons[(index+(event.shiftKey?-1:1)+buttons.length)%buttons.length]?.focus();}}}><div className="skill-discard" role="alertdialog" aria-modal="true" aria-labelledby="skill-discard-title" aria-describedby="skill-discard-text"><h3 id="skill-discard-title">Discard unsaved changes?</h3><p id="skill-discard-text">Your changes to this skill will be lost.</p><div><button type="button" className="secondary-button" autoFocus onClick={()=>setDiscard(false)}>Keep editing</button><button type="button" className="skill-discard-confirm" onClick={onClose}>Discard</button></div></div></div>}</>}/>;
+import { formatSkillDate, skillDateError } from './skill-dates';
+import { SkillExperienceDates } from './SkillExperienceDates';
+export interface SkillChoice {
+  id: string;
+  name: string;
+  category: string;
+  description?: string;
+  businessCode?: string | null;
+  definitionRevision: number;
+  levels: { rank: number; name: string; description: string }[];
+}
+export interface SkillDraft {
+  id: string;
+  revision: number;
+  skillId: string;
+  definitionRevision: number;
+  rank: number;
+  experienceMonths: number;
+  lastUsedOn?: string | null;
+  description: string;
+  projects?: string;
+  evidence?: string;
+}
+export interface SkillChoices {
+  skills: SkillChoice[];
+  total: number;
+  page: number;
+  pageSize: number;
+  categories?: { name: string; count: number }[];
+}
+function CategoryIcon({ category, size = 18 }: { category: string; size?: number }) {
+  const Icon = category.includes('Programming')
+    ? Code2
+    : category.includes('Frontend')
+      ? Monitor
+      : category.includes('Backend')
+        ? Layers
+        : category.includes('Database')
+          ? Database
+          : category.includes('Cloud')
+            ? Cloud
+            : category.includes('Cyber')
+              ? Shield
+              : category.includes('AI')
+                ? Brain
+                : category.includes('Project')
+                  ? Briefcase
+                  : category.includes('Professional')
+                    ? Users
+                    : BookOpen;
+  return <Icon size={size} aria-hidden="true" />;
+}
+export function SkillClaimWizard({
+  draft,
+  onDraft,
+  selected,
+  onSelect,
+  options,
+  loading,
+  busy: saving,
+  error,
+  page,
+  onPage,
+  search,
+  onSearch,
+  category,
+  onCategory,
+  onResultsPage,
+  onSave,
+  onClose,
+  aiDraft = false,
+}: {
+  draft: SkillDraft;
+  onDraft: (draft: SkillDraft) => void;
+  selected?: SkillChoice;
+  onSelect: (skill: SkillChoice) => void;
+  options?: SkillChoices;
+  loading: boolean;
+  busy: boolean;
+  error: string;
+  page: number;
+  onPage: (page: number) => void;
+  search: string;
+  onSearch: (search: string) => void;
+  category: string;
+  onCategory: (category: string) => void;
+  onResultsPage: (page: number) => void;
+  onSave: (submit: boolean) => void;
+  onClose: () => void;
+  aiDraft?: boolean;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const busy = saving || uploading;
+  const initial = useRef(JSON.stringify(draft)),
+    [discard, setDiscard] = useState(false),
+    [categoryPage, setCategoryPage] = useState(0),
+    [validation, setValidation] = useState('');
+  const [categorySize, setCategorySize] = useState(12);
+  useEffect(() => {
+    const wide = window.matchMedia('(min-width:801px)'),
+      short = window.matchMedia('(min-width:801px) and (max-height:800px)');
+    const update = () => {
+      setCategorySize(!wide.matches ? 9 : short.matches ? 8 : 12);
+      setCategoryPage(0);
+    };
+    update();
+    wide.addEventListener('change', update);
+    short.addEventListener('change', update);
+    return () => {
+      wide.removeEventListener('change', update);
+      short.removeEventListener('change', update);
+    };
+  }, []);
+  const level = selected?.levels.find(item => item.rank === draft.rank),
+    categories = options?.categories ?? [],
+    visibleCategories = categories.slice(
+      categoryPage * categorySize,
+      categoryPage * categorySize + categorySize,
+    );
+  const close = () => {
+    if (busy) return;
+    if (JSON.stringify(draft) !== initial.current && !busy) setDiscard(true);
+    else onClose();
+  };
+  function change(next: number) {
+    if (busy) return;
+    if (next > 0 && !selected) {
+      setValidation('Select a published skill to continue.');
+      onPage(0);
+      return;
+    }
+    if (next === 2) {
+      if (!level) {
+        setValidation('Select your current proficiency level.');
+        onPage(1);
+        return;
+      }
+      if (
+        !Number.isInteger(draft.experienceMonths) ||
+        draft.experienceMonths < 0 ||
+        draft.experienceMonths > 600 ||
+        !draft.description.trim()
+      ) {
+        setValidation('Enter your experience and describe how you used this skill.');
+        onPage(1);
+        requestAnimationFrame(() =>
+          document.getElementById('skill-experience-description')?.focus(),
+        );
+        return;
+      }
+      const dateError = skillDateError(draft.lastUsedOn);
+      if (dateError) {
+        setValidation(dateError);
+        onPage(1);
+        requestAnimationFrame(() => document.getElementById('skill-last-used')?.focus());
+        return;
+      }
+    }
+    setValidation('');
+    onPage(next);
+  }
+  const summary = (label: string, value: string | undefined) => (
+    <section className="skill-review-section">
+      <header>
+        <h3>{label}</h3>
+        <button
+          type="button"
+          className="skill-text-button"
+          onClick={() => change(1)}
+          aria-label={'Edit ' + label}
+        >
+          Edit
+        </button>
+      </header>
+      <p className="skill-summary-text">{value?.trim() || 'Not provided'}</p>
+    </section>
+  );
+  return (
+    <FormDialog
+      title={aiDraft ? 'Review AI skill draft' : draft.revision ? 'Edit skill' : 'Add skill'}
+      className="skill-wizard"
+      subtitle={
+        page === 0
+          ? 'Find a skill, describe your experience and review before saving.'
+          : selected?.name
+      }
+      stepNavigation
+      busy={busy}
+      onClose={close}
+      page={page}
+      onPageChange={change}
+      formId="skill-claim-form"
+      onSubmit={() => {
+        if (busy) return;
+        if (page === 2) onSave(false);
+        else change(page + 1);
+      }}
+      message={(error || validation) && <p role="alert">{error || validation}</p>}
+      pages={[
+        {
+          label: 'Select skill',
+          content: (
+            <div className="skill-selection-layout">
+              <section className="skill-discovery" aria-label="Find a published skill">
+                <label className="skill-search">
+                  <Search size={18} aria-hidden="true" />
+                  <input
+                    aria-label="Search published skills"
+                    name="skillSearch"
+                    autoComplete="off"
+                    maxLength={100}
+                    value={search}
+                    onChange={event => onSearch(event.target.value)}
+                    placeholder="Search Java, Azure, project management…"
+                  />
+                </label>
+                <div className="skill-section-heading">
+                  <h3>Categories</h3>
+                  <button
+                    type="button"
+                    className="skill-text-button"
+                    onClick={() => {
+                      onCategory('');
+                      onSearch('');
+                    }}
+                  >
+                    View all skills
+                  </button>
+                </div>
+                <div className="skill-category-grid">
+                  {visibleCategories.map(item => (
+                    <button
+                      type="button"
+                      key={item.name}
+                      aria-pressed={category === item.name}
+                      className={
+                        'skill-category-card' + (category === item.name ? ' selected' : '')
+                      }
+                      onClick={() => {
+                        onCategory(category === item.name ? '' : item.name);
+                        onSearch('');
+                      }}
+                    >
+                      <span className="skill-icon">
+                        <CategoryIcon category={item.name} />
+                      </span>
+                      <span>
+                        <strong>{item.name}</strong>
+                        <small>{item.count} skills</small>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {categories.length > categorySize && (
+                  <div className="skill-category-pages">
+                    <button
+                      type="button"
+                      className="skill-text-button"
+                      onClick={() =>
+                        setCategoryPage(
+                          (categoryPage + 1) % Math.ceil(categories.length / categorySize),
+                        )
+                      }
+                    >
+                      More categories <ArrowRight size={12} aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+                <div className="skill-section-heading">
+                  <h3>{category || 'Published skills'}</h3>
+                  {loading && <span role="status">Searching…</span>}
+                </div>
+                <div
+                  className="skill-results"
+                  aria-label="Published skill choices"
+                  aria-busy={loading}
+                >
+                  {options?.skills.map(skill => (
+                    <button
+                      type="button"
+                      key={skill.id}
+                      disabled={loading || (draft.revision > 0 && draft.skillId !== skill.id)}
+                      className={'skill-result' + (selected?.id === skill.id ? ' selected' : '')}
+                      aria-pressed={selected?.id === skill.id}
+                      onClick={() => {
+                        onSelect(skill);
+                        setValidation('');
+                      }}
+                    >
+                      <span className="skill-icon">
+                        <CategoryIcon category={skill.category} />
+                      </span>
+                      <span>
+                        <strong>{skill.name}</strong>
+                        <small>
+                          {skill.businessCode ? skill.businessCode + ' · ' : ''}
+                          {skill.category}
+                        </small>
+                      </span>
+                      <span className="skill-result-check">
+                        {selected?.id === skill.id ? (
+                          <Check size={16} aria-hidden="true" />
+                        ) : (
+                          <span aria-hidden="true">+</span>
+                        )}
+                      </span>
+                    </button>
+                  ))}
+                  {!loading && options && !options.skills.length && (
+                    <p className="skill-no-results">
+                      No published skills match. Try another search or category.
+                    </p>
+                  )}
+                </div>
+                {options && options.total > 0 && (
+                  <div className="skill-results-pages">
+                    <span>
+                      {(options.page - 1) * options.pageSize + 1}–
+                      {Math.min(options.page * options.pageSize, options.total)} of {options.total}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={loading || options.page === 1}
+                      onClick={() => onResultsPage(options.page - 1)}
+                      aria-label="Previous skill results"
+                    >
+                      <ArrowLeft size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={loading || options.page * options.pageSize >= options.total}
+                      onClick={() => onResultsPage(options.page + 1)}
+                      aria-label="Next skill results"
+                    >
+                      <ArrowRight size={15} />
+                    </button>
+                  </div>
+                )}
+              </section>
+            </div>
+          ),
+        },
+        {
+          label: 'Proficiency & details',
+          content: (
+            <div className="skill-details-layout">
+              <section className="skill-proficiency">
+                <h3>Proficiency level</h3>
+                <p className="skill-helper">
+                  Select the level that best describes your current proficiency.
+                </p>
+                <fieldset className="skill-level-choices">
+                  <legend className="sr-only">Proficiency level</legend>
+                  {selected?.levels.map(item => (
+                    <label
+                      className={'skill-level-card' + (item.rank === draft.rank ? ' selected' : '')}
+                      key={item.rank}
+                    >
+                      <input
+                        type="radio"
+                        name="proficiency"
+                        checked={item.rank === draft.rank}
+                        onChange={() => onDraft({ ...draft, rank: item.rank })}
+                      />
+                      <span>L{item.rank}</span>
+                      <strong>{item.name}</strong>
+                    </label>
+                  ))}
+                </fieldset>
+                <div className="skill-criteria">
+                  <Info size={20} aria-hidden="true" />
+                  <div>
+                    <h3>
+                      {level
+                        ? 'Level ' + level.rank + ' · ' + level.name
+                        : 'Choose your proficiency'}
+                    </h3>
+                    <p>
+                      {level?.description ||
+                        'Read the criteria and select the level you can support with practical experience.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="skill-guidance subtle">
+                  <Shield size={18} aria-hidden="true" />
+                  <p>
+                    Self-assessment records your experience. Manager review is a separate step, and
+                    learning quizzes do not verify proficiency.
+                  </p>
+                </div>
+              </section>
+              <section className="skill-details-form">
+                <h3>Your experience</h3>
+                <SkillExperienceDates
+                  value={draft}
+                  onChange={value => onDraft({ ...draft, ...value })}
+                />
+                <label>
+                  Describe your experience <span className="skill-required">Required</span>
+                  <textarea
+                    id="skill-experience-description"
+                    name="experienceDescription"
+                    autoComplete="off"
+                    maxLength={2000}
+                    rows={3}
+                    value={draft.description}
+                    onChange={event => onDraft({ ...draft, description: event.target.value })}
+                    placeholder="What did you deliver and how did you use this skill?…"
+                  />
+                </label>
+                <div className="skill-text-count">{draft.description.length}/2,000</div>
+                <label>
+                  Projects <span className="skill-optional">Optional</span>
+                  <textarea
+                    name="projects"
+                    autoComplete="off"
+                    rows={2}
+                    maxLength={2000}
+                    value={draft.projects ?? ''}
+                    onChange={event => onDraft({ ...draft, projects: event.target.value })}
+                    placeholder="Project, your contribution and outcome…"
+                  />
+                </label>
+                <label>
+                  <span className="skill-evidence-label">
+                    <Paperclip size={15} aria-hidden="true" />
+                    Evidence references <span className="skill-optional">Optional</span>
+                  </span>
+                  <textarea
+                    name="evidence"
+                    autoComplete="off"
+                    rows={2}
+                    maxLength={2000}
+                    value={draft.evidence ?? ''}
+                    onChange={event => onDraft({ ...draft, evidence: event.target.value })}
+                    placeholder="Approved project link or certificate reference…"
+                  />
+                </label>
+                <p className="skill-helper">Use references your reviewer can access.</p>
+                {draft.revision > 0 ? (
+                  <ClaimEvidence
+                    claim={{ ...draft, status: 'DRAFT' } as Claim}
+                    onRevision={revision => onDraft({ ...draft, revision })}
+                    onBusy={setUploading}
+                  />
+                ) : (
+                  <div className="skill-guidance">
+                    <Paperclip size={18} />
+                    <p>Save your draft to add compressed evidence images before submitting.</p>
+                  </div>
+                )}
+              </section>
+            </div>
+          ),
+        },
+        {
+          label: 'Review & save',
+          content: (
+            <div className="skill-review-layout">
+              <section>
+                <div className="skill-section-heading">
+                  <h3>Review your skill information</h3>
+                  <button type="button" className="skill-text-button" onClick={() => change(0)}>
+                    Edit selection
+                  </button>
+                </div>
+                <div className="skill-review-selection">
+                  <span className="skill-icon">
+                    <CategoryIcon category={selected?.category ?? ''} />
+                  </span>
+                  <div>
+                    <h3>{selected?.name}</h3>
+                    <span className="skill-category-tag">{selected?.category}</span>
+                  </div>
+                </div>
+                <div className="skill-review-facts">
+                  <div>
+                    <span>Proficiency</span>
+                    <strong>
+                      L{draft.rank} · {level?.name}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Experience</span>
+                    <strong>{draft.experienceMonths} months</strong>
+                  </div>
+                </div>
+                {summary('Last used', formatSkillDate(draft.lastUsedOn))}
+                {summary('Experience description', draft.description)}
+                {summary('Projects', draft.projects)}
+                {summary('Evidence references', draft.evidence)}
+              </section>
+              <aside className="skill-save-preview">
+                <h3>Skill preview</h3>
+                <p className="skill-helper">How this draft will appear in your profile.</p>
+                <div className="skill-preview-card">
+                  <div className="skill-section-heading">
+                    <h3>{selected?.name}</h3>
+                    <span className="claim-status">Self-assessed</span>
+                  </div>
+                  <p>{selected?.category}</p>
+                  <strong>{level?.name}</strong>
+                  <span>Level {draft.rank}</span>
+                  <div className="skill-progress" aria-hidden="true">
+                    {selected?.levels.map(item => (
+                      <span className={item.rank <= draft.rank ? 'filled' : ''} key={item.rank} />
+                    ))}
+                  </div>
+                  <small>{draft.experienceMonths} months of experience</small>
+                  <small>Last used: {formatSkillDate(draft.lastUsedOn)}</small>
+                </div>
+                <div className="skill-next-steps">
+                  <h3>What happens next</h3>
+                  <ol>
+                    <li>Save your self-assessed draft.</li>
+                    <li>Submit when you are ready for your reporting manager’s review.</li>
+                    <li>Track feedback and status in My skills.</li>
+                  </ol>
+                </div>
+              </aside>
+            </div>
+          ),
+        },
+      ]}
+      footer={
+        <>
+          <button
+            type="button"
+            className="secondary-button skill-back"
+            disabled={busy || page === 0}
+            onClick={() => change(page - 1)}
+          >
+            <ArrowLeft size={16} aria-hidden="true" />
+            Back
+          </button>
+          <span>{selected?.name ?? 'No skill selected'}</span>
+          <button type="button" className="secondary-button" disabled={busy} onClick={close}>
+            Cancel
+          </button>
+          {page < 2 ? (
+            <button
+              key="advance"
+              type="button"
+              className="admin-primary skill-next"
+              disabled={busy || loading}
+              onClick={() => change(page + 1)}
+            >
+              Next
+              <ArrowRight size={16} aria-hidden="true" />
+            </button>
+          ) : (
+            <button
+              key="save"
+              type="submit"
+              form="skill-claim-form"
+              className="secondary-button"
+              disabled={busy}
+            >
+              {busy ? 'Saving…' : draft.revision ? 'Save changes' : 'Save draft'}
+            </button>
+          )}
+          {page === 2 && (
+            <button
+              key="submit"
+              type="button"
+              className="admin-primary skill-next skill-submit"
+              disabled={busy}
+              onClick={() => onSave(true)}
+            >
+              {busy ? 'Submitting…' : 'Submit for review'}
+              <Send size={16} aria-hidden="true" />
+            </button>
+          )}
+          {discard && (
+            <div
+              className="skill-discard-backdrop"
+              onKeyDown={event => {
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setDiscard(false);
+                } else if (event.key === 'Tab') {
+                  const buttons = Array.from(event.currentTarget.querySelectorAll('button'));
+                  const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+                  event.preventDefault();
+                  event.stopPropagation();
+                  buttons[
+                    (index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length
+                  ]?.focus();
+                }
+              }}
+            >
+              <div
+                className="skill-discard"
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="skill-discard-title"
+                aria-describedby="skill-discard-text"
+              >
+                <h3 id="skill-discard-title">Discard unsaved changes?</h3>
+                <p id="skill-discard-text">Your changes to this skill will be lost.</p>
+                <div>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    autoFocus
+                    onClick={() => setDiscard(false)}
+                  >
+                    Keep editing
+                  </button>
+                  <button type="button" className="skill-discard-confirm" onClick={onClose}>
+                    Discard
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      }
+    />
+  );
 }

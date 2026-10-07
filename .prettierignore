@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+*.generated.*
+package-lock.json
+database/migrations
+docs/REFERENCE.generated.json
+.local
+.vercel
+artifacts
+.env
+.env.*
+*.log

@@ -1,26 +1,134 @@
-import {test} from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {currentStreak,dateInZone,shiftDay} from '../src/learning-calendar';
-import {learningSummary,planWeeks} from '../src/learning-progress';
-import type {Plan} from '../src/Learning';
-import {growthJourneyNextStep,latestClaimForSkill} from '../src/growth-journey';
-const plan:Plan={id:'plan',revision:1,title:'Goal',goal:'Practice',timezone:'Asia/Kolkata',dailyMinutes:30,targetDate:'2026-10-10',status:'ACTIVE',tasks:[{id:'one',title:'First',plannedDate:'2026-09-30',estimatedMinutes:30,actualMinutes:20,completedAt:'2026-09-30T20:00:00Z'},{id:'two',title:'Next',plannedDate:'2026-10-01',estimatedMinutes:30},{id:'three',title:'Later',plannedDate:'2026-10-10',estimatedMinutes:30}]};
-test('monthly completion separates scheduled work from actual time logged across timezone boundaries',()=>{const summary=learningSummary([plan],'2026-10');assert.equal(summary.monthlyTotal,2);assert.equal(summary.monthlyPercent,0);assert.equal(summary.loggedMinutes,20);assert.equal(summary.plannedMinutes,60);assert.equal(summary.completed,1);assert.equal(learningSummary([],'2026-10').monthlyPercent,0);});
-test('roadmap weeks follow dated tasks and retain gaps without mutating source order',()=>{const weeks=planWeeks({...plan,tasks:[...plan.tasks].reverse()});assert.deepEqual(weeks.map(w=>w.week),[1,2]);assert.equal(weeks[0].start,'2026-09-30');assert.equal(weeks[1].start,'2026-10-07');assert.deepEqual(weeks[0].tasks.map(t=>t.id),['one','two']);assert.equal(plan.tasks[0].id,'one');assert.deepEqual(planWeeks({...plan,tasks:[]}),[]);});
-test('streak counts actual consecutive completion days without duplicating tasks or inventing missed days',()=>{assert.equal(currentStreak(['2026-10-01','2026-10-02','2026-10-02'],'2026-10-03'),2);assert.equal(currentStreak(['2026-10-01'],'2026-10-03'),0);assert.equal(currentStreak(['2026-10-03'],'2026-10-03'),1);assert.equal(currentStreak([],'2026-10-03'),0);});
-test('calendar days handle month boundaries and timezone conversion',()=>{assert.equal(shiftDay('2026-12-31',1),'2027-01-01');assert.equal(shiftDay('2024-02-28',1),'2024-02-29');assert.equal(dateInZone(new Date('2026-10-02T20:00:00Z'),'Asia/Kolkata'),'2026-10-03');assert.equal(shiftDay('invalid',1),'');});
-test('growth journey advances from real task and claim states without treating learning as verification',()=>{
- const linked={...plan,skillId:'skill'};
- assert.deepEqual(growthJourneyNextStep(linked,undefined,true,true),{kind:'CONTINUE_TASK',task:plan.tasks[1]});
- assert.deepEqual(growthJourneyNextStep({...linked,status:'PAUSED'},undefined,true,true),{kind:'RESUME_PLAN'});
- assert.deepEqual(growthJourneyNextStep({...linked,status:'PAUSED'},undefined,true,false),{kind:'OPEN_PLAN'});
- assert.deepEqual(growthJourneyNextStep({...linked,tasks:[]},undefined,true,true),{kind:'NO_TASKS'});
- assert.deepEqual(growthJourneyNextStep({...linked,tasks:[{...plan.tasks[0],completedAt:'2026-10-01T00:00:00Z'}]},undefined,true,true),{kind:'CREATE_CLAIM'});
- assert.deepEqual(growthJourneyNextStep({...linked,tasks:[{...plan.tasks[0],completedAt:'2026-10-01T00:00:00Z'}]},undefined,false,true),{kind:'CLAIM_ACCESS_REQUIRED'});
- const draft={id:'draft',revision:1,skillId:'skill',skillName:'Data',category:'Data',definitionRevision:1,rank:1,levelName:'Beginner',experienceMonths:0,description:'My experience',status:'DRAFT' as const,updatedAt:'2026-10-02'};
- assert.equal(growthJourneyNextStep(linked,draft,true,true).kind,'SUBMIT_CLAIM');
- assert.equal(growthJourneyNextStep(linked,{...draft,status:'CHANGES_REQUESTED'},true,true).kind,'EDIT_CLAIM');
- assert.equal(growthJourneyNextStep(linked,{...draft,status:'SUBMITTED'},true,true).kind,'VIEW_CLAIM');
- assert.equal(growthJourneyNextStep({...linked,tasks:[{...plan.tasks[0],completedAt:'2026-10-01T00:00:00Z'}]}, {...draft,status:'APPROVED'},true,true).kind,'VIEW_CLAIM');
- assert.equal(latestClaimForSkill([draft,{...draft,id:'newer',updatedAt:'2026-10-03'}],'skill')?.id,'newer');
+import { currentStreak, dateInZone, shiftDay } from '../src/learning-calendar';
+import { learningSummary, planWeeks } from '../src/learning-progress';
+import type { Plan } from '../src/Learning';
+import { growthJourneyNextStep, latestClaimForSkill } from '../src/growth-journey';
+const plan: Plan = {
+  id: 'plan',
+  revision: 1,
+  title: 'Goal',
+  goal: 'Practice',
+  timezone: 'Asia/Kolkata',
+  dailyMinutes: 30,
+  targetDate: '2026-10-10',
+  status: 'ACTIVE',
+  tasks: [
+    {
+      id: 'one',
+      title: 'First',
+      plannedDate: '2026-09-30',
+      estimatedMinutes: 30,
+      actualMinutes: 20,
+      completedAt: '2026-09-30T20:00:00Z',
+    },
+    { id: 'two', title: 'Next', plannedDate: '2026-10-01', estimatedMinutes: 30 },
+    { id: 'three', title: 'Later', plannedDate: '2026-10-10', estimatedMinutes: 30 },
+  ],
+};
+test('monthly completion separates scheduled work from actual time logged across timezone boundaries', () => {
+  const summary = learningSummary([plan], '2026-10');
+  assert.equal(summary.monthlyTotal, 2);
+  assert.equal(summary.monthlyPercent, 0);
+  assert.equal(summary.loggedMinutes, 20);
+  assert.equal(summary.plannedMinutes, 60);
+  assert.equal(summary.completed, 1);
+  assert.equal(learningSummary([], '2026-10').monthlyPercent, 0);
+});
+test('roadmap weeks follow dated tasks and retain gaps without mutating source order', () => {
+  const weeks = planWeeks({ ...plan, tasks: [...plan.tasks].reverse() });
+  assert.deepEqual(
+    weeks.map(w => w.week),
+    [1, 2],
+  );
+  assert.equal(weeks[0].start, '2026-09-30');
+  assert.equal(weeks[1].start, '2026-10-07');
+  assert.deepEqual(
+    weeks[0].tasks.map(t => t.id),
+    ['one', 'two'],
+  );
+  assert.equal(plan.tasks[0].id, 'one');
+  assert.deepEqual(planWeeks({ ...plan, tasks: [] }), []);
+});
+test('streak counts actual consecutive completion days without duplicating tasks or inventing missed days', () => {
+  assert.equal(currentStreak(['2026-10-01', '2026-10-02', '2026-10-02'], '2026-10-03'), 2);
+  assert.equal(currentStreak(['2026-10-01'], '2026-10-03'), 0);
+  assert.equal(currentStreak(['2026-10-03'], '2026-10-03'), 1);
+  assert.equal(currentStreak([], '2026-10-03'), 0);
+});
+test('calendar days handle month boundaries and timezone conversion', () => {
+  assert.equal(shiftDay('2026-12-31', 1), '2027-01-01');
+  assert.equal(shiftDay('2024-02-28', 1), '2024-02-29');
+  assert.equal(dateInZone(new Date('2026-10-02T20:00:00Z'), 'Asia/Kolkata'), '2026-10-03');
+  assert.equal(shiftDay('invalid', 1), '');
+});
+test('growth journey advances from real task and claim states without treating learning as verification', () => {
+  const linked = { ...plan, skillId: 'skill' };
+  assert.deepEqual(growthJourneyNextStep(linked, undefined, true, true), {
+    kind: 'CONTINUE_TASK',
+    task: plan.tasks[1],
+  });
+  assert.deepEqual(growthJourneyNextStep({ ...linked, status: 'PAUSED' }, undefined, true, true), {
+    kind: 'RESUME_PLAN',
+  });
+  assert.deepEqual(growthJourneyNextStep({ ...linked, status: 'PAUSED' }, undefined, true, false), {
+    kind: 'OPEN_PLAN',
+  });
+  assert.deepEqual(growthJourneyNextStep({ ...linked, tasks: [] }, undefined, true, true), {
+    kind: 'NO_TASKS',
+  });
+  assert.deepEqual(
+    growthJourneyNextStep(
+      { ...linked, tasks: [{ ...plan.tasks[0], completedAt: '2026-10-01T00:00:00Z' }] },
+      undefined,
+      true,
+      true,
+    ),
+    { kind: 'CREATE_CLAIM' },
+  );
+  assert.deepEqual(
+    growthJourneyNextStep(
+      { ...linked, tasks: [{ ...plan.tasks[0], completedAt: '2026-10-01T00:00:00Z' }] },
+      undefined,
+      false,
+      true,
+    ),
+    { kind: 'CLAIM_ACCESS_REQUIRED' },
+  );
+  const draft = {
+    id: 'draft',
+    revision: 1,
+    skillId: 'skill',
+    skillName: 'Data',
+    category: 'Data',
+    definitionRevision: 1,
+    rank: 1,
+    levelName: 'Beginner',
+    experienceMonths: 0,
+    description: 'My experience',
+    status: 'DRAFT' as const,
+    updatedAt: '2026-10-02',
+  };
+  assert.equal(growthJourneyNextStep(linked, draft, true, true).kind, 'SUBMIT_CLAIM');
+  assert.equal(
+    growthJourneyNextStep(linked, { ...draft, status: 'CHANGES_REQUESTED' }, true, true).kind,
+    'EDIT_CLAIM',
+  );
+  assert.equal(
+    growthJourneyNextStep(linked, { ...draft, status: 'SUBMITTED' }, true, true).kind,
+    'VIEW_CLAIM',
+  );
+  assert.equal(
+    growthJourneyNextStep(
+      { ...linked, tasks: [{ ...plan.tasks[0], completedAt: '2026-10-01T00:00:00Z' }] },
+      { ...draft, status: 'APPROVED' },
+      true,
+      true,
+    ).kind,
+    'VIEW_CLAIM',
+  );
+  assert.equal(
+    latestClaimForSkill([draft, { ...draft, id: 'newer', updatedAt: '2026-10-03' }], 'skill')?.id,
+    'newer',
+  );
 });

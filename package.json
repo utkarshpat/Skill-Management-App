@@ -17,9 +17,12 @@
     "test": "node --test scripts/architecture.test.mjs && npm run test -w apps/api && npm run test -w apps/web",
     "architecture:check": "node scripts/check-architecture.mjs",
     "docs:generate": "python scripts/generate-handover.py",
-    "docs:check": "python scripts/generate-handover.py --check"
+    "docs:check": "python scripts/generate-handover.py --check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "concurrently": "10.0.5"
+    "concurrently": "10.0.5",
+    "prettier": "^3.9.9"
   }
 }

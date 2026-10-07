@@ -12,24 +12,32 @@ One planner confirmation retains its plan and task IDs across retries. An uncert
 
 This increment has no SQL migration or new grant scopes. Local regression and build evidence for this increment is recorded in its merge commit/task result; the deployment and SQL acceptance record below remains historical.
 
+## Readability and resilience audit — 7 October 2026
+
+The dev1 readability update is integrated with the main permission, private evidence, freshness, primary capability and learning-confirmation fixes preserved. Prettier tooling covers maintained source; generated inventories, SQL migrations, local artifacts and environment files are excluded. Formatting is not new authorization or scope support.
+
+The local development access store already used an atomic temporary-file replacement. It now retries transient Windows EPERM/EBUSY replacement locks up to five attempts, with bounded delays. Failed replacement retains the previous in-memory revision and persisted audit/state, removes its temporary file and leaves the serialized save queue retryable. This is single-process local development storage; it is not a multi-process or distributed transaction mechanism. Production remains SQL-backed.
+
+Malformed or incomplete planner success responses are rejected before rendering editable tasks. Organization preview needs its server receipt; missing learning recovery/attempt bodies produce an explicit error rather than silent success. Regression gates include cross-account drafts, effective permission denial, same-ID confirmation retries, malformed roadmap bodies and atomic local persistence failure/retry. Migration registration checks accept formatting whitespace while retaining version/order assertions; SQL workflow/access checks remain unchanged.
+
 ## Release Verification & Current Status
 
 Recorded on 6 October 2026 (Asia/Calcutta). This is dated acceptance evidence, not live health monitoring. The verified application baseline is `main` commit `e1d1f3fa42484a5131b950813d0ae0e75d717e63`, deployed as `dpl_Cn6p1hQ2S8BAeHefdEhb4HaUCrZp` on https://skill-management-app.vercel.app. Later documentation deployments carry their own commit; do not substitute this historical record for a new deployment check.
 
-| Gate | Observed result | Boundary |
-| --- | --- | --- |
-| Source consolidation | Only main/origin/main remain; clean worktree after consolidation | A local preserved stash is not an unmerged feature branch |
-| Regression baseline | 271 tests passed; typecheck, build, architecture and generated-document checks passed | Tests establish tested behavior, not complete BRD delivery |
-| Hosted SQL | Migrations 001–050 installed; 041–050 applied during release preparation | No startup seed/import or automatic application migration |
-| Restricted runtime | Actor-access parity, audit denial, cross-account isolation, evidence procedure integration passed | Fixture transactions rolled back; does not certify every API path |
-| SQL grants | SkillEvidence and ReadOwnOrganization execution verified; direct claim-table SELECT absent | Runtime remains separate from setup identity |
-| Hosting | Vercel Ready and correct main source/domain verified | Ready is build/deployment status; runtime smoke is separate |
-| Microsoft sign-in | User completed device authentication; real mapped account reached its authorized dashboard | One account tested; provisioning, consent and company tenant migration remain separate |
-| Employee Chrome smoke | Dashboard, skills, profile, learning, requests, exact-claim notification link and AI response loaded | No blanket claim of all workflow mutation acceptance |
-| Manager Chrome smoke | Assigned review/access explanation, team analytics, individual capability and recommendations loaded | No live proficiency decision submitted during this smoke |
-| Private image round-trip | Synthetic QA PNG uploaded through UI; persisted after full reload and decoded preview verified | Existing synthetic demo draft stayed DRAFT; no submission or approval |
-| Storage | PNG 15,672 bytes → stored WebP 11,504 bytes, 1600 × 900; private/no-store; anonymous direct blob request denied | Public Blob access disabled, HTTPS required, TLS 1.2; no retention/scanning policy implied |
-| Anonymous API | Health 200; me/dashboard/my-skills/skill-reviews 401 without a session | Health is liveness only |
+| Gate                     | Observed result                                                                                                 | Boundary                                                                                   |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Source consolidation     | Only main/origin/main remain; clean worktree after consolidation                                                | A local preserved stash is not an unmerged feature branch                                  |
+| Regression baseline      | 271 tests passed; typecheck, build, architecture and generated-document checks passed                           | Tests establish tested behavior, not complete BRD delivery                                 |
+| Hosted SQL               | Migrations 001–050 installed; 041–050 applied during release preparation                                        | No startup seed/import or automatic application migration                                  |
+| Restricted runtime       | Actor-access parity, audit denial, cross-account isolation, evidence procedure integration passed               | Fixture transactions rolled back; does not certify every API path                          |
+| SQL grants               | SkillEvidence and ReadOwnOrganization execution verified; direct claim-table SELECT absent                      | Runtime remains separate from setup identity                                               |
+| Hosting                  | Vercel Ready and correct main source/domain verified                                                            | Ready is build/deployment status; runtime smoke is separate                                |
+| Microsoft sign-in        | User completed device authentication; real mapped account reached its authorized dashboard                      | One account tested; provisioning, consent and company tenant migration remain separate     |
+| Employee Chrome smoke    | Dashboard, skills, profile, learning, requests, exact-claim notification link and AI response loaded            | No blanket claim of all workflow mutation acceptance                                       |
+| Manager Chrome smoke     | Assigned review/access explanation, team analytics, individual capability and recommendations loaded            | No live proficiency decision submitted during this smoke                                   |
+| Private image round-trip | Synthetic QA PNG uploaded through UI; persisted after full reload and decoded preview verified                  | Existing synthetic demo draft stayed DRAFT; no submission or approval                      |
+| Storage                  | PNG 15,672 bytes → stored WebP 11,504 bytes, 1600 × 900; private/no-store; anonymous direct blob request denied | Public Blob access disabled, HTTPS required, TLS 1.2; no retention/scanning policy implied |
+| Anonymous API            | Health 200; me/dashboard/my-skills/skill-reviews 401 without a session                                          | Health is liveness only                                                                    |
 
 The uploaded sample is clearly labelled synthetic QA evidence on an existing demo draft. It is not employee capability evidence or a customer file. Verification screenshots and the detailed local run record are ignored local artifacts; credentials, cookies, identity tokens, employee rows and storage secrets are excluded from this handbook.
 
@@ -49,17 +57,17 @@ A detected SQL monthly-quota pause produces a safe 503 response where propagated
 
 Cognitive Intelligence Lab is a workforce capability and personal learning platform. Its purpose is to connect an employee's recorded skills, current manager's review, learning goals and requests for help without conflating self-assessment, practice results and verified proficiency.
 
-| Requirement | Implemented behavior | Acceptance rule |
-| --- | --- | --- |
-| BR-01 Personal capability | Published-skill selection, proficiency criteria, experience, projects, evidence references and private compressed images | Own drafts stay private; submitted claims follow current assigned-manager checks |
-| BR-02 Review governance | Review queue, decision feedback, direct-report capability profiles and analytics | No self-review; current active manager and exact reviewer assignment required |
-| BR-03 Personal development | Plans, daily tasks, study sessions, practice, logs, backlog and recovery | Opening a task, saving study notes or passing practice never completes or verifies a skill |
-| BR-04 Recommendations | Scoped manager recommendations and employee Accept / Decline / Discuss | Acceptance creates a reviewed personal learning plan; does not create an approved skill |
-| BR-05 Help workflows | Requests/incidents, named recipient search, comments, start, resolve, reassign and cancel | Actor must have current permission and be an authorized participant for that action |
-| BR-06 Access administration | People, templates, exceptions, reporting links, preview and explanations | Preview → Recheck → Transaction → Audit; scoped DENY overrides matching ALLOW |
-| BR-07 Actionable dashboard | Authorized manifest, attention, learning, capability, requests and quick actions | Every card/action has implemented data and enforcement; no invented capability KPI |
-| BR-08 Contextual AI | Read tools, reviewable drafts, planner, practice and project explanation | AI inherits actor access; no autonomous business writes or authority from prompts |
-| BR-09 Usability | Light default, responsive layouts, reorderable navigation, pinned profile, clickable notifications | Loading, retry, empty and error states must communicate what actually happened |
+| Requirement                 | Implemented behavior                                                                                                     | Acceptance rule                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| BR-01 Personal capability   | Published-skill selection, proficiency criteria, experience, projects, evidence references and private compressed images | Own drafts stay private; submitted claims follow current assigned-manager checks           |
+| BR-02 Review governance     | Review queue, decision feedback, direct-report capability profiles and analytics                                         | No self-review; current active manager and exact reviewer assignment required              |
+| BR-03 Personal development  | Plans, daily tasks, study sessions, practice, logs, backlog and recovery                                                 | Opening a task, saving study notes or passing practice never completes or verifies a skill |
+| BR-04 Recommendations       | Scoped manager recommendations and employee Accept / Decline / Discuss                                                   | Acceptance creates a reviewed personal learning plan; does not create an approved skill    |
+| BR-05 Help workflows        | Requests/incidents, named recipient search, comments, start, resolve, reassign and cancel                                | Actor must have current permission and be an authorized participant for that action        |
+| BR-06 Access administration | People, templates, exceptions, reporting links, preview and explanations                                                 | Preview → Recheck → Transaction → Audit; scoped DENY overrides matching ALLOW              |
+| BR-07 Actionable dashboard  | Authorized manifest, attention, learning, capability, requests and quick actions                                         | Every card/action has implemented data and enforcement; no invented capability KPI         |
+| BR-08 Contextual AI         | Read tools, reviewable drafts, planner, practice and project explanation                                                 | AI inherits actor access; no autonomous business writes or authority from prompts          |
+| BR-09 Usability             | Light default, responsive layouts, reorderable navigation, pinned profile, clickable notifications                       | Loading, retry, empty and error states must communicate what actually happened             |
 
 Business personas describe needs, not access grants: employees maintain their own information; current direct managers review assigned submissions and recommend learning; authorized administrators manage people/access/catalogue. Broader department, delivery-unit and organization analytics remain bounded by implemented policy rather than hierarchy alone.
 
@@ -71,13 +79,13 @@ One npm-workspace repository contains a React 19 + TypeScript + Vite frontend an
 
 Request path: Browser → same-origin route → identity validation → effective access / input validation → owning module → restricted SQL procedure → transaction / revision / audit → authorized response. The UI is a discovery projection; it is never the final authority.
 
-| Boundary | Responsibility | Must never cross |
-| --- | --- | --- |
-| Browser | MSAL SPA sign-in, forms, presentation, explicit review | SQL credentials, Gemini keys, arbitrary actor authority |
-| API identity | Verify delegated token or gated demo session, resolve person/account | Treat caller-provided person ID as authenticated actor |
-| Effective access | Implemented action, grant/deny, scope, relationship and workflow explanation | Infer permissions from organizational title |
-| SQL runtime | Execute guarded procedures under restricted principal | Direct unrestricted table access or developer setup identity |
-| AI provider | Generate bounded answers/drafts from selected authorized context | Receive credentials, execute SQL, select another person's authority |
+| Boundary         | Responsibility                                                               | Must never cross                                                    |
+| ---------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Browser          | MSAL SPA sign-in, forms, presentation, explicit review                       | SQL credentials, Gemini keys, arbitrary actor authority             |
+| API identity     | Verify delegated token or gated demo session, resolve person/account         | Treat caller-provided person ID as authenticated actor              |
+| Effective access | Implemented action, grant/deny, scope, relationship and workflow explanation | Infer permissions from organizational title                         |
+| SQL runtime      | Execute guarded procedures under restricted principal                        | Direct unrestricted table access or developer setup identity        |
+| AI provider      | Generate bounded answers/drafts from selected authorized context             | Receive credentials, execute SQL, select another person's authority |
 
 Composition is `apps/api/src/server.ts` and `create-app.ts`; Vercel Express entrypoint is `apps/api/app.ts`. The frontend entry is `apps/web/src/main.tsx`. HTTP middleware installs Helmet, a request ID and a 128 KiB JSON parser. Module-level validation can impose smaller limits. Unknown API paths do not expose unfinished features.
 
@@ -85,17 +93,17 @@ This is a modular monolith, not nine independently hosted microservices. Runtime
 
 ## Module Ownership & Code Map
 
-| Module | Owns | Public interaction |
-| --- | --- | --- |
-| identity | Microsoft token validation, development/demo sessions, own profile, notification composition | Actor resolution and authenticated HTTP contracts |
-| access | Templates, assignments, exceptions, effective decisions, workspace manifest | `can`, effective-access explanations, AccessStore |
-| organization | Organization nodes, placement and current reporting relationships | Validated organization contract and SQL persistence |
-| skills | Catalogue, frameworks, immutable definition versions, own claims and manager reviews | CatalogueStore and ClaimsStore |
-| learning | Personal plans, completion, sessions, practice, planner and recovery | LearningStore and typed learning changes |
-| recommendations | Manager-to-current-report recommendations and employee response | RecommendationStore, validated acceptance plan |
-| workflows | Requests, incidents, recipient discovery, lifecycle and events | Participant-bound WorkflowStore |
-| dashboard | Authorized card registry/manifest and actionable aggregates | Independently loaded card endpoints |
-| ai | Provider gateway, read tools, presentation artifacts, bounded memory, shared request budget, KT guide | AssistantService |
+| Module          | Owns                                                                                                  | Public interaction                                  |
+| --------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| identity        | Microsoft token validation, development/demo sessions, own profile, notification composition          | Actor resolution and authenticated HTTP contracts   |
+| access          | Templates, assignments, exceptions, effective decisions, workspace manifest                           | `can`, effective-access explanations, AccessStore   |
+| organization    | Organization nodes, placement and current reporting relationships                                     | Validated organization contract and SQL persistence |
+| skills          | Catalogue, frameworks, immutable definition versions, own claims and manager reviews                  | CatalogueStore and ClaimsStore                      |
+| learning        | Personal plans, completion, sessions, practice, planner and recovery                                  | LearningStore and typed learning changes            |
+| recommendations | Manager-to-current-report recommendations and employee response                                       | RecommendationStore, validated acceptance plan      |
+| workflows       | Requests, incidents, recipient discovery, lifecycle and events                                        | Participant-bound WorkflowStore                     |
+| dashboard       | Authorized card registry/manifest and actionable aggregates                                           | Independently loaded card endpoints                 |
+| ai              | Provider gateway, read tools, presentation artifacts, bounded memory, shared request budget, KT guide | AssistantService                                    |
 
 Shared `database.ts` manages restricted runtime connection lifecycle and separate short-lived setup connections. It does not own business rules. `shared/errors.ts` contains the HTTP-aware error contract. SQL procedures and migrations own the final persisted state and transaction checks.
 
@@ -109,12 +117,12 @@ Person ≠ Role ≠ Permission ≠ Scope ≠ Relationship ≠ Workflow. A role/a
 
 The conceptual evaluator checks implementation availability, active account/person, applicable grants and denies, server-resolved scope, relationships and workflow state, then returns ALLOW/DENY + WHY. Caller-supplied purpose or resource IDs cannot broaden authority. Matching scoped explicit DENY overrides ALLOW; expiry and revocation apply immediately at execution.
 
-| Scope / policy | Current boundary |
-| --- | --- |
-| OWN | Implemented own profile, learning, claims and authorized participant workflows |
-| ORGANIZATION | Only implemented administration/catalogue actions with actual SQL enforcement |
-| Current direct reports | Explicit review/recommendation policy, current active reporting selector and exact workflow checks |
-| TEAM / DEPARTMENT / DELIVERY_UNIT / REPORTING_SUBTREE / SPECIFIC_RESOURCE grants | Not assignable operational scopes merely because types or codes exist |
+| Scope / policy                                                                   | Current boundary                                                                                   |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| OWN                                                                              | Implemented own profile, learning, claims and authorized participant workflows                     |
+| ORGANIZATION                                                                     | Only implemented administration/catalogue actions with actual SQL enforcement                      |
+| Current direct reports                                                           | Explicit review/recommendation policy, current active reporting selector and exact workflow checks |
+| TEAM / DEPARTMENT / DELIVERY_UNIT / REPORTING_SUBTREE / SPECIFIC_RESOURCE grants | Not assignable operational scopes merely because types or codes exist                              |
 
 For skill review, check current active claimant, current active direct manager, exact assigned reviewer, submitted state and no self-review after the permission gate. Historical assigned-review records have a separate read policy; private employee drafts remain excluded. An organization-wide review grant cannot override these constraints.
 
@@ -158,13 +166,13 @@ Migration 042 adds optional employee-reported `lastUsedOn` (`YYYY-MM-DD`) to ski
 
 Manager flow: Review queue → open assigned submitted claim → inspect evidence references and criteria → Verify/Approve, Request Changes or Reject with feedback → final current relationship/permission/revision recheck → SQL commit + audit + notification. Text/link references and private uploaded images are distinct. Images are decoded and re-encoded, but are not malware-scanned or independently certified evidence.
 
-| Claim state | Meaning | Next authorized step |
-| --- | --- | --- |
-| DRAFT | Private self-assessment | Edit or explicitly submit |
-| SUBMITTED | Assigned claim awaiting decision | Current eligible reviewer decides |
-| CHANGES_REQUESTED | Feedback returned to employee | Employee revises/resubmits through supported flow |
-| APPROVED | Manager-reviewed proficiency claim | Read as reviewed record; no AI auto-approval |
-| REJECTED | Recorded non-approval decision | Preserve history and feedback |
+| Claim state       | Meaning                            | Next authorized step                              |
+| ----------------- | ---------------------------------- | ------------------------------------------------- |
+| DRAFT             | Private self-assessment            | Edit or explicitly submit                         |
+| SUBMITTED         | Assigned claim awaiting decision   | Current eligible reviewer decides                 |
+| CHANGES_REQUESTED | Feedback returned to employee      | Employee revises/resubmits through supported flow |
+| APPROVED          | Manager-reviewed proficiency claim | Read as reviewed record; no AI auto-approval      |
+| REJECTED          | Recorded non-approval decision     | Preserve history and feedback                     |
 
 Do not treat catalogue publication, course completion, practice score or recommendation acceptance as claim verification. Definition revisions and record revisions serve different purposes: definition versions preserve criteria; record revisions prevent stale updates.
 
@@ -210,14 +218,14 @@ My requests and Assigned to me are participant views. Cards filter real records;
 
 Compose: Topic → Details → search and visibly select a named recipient → Review & Send. The recipient is explicit; the app does not invent automatic IT routing, a line-manager approval stage or department triage. An eligible user can address an eligible person subject to current workflow checks. Being selectable does not grant all future lifecycle permissions.
 
-| State/action | Actor boundary | Effect |
-| --- | --- | --- |
-| CREATE → SUBMITTED | Current create permission, valid active recipient | Record + committed creation event |
-| COMMENT | Authorized current participant | Append timestamped event |
-| START → IN_PROGRESS | Current addressed recipient + implemented action | Recorded transition |
-| RESOLVE → RESOLVED | Current addressed recipient + implemented action | Recorded resolution note |
-| REASSIGN | Authorized requester/current recipient + current checks | Explicit new recipient + event; no global assignment privilege |
-| CANCEL → CANCELLED | Authorized requester + valid state | Preserve record and cancellation event |
+| State/action        | Actor boundary                                          | Effect                                                         |
+| ------------------- | ------------------------------------------------------- | -------------------------------------------------------------- |
+| CREATE → SUBMITTED  | Current create permission, valid active recipient       | Record + committed creation event                              |
+| COMMENT             | Authorized current participant                          | Append timestamped event                                       |
+| START → IN_PROGRESS | Current addressed recipient + implemented action        | Recorded transition                                            |
+| RESOLVE → RESOLVED  | Current addressed recipient + implemented action        | Recorded resolution note                                       |
+| REASSIGN            | Authorized requester/current recipient + current checks | Explicit new recipient + event; no global assignment privilege |
+| CANCEL → CANCELLED  | Authorized requester + valid state                      | Preserve record and cancellation event                         |
 
 Expected revision and event ID prevent stale or duplicate mutation effects. Detail responses expose canComment/canStart/canResolve/canReassign/canCancel based on the current resource. Buttons and AI draft affordances use these facts. AI can prepare editable comment/action notes; the normal UI rechecks and explicitly commits the action.
 
@@ -257,16 +265,16 @@ The interactive Schema Explorer contains physical tables, every parsed column/ty
 
 Schema reconstruction reads reviewed migrations 001–050. It is a repository-specific DDL extractor: literal CREATE TABLE, ALTER TABLE ADD, DROP TABLE, explicit indexes and CREATE VIEW are parsed. Dynamic CHECK removals in migrations 010/015/023/044 are reconciled explicitly. It is not a general T-SQL parser or a live database schema certification. Compare with DBA introspection before company migration.
 
-| Domain | Persistence |
-| --- | --- |
-| Original identity foundation | Account, AppUser, AppRole, grants, membership and AuditEvent |
-| Current workspace access | AccessWorkspace, AccessPerson, AccountRole, assignments/overrides, AccessAudit and implementation registry |
-| Organization/reporting | AccessOrgNode and AccessOrgAssignment; not aliases for original Team/Department tables |
-| Catalogue/claims | SkillCatalogue, framework/levels, immutable definition/criterion versions, SkillClaimDraft, claim notifications and SkillClaimEvidence |
-| Learning | LearningPlan JSON task/log payload plus LearningSession, LearningQuiz and LearningAttempt |
-| Recommendations | LearningRecommendation and LearningRecommendationEvent |
-| Requests/incidents | WorkflowRecord and WorkflowEvent |
-| AI | AiConversation, AiAccountBudget and AiActorBudget |
+| Domain                       | Persistence                                                                                                                            |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Original identity foundation | Account, AppUser, AppRole, grants, membership and AuditEvent                                                                           |
+| Current workspace access     | AccessWorkspace, AccessPerson, AccountRole, assignments/overrides, AccessAudit and implementation registry                             |
+| Organization/reporting       | AccessOrgNode and AccessOrgAssignment; not aliases for original Team/Department tables                                                 |
+| Catalogue/claims             | SkillCatalogue, framework/levels, immutable definition/criterion versions, SkillClaimDraft, claim notifications and SkillClaimEvidence |
+| Learning                     | LearningPlan JSON task/log payload plus LearningSession, LearningQuiz and LearningAttempt                                              |
+| Recommendations              | LearningRecommendation and LearningRecommendationEvent                                                                                 |
+| Requests/incidents           | WorkflowRecord and WorkflowEvent                                                                                                       |
+| AI                           | AiConversation, AiAccountBudget and AiActorBudget                                                                                      |
 
 Important distinctions: SkillProficiencyLevel is a view after migration 012, not a physical table. Claim definition_revision has no declared FK to definition versions. Some actor/person/task fields are validated in procedures without a physical FK. AI budget tables intentionally have no declared person/account FK. Do not draw these as enforced relationships. JSON payload shape is a domain contract; migration presence alone does not establish successful deployment.
 
@@ -280,15 +288,15 @@ The interactive API inventory lists literal registered HTTP routes, owning modul
 
 Standard mutation flow: authenticate → server actor/account → current permission/resource → exact validated fields → expected revision/idempotency key → SQL guarded transaction → audit/event → refresh response. Reject unknown fields, forged actor/score/timestamp, cross-account IDs, invalid dates and unsupported state transitions.
 
-| Response | Meaning | Client behavior |
-| --- | --- | --- |
-| 400 / 413 / 422 | Invalid or oversized input/context | Explain and allow correction; do not save partial invalid state |
-| 401 | Missing/expired valid session | Recover sign-in; clear protected data |
-| 403 | Current access/resource policy denies action | Stop action; do not retry with a broader supplied scope |
-| 404 | Record not available in current scope | Show unavailable, do not disclose foreign existence |
-| 409 | Stale revision / changed record | Reload and explicitly review again |
-| 429 | Shared/local quota or active reply | Show bounded retry guidance; no unlimited automatic retries |
-| 502 / 503 / 504 | Provider/storage unavailable or deadline | Keep safe drafts and show retry; never claim committed success |
+| Response        | Meaning                                      | Client behavior                                                 |
+| --------------- | -------------------------------------------- | --------------------------------------------------------------- |
+| 400 / 413 / 422 | Invalid or oversized input/context           | Explain and allow correction; do not save partial invalid state |
+| 401             | Missing/expired valid session                | Recover sign-in; clear protected data                           |
+| 403             | Current access/resource policy denies action | Stop action; do not retry with a broader supplied scope         |
+| 404             | Record not available in current scope        | Show unavailable, do not disclose foreign existence             |
+| 409             | Stale revision / changed record              | Reload and explicitly review again                              |
+| 429             | Shared/local quota or active reply           | Show bounded retry guidance; no unlimited automatic retries     |
+| 502 / 503 / 504 | Provider/storage unavailable or deadline     | Keep safe drafts and show retry; never claim committed success  |
 
 Responses include an X-Request-Id; structured errors include correlation where supported. `/api/health` is process liveness only: it does not prove SQL, SSO, grants or model readiness. Unknown /api routes are closed. Preserve generic error messages that do not leak driver secrets.
 
@@ -296,17 +304,17 @@ Responses include an X-Request-Id; structured errors include correlation where s
 
 Use Node 24, npm workspaces and the pinned package lock. Copy `apps/api/.env.example` into ignored `apps/api/.env`, and web example into ignored `apps/web/.env.local`. Never commit real values. `npm ci` installs; `npm run dev` starts API 3001 and Vite 5173. Registered local Microsoft SPA callback uses localhost:5173; API liveness uses 127.0.0.1:3001/api/health.
 
-| Configuration names | Purpose / handling |
-| --- | --- |
-| VITE_ENTRA_TENANT_ID, VITE_ENTRA_WEB_CLIENT_ID, VITE_ENTRA_API_CLIENT_ID, VITE_AUTH_REDIRECT_URI | Public SPA registration identifiers/callback; never provider/SQL secrets |
-| ENTRA_TENANT_ID, ENTRA_API_CLIENT_ID, ENTRA_WEB_CLIENT_ID | Server delegated-token validation configuration |
-| ACCESS_ACCOUNT_ID | Explicit provisioned workspace account UUID; not chosen by browser/model |
-| AZURE_SQL_SERVER, AZURE_SQL_DATABASE | Target SQL endpoint/database |
-| AZURE_SQL_RUNTIME_AUTH, AZURE_SQL_CLIENT_ID, AZURE_SQL_CLIENT_SECRET, AZURE_SQL_MANAGED_IDENTITY_CLIENT_ID | Restricted runtime credential; managed identity for future Azure hosting |
-| AI_PROVIDER, AI_MODEL, AI_ENDPOINT, AI_API_KEY, GEMINI_API / GEMINI_API_KEY | Server-only model configuration; never VITE variables |
-| EVIDENCE_STORAGE_CONNECTION_STRING, EVIDENCE_STORAGE_CONTAINER | Server-only private Blob configuration; never expose credentials or raw blob paths to the browser |
-| DEV_DIRECT_LOGIN | Development-only direct login flag, false in production |
-| HOSTED_DEMO_LOGIN, PUBLIC_APP_ORIGIN, DEMO_LOGIN_ACCESS_CODE, DEMO_SESSION_SECRET | Temporary gated hosted demo; exact trusted origin and server-only secrets |
+| Configuration names                                                                                        | Purpose / handling                                                                                |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| VITE_ENTRA_TENANT_ID, VITE_ENTRA_WEB_CLIENT_ID, VITE_ENTRA_API_CLIENT_ID, VITE_AUTH_REDIRECT_URI           | Public SPA registration identifiers/callback; never provider/SQL secrets                          |
+| ENTRA_TENANT_ID, ENTRA_API_CLIENT_ID, ENTRA_WEB_CLIENT_ID                                                  | Server delegated-token validation configuration                                                   |
+| ACCESS_ACCOUNT_ID                                                                                          | Explicit provisioned workspace account UUID; not chosen by browser/model                          |
+| AZURE_SQL_SERVER, AZURE_SQL_DATABASE                                                                       | Target SQL endpoint/database                                                                      |
+| AZURE_SQL_RUNTIME_AUTH, AZURE_SQL_CLIENT_ID, AZURE_SQL_CLIENT_SECRET, AZURE_SQL_MANAGED_IDENTITY_CLIENT_ID | Restricted runtime credential; managed identity for future Azure hosting                          |
+| AI_PROVIDER, AI_MODEL, AI_ENDPOINT, AI_API_KEY, GEMINI_API / GEMINI_API_KEY                                | Server-only model configuration; never VITE variables                                             |
+| EVIDENCE_STORAGE_CONNECTION_STRING, EVIDENCE_STORAGE_CONTAINER                                             | Server-only private Blob configuration; never expose credentials or raw blob paths to the browser |
+| DEV_DIRECT_LOGIN                                                                                           | Development-only direct login flag, false in production                                           |
+| HOSTED_DEMO_LOGIN, PUBLIC_APP_ORIGIN, DEMO_LOGIN_ACCESS_CODE, DEMO_SESSION_SECRET                          | Temporary gated hosted demo; exact trusted origin and server-only secrets                         |
 
 SQL setup commands use developer DefaultAzureCredential and close their connections. Runtime uses a separate restricted principal with procedure execution permissions. `npm run db:check -w apps/api` reports schema versions. `db:migrate` applies reviewed outstanding migrations via one worker with transactional version checks; migration 001 owns its initialization transaction. `access:import` is an explicit provisioning operation, never ordinary sign-in onboarding. Do not rerun seed/import tools casually against an existing live account.
 
@@ -330,15 +338,15 @@ Run `npm run architecture:check`, `npm run typecheck`, `npm test`, `npm run buil
 
 Opt-in SQL integration suites in apps/api/package.json cover organization, catalogue, access, reviews/review-access, claims, conversations, learning, recovery, practice, workflows/lifecycle and recommendations. They require configured Azure identity/network/runtime. Read each fixture's mutation/rollback behavior before running it against any live workspace. `runtime-optimization.integration.ts` verifies 039/040 inside rollback-only test transactions and supports installed migrations.
 
-| Symptom | Investigation | Safe recovery |
-| --- | --- | --- |
-| Sign-in succeeds but workspace denied | Membership/active account, tenant/audience/scope, trusted mapping | Authorized admin fixes membership; do not infer role from sign-in |
-| Sidebar lacks review | Current direct-report policy, active people, deny and implementation | Inspect effective-access Why and actual reporting assignment |
-| Save returns conflict | Record/workspace revision changed | Reload, preview again and review exact change |
-| Notifications partly unavailable | Identify failing source, request ID, SQL/provider logs | Retain successful sources; retry without hiding partial status |
-| AI busy/unavailable | Shared budget, active lease, provider key/model/quota/deadline | Wait bounded lease or repair configuration; never disable access checks |
-| Deep link returns 404 | Root Vercel web SPA rewrite | Add actual supported route and verify deployed direct reload |
-| Slow dashboard/login | Cold starts, SQL wake/connect, repeated snapshots, card queries | Measure before/after; use independent loading, bounded reads and no stale permission cache |
+| Symptom                               | Investigation                                                        | Safe recovery                                                                              |
+| ------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Sign-in succeeds but workspace denied | Membership/active account, tenant/audience/scope, trusted mapping    | Authorized admin fixes membership; do not infer role from sign-in                          |
+| Sidebar lacks review                  | Current direct-report policy, active people, deny and implementation | Inspect effective-access Why and actual reporting assignment                               |
+| Save returns conflict                 | Record/workspace revision changed                                    | Reload, preview again and review exact change                                              |
+| Notifications partly unavailable      | Identify failing source, request ID, SQL/provider logs               | Retain successful sources; retry without hiding partial status                             |
+| AI busy/unavailable                   | Shared budget, active lease, provider key/model/quota/deadline       | Wait bounded lease or repair configuration; never disable access checks                    |
+| Deep link returns 404                 | Root Vercel web SPA rewrite                                          | Add actual supported route and verify deployed direct reload                               |
+| Slow dashboard/login                  | Cold starts, SQL wake/connect, repeated snapshots, card queries      | Measure before/after; use independent loading, bounded reads and no stale permission cache |
 
 Browser regression must cover refresh/back navigation, direct links, notification focus, unauthorized routes, empty/error/retry, unsaved form retention, theme/responsive layout and AI close/collapse/history races. Authorization tests include renamed roles, multiple templates, expired/denied grants, manager reassignment/deactivation, self-review, foreign account/resource IDs and live revocation during generation.
 
@@ -358,16 +366,16 @@ Unsupported grant scopes and mockup-only modules must remain unavailable. Recomm
 
 New engineer reading path: Product requirements → Architecture → Access → Claim workflow → Learning / Requests / Recommendations → Schema explorer → API inventory → Setup → Operations → Risks. Use the KT guide to ask follow-ups about the current section or selected table; inspect its source context before acting.
 
-| Handover check | Evidence required |
-| --- | --- |
-| Repository/build | Clean intended diff, reproducible npm ci, passing types/tests/build/guard |
-| Identity/access | Configured tenant/mapping/runtime account; deny and relationship tests |
-| Database | Applied versions and restricted execution checks; separately verify live schema |
-| Product workflows | Actual employee + manager journeys; no mock-only actions |
-| AI | Correct configured provider, shared quota, no credential exposure, no autonomous writes |
-| Deployment | Exact Ready commit and domain, required migrations first, production smoke record |
-| Operations | Ownership, secret rotation, incident escalation, monitoring and rollback/restore agreed |
-| Known gaps | Demo risks, unsupported scopes, attachment/formal assessment limits explicitly accepted |
+| Handover check    | Evidence required                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| Repository/build  | Clean intended diff, reproducible npm ci, passing types/tests/build/guard               |
+| Identity/access   | Configured tenant/mapping/runtime account; deny and relationship tests                  |
+| Database          | Applied versions and restricted execution checks; separately verify live schema         |
+| Product workflows | Actual employee + manager journeys; no mock-only actions                                |
+| AI                | Correct configured provider, shared quota, no credential exposure, no autonomous writes |
+| Deployment        | Exact Ready commit and domain, required migrations first, production smoke record       |
+| Operations        | Ownership, secret rotation, incident escalation, monitoring and rollback/restore agreed |
+| Known gaps        | Demo risks, unsupported scopes, attachment/formal assessment limits explicitly accepted |
 
 Canonical text is `docs/HANDOVER.md`; approved access policy is `docs/ACCESS_MODEL_REDESIGN.md`. The operator companion [Azure migration with data](AZURE_MIGRATION_RUNBOOK.md) covers free-offer eligibility, source export, target setup/import, private Blob copy, cross-tenant identity/runtime remapping, release gates and rollback. It explicitly distinguishes full migration from fresh setup and records the current quota-paused source blocker; no successful migration or backup is implied. `scripts/generate-handover.py` includes these maintained documents and regenerates the bundled sections, table/FK dictionary, latest SQL procedure/function signatures, migration inventory and literal route inventory. The migration steps are also searchable in the temporary KT reader/AI guide. `npm run docs:check` detects stale output. Generated content contains repository structure and schema, never environment values, employee rows or secrets. The maintained Markdown remains readable without the temporary web reader.
 
@@ -381,21 +389,20 @@ The KT reader/AI guide is a temporary, isolated feature. It requires no database
 
 Quick disable: set server `KNOWLEDGE_TRANSFER_ENABLED=false` and redeploy. The default is enabled for this requested handover deployment. Both content and explain endpoints return a disabled-feature 404; the page shows the unavailable state and Back to workspace. Disabling the guide does not disable the normal application assistant. Do not remove shared AI budget tables or alter access grants when retiring KT.
 
-| Removal location | Exact action |
-| --- | --- |
-| apps/web/src/knowledge-transfer/ | Remove the isolated reader, CSS and types |
-| apps/web/src/App.tsx | Remove the KT lazy import, `isKnowledgeTransfer` flag, KT render branch and workspace-refresh bypass; remove that flag from the effect dependencies |
-| apps/api/src/modules/knowledge-transfer/ | Remove service, routes, index and generated content |
-| apps/api/src/create-app.ts | Remove KnowledgeDependencies type/import/intersection and registerKnowledgeRoutes call |
-| apps/api/src/server.ts | Remove KnowledgeTransferService import, knowledgeTransfer construction and dependency property; keep provider/aiBudget used by the core assistant |
-| apps/api/src/modules/ai/index.ts | Remove AiBudget type re-export if no other consumer needs it |
-| scripts/check-architecture.mjs | Remove only knowledge-transfer module/dependency entries; preserve the nine core modules |
-| vercel.json | Remove only knowledgetransfer from the web deep-link rewrite |
-| apps/api/.env.example | Remove the KT feature flag entry |
-| tests and documentation scripts | Remove KT-only tests; adapt generator to an offline docs output before removing its KT bundle destination |
+| Removal location                         | Exact action                                                                                                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| apps/web/src/knowledge-transfer/         | Remove the isolated reader, CSS and types                                                                                                           |
+| apps/web/src/App.tsx                     | Remove the KT lazy import, `isKnowledgeTransfer` flag, KT render branch and workspace-refresh bypass; remove that flag from the effect dependencies |
+| apps/api/src/modules/knowledge-transfer/ | Remove service, routes, index and generated content                                                                                                 |
+| apps/api/src/create-app.ts               | Remove KnowledgeDependencies type/import/intersection and registerKnowledgeRoutes call                                                              |
+| apps/api/src/server.ts                   | Remove KnowledgeTransferService import, knowledgeTransfer construction and dependency property; keep provider/aiBudget used by the core assistant   |
+| apps/api/src/modules/ai/index.ts         | Remove AiBudget type re-export if no other consumer needs it                                                                                        |
+| scripts/check-architecture.mjs           | Remove only knowledge-transfer module/dependency entries; preserve the nine core modules                                                            |
+| vercel.json                              | Remove only knowledgetransfer from the web deep-link rewrite                                                                                        |
+| apps/api/.env.example                    | Remove the KT feature flag entry                                                                                                                    |
+| tests and documentation scripts          | Remove KT-only tests; adapt generator to an offline docs output before removing its KT bundle destination                                           |
 
 Keep README, this permanent handover and the approved access baseline. If offline schema export is still required, redirect the generator output to an approved documentation artifact first. Run architecture/typecheck/full regression/build after removal, push, then verify dashboard, own skills, learning, notifications, manager reviews and normal AI in the deployed environment. No data cleanup or permission migration is required.
-
 
 ## Short requirements delivery backlog
 
@@ -428,28 +435,26 @@ On 6 October 2026, after operator-completed Azure CLI sign-in, the setup connect
 
 Application authenticated HTTP failures and successful business mutations emit shared dismissible toast feedback. Reads do not emit success toasts. AI generation/login successful requests do not masquerade as saved business changes. Inline errors and recovery controls remain present; toasts supplement them. Dialog-local toast hosts render inside the browser top layer, and the global host suppresses duplicate delivery while a dialog is open. Toast scope does not claim coverage for raw-fetch legacy login flows or every bespoke client validation path.
 
-
 ## Short Requirements Audit — 6 October 2026
 
 Source: `apps/short requrement` (discussion-draft BRD). Technology recommendations (Power Apps, SharePoint, Power Automate, Power BI) are excluded from functional acceptance; resource-language requirements are deferred by the user. This is a repository implementation audit, not production acceptance.
 
-| Business requirement | Current state | Remaining acceptance work |
-| --- | --- | --- |
-| Employee profile | Implemented and deployed with 052; authenticated feature acceptance pending | Read-only work fields, primary capability, organization/current manager and server-derived six-field completeness. Missing-field correction uses existing authorized requests or administrator guidance. |
-| Skill profile | Implemented in the personal/demo release | Published catalogue, saved proficiency, experience, last-used information, evidence links and private compressed images. Migrations through 050 and hosted storage were verified; evidence retention/scanning/delete remain separate gaps. |
-| Assessment | Partial | Self-assessment, exact assigned current-manager review, feedback and audited decisions. Project/technical/certification/panel assessment are not implemented. |
-| Five-level proficiency | Supported with versioned definitions | Published levels govern each claim; historical frameworks must not be silently relabelled or treated as equivalent. |
-| Certification | Not implemented | Provider, issued/expiry dates, certificate evidence, verification and certification dashboards. A generic evidence attachment is not a certification record. |
-| Learning | Partial | Goals/plans/tasks, recommendations, acceptance-to-plan, progress and practice exist. Managed training catalogue/enrolment, formal course score and certification completion require dedicated workflows. |
-| Project demand and matching | Not implemented end to end | Team requirement analysis and scoped AI explanations exist; they do not establish persisted project/headcount/period demand, allocation or organization resource matching. |
-| Analytics | Partial | Own dashboard and current direct-report coverage/levels, requirement-based team gaps and drill-down. Certification, workforce/future-demand and organization-wide matrices remain pending. |
-| Automation | Partial | Workflow notifications and recommendation actions exist. Scheduled certification expiry reminders (90/60/30 days), incomplete-profile reminders and recurring skill-review cycles remain pending. |
-| Security and governance | Bounded implementation | Effective permissions, own scope and exact current-manager constraints are enforced. TEAM/DEPARTMENT/DELIVERY_UNIT/organization capability scopes remain unavailable until resource-specific SQL enforcement exists. Temporary demo authentication remains an explicitly deferred infrastructure concern. |
+| Business requirement        | Current state                                                               | Remaining acceptance work                                                                                                                                                                                                                                                                                 |
+| --------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Employee profile            | Implemented and deployed with 052; authenticated feature acceptance pending | Read-only work fields, primary capability, organization/current manager and server-derived six-field completeness. Missing-field correction uses existing authorized requests or administrator guidance.                                                                                                  |
+| Skill profile               | Implemented in the personal/demo release                                    | Published catalogue, saved proficiency, experience, last-used information, evidence links and private compressed images. Migrations through 050 and hosted storage were verified; evidence retention/scanning/delete remain separate gaps.                                                                |
+| Assessment                  | Partial                                                                     | Self-assessment, exact assigned current-manager review, feedback and audited decisions. Project/technical/certification/panel assessment are not implemented.                                                                                                                                             |
+| Five-level proficiency      | Supported with versioned definitions                                        | Published levels govern each claim; historical frameworks must not be silently relabelled or treated as equivalent.                                                                                                                                                                                       |
+| Certification               | Not implemented                                                             | Provider, issued/expiry dates, certificate evidence, verification and certification dashboards. A generic evidence attachment is not a certification record.                                                                                                                                              |
+| Learning                    | Partial                                                                     | Goals/plans/tasks, recommendations, acceptance-to-plan, progress and practice exist. Managed training catalogue/enrolment, formal course score and certification completion require dedicated workflows.                                                                                                  |
+| Project demand and matching | Not implemented end to end                                                  | Team requirement analysis and scoped AI explanations exist; they do not establish persisted project/headcount/period demand, allocation or organization resource matching.                                                                                                                                |
+| Analytics                   | Partial                                                                     | Own dashboard and current direct-report coverage/levels, requirement-based team gaps and drill-down. Certification, workforce/future-demand and organization-wide matrices remain pending.                                                                                                                |
+| Automation                  | Partial                                                                     | Workflow notifications and recommendation actions exist. Scheduled certification expiry reminders (90/60/30 days), incomplete-profile reminders and recurring skill-review cycles remain pending.                                                                                                         |
+| Security and governance     | Bounded implementation                                                      | Effective permissions, own scope and exact current-manager constraints are enforced. TEAM/DEPARTMENT/DELIVERY_UNIT/organization capability scopes remain unavailable until resource-specific SQL enforcement exists. Temporary demo authentication remains an explicitly deferred infrastructure concern. |
 
 Release assessment: core employee/manager MVP is on track, but neither the complete BRD nor production acceptance is finished. Code checks cannot certify deployed procedures, runtime database grants, storage secrets, response times, backups or rollback. Apply compatible required migrations, check the restricted runtime, and smoke-test the exact deployed commit before declaring a stable release. The audit branch and reviewed local cleanup were consolidated on `main` on 6 October 2026. The backup branch was removed after consolidation; earlier local changes remain preserved in a named local stash; their optimized readers were already integrated with migrations renumbered to 048/049. The merge itself did not apply SQL migrations or configure storage; subsequent release verification is recorded in the dated chapter above. Only main/origin/main remain after branch cleanup. Do not deploy signature-dependent code ahead of SQL.
 
 Dashboard cards now form independent desktop columns: attention stays first; learning and requests share one stack, capability and permitted quick actions share the other. Narrow layouts stack those same groups in DOM order. No placeholder/fake card fills the height difference, and unauthorized cards remain absent.
-
 
 ## Post-baseline merge audit — 6 October 2026
 

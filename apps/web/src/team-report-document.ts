@@ -1,70 +1,148 @@
-import type {TeamReportAnalytics} from './team-reports';
-import {LEVELS,membersWithoutReviewedSkills,skillProfiles,teamAverageLevel,type SkillProfile} from './team-insights';
-import {indexCoverage} from './team-coverage';
+import type { TeamReportAnalytics } from './team-reports';
+import {
+  LEVELS,
+  membersWithoutReviewedSkills,
+  skillProfiles,
+  teamAverageLevel,
+  type SkillProfile,
+} from './team-insights';
+import { indexCoverage } from './team-coverage';
 
-const LEVEL_COLORS=['#9cc9cf','#5fb0ba','#008595','#0b5f6b','#123c44'];
-const CATEGORY_COLORS=['#008595','#357ac2','#b87b11','#7b5ea7','#3f8a4f','#c4573a','#5d6b78','#a0466b'];
+const LEVEL_COLORS = ['#9cc9cf', '#5fb0ba', '#008595', '#0b5f6b', '#123c44'];
+const CATEGORY_COLORS = [
+  '#008595',
+  '#357ac2',
+  '#b87b11',
+  '#7b5ea7',
+  '#3f8a4f',
+  '#c4573a',
+  '#5d6b78',
+  '#a0466b',
+];
 
-export function escapeHtml(value:string|number){
- return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+export function escapeHtml(value: string | number) {
+  return String(value).replace(
+    /[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+  );
 }
 
-function donut(reviewed:number,pending:number){
- const total=reviewed+pending,circumference=2*Math.PI*52,share=total?reviewed/total:0;
- return `<svg viewBox="0 0 140 140" role="img" aria-label="${escapeHtml(`${reviewed} manager-reviewed claims and ${pending} assigned pending reviews`)}">
+function donut(reviewed: number, pending: number) {
+  const total = reviewed + pending,
+    circumference = 2 * Math.PI * 52,
+    share = total ? reviewed / total : 0;
+  return `<svg viewBox="0 0 140 140" role="img" aria-label="${escapeHtml(`${reviewed} manager-reviewed claims and ${pending} assigned pending reviews`)}">
   <circle cx="70" cy="70" r="52" fill="none" stroke="#e7c58a" stroke-width="18"/>
-  ${total?`<circle cx="70" cy="70" r="52" fill="none" stroke="#008595" stroke-width="18" stroke-dasharray="${(share*circumference).toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 70 70)"/>`:''}
-  <text x="70" y="68" text-anchor="middle" class="donut-value">${total?Math.round(share*100):0}%</text>
+  ${total ? `<circle cx="70" cy="70" r="52" fill="none" stroke="#008595" stroke-width="18" stroke-dasharray="${(share * circumference).toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 70 70)"/>` : ''}
+  <text x="70" y="68" text-anchor="middle" class="donut-value">${total ? Math.round(share * 100) : 0}%</text>
   <text x="70" y="86" text-anchor="middle" class="donut-label">reviewed</text></svg>`;
 }
 
-function levelColumns(analytics:TeamReportAnalytics){
- const counts=LEVELS.map(rank=>rank===5?analytics.levels.filter(l=>l.rank>=5).reduce((s,l)=>s+l.count,0):analytics.levels.find(l=>l.rank===rank)?.count??0);
- const max=Math.max(1,...counts);
- return `<svg viewBox="0 0 300 170" role="img" aria-label="${escapeHtml('Reviewed claims by level: '+counts.map((c,i)=>`L${i+1}${i===4?'+':''} ${c}`).join(', '))}">
-  ${counts.map((count,i)=>{const h=Math.round(count/max*120),x=18+i*56;return `<g><rect x="${x}" y="${140-h}" width="38" height="${h}" rx="4" fill="${LEVEL_COLORS[i]}"><title>L${i+1}${i===4?'+':''}: ${count} claims</title></rect><text x="${x+19}" y="${134-h}" text-anchor="middle" class="axis strong">${count}</text><text x="${x+19}" y="160" text-anchor="middle" class="axis">L${i+1}${i===4?'+':''}</text></g>`;}).join('')}
+function levelColumns(analytics: TeamReportAnalytics) {
+  const counts = LEVELS.map(rank =>
+    rank === 5
+      ? analytics.levels.filter(l => l.rank >= 5).reduce((s, l) => s + l.count, 0)
+      : (analytics.levels.find(l => l.rank === rank)?.count ?? 0),
+  );
+  const max = Math.max(1, ...counts);
+  return `<svg viewBox="0 0 300 170" role="img" aria-label="${escapeHtml('Reviewed claims by level: ' + counts.map((c, i) => `L${i + 1}${i === 4 ? '+' : ''} ${c}`).join(', '))}">
+  ${counts
+    .map((count, i) => {
+      const h = Math.round((count / max) * 120),
+        x = 18 + i * 56;
+      return `<g><rect x="${x}" y="${140 - h}" width="38" height="${h}" rx="4" fill="${LEVEL_COLORS[i]}"><title>L${i + 1}${i === 4 ? '+' : ''}: ${count} claims</title></rect><text x="${x + 19}" y="${134 - h}" text-anchor="middle" class="axis strong">${count}</text><text x="${x + 19}" y="160" text-anchor="middle" class="axis">L${i + 1}${i === 4 ? '+' : ''}</text></g>`;
+    })
+    .join('')}
   <line x1="10" y1="140" x2="290" y2="140" class="rule"/></svg>`;
 }
 
-function radar(profiles:SkillProfile[]){
- const skills=profiles.slice(0,6);
- if(skills.length<3)return '<p class="empty">At least three reviewed skills are needed for the radar view.</p>';
- const point=(i:number,value:number,r=90)=>{const a=i*2*Math.PI/skills.length-Math.PI/2;return [150+Math.cos(a)*r*value/5,130+Math.sin(a)*r*value/5];};
- const ring=(v:number)=>skills.map((_,i)=>point(i,v).map(n=>n.toFixed(1)).join(',')).join(' ');
- return `<svg viewBox="0 0 300 260" role="img" aria-label="${escapeHtml('Holder averages capped at L5 (historical ranks above 5 grouped as L5+): '+skills.map(s=>`${s.skill} ${s.average}`).join(', '))}">
-  ${LEVELS.map(v=>`<polygon points="${ring(v)}" class="ring"/>`).join('')}
-  ${skills.map((s,i)=>{const [x,y]=point(i,5),[lx,ly]=point(i,5,112);return `<line x1="150" y1="130" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="ring"/><text x="${lx.toFixed(1)}" y="${(ly+4).toFixed(1)}" text-anchor="middle" class="axis">${escapeHtml(s.skill.length>14?s.skill.slice(0,13)+'…':s.skill)}</text>`;}).join('')}
-  <polygon points="${skills.map((s,i)=>point(i,s.average).map(n=>n.toFixed(1)).join(',')).join(' ')}" class="area"/>
-  ${skills.map((s,i)=>{const [x,y]=point(i,s.average);return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="dot"><title>${escapeHtml(`${s.skill}: capped holder average ${s.average} across ${s.holders} holders (L5+)`)}</title></circle>`;}).join('')}</svg>`;
+function radar(profiles: SkillProfile[]) {
+  const skills = profiles.slice(0, 6);
+  if (skills.length < 3)
+    return '<p class="empty">At least three reviewed skills are needed for the radar view.</p>';
+  const point = (i: number, value: number, r = 90) => {
+    const a = (i * 2 * Math.PI) / skills.length - Math.PI / 2;
+    return [150 + (Math.cos(a) * r * value) / 5, 130 + (Math.sin(a) * r * value) / 5];
+  };
+  const ring = (v: number) =>
+    skills
+      .map((_, i) =>
+        point(i, v)
+          .map(n => n.toFixed(1))
+          .join(','),
+      )
+      .join(' ');
+  return `<svg viewBox="0 0 300 260" role="img" aria-label="${escapeHtml('Holder averages capped at L5 (historical ranks above 5 grouped as L5+): ' + skills.map(s => `${s.skill} ${s.average}`).join(', '))}">
+  ${LEVELS.map(v => `<polygon points="${ring(v)}" class="ring"/>`).join('')}
+  ${skills
+    .map((s, i) => {
+      const [x, y] = point(i, 5),
+        [lx, ly] = point(i, 5, 112);
+      return `<line x1="150" y1="130" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="ring"/><text x="${lx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" text-anchor="middle" class="axis">${escapeHtml(s.skill.length > 14 ? s.skill.slice(0, 13) + '…' : s.skill)}</text>`;
+    })
+    .join('')}
+  <polygon points="${skills
+    .map((s, i) =>
+      point(i, s.average)
+        .map(n => n.toFixed(1))
+        .join(','),
+    )
+    .join(' ')}" class="area"/>
+  ${skills
+    .map((s, i) => {
+      const [x, y] = point(i, s.average);
+      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="dot"><title>${escapeHtml(`${s.skill}: capped holder average ${s.average} across ${s.holders} holders (L5+)`)}</title></circle>`;
+    })
+    .join('')}</svg>`;
 }
 
-function levelMix(profiles:SkillProfile[]){
- const skills=profiles.slice(0,10);
- if(!skills.length)return '<p class="empty">No reviewed skills yet.</p>';
- return `<div class="mix">${skills.map(s=>`<div class="mix-row"><span title="${escapeHtml(s.skill)}">${escapeHtml(s.skill)}</span><div class="mix-track" role="img" aria-label="${escapeHtml(`${s.skill}: ${s.atLevel.map((n,i)=>`L${i+1}${i===4?'+':''} ${n}`).join(', ')}`)}">${s.atLevel.map((n,i)=>n?`<i style="flex:${n};background:${LEVEL_COLORS[i]}" title="L${i+1}${i===4?'+':''}: ${n}"></i>`:'').join('')}</div><b>${s.holders}</b></div>`).join('')}</div>
-  <p class="legend">${LEVELS.map((l,i)=>`<span><i style="background:${LEVEL_COLORS[i]}"></i>L${l}${l===5?'+':''}</span>`).join('')}</p>`;
+function levelMix(profiles: SkillProfile[]) {
+  const skills = profiles.slice(0, 10);
+  if (!skills.length) return '<p class="empty">No reviewed skills yet.</p>';
+  return `<div class="mix">${skills.map(s => `<div class="mix-row"><span title="${escapeHtml(s.skill)}">${escapeHtml(s.skill)}</span><div class="mix-track" role="img" aria-label="${escapeHtml(`${s.skill}: ${s.atLevel.map((n, i) => `L${i + 1}${i === 4 ? '+' : ''} ${n}`).join(', ')}`)}">${s.atLevel.map((n, i) => (n ? `<i style="flex:${n};background:${LEVEL_COLORS[i]}" title="L${i + 1}${i === 4 ? '+' : ''}: ${n}"></i>` : '')).join('')}</div><b>${s.holders}</b></div>`).join('')}</div>
+  <p class="legend">${LEVELS.map((l, i) => `<span><i style="background:${LEVEL_COLORS[i]}"></i>L${l}${l === 5 ? '+' : ''}</span>`).join('')}</p>`;
 }
 
-function categories(analytics:TeamReportAnalytics){
- const rows=[...analytics.categories].sort((a,b)=>b.count-a.count).slice(0,8),total=rows.reduce((s,c)=>s+c.count,0);
- if(!total)return '<p class="empty">No reviewed categories yet.</p>';
- return `<div class="treemap">${rows.map((c,i)=>`<div style="flex:${c.count};background:${CATEGORY_COLORS[i%CATEGORY_COLORS.length]}" title="${escapeHtml(`${c.category}: ${c.count} reviewed claims`)}"><strong>${escapeHtml(c.category)}</strong><span>${c.count} · ${Math.round(c.count/total*100)}%</span></div>`).join('')}</div>`;
+function categories(analytics: TeamReportAnalytics) {
+  const rows = [...analytics.categories].sort((a, b) => b.count - a.count).slice(0, 8),
+    total = rows.reduce((s, c) => s + c.count, 0);
+  if (!total) return '<p class="empty">No reviewed categories yet.</p>';
+  return `<div class="treemap">${rows.map((c, i) => `<div style="flex:${c.count};background:${CATEGORY_COLORS[i % CATEGORY_COLORS.length]}" title="${escapeHtml(`${c.category}: ${c.count} reviewed claims`)}"><strong>${escapeHtml(c.category)}</strong><span>${c.count} · ${Math.round((c.count / total) * 100)}%</span></div>`).join('')}</div>`;
 }
 
-export function teamReportHtml(analytics:TeamReportAnalytics,query:string,at:Date){
- const index=indexCoverage(analytics),profiles=skillProfiles(analytics,index),without=membersWithoutReviewedSkills(analytics);
- const data=JSON.stringify({members:analytics.members,skills:[...index].map(([skill,ranks])=>({skill,levels:LEVELS.map(rank=>ranks.get(rank)?.people??0)}))}).replace(/</g,'\\u003c').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
- const kpis:[string,string|number,string][]=[
-  ['Active direct reports',analytics.members,query?'Filtered current direct reports':'All current direct reports'],
-  ['Manager-reviewed claims',analytics.reviewed,'Verified proficiency records'],
-  ['Assigned pending reviews',analytics.pending,'Not yet counted as proficiency'],
-  ['Reviewed skills',profiles.length,'Distinct skills with a reviewed record'],
-  ['Average reviewed level',teamAverageLevel(analytics)?'L'+teamAverageLevel(analytics):'—','Recorded ranks capped at L5; not equivalence across frameworks'],
-  ['Without reviewed skills',without,'Members with no reviewed record'],
- ];
- return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+export function teamReportHtml(analytics: TeamReportAnalytics, query: string, at: Date) {
+  const index = indexCoverage(analytics),
+    profiles = skillProfiles(analytics, index),
+    without = membersWithoutReviewedSkills(analytics);
+  const data = JSON.stringify({
+    members: analytics.members,
+    skills: [...index].map(([skill, ranks]) => ({
+      skill,
+      levels: LEVELS.map(rank => ranks.get(rank)?.people ?? 0),
+    })),
+  })
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+  const kpis: [string, string | number, string][] = [
+    [
+      'Active direct reports',
+      analytics.members,
+      query ? 'Filtered current direct reports' : 'All current direct reports',
+    ],
+    ['Manager-reviewed claims', analytics.reviewed, 'Verified proficiency records'],
+    ['Assigned pending reviews', analytics.pending, 'Not yet counted as proficiency'],
+    ['Reviewed skills', profiles.length, 'Distinct skills with a reviewed record'],
+    [
+      'Average reviewed level',
+      teamAverageLevel(analytics) ? 'L' + teamAverageLevel(analytics) : '—',
+      'Recorded ranks capped at L5; not equivalence across frameworks',
+    ],
+    ['Without reviewed skills', without, 'Members with no reviewed record'],
+  ];
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
-<title>Team capability report · ${escapeHtml(at.toISOString().slice(0,10))}</title>
+<title>Team capability report · ${escapeHtml(at.toISOString().slice(0, 10))}</title>
 <style>
 :root{--ink:#16242b;--muted:#566872;--line:#dbe3e6;--surface:#fff;--page:#f3f6f7;--teal:#008595;--amber:#b87b11;color-scheme:light dark}
 @media (prefers-color-scheme:dark){:root{--ink:#e6eef0;--muted:#a3b3b9;--line:#2c3c43;--surface:#16242b;--page:#0e181d;--teal:#3fb6c3}}
@@ -93,16 +171,16 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}.gap-high{color
 footer{margin-top:24px;color:var(--muted);font-size:.8rem;max-width:75ch}
 @media print{body{background:#fff}.actions,.controls input{display:none}.panel,.kpi{break-inside:avoid;border-color:#ccc}main{padding:0}}
 </style></head><body><main>
-<header class="top"><div><h1>Team capability report</h1><p class="meta">Current active direct reports · ${escapeHtml(query?'Filtered current direct reports':'All direct reports')} · Generated ${escapeHtml(at.toLocaleString())}</p></div>
+<header class="top"><div><h1>Team capability report</h1><p class="meta">Current active direct reports · ${escapeHtml(query ? 'Filtered current direct reports' : 'All direct reports')} · Generated ${escapeHtml(at.toLocaleString())}</p></div>
 <div class="actions"><button type="button" id="print">Print or save as PDF</button></div></header>
-<section class="kpis">${kpis.map(([label,value,note])=>`<div class="kpi"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span><small>${escapeHtml(note)}</small></div>`).join('')}</section>
+<section class="kpis">${kpis.map(([label, value, note]) => `<div class="kpi"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span><small>${escapeHtml(note)}</small></div>`).join('')}</section>
 <div class="grid">
 <section class="panel span-12"><h2>Coverage and recorded gaps</h2><p class="sub">Members with a manager-reviewed claim at or above the chosen level. Amber is missing recorded coverage, not a proven deficiency.</p>
-<div class="controls"><label>Minimum level <select id="level">${LEVELS.map(l=>`<option value="${l}"${l===3?' selected':''}>L${l} and above</option>`).join('')}</select></label><label>Find skill <input id="search" type="search" placeholder="e.g. Azure"></label><label>Show <select id="show"><option value="all">All skills</option><option value="gaps">Only gaps</option></select></label></div>
+<div class="controls"><label>Minimum level <select id="level">${LEVELS.map(l => `<option value="${l}"${l === 3 ? ' selected' : ''}>L${l} and above</option>`).join('')}</select></label><label>Find skill <input id="search" type="search" placeholder="e.g. Azure"></label><label>Show <select id="show"><option value="all">All skills</option><option value="gaps">Only gaps</option></select></label></div>
 <div class="bars" id="bars"></div>
 <table><thead><tr><th><button data-sort="skill">Skill</button></th><th class="num"><button data-sort="holders">Reviewed holders</button></th><th class="num"><button data-sort="missing">Without coverage</button></th><th class="num"><button data-sort="percent">Coverage</button></th></tr></thead><tbody id="rows"></tbody></table>
 <p class="empty" id="none" hidden>No skills match these filters.</p></section>
-<section class="panel span-4"><h2>Claim status</h2><p class="sub">Reviewed claims against your assigned pending reviews.</p><div class="donut-wrap">${donut(analytics.reviewed,analytics.pending)}<p class="legend"><span><i style="background:#008595"></i>Reviewed ${analytics.reviewed}</span><span><i style="background:#e7c58a"></i>Pending ${analytics.pending}</span></p></div></section>
+<section class="panel span-4"><h2>Claim status</h2><p class="sub">Reviewed claims against your assigned pending reviews.</p><div class="donut-wrap">${donut(analytics.reviewed, analytics.pending)}<p class="legend"><span><i style="background:#008595"></i>Reviewed ${analytics.reviewed}</span><span><i style="background:#e7c58a"></i>Pending ${analytics.pending}</span></p></div></section>
 <section class="panel span-4"><h2>Level distribution</h2><p class="sub">All reviewed claims by proficiency level.</p>${levelColumns(analytics)}</section>
 <section class="panel span-4"><h2>Skill radar</h2><p class="sub">Holder averages capped at L5, top skills. Historical ranks above 5 are grouped as L5+, not exact L5. Recorded-rank summaries do not establish equivalence across frameworks.</p>${radar(profiles)}</section>
 <section class="panel span-7"><h2>Level mix by skill</h2><p class="sub">How reviewed holders spread across levels. L5+ includes historical ranks above 5.</p>${levelMix(profiles)}</section>

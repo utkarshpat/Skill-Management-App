@@ -1,28 +1,213 @@
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import sql from 'mssql';
-import {withRuntimeDatabase,closeRuntimeDatabase} from '../src/shared/database.js';
-import {can} from '../src/modules/access/index.js';
-import {SqlAccessStore} from '../src/modules/access/sql-access-store.js';
-const account=process.env.ACCESS_ACCOUNT_ID;assert.ok(account);
-try{const access=new SqlAccessStore(account),before=await access.snapshot(),eligible=before.people.filter(p=>p.active&&can(before,p,'learning.view',true)&&can(before,p,'learning.manage',true));assert.ok(eligible.length>=2);const [owner,other]=eligible;
- await withRuntimeDatabase(async pool=>{
- const fixture=async(action:(tx:sql.Transaction,id:string,task:string)=>Promise<void>)=>{const tx=new sql.Transaction(pool);await tx.begin();try{await action(tx,randomUUID(),randomUUID());}finally{await tx.rollback().catch(()=>undefined);}};
- const mutate=(tx:sql.Transaction,id:string,action:string,revision:number,payload:object,actor=owner.id)=>new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,actor).input('plan_id',sql.UniqueIdentifier,id).input('expected_revision',sql.Int,revision).input('action',sql.VarChar(20),action).input('payload',sql.NVarChar(sql.MAX),JSON.stringify({action,id,revision,...payload})).execute('dbo.ChangeOwnLearningPlan');
- const create=(tx:sql.Transaction,id:string,task:string)=>mutate(tx,id,'CREATE',0,{title:'Rollback-only QA learning',goal:'Exercise isolation',timezone:'Asia/Kolkata',dailyMinutes:30,targetDate:'2026-10-10',tasks:[{id:task,title:'Practice',plannedDate:'2026-10-03',estimatedMinutes:30}]});
- const read=async(tx:sql.Transaction,actor:string)=>{const result=await new sql.Request(tx).input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,actor).execute('dbo.ReadOwnLearningPlans');return {recordsets:result.recordsets as sql.IRecordSet<{id:string;revision:number;payload:string}>[]};};
- const catalogue=await pool.request().input('account_id',sql.UniqueIdentifier,account).input('actor_id',sql.UniqueIdentifier,owner.id).input('query',sql.NVarChar(100),'').input('status',sql.VarChar(20),'PUBLISHED').input('page',sql.Int,1).execute('dbo.ReadSkillCatalogue');
- const skill=(catalogue.recordsets as sql.IRecordSet<{id:string;name:string}>[])[1][0];assert.ok(skill,'Mapping QA needs a published catalogue skill');
- const mapped=(tx:sql.Transaction,id:string,task:string,extra:object)=>mutate(tx,id,'CREATE',0,{title:'Rollback mapping QA',goal:'Verify mapping provenance',timezone:'Asia/Kolkata',dailyMinutes:30,targetDate:'2026-10-10',focus:'Cloud',skillId:skill.id,tasks:[{id:task,title:'Practice',plannedDate:'2026-10-03',estimatedMinutes:30}],...extra});
- await fixture(async(tx,id,task)=>{await mapped(tx,id,task,{});const row=(await read(tx,owner.id)).recordsets[1].find(r=>r.id.toLowerCase()===id);assert.ok(row);assert.equal(JSON.parse(row.payload).skillName,skill.name);});
- for(const extra of [{skillName:'Forged name'},{focus:'Unknown'},{skillId:'invalid'}])await fixture(async(tx,id,task)=>{await assert.rejects(mapped(tx,id,task,extra),e=>(e as {number:number}).number===51000);});
- await fixture(async(tx,id,task)=>{await assert.rejects(mapped(tx,id,task,{skillId:randomUUID()}),e=>(e as {number:number}).number===51004);});
- await fixture(async(tx,id,task)=>{await create(tx,id,task);assert.ok((await read(tx,owner.id)).recordsets[1].some((row:{id:string})=>row.id.toLowerCase()===id));assert.ok(!(await read(tx,other.id)).recordsets[1].some((row:{id:string})=>row.id.toLowerCase()===id));await mutate(tx,id,'LOG',1,{taskId:task,actualMinutes:20,notes:'Actual practice'});const row=(await read(tx,owner.id)).recordsets[1].find((r:{id:string})=>r.id.toLowerCase()===id);assert.ok(row);assert.equal(row.revision,2);assert.equal(JSON.parse(row.payload).tasks[0].actualMinutes,20);assert.ok(JSON.parse(row.payload).tasks[0].completedAt);await mutate(tx,id,'PAUSE',2,{});await mutate(tx,id,'RESUME',3,{});await mutate(tx,id,'ARCHIVE',4,{});});
- for(const [expected,attempt] of [[51009,(tx:sql.Transaction,id:string,task:string)=>mutate(tx,id,'LOG',0,{taskId:task,actualMinutes:10})],[51004,(tx:sql.Transaction,id:string,task:string)=>mutate(tx,id,'LOG',1,{taskId:task,actualMinutes:10},other.id)],[51000,(tx:sql.Transaction,id:string,task:string)=>mutate(tx,id,'LOG',1,{taskId:task,actualMinutes:0})],[51000,(tx:sql.Transaction,id:string,task:string)=>mutate(tx,id,'LOG',1,{taskId:task,actualMinutes:10,completedAt:'forged'})]] as const)await fixture(async(tx,id,task)=>{await create(tx,id,task);await assert.rejects(attempt(tx,id,task),e=>(e as {number:number}).number===expected);});
- await fixture(async(tx,id,task)=>{await create(tx,id,task);await mutate(tx,id,'LOG',1,{taskId:task,actualMinutes:10});await assert.rejects(mutate(tx,id,'LOG',2,{taskId:task,actualMinutes:10}),e=>(e as {number:number}).number===51010);});
- await fixture(async(tx,id,task)=>{await create(tx,id,task);await mutate(tx,id,'RESCHEDULE',1,{taskId:task,plannedDate:'2026-10-04'});const row=(await read(tx,owner.id)).recordsets[1].find(r=>r.id.toLowerCase()===id);assert.ok(row);assert.equal(JSON.parse(row.payload).tasks[0].plannedDate,'2026-10-04');});
- await fixture(async(tx,id,task)=>{await create(tx,id,task);await assert.rejects(mutate(tx,id,'RESCHEDULE',1,{taskId:task,plannedDate:'2026-10-11'}),e=>(e as {number:number}).number===51000);});
- await assert.rejects(pool.request().query('SELECT TOP 1 * FROM dbo.LearningPlan'),e=>(e as {number:number}).number===229);
- await assert.rejects(pool.request().input('account_id',sql.UniqueIdentifier,randomUUID()).input('actor_id',sql.UniqueIdentifier,owner.id).execute('dbo.ReadOwnLearningPlans'),e=>(e as {number:number}).number===51003);
- });assert.equal((await access.snapshot()).revision,before.revision);console.log('Learning SQL: own isolation, stale revisions, state transitions, server completion timestamps, double logging and restricted runtime verified. Fixtures rolled back.');
-}finally{await closeRuntimeDatabase();}
+import { withRuntimeDatabase, closeRuntimeDatabase } from '../src/shared/database.js';
+import { can } from '../src/modules/access/index.js';
+import { SqlAccessStore } from '../src/modules/access/sql-access-store.js';
+const account = process.env.ACCESS_ACCOUNT_ID;
+assert.ok(account);
+try {
+  const access = new SqlAccessStore(account),
+    before = await access.snapshot(),
+    eligible = before.people.filter(
+      p =>
+        p.active &&
+        can(before, p, 'learning.view', true) &&
+        can(before, p, 'learning.manage', true),
+    );
+  assert.ok(eligible.length >= 2);
+  const [owner, other] = eligible;
+  await withRuntimeDatabase(async pool => {
+    const fixture = async (
+      action: (tx: sql.Transaction, id: string, task: string) => Promise<void>,
+    ) => {
+      const tx = new sql.Transaction(pool);
+      await tx.begin();
+      try {
+        await action(tx, randomUUID(), randomUUID());
+      } finally {
+        await tx.rollback().catch(() => undefined);
+      }
+    };
+    const mutate = (
+      tx: sql.Transaction,
+      id: string,
+      action: string,
+      revision: number,
+      payload: object,
+      actor = owner.id,
+    ) =>
+      new sql.Request(tx)
+        .input('account_id', sql.UniqueIdentifier, account)
+        .input('actor_id', sql.UniqueIdentifier, actor)
+        .input('plan_id', sql.UniqueIdentifier, id)
+        .input('expected_revision', sql.Int, revision)
+        .input('action', sql.VarChar(20), action)
+        .input(
+          'payload',
+          sql.NVarChar(sql.MAX),
+          JSON.stringify({ action, id, revision, ...payload }),
+        )
+        .execute('dbo.ChangeOwnLearningPlan');
+    const create = (tx: sql.Transaction, id: string, task: string) =>
+      mutate(tx, id, 'CREATE', 0, {
+        title: 'Rollback-only QA learning',
+        goal: 'Exercise isolation',
+        timezone: 'Asia/Kolkata',
+        dailyMinutes: 30,
+        targetDate: '2026-10-10',
+        tasks: [{ id: task, title: 'Practice', plannedDate: '2026-10-03', estimatedMinutes: 30 }],
+      });
+    const read = async (tx: sql.Transaction, actor: string) => {
+      const result = await new sql.Request(tx)
+        .input('account_id', sql.UniqueIdentifier, account)
+        .input('actor_id', sql.UniqueIdentifier, actor)
+        .execute('dbo.ReadOwnLearningPlans');
+      return {
+        recordsets: result.recordsets as sql.IRecordSet<{
+          id: string;
+          revision: number;
+          payload: string;
+        }>[],
+      };
+    };
+    const catalogue = await pool
+      .request()
+      .input('account_id', sql.UniqueIdentifier, account)
+      .input('actor_id', sql.UniqueIdentifier, owner.id)
+      .input('query', sql.NVarChar(100), '')
+      .input('status', sql.VarChar(20), 'PUBLISHED')
+      .input('page', sql.Int, 1)
+      .execute('dbo.ReadSkillCatalogue');
+    const skill = (catalogue.recordsets as sql.IRecordSet<{ id: string; name: string }>[])[1][0];
+    assert.ok(skill, 'Mapping QA needs a published catalogue skill');
+    const mapped = (tx: sql.Transaction, id: string, task: string, extra: object) =>
+      mutate(tx, id, 'CREATE', 0, {
+        title: 'Rollback mapping QA',
+        goal: 'Verify mapping provenance',
+        timezone: 'Asia/Kolkata',
+        dailyMinutes: 30,
+        targetDate: '2026-10-10',
+        focus: 'Cloud',
+        skillId: skill.id,
+        tasks: [{ id: task, title: 'Practice', plannedDate: '2026-10-03', estimatedMinutes: 30 }],
+        ...extra,
+      });
+    await fixture(async (tx, id, task) => {
+      await mapped(tx, id, task, {});
+      const row = (await read(tx, owner.id)).recordsets[1].find(r => r.id.toLowerCase() === id);
+      assert.ok(row);
+      assert.equal(JSON.parse(row.payload).skillName, skill.name);
+    });
+    for (const extra of [
+      { skillName: 'Forged name' },
+      { focus: 'Unknown' },
+      { skillId: 'invalid' },
+    ])
+      await fixture(async (tx, id, task) => {
+        await assert.rejects(
+          mapped(tx, id, task, extra),
+          e => (e as { number: number }).number === 51000,
+        );
+      });
+    await fixture(async (tx, id, task) => {
+      await assert.rejects(
+        mapped(tx, id, task, { skillId: randomUUID() }),
+        e => (e as { number: number }).number === 51004,
+      );
+    });
+    await fixture(async (tx, id, task) => {
+      await create(tx, id, task);
+      assert.ok(
+        (await read(tx, owner.id)).recordsets[1].some(
+          (row: { id: string }) => row.id.toLowerCase() === id,
+        ),
+      );
+      assert.ok(
+        !(await read(tx, other.id)).recordsets[1].some(
+          (row: { id: string }) => row.id.toLowerCase() === id,
+        ),
+      );
+      await mutate(tx, id, 'LOG', 1, { taskId: task, actualMinutes: 20, notes: 'Actual practice' });
+      const row = (await read(tx, owner.id)).recordsets[1].find(
+        (r: { id: string }) => r.id.toLowerCase() === id,
+      );
+      assert.ok(row);
+      assert.equal(row.revision, 2);
+      assert.equal(JSON.parse(row.payload).tasks[0].actualMinutes, 20);
+      assert.ok(JSON.parse(row.payload).tasks[0].completedAt);
+      await mutate(tx, id, 'PAUSE', 2, {});
+      await mutate(tx, id, 'RESUME', 3, {});
+      await mutate(tx, id, 'ARCHIVE', 4, {});
+    });
+    for (const [expected, attempt] of [
+      [
+        51009,
+        (tx: sql.Transaction, id: string, task: string) =>
+          mutate(tx, id, 'LOG', 0, { taskId: task, actualMinutes: 10 }),
+      ],
+      [
+        51004,
+        (tx: sql.Transaction, id: string, task: string) =>
+          mutate(tx, id, 'LOG', 1, { taskId: task, actualMinutes: 10 }, other.id),
+      ],
+      [
+        51000,
+        (tx: sql.Transaction, id: string, task: string) =>
+          mutate(tx, id, 'LOG', 1, { taskId: task, actualMinutes: 0 }),
+      ],
+      [
+        51000,
+        (tx: sql.Transaction, id: string, task: string) =>
+          mutate(tx, id, 'LOG', 1, { taskId: task, actualMinutes: 10, completedAt: 'forged' }),
+      ],
+    ] as const)
+      await fixture(async (tx, id, task) => {
+        await create(tx, id, task);
+        await assert.rejects(
+          attempt(tx, id, task),
+          e => (e as { number: number }).number === expected,
+        );
+      });
+    await fixture(async (tx, id, task) => {
+      await create(tx, id, task);
+      await mutate(tx, id, 'LOG', 1, { taskId: task, actualMinutes: 10 });
+      await assert.rejects(
+        mutate(tx, id, 'LOG', 2, { taskId: task, actualMinutes: 10 }),
+        e => (e as { number: number }).number === 51010,
+      );
+    });
+    await fixture(async (tx, id, task) => {
+      await create(tx, id, task);
+      await mutate(tx, id, 'RESCHEDULE', 1, { taskId: task, plannedDate: '2026-10-04' });
+      const row = (await read(tx, owner.id)).recordsets[1].find(r => r.id.toLowerCase() === id);
+      assert.ok(row);
+      assert.equal(JSON.parse(row.payload).tasks[0].plannedDate, '2026-10-04');
+    });
+    await fixture(async (tx, id, task) => {
+      await create(tx, id, task);
+      await assert.rejects(
+        mutate(tx, id, 'RESCHEDULE', 1, { taskId: task, plannedDate: '2026-10-11' }),
+        e => (e as { number: number }).number === 51000,
+      );
+    });
+    await assert.rejects(
+      pool.request().query('SELECT TOP 1 * FROM dbo.LearningPlan'),
+      e => (e as { number: number }).number === 229,
+    );
+    await assert.rejects(
+      pool
+        .request()
+        .input('account_id', sql.UniqueIdentifier, randomUUID())
+        .input('actor_id', sql.UniqueIdentifier, owner.id)
+        .execute('dbo.ReadOwnLearningPlans'),
+      e => (e as { number: number }).number === 51003,
+    );
+  });
+  assert.equal((await access.snapshot()).revision, before.revision);
+  console.log(
+    'Learning SQL: own isolation, stale revisions, state transitions, server completion timestamps, double logging and restricted runtime verified. Fixtures rolled back.',
+  );
+} finally {
+  await closeRuntimeDatabase();
+}

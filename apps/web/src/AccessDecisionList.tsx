@@ -1,12 +1,119 @@
-import {useState} from 'react';
-export interface Decision {action:string;implemented:boolean;allowed:boolean;reasonCode:string;resolvedScope:{kind:string};constraints:string[];sources:{kind:string;label:string;effect:string;scope:string;validUntil?:string;reason?:string}[]}
-export interface AccessSummary {actorId:string;revision:number;summaryOnly:boolean;decisions:Decision[];unsupportedAssignments:unknown[]}
-const explanation:Record<string,string>={PREREQUISITE_DENIED:'A required supporting permission is missing or blocked. See the required checks below.',ALLOW:'An active assignment allows this action in the displayed scope.',DEFAULT_DENY:'No applicable active assignment allows this action.',UNAVAILABLE:'This workflow is not implemented; assigning a code does not enable it.',EXPLICIT_DENY:'A matching scoped Block overrides Allow.',INACTIVE_ACTOR:'The person is inactive.',NO_RESOLVED_DIRECT_REPORTS:'There are no confirmed current active direct reports.',REPORTING_POLICY:'Current direct-manager policy permits assigned direct-report reviews.',SELF_APPROVAL:'You cannot review your own claim.',NOT_ASSIGNED_REVIEWER:'An exact claim and its assigned reviewer must be checked before review.'};
-export function AccessDecisionList({summary}:{summary:AccessSummary}){
- const [filter,setFilter]=useState('allowed'),[search,setSearch]=useState('');
- const decisions=summary.decisions.filter(item=>(filter==='all'||(filter==='allowed'?item.allowed:!item.allowed))&&item.action.toLowerCase().includes(search.toLowerCase()));
- return <section className="effective-access"><div className="effective-toolbar"><label>Find an action<input value={search} placeholder="Search actions…" onChange={e=>setSearch(e.target.value)}/></label><label>Show<select value={filter} onChange={e=>setFilter(e.target.value)}><option value="allowed">Allowed actions</option><option value="denied">Blocked / unavailable</option><option value="all">All decisions</option></select></label></div>
- {summary.unsupportedAssignments.length>0&&<p className="access-message" role="status">{summary.unsupportedAssignments.length} existing unsupported assignments need review. They have been preserved.</p>}
- <p className="access-help">Scope summary · revision {summary.revision}. Each record and action is checked again when used.</p>
- <div className="effective-list">{decisions.map(item=><details key={item.action+item.resolvedScope.kind} className="effective-decision"><summary><strong>{item.action.replaceAll('.',' › ')}</strong><span>{item.resolvedScope.kind.replaceAll('_',' ').toLowerCase()}</span><span className={'effective-status '+(item.allowed?'allowed':'denied')}>{item.allowed?'Allowed':item.implemented?'Blocked':'Unavailable'}</span><span>Why?</span></summary><div className="effective-why"><p>{explanation[item.reasonCode]??item.reasonCode}</p>{item.sources.length>0&&<ul>{item.sources.map((source,i)=><li key={i}><strong>{source.label}</strong> · {source.kind.toLowerCase()} · {source.effect} · {source.scope}{source.validUntil&&<> · expires {new Date(source.validUntil).toLocaleString()}</>}{source.reason&&<p>{source.reason}</p>}</li>)}</ul>}{item.constraints.length>0&&<p>Required checks: {item.constraints.map(value=>value.toLowerCase().replaceAll('_',' ')).join(', ')}.</p>}</div></details>)}</div>{!decisions.length&&<p>No matching decisions.</p>}</section>;
+import { useState } from 'react';
+export interface Decision {
+  action: string;
+  implemented: boolean;
+  allowed: boolean;
+  reasonCode: string;
+  resolvedScope: { kind: string };
+  constraints: string[];
+  sources: {
+    kind: string;
+    label: string;
+    effect: string;
+    scope: string;
+    validUntil?: string;
+    reason?: string;
+  }[];
+}
+export interface AccessSummary {
+  actorId: string;
+  revision: number;
+  summaryOnly: boolean;
+  decisions: Decision[];
+  unsupportedAssignments: unknown[];
+}
+const explanation: Record<string, string> = {
+  PREREQUISITE_DENIED:
+    'A required supporting permission is missing or blocked. See the required checks below.',
+  ALLOW: 'An active assignment allows this action in the displayed scope.',
+  DEFAULT_DENY: 'No applicable active assignment allows this action.',
+  UNAVAILABLE: 'This workflow is not implemented; assigning a code does not enable it.',
+  EXPLICIT_DENY: 'A matching scoped Block overrides Allow.',
+  INACTIVE_ACTOR: 'The person is inactive.',
+  NO_RESOLVED_DIRECT_REPORTS: 'There are no confirmed current active direct reports.',
+  REPORTING_POLICY: 'Current direct-manager policy permits assigned direct-report reviews.',
+  SELF_APPROVAL: 'You cannot review your own claim.',
+  NOT_ASSIGNED_REVIEWER: 'An exact claim and its assigned reviewer must be checked before review.',
+};
+export function AccessDecisionList({ summary }: { summary: AccessSummary }) {
+  const [filter, setFilter] = useState('allowed'),
+    [search, setSearch] = useState('');
+  const decisions = summary.decisions.filter(
+    item =>
+      (filter === 'all' || (filter === 'allowed' ? item.allowed : !item.allowed)) &&
+      item.action.toLowerCase().includes(search.toLowerCase()),
+  );
+  return (
+    <section className="effective-access">
+      <div className="effective-toolbar">
+        <label>
+          Find an action
+          <input
+            value={search}
+            placeholder="Search actions…"
+            onChange={e => setSearch(e.target.value)}
+          />
+        </label>
+        <label>
+          Show
+          <select value={filter} onChange={e => setFilter(e.target.value)}>
+            <option value="allowed">Allowed actions</option>
+            <option value="denied">Blocked / unavailable</option>
+            <option value="all">All decisions</option>
+          </select>
+        </label>
+      </div>
+      {summary.unsupportedAssignments.length > 0 && (
+        <p className="access-message" role="status">
+          {summary.unsupportedAssignments.length} existing unsupported assignments need review. They
+          have been preserved.
+        </p>
+      )}
+      <p className="access-help">
+        Scope summary · revision {summary.revision}. Each record and action is checked again when
+        used.
+      </p>
+      <div className="effective-list">
+        {decisions.map(item => (
+          <details key={item.action + item.resolvedScope.kind} className="effective-decision">
+            <summary>
+              <strong>{item.action.replaceAll('.', ' › ')}</strong>
+              <span>{item.resolvedScope.kind.replaceAll('_', ' ').toLowerCase()}</span>
+              <span className={'effective-status ' + (item.allowed ? 'allowed' : 'denied')}>
+                {item.allowed ? 'Allowed' : item.implemented ? 'Blocked' : 'Unavailable'}
+              </span>
+              <span>Why?</span>
+            </summary>
+            <div className="effective-why">
+              <p>{explanation[item.reasonCode] ?? item.reasonCode}</p>
+              {item.sources.length > 0 && (
+                <ul>
+                  {item.sources.map((source, i) => (
+                    <li key={i}>
+                      <strong>{source.label}</strong> · {source.kind.toLowerCase()} ·{' '}
+                      {source.effect} · {source.scope}
+                      {source.validUntil && (
+                        <> · expires {new Date(source.validUntil).toLocaleString()}</>
+                      )}
+                      {source.reason && <p>{source.reason}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {item.constraints.length > 0 && (
+                <p>
+                  Required checks:{' '}
+                  {item.constraints
+                    .map(value => value.toLowerCase().replaceAll('_', ' '))
+                    .join(', ')}
+                  .
+                </p>
+              )}
+            </div>
+          </details>
+        ))}
+      </div>
+      {!decisions.length && <p>No matching decisions.</p>}
+    </section>
+  );
 }

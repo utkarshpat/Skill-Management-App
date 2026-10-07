@@ -1,20 +1,217 @@
-import {useEffect,useRef,useState} from 'react';
-import {authenticatedFetch} from './auth';
-import {AssistantRichText} from './AssistantRichText';
-import type {Claim} from './MySkills';
+import { useEffect, useRef, useState } from 'react';
+import { authenticatedFetch } from './auth';
+import { AssistantRichText } from './AssistantRichText';
+import type { Claim } from './MySkills';
 
-interface Draft {body:string;revision:number;kind:'SUMMARY'|'FEEDBACK';decision?:string}
-export function ReviewAssistance({claim,canDraft,decision,onDecision,onUse,hasFeedback}:{claim:Claim;canDraft:boolean;decision:string;onDecision:(value:string)=>void;onUse:(text:string)=>void;hasFeedback:boolean}){
- const [configured,setConfigured]=useState<boolean>(),[notes,setNotes]=useState(''),[draft,setDraft]=useState<Draft>(),[part,setPart]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),[applied,setApplied]=useState(false);
- const request=useRef<AbortController|null>(null);
- useEffect(()=>{const c=new AbortController();authenticatedFetch('/api/assistant',{signal:c.signal}).then(async r=>{if(!r.ok)throw Error('AI availability could not be checked.');return r.json();}).then(v=>setConfigured(Boolean(v.configured))).catch(e=>{if(!c.signal.aborted)setError(e.message);});return()=>{c.abort();request.current?.abort();};},[]);
- useEffect(()=>{request.current?.abort();setBusy(false);setDraft(undefined);setApplied(false);setError('');},[claim.id,claim.revision,decision]);
- async function generate(kind:Draft['kind']){
-  if(busy)return;const c=new AbortController();request.current=c;setBusy(true);setError('');setDraft(undefined);setApplied(false);
-  try{const r=await authenticatedFetch('/api/assistant/skill-review',{method:'POST',signal:c.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({id:claim.id,revision:claim.revision,kind,notes,...(kind==='FEEDBACK'?{decision}:{})})});const value=await r.json();if(!r.ok)throw Error(value?.error?.message??'AI could not prepare this draft.');if(!c.signal.aborted){setDraft(value);setPart(0);}}
-  catch(e){if(!c.signal.aborted)setError(e instanceof Error?e.message:'AI unavailable.');}finally{if(!c.signal.aborted)setBusy(false);}
- }
- // Keep each page bounded while preserving whole paragraphs and Markdown lists.
- const paragraphs=draft?.body.split(/\n\n+/)??[],parts:string[]=[];for(const paragraph of paragraphs){if(paragraph.length>320){for(let i=0;i<paragraph.length;i+=320)parts.push(paragraph.slice(i,i+320));}else if(parts.length&&parts.at(-1)!.length+paragraph.length+2<=320)parts[parts.length-1]+='\n\n'+paragraph;else parts.push(paragraph);}
- return <section className="review-ai" aria-label="AI review assistance"><h3>AI review assistance</h3>{error&&<p role="alert">{error}</p>}{configured===undefined&&!error?<p role="status">Checking AI availability…</p>:configured===false?<p>AI is unavailable. You can continue reviewing manually.</p>:draft?<><AssistantRichText>{parts[part]??''}</AssistantRichText><div className="review-event-pages"><button className="secondary-button" disabled={part===0} onClick={()=>setPart(n=>n-1)}>Previous</button><span>{part+1} / {parts.length}</span><button className="secondary-button" disabled={part===parts.length-1} onClick={()=>setPart(n=>n+1)}>More</button></div>{draft.kind==='FEEDBACK'&&<button className="admin-primary" disabled={applied||draft.decision!==decision||draft.revision!==claim.revision} onClick={()=>{onUse(draft.body);setApplied(true);}}>{applied?'Draft added to feedback':hasFeedback?'Replace feedback with draft':'Use feedback draft'}</button>}{applied&&<p role="status">Open Decision to edit the feedback and confirm your decision.</p>}<button className="secondary-button" onClick={()=>setDraft(undefined)}>New draft</button></>:configured&&<><p>Summarize this submission or prepare feedback for your chosen decision.</p>{canDraft&&<label>Proposed decision<select disabled={busy} value={decision} onChange={e=>onDecision(e.target.value)}><option value="REQUEST_CHANGES">Request changes</option><option value="APPROVE">Approve</option><option value="REJECT">Reject</option></select></label>}<label>Reviewer facts (optional)<textarea rows={2} maxLength={500} disabled={busy} value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Add observations you have personally checked…"/></label><div className="review-event-pages"><button className="secondary-button" disabled={busy} onClick={()=>void generate('SUMMARY')}>Summarize evidence</button>{canDraft&&<button className="secondary-button" disabled={busy} onClick={()=>void generate('FEEDBACK')}>Draft feedback</button>}{busy&&<button className="secondary-button" onClick={()=>{request.current?.abort();setBusy(false);}}>Cancel generation</button>}</div>{busy&&<p role="status">Preparing a draft from this submission…</p>}</>}<p className="review-scope-note">Suggestions only · References are not verified · No decision saved.</p></section>;
+interface Draft {
+  body: string;
+  revision: number;
+  kind: 'SUMMARY' | 'FEEDBACK';
+  decision?: string;
+}
+export function ReviewAssistance({
+  claim,
+  canDraft,
+  decision,
+  onDecision,
+  onUse,
+  hasFeedback,
+}: {
+  claim: Claim;
+  canDraft: boolean;
+  decision: string;
+  onDecision: (value: string) => void;
+  onUse: (text: string) => void;
+  hasFeedback: boolean;
+}) {
+  const [configured, setConfigured] = useState<boolean>(),
+    [notes, setNotes] = useState(''),
+    [draft, setDraft] = useState<Draft>(),
+    [part, setPart] = useState(0),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(''),
+    [applied, setApplied] = useState(false);
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const c = new AbortController();
+    authenticatedFetch('/api/assistant', { signal: c.signal })
+      .then(async r => {
+        if (!r.ok) throw Error('AI availability could not be checked.');
+        return r.json();
+      })
+      .then(v => setConfigured(Boolean(v.configured)))
+      .catch(e => {
+        if (!c.signal.aborted) setError(e.message);
+      });
+    return () => {
+      c.abort();
+      request.current?.abort();
+    };
+  }, []);
+  useEffect(() => {
+    request.current?.abort();
+    setBusy(false);
+    setDraft(undefined);
+    setApplied(false);
+    setError('');
+  }, [claim.id, claim.revision, decision]);
+  async function generate(kind: Draft['kind']) {
+    if (busy) return;
+    const c = new AbortController();
+    request.current = c;
+    setBusy(true);
+    setError('');
+    setDraft(undefined);
+    setApplied(false);
+    try {
+      const r = await authenticatedFetch('/api/assistant/skill-review', {
+        method: 'POST',
+        signal: c.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: claim.id,
+          revision: claim.revision,
+          kind,
+          notes,
+          ...(kind === 'FEEDBACK' ? { decision } : {}),
+        }),
+      });
+      const value = await r.json();
+      if (!r.ok) throw Error(value?.error?.message ?? 'AI could not prepare this draft.');
+      if (!c.signal.aborted) {
+        setDraft(value);
+        setPart(0);
+      }
+    } catch (e) {
+      if (!c.signal.aborted) setError(e instanceof Error ? e.message : 'AI unavailable.');
+    } finally {
+      if (!c.signal.aborted) setBusy(false);
+    }
+  }
+  // Keep each page bounded while preserving whole paragraphs and Markdown lists.
+  const paragraphs = draft?.body.split(/\n\n+/) ?? [],
+    parts: string[] = [];
+  for (const paragraph of paragraphs) {
+    if (paragraph.length > 320) {
+      for (let i = 0; i < paragraph.length; i += 320) parts.push(paragraph.slice(i, i + 320));
+    } else if (parts.length && parts.at(-1)!.length + paragraph.length + 2 <= 320)
+      parts[parts.length - 1] += '\n\n' + paragraph;
+    else parts.push(paragraph);
+  }
+  return (
+    <section className="review-ai" aria-label="AI review assistance">
+      <h3>AI review assistance</h3>
+      {error && <p role="alert">{error}</p>}
+      {configured === undefined && !error ? (
+        <p role="status">Checking AI availability…</p>
+      ) : configured === false ? (
+        <p>AI is unavailable. You can continue reviewing manually.</p>
+      ) : draft ? (
+        <>
+          <AssistantRichText>{parts[part] ?? ''}</AssistantRichText>
+          <div className="review-event-pages">
+            <button
+              className="secondary-button"
+              disabled={part === 0}
+              onClick={() => setPart(n => n - 1)}
+            >
+              Previous
+            </button>
+            <span>
+              {part + 1} / {parts.length}
+            </span>
+            <button
+              className="secondary-button"
+              disabled={part === parts.length - 1}
+              onClick={() => setPart(n => n + 1)}
+            >
+              More
+            </button>
+          </div>
+          {draft.kind === 'FEEDBACK' && (
+            <button
+              className="admin-primary"
+              disabled={applied || draft.decision !== decision || draft.revision !== claim.revision}
+              onClick={() => {
+                onUse(draft.body);
+                setApplied(true);
+              }}
+            >
+              {applied
+                ? 'Draft added to feedback'
+                : hasFeedback
+                  ? 'Replace feedback with draft'
+                  : 'Use feedback draft'}
+            </button>
+          )}
+          {applied && (
+            <p role="status">Open Decision to edit the feedback and confirm your decision.</p>
+          )}
+          <button className="secondary-button" onClick={() => setDraft(undefined)}>
+            New draft
+          </button>
+        </>
+      ) : (
+        configured && (
+          <>
+            <p>Summarize this submission or prepare feedback for your chosen decision.</p>
+            {canDraft && (
+              <label>
+                Proposed decision
+                <select disabled={busy} value={decision} onChange={e => onDecision(e.target.value)}>
+                  <option value="REQUEST_CHANGES">Request changes</option>
+                  <option value="APPROVE">Approve</option>
+                  <option value="REJECT">Reject</option>
+                </select>
+              </label>
+            )}
+            <label>
+              Reviewer facts (optional)
+              <textarea
+                rows={2}
+                maxLength={500}
+                disabled={busy}
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Add observations you have personally checked…"
+              />
+            </label>
+            <div className="review-event-pages">
+              <button
+                className="secondary-button"
+                disabled={busy}
+                onClick={() => void generate('SUMMARY')}
+              >
+                Summarize evidence
+              </button>
+              {canDraft && (
+                <button
+                  className="secondary-button"
+                  disabled={busy}
+                  onClick={() => void generate('FEEDBACK')}
+                >
+                  Draft feedback
+                </button>
+              )}
+              {busy && (
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    request.current?.abort();
+                    setBusy(false);
+                  }}
+                >
+                  Cancel generation
+                </button>
+              )}
+            </div>
+            {busy && <p role="status">Preparing a draft from this submission…</p>}
+          </>
+        )
+      )}
+      <p className="review-scope-note">
+        Suggestions only · References are not verified · No decision saved.
+      </p>
+    </section>
+  );
 }

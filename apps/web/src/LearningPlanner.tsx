@@ -1,36 +1,383 @@
-import {useEffect,useRef,useState} from 'react';
-import {Sparkles,ArrowRight,CalendarDays} from 'lucide-react';
-import {FormDialog} from './FormDialog';
-import {authenticatedFetch} from './auth';
-import {shiftDay} from './learning-calendar';
-import {learningPlanSchedule} from './learning-plan-draft';
+import { useEffect, useRef, useState } from 'react';
+import { Sparkles, ArrowRight, CalendarDays } from 'lucide-react';
+import { FormDialog } from './FormDialog';
+import { authenticatedFetch } from './auth';
+import { shiftDay } from './learning-calendar';
+import { learningPlanSchedule } from './learning-plan-draft';
 import './learning-planner.css';
-export interface LearningRoadmap {title:string;goal:string;steps:string[];dailyMinutes:number;days:number;startDate:string}
-export function LearningPlanner({today,initialGoal='',initialExperience='',onManual,onClose,onReview,onConfirmSchedule}:{today:string;initialGoal?:string;initialExperience?:string;onManual?:()=>void;onClose:()=>void;onReview:(draft:LearningRoadmap)=>void;onConfirmSchedule?:(draft:LearningRoadmap)=>Promise<boolean|void>|void}){
- const [page,setPage]=useState(0),[goal,setGoal]=useState(initialGoal),[experience,setExperience]=useState(initialExperience),[minutes,setMinutes]=useState(30),[days,setDays]=useState(7),[start,setStart]=useState(today);
- const [draft,setDraft]=useState<LearningRoadmap>(),[feedback,setFeedback]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[confirmationStarted,setConfirmationStarted]=useState(false);
- const controller=useRef<AbortController|null>(null);useEffect(()=>()=>controller.current?.abort(),[]);
- function valid(){const date=new Date(start+'T12:00:00Z');if(!goal.trim()||goal.length>300||!Number.isInteger(minutes)||minutes<5||minutes>480||!Number.isInteger(days)||days<1||days>12||!/^20\d{2}-\d{2}-\d{2}$/.test(start)||!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==start){setError('Enter a goal, a valid start date, 5–480 daily minutes and 1–12 days.');return false;}setError('');return true;}
- async function generate(refine=false){if(busy||!valid())return;const abort=new AbortController();controller.current=abort;setBusy(true);setError('');try{
-  const response=await authenticatedFetch('/api/learning/planner',{method:'POST',headers:{'Content-Type':'application/json'},signal:abort.signal,body:JSON.stringify({goal,experience,dailyMinutes:minutes,days,feedback:refine?feedback:'',...(refine&&draft?{previous:{title:draft.title,steps:draft.steps}}:{})})});
-  const body=await response.json();if(!response.ok)throw Error(body?.error?.message??'The roadmap could not be prepared. Try again.');
-  if(!abort.signal.aborted){setDraft({...body,startDate:start});setFeedback('');setPage(2);}
- }catch(e){if(!abort.signal.aborted)setError(e instanceof Error?e.message:'Planning is unavailable.');}finally{if(!abort.signal.aborted)setBusy(false);}}
- async function handleConfirmSchedule(){
-  if(!draft||draft.steps.some(s=>!s.trim())||busy)return;
-  if(onConfirmSchedule){
-   setBusy(true);setConfirmationStarted(true);setError('');
-   try{await onConfirmSchedule(draft);}
-   catch(e){setError(e instanceof Error?e.message:'Could not add to calendar.');}
-   finally{setBusy(false);}
-  }else{
-   onReview(draft);
+import { readLearningRoadmap, type LearningRoadmap } from './learning-roadmap';
+export type { LearningRoadmap } from './learning-roadmap';
+
+/**
+ * AI-assisted learning plan generator and schedule builder.
+ *
+ * Prompts the user for a learning goal, starting experience, study pace (minutes/day),
+ * and target timeline (1–12 days). Generates a structured roadmap of discrete tasks
+ * mapped to calendar dates, with full support for previewing, regenerating, or switching
+ * to manual plan authoring.
+ */
+export function LearningPlanner({
+  today,
+  initialGoal = '',
+  initialExperience = '',
+  onManual,
+  onClose,
+  onReview,
+  onConfirmSchedule,
+}: {
+  today: string;
+  initialGoal?: string;
+  initialExperience?: string;
+  onManual?: () => void;
+  onClose: () => void;
+  onReview: (draft: LearningRoadmap) => void;
+  onConfirmSchedule?: (draft: LearningRoadmap) => Promise<boolean | void> | void;
+}) {
+  const [page, setPage] = useState(0),
+    [goal, setGoal] = useState(initialGoal),
+    [experience, setExperience] = useState(initialExperience),
+    [minutes, setMinutes] = useState(30),
+    [days, setDays] = useState(7),
+    [start, setStart] = useState(today);
+  const [draft, setDraft] = useState<LearningRoadmap>(),
+    [feedback, setFeedback] = useState(''),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(''),
+    [confirmationStarted, setConfirmationStarted] = useState(false);
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => () => controller.current?.abort(), []);
+  function valid() {
+    const date = new Date(start + 'T12:00:00Z');
+    if (
+      !goal.trim() ||
+      goal.length > 300 ||
+      !Number.isInteger(minutes) ||
+      minutes < 5 ||
+      minutes > 480 ||
+      !Number.isInteger(days) ||
+      days < 1 ||
+      days > 12 ||
+      !/^20\d{2}-\d{2}-\d{2}$/.test(start) ||
+      !Number.isFinite(date.getTime()) ||
+      date.toISOString().slice(0, 10) !== start
+    ) {
+      setError('Enter a goal, a valid start date, 5–480 daily minutes and 1–12 days.');
+      return false;
+    }
+    setError('');
+    return true;
   }
- }
- const schedule=draft?learningPlanSchedule(draft.startDate,draft.steps):[];
- return <FormDialog title="AI learning planner" subtitle="Your goal → a practical daily roadmap" className="learning-planner-dialog" busy={busy} onClose={onClose} page={page} onPageChange={next=>{if(confirmationStarted)return;if(next===2&&!draft)return;setPage(next);setError('');}} message={error?<p role="alert">{error}</p>:undefined} pages={[
-  {label:'Goal & time',content:<div className="access-form"><label>What would you like to learn?<textarea disabled={busy||confirmationStarted} rows={2} maxLength={300} value={goal} onChange={e=>{setGoal(e.target.value);setDraft(undefined);}} placeholder="Build and deploy an Azure-backed API"/></label><div className="learning-form-row"><label>Minutes per day<input disabled={busy||confirmationStarted} type="number" min={5} max={480} value={minutes} onChange={e=>{setMinutes(Number(e.target.value));setDraft(undefined);}}/></label><label>Learning days<input disabled={busy||confirmationStarted} type="number" min={1} max={12} value={days} onChange={e=>{setDays(Number(e.target.value));setDraft(undefined);}}/></label></div><label>Start date<input disabled={busy||confirmationStarted} type="date" value={start} onChange={e=>{setStart(e.target.value);setDraft(undefined);}}/></label><p>Plan one short learning cycle first. One task per day; weekends are included.</p></div>},
-  {label:'Starting point',content:<div className="access-form"><h3>What do you already know?</h3><label>Experience and preferences (optional)<textarea disabled={busy||confirmationStarted} rows={5} maxLength={500} value={experience} onChange={e=>{setExperience(e.target.value);setDraft(undefined);}} placeholder="I know C# and REST APIs. Azure is new to me. I prefer practical exercises."/></label><p>AI uses your permitted skill and learning records. If you leave this blank, it starts with introductory tasks.</p><p className="ld-ai-badge"><Sparkles size={15}/>AI creates a draft. It cannot save or verify skills.</p></div>},
-  {label:'Roadmap',content:draft?<div className="learning-roadmap"><div className="practice-heading"><strong>{draft.title}</strong><span className="ld-ai-badge">AI draft</span></div><div className="roadmap-summary"><div><strong>{draft.days} days</strong><small>{draft.dailyMinutes} min/day</small></div><div><strong>{draft.startDate}</strong><small>Starts</small></div><div><strong>{shiftDay(draft.startDate,draft.days-1)}</strong><small>Ends</small></div></div><p>Review the draft below. Click “Confirm & add to calendar” to schedule these daily tasks directly, or “Customize details” to link a published skill.</p><div className="roadmap-overview">{schedule.map((item,index)=><label className="roadmap-task" key={item.day}><div className="roadmap-task-header"><span className="roadmap-day-badge">Day {item.day}</span><span className="roadmap-date-pill"><CalendarDays size={13}/>{item.date}</span></div><textarea rows={3} disabled={busy||confirmationStarted} maxLength={160} value={item.task} onChange={e=>setDraft({...draft,steps:draft.steps.map((step,stepIndex)=>stepIndex===index?e.target.value:step)})}/></label>)}</div><label className="roadmap-feedback">What should AI change?<input disabled={busy||confirmationStarted} maxLength={500} value={feedback} onChange={e=>setFeedback(e.target.value)} placeholder="More exercises, less theory…"/></label><button className="admin-text-button" disabled={busy||confirmationStarted||!feedback.trim()} onClick={()=>void generate(true)}><Sparkles size={14}/>Refine roadmap</button></div>:<p>Enter your goal and starting point, then generate a roadmap.</p>}
- ]} footer={<>{onManual&&<button className="secondary-button" disabled={busy||confirmationStarted} onClick={onManual}>Write plan manually</button>}<button className="secondary-button" disabled={busy} onClick={()=>confirmationStarted?onClose():page?setPage(page-1):onClose()}>{confirmationStarted?'Close':page?'Back':'Cancel'}</button>{page===0?<button className="admin-primary" disabled={busy||confirmationStarted} onClick={()=>{if(valid())setPage(1);}}>Next <ArrowRight size={15}/></button>:page===1?<button className="admin-primary" disabled={busy||confirmationStarted} onClick={()=>void generate()}>{busy?'Preparing roadmap…':'Generate roadmap'}</button>:<>{onConfirmSchedule&&<button className="secondary-button" disabled={busy||confirmationStarted||!draft} onClick={()=>{if(draft)onReview(draft);}}>Customize details <ArrowRight size={15}/></button>}<button className="admin-primary" disabled={busy||!draft||draft.steps.some(s=>!s.trim())} onClick={()=>void handleConfirmSchedule()}><CalendarDays size={15}/>{busy?'Adding to calendar…':confirmationStarted?'Retry confirmation':'Confirm & add to calendar'}</button></>}</>}/>;
+  async function generate(refine = false) {
+    if (busy || !valid()) return;
+    const abort = new AbortController();
+    controller.current = abort;
+    setBusy(true);
+    setError('');
+    try {
+      const response = await authenticatedFetch('/api/learning/planner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: abort.signal,
+        body: JSON.stringify({
+          goal,
+          experience,
+          dailyMinutes: minutes,
+          days,
+          feedback: refine ? feedback : '',
+          ...(refine && draft ? { previous: { title: draft.title, steps: draft.steps } } : {}),
+        }),
+      });
+      const body = await response.json().catch(() => undefined);
+      if (!response.ok)
+        throw Error(
+          body?.error?.message ?? body?.message ?? 'The roadmap could not be prepared. Try again.',
+        );
+      if (!abort.signal.aborted) {
+        setDraft(readLearningRoadmap(body, start));
+        setFeedback('');
+        setPage(2);
+      }
+    } catch (e) {
+      if (!abort.signal.aborted)
+        setError(e instanceof Error ? e.message : 'Planning is unavailable.');
+    } finally {
+      if (!abort.signal.aborted) setBusy(false);
+    }
+  }
+  async function handleConfirmSchedule() {
+    if (!draft || draft.steps.some(s => !s.trim()) || busy) return;
+    if (onConfirmSchedule) {
+      setBusy(true);
+      setConfirmationStarted(true);
+      setError('');
+      try {
+        await onConfirmSchedule(draft);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not add to calendar.');
+      } finally {
+        setBusy(false);
+      }
+    } else {
+      onReview(draft);
+    }
+  }
+  const schedule = draft ? learningPlanSchedule(draft.startDate, draft.steps) : [];
+  return (
+    <FormDialog
+      title="AI learning planner"
+      subtitle="Your goal → a practical daily roadmap"
+      className="learning-planner-dialog"
+      busy={busy}
+      onClose={onClose}
+      page={page}
+      onPageChange={next => {
+        if (confirmationStarted) return;
+        if (next === 2 && !draft) return;
+        setPage(next);
+        setError('');
+      }}
+      message={error ? <p role="alert">{error}</p> : undefined}
+      pages={[
+        {
+          label: 'Goal & time',
+          content: (
+            <div className="access-form">
+              <label>
+                What would you like to learn?
+                <textarea
+                  disabled={busy || confirmationStarted}
+                  rows={2}
+                  maxLength={300}
+                  value={goal}
+                  onChange={e => {
+                    setGoal(e.target.value);
+                    setDraft(undefined);
+                  }}
+                  placeholder="Build and deploy an Azure-backed API"
+                />
+              </label>
+              <div className="learning-form-row">
+                <label>
+                  Minutes per day
+                  <input
+                    disabled={busy || confirmationStarted}
+                    type="number"
+                    min={5}
+                    max={480}
+                    value={minutes}
+                    onChange={e => {
+                      setMinutes(Number(e.target.value));
+                      setDraft(undefined);
+                    }}
+                  />
+                </label>
+                <label>
+                  Learning days
+                  <input
+                    disabled={busy || confirmationStarted}
+                    type="number"
+                    min={1}
+                    max={12}
+                    value={days}
+                    onChange={e => {
+                      setDays(Number(e.target.value));
+                      setDraft(undefined);
+                    }}
+                  />
+                </label>
+              </div>
+              <label>
+                Start date
+                <input
+                  disabled={busy || confirmationStarted}
+                  type="date"
+                  value={start}
+                  onChange={e => {
+                    setStart(e.target.value);
+                    setDraft(undefined);
+                  }}
+                />
+              </label>
+              <p>Plan one short learning cycle first. One task per day; weekends are included.</p>
+            </div>
+          ),
+        },
+        {
+          label: 'Starting point',
+          content: (
+            <div className="access-form">
+              <h3>What do you already know?</h3>
+              <label>
+                Experience and preferences (optional)
+                <textarea
+                  disabled={busy || confirmationStarted}
+                  rows={5}
+                  maxLength={500}
+                  value={experience}
+                  onChange={e => {
+                    setExperience(e.target.value);
+                    setDraft(undefined);
+                  }}
+                  placeholder="I know C# and REST APIs. Azure is new to me. I prefer practical exercises."
+                />
+              </label>
+              <p>
+                AI uses your permitted skill and learning records. If you leave this blank, it
+                starts with introductory tasks.
+              </p>
+              <p className="ld-ai-badge">
+                <Sparkles size={15} />
+                AI creates a draft. It cannot save or verify skills.
+              </p>
+            </div>
+          ),
+        },
+        {
+          label: 'Roadmap',
+          content: draft ? (
+            <div className="learning-roadmap">
+              <div className="practice-heading">
+                <strong>{draft.title}</strong>
+                <span className="ld-ai-badge">AI draft</span>
+              </div>
+              <div className="roadmap-summary">
+                <div>
+                  <strong>{draft.days} days</strong>
+                  <small>{draft.dailyMinutes} min/day</small>
+                </div>
+                <div>
+                  <strong>{draft.startDate}</strong>
+                  <small>Starts</small>
+                </div>
+                <div>
+                  <strong>{shiftDay(draft.startDate, draft.days - 1)}</strong>
+                  <small>Ends</small>
+                </div>
+              </div>
+              <p>
+                Review the draft below. Click “Confirm & add to calendar” to schedule these daily
+                tasks directly, or “Customize details” to link a published skill.
+              </p>
+              <div className="roadmap-overview">
+                {schedule.map((item, index) => (
+                  <label className="roadmap-task" key={item.day}>
+                    <div className="roadmap-task-header">
+                      <span className="roadmap-day-badge">Day {item.day}</span>
+                      <span className="roadmap-date-pill">
+                        <CalendarDays size={13} />
+                        {item.date}
+                      </span>
+                    </div>
+                    <textarea
+                      rows={3}
+                      disabled={busy || confirmationStarted}
+                      maxLength={160}
+                      value={item.task}
+                      onChange={e =>
+                        setDraft({
+                          ...draft,
+                          steps: draft.steps.map((step, stepIndex) =>
+                            stepIndex === index ? e.target.value : step,
+                          ),
+                        })
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+              <label className="roadmap-feedback">
+                What should AI change?
+                <input
+                  disabled={busy || confirmationStarted}
+                  maxLength={500}
+                  value={feedback}
+                  onChange={e => setFeedback(e.target.value)}
+                  placeholder="More exercises, less theory…"
+                />
+              </label>
+              <button
+                className="admin-text-button"
+                disabled={busy || confirmationStarted || !feedback.trim()}
+                onClick={() => void generate(true)}
+              >
+                <Sparkles size={14} />
+                Refine roadmap
+              </button>
+            </div>
+          ) : (
+            <p>Enter your goal and starting point, then generate a roadmap.</p>
+          ),
+        },
+      ]}
+      footer={
+        <>
+          {onManual && (
+            <button
+              className="secondary-button"
+              disabled={busy || confirmationStarted}
+              onClick={onManual}
+            >
+              Write plan manually
+            </button>
+          )}
+          <button
+            className="secondary-button"
+            disabled={busy}
+            onClick={() => (confirmationStarted ? onClose() : page ? setPage(page - 1) : onClose())}
+          >
+            {confirmationStarted ? 'Close' : page ? 'Back' : 'Cancel'}
+          </button>
+          {page === 0 ? (
+            <button
+              className="admin-primary"
+              disabled={busy || confirmationStarted}
+              onClick={() => {
+                if (valid()) setPage(1);
+              }}
+            >
+              Next <ArrowRight size={15} />
+            </button>
+          ) : page === 1 ? (
+            <button
+              className="admin-primary"
+              disabled={busy || confirmationStarted}
+              onClick={() => void generate()}
+            >
+              {busy ? 'Preparing roadmap…' : 'Generate roadmap'}
+            </button>
+          ) : (
+            <>
+              {onConfirmSchedule && (
+                <button
+                  className="secondary-button"
+                  disabled={busy || confirmationStarted || !draft}
+                  onClick={() => {
+                    if (draft) onReview(draft);
+                  }}
+                >
+                  Customize details <ArrowRight size={15} />
+                </button>
+              )}
+              <button
+                className="admin-primary"
+                disabled={busy || !draft || draft.steps.some(s => !s.trim())}
+                onClick={() => void handleConfirmSchedule()}
+              >
+                {onConfirmSchedule ? <CalendarDays size={15} /> : <ArrowRight size={15} />}
+                {busy
+                  ? onConfirmSchedule
+                    ? 'Adding to calendar…'
+                    : 'Using roadmap…'
+                  : confirmationStarted
+                    ? 'Retry confirmation'
+                    : onConfirmSchedule
+                      ? 'Confirm & add to calendar'
+                      : 'Use roadmap'}
+              </button>
+            </>
+          )}
+        </>
+      }
+    />
+  );
 }

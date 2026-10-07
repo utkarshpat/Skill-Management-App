@@ -1,1 +1,82 @@
-.effective-toolbar{display:flex;gap:16px;margin:18px 0;flex-wrap:wrap}.effective-toolbar label{display:grid;gap:6px;flex:1;min-width:160px}.effective-list{display:grid;gap:9px}.effective-decision{border:1px solid var(--border,#dce3ed);border-radius:10px;padding:13px}.effective-decision summary{display:flex;align-items:center;gap:14px;cursor:pointer;flex-wrap:wrap}.effective-decision summary strong{flex:1;min-width:160px}.effective-status{padding:4px 9px;border-radius:6px;font-size:.9em}.effective-status.allowed{background:#def5ed;color:#006653}.effective-status.denied{background:#fff0dc;color:#824900}.effective-why{padding-top:12px;line-height:1.65}.effective-why li{margin:8px 0}.access-review-change{border-left:3px solid #078596;padding:8px 14px;margin:8px 0}.access-person-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.access-person-tabs button[aria-pressed=true]{border-color:#078596;color:#078596}.access-person-context{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:16px 0}.access-person-context>div{padding:16px;border:1px solid var(--border,#dce3ed);border-radius:10px}.access-person-context small{display:block;margin-bottom:8px}
+.effective-toolbar {
+  display: flex;
+  gap: 16px;
+  margin: 18px 0;
+  flex-wrap: wrap;
+}
+.effective-toolbar label {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+  min-width: 160px;
+}
+.effective-list {
+  display: grid;
+  gap: 9px;
+}
+.effective-decision {
+  border: 1px solid var(--border, #dce3ed);
+  border-radius: 10px;
+  padding: 13px;
+}
+.effective-decision summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  flex-wrap: wrap;
+}
+.effective-decision summary strong {
+  flex: 1;
+  min-width: 160px;
+}
+.effective-status {
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 0.9em;
+}
+.effective-status.allowed {
+  background: #def5ed;
+  color: #006653;
+}
+.effective-status.denied {
+  background: #fff0dc;
+  color: #824900;
+}
+.effective-why {
+  padding-top: 12px;
+  line-height: 1.65;
+}
+.effective-why li {
+  margin: 8px 0;
+}
+.access-review-change {
+  border-left: 3px solid #078596;
+  padding: 8px 14px;
+  margin: 8px 0;
+}
+.access-person-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.access-person-tabs button[aria-pressed='true'] {
+  border-color: #078596;
+  color: #078596;
+}
+.access-person-context {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+.access-person-context > div {
+  padding: 16px;
+  border: 1px solid var(--border, #dce3ed);
+  border-radius: 10px;
+}
+.access-person-context small {
+  display: block;
+  margin-bottom: 8px;
+}

@@ -2,54 +2,183 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
-import { claimChange, claimPage, claimSearch, type ClaimsStore } from '../src/modules/skills/claims.js';
+import {
+  claimChange,
+  claimPage,
+  claimSearch,
+  type ClaimsStore,
+} from '../src/modules/skills/claims.js';
 import { createApp } from '../src/create-app.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
 
-const draft=()=>({id:randomUUID(),revision:0,skillId:randomUUID(),definitionRevision:1,rank:1,experienceMonths:12,description:'Delivered a working feature.'});
-test('draft validation rejects fabricated owners, verification, invalid levels, versions and experience',()=>{
-  const valid=draft();assert.equal(claimChange(valid).description,valid.description);
-  for(const fields of [{personId:randomUUID()},{status:'VERIFIED'},{reviewerId:randomUUID()},{experienceMonths:1.5},{experienceMonths:601},{rank:0},{definitionRevision:0},{revision:-1},{description:' '},{description:'x'.repeat(2001)}])assert.throws(()=>claimChange({...valid,...fields}));
-  assert.equal(claimPage(undefined),1);assert.throws(()=>claimPage(['1','2']));assert.throws(()=>claimPage(0));assert.throws(()=>claimSearch({toString:()=>''}));
+const draft = () => ({
+  id: randomUUID(),
+  revision: 0,
+  skillId: randomUUID(),
+  definitionRevision: 1,
+  rank: 1,
+  experienceMonths: 12,
+  description: 'Delivered a working feature.',
+});
+test('draft validation rejects fabricated owners, verification, invalid levels, versions and experience', () => {
+  const valid = draft();
+  assert.equal(claimChange(valid).description, valid.description);
+  for (const fields of [
+    { personId: randomUUID() },
+    { status: 'VERIFIED' },
+    { reviewerId: randomUUID() },
+    { experienceMonths: 1.5 },
+    { experienceMonths: 601 },
+    { rank: 0 },
+    { definitionRevision: 0 },
+    { revision: -1 },
+    { description: ' ' },
+    { description: 'x'.repeat(2001) },
+  ])
+    assert.throws(() => claimChange({ ...valid, ...fields }));
+  assert.equal(claimPage(undefined), 1);
+  assert.throws(() => claimPage(['1', '2']));
+  assert.throws(() => claimPage(0));
+  assert.throws(() => claimSearch({ toString: () => '' }));
 });
 
-test('last-used dates are optional, strictly calendar-valid and bounded by the current UTC day',()=>{
- const valid=draft(),at=new Date('2026-10-05T23:59:59Z');
- assert.equal(Object.hasOwn(claimChange(valid,at),'lastUsedOn'),false);
- assert.equal(claimChange({...valid,lastUsedOn:null},at).lastUsedOn,null);
- for(const lastUsedOn of ['2024-02-29','2026-10-05','0001-01-01'])assert.equal(claimChange({...valid,lastUsedOn},at).lastUsedOn,lastUsedOn);
- for(const lastUsedOn of ['2026-10-06','2025-02-29','2026-04-31','2026-2-01','2026-10-05T00:00:00Z','0000-01-01','',{},[],3]){
-  assert.throws(()=>claimChange({...valid,lastUsedOn},at),/last.used|Last used|date/);
- }
+test('last-used dates are optional, strictly calendar-valid and bounded by the current UTC day', () => {
+  const valid = draft(),
+    at = new Date('2026-10-05T23:59:59Z');
+  assert.equal(Object.hasOwn(claimChange(valid, at), 'lastUsedOn'), false);
+  assert.equal(claimChange({ ...valid, lastUsedOn: null }, at).lastUsedOn, null);
+  for (const lastUsedOn of ['2024-02-29', '2026-10-05', '0001-01-01'])
+    assert.equal(claimChange({ ...valid, lastUsedOn }, at).lastUsedOn, lastUsedOn);
+  for (const lastUsedOn of [
+    '2026-10-06',
+    '2025-02-29',
+    '2026-04-31',
+    '2026-2-01',
+    '2026-10-05T00:00:00Z',
+    '0000-01-01',
+    '',
+    {},
+    [],
+    3,
+  ]) {
+    assert.throws(() => claimChange({ ...valid, lastUsedOn }, at), /last.used|Last used|date/);
+  }
 });
 
-test('own-skills HTTP binds actor to identity and denies revoked or fabricated permissions before persistence',async()=>{
-  const access=await LocalAccessStore.open(),id=access.snapshot().people[0].id;
-  const state=access.snapshot();state.people[0].overrides.push({permission:'learning.view',scope:'OWN',effect:'ALLOW'},{permission:'skill.claim',scope:'OWN',effect:'ALLOW'},{permission:'skill.view',scope:'ORGANIZATION',effect:'ALLOW'});access.snapshot=()=>structuredClone(state);
-  const actors:string[]=[];let options=0,saves=0,journeyReads=0;
-  const claims:ClaimsStore={journey:async actor=>{actors.push(actor);journeyReads++;return {claims:[],total:0,page:1,pageSize:50,canClaim:true};},read:async actor=>{actors.push(actor);return {claims:[],page:1,pageSize:25,total:0,canClaim:true};},options:async actor=>{actors.push(actor);options++;return {skills:[],total:0,page:1,pageSize:25};},save:async actor=>{actors.push(actor);saves++;}};
-  const server=createApp({verify:async header=>{if(header!=='Bearer trusted')throw Error();return {tenantId:'tenant',objectId:'member'};},profile:async()=>undefined,access,resolveAccess:async()=>id,claims}).listen(0,'127.0.0.1');
-  await once(server,'listening');const address=server.address();assert.ok(address&&typeof address!=='string');const url=`http://127.0.0.1:${address.port}/api/my-skills`,headers={Authorization:'Bearer trusted','Content-Type':'application/json'};
-  try{
-    assert.equal((await fetch(url)).status,401);assert.equal((await fetch(url,{headers})).status,200);
-    assert.equal((await fetch(url+'/catalogue',{headers})).status,200);
-    assert.equal((await fetch(url+'/journey',{headers})).status,200);assert.equal(journeyReads,1);
-    assert.equal((await fetch(url+'/journey?actor=other',{headers})).status,400);assert.equal(journeyReads,1);
-    assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify({...draft(),lastUsedOn:'2024-02-29'})})).status,200);
-    assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify({...draft(),lastUsedOn:'2025-02-29'})})).status,400);assert.equal(saves,1);
-    assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify({...draft(),actorId:randomUUID()})})).status,400);assert.equal(saves,1);
-    assert.ok(actors.every(actor=>actor===id));
-    state.people[0].overrides.push({permission:'learning.view',scope:'OWN',effect:'ALLOW'},{permission:'skill.claim',scope:'OWN',effect:'DENY'});
-    assert.equal((await fetch(url+'/catalogue',{headers})).status,403);assert.equal(options,1);
-    assert.equal((await fetch(url,{method:'POST',headers,body:JSON.stringify(draft())})).status,403);assert.equal(saves,1);
-    assert.equal((await fetch(url,{headers})).status,200); // Revoked editing does not remove own profile reads.
-    state.people[0].overrides.push({permission:'skill.view',scope:'OWN',effect:'DENY'});
-    const reads=actors.length;
-    assert.equal((await fetch(url,{headers})).status,403);
-    assert.equal((await fetch(url+'/journey',{headers})).status,403);assert.equal(journeyReads,1);
-    assert.equal(actors.length,reads,'Denied reads must never call the claim store');
+test('own-skills HTTP binds actor to identity and denies revoked or fabricated permissions before persistence', async () => {
+  const access = await LocalAccessStore.open(),
+    id = access.snapshot().people[0].id;
+  const state = access.snapshot();
+  state.people[0].overrides.push(
+    { permission: 'learning.view', scope: 'OWN', effect: 'ALLOW' },
+    { permission: 'skill.claim', scope: 'OWN', effect: 'ALLOW' },
+    { permission: 'skill.view', scope: 'ORGANIZATION', effect: 'ALLOW' },
+  );
+  access.snapshot = () => structuredClone(state);
+  const actors: string[] = [];
+  let options = 0,
+    saves = 0,
+    journeyReads = 0;
+  const claims: ClaimsStore = {
+    journey: async actor => {
+      actors.push(actor);
+      journeyReads++;
+      return { claims: [], total: 0, page: 1, pageSize: 50, canClaim: true };
+    },
+    read: async actor => {
+      actors.push(actor);
+      return { claims: [], page: 1, pageSize: 25, total: 0, canClaim: true };
+    },
+    options: async actor => {
+      actors.push(actor);
+      options++;
+      return { skills: [], total: 0, page: 1, pageSize: 25 };
+    },
+    save: async actor => {
+      actors.push(actor);
+      saves++;
+    },
+  };
+  const server = createApp({
+    verify: async header => {
+      if (header !== 'Bearer trusted') throw Error();
+      return { tenantId: 'tenant', objectId: 'member' };
+    },
+    profile: async () => undefined,
+    access,
+    resolveAccess: async () => id,
+    claims,
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const url = `http://127.0.0.1:${address.port}/api/my-skills`,
+    headers = { Authorization: 'Bearer trusted', 'Content-Type': 'application/json' };
+  try {
+    assert.equal((await fetch(url)).status, 401);
+    assert.equal((await fetch(url, { headers })).status, 200);
+    assert.equal((await fetch(url + '/catalogue', { headers })).status, 200);
+    assert.equal((await fetch(url + '/journey', { headers })).status, 200);
+    assert.equal(journeyReads, 1);
+    assert.equal((await fetch(url + '/journey?actor=other', { headers })).status, 400);
+    assert.equal(journeyReads, 1);
+    assert.equal(
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ ...draft(), lastUsedOn: '2024-02-29' }),
+        })
+      ).status,
+      200,
+    );
+    assert.equal(
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ ...draft(), lastUsedOn: '2025-02-29' }),
+        })
+      ).status,
+      400,
+    );
+    assert.equal(saves, 1);
+    assert.equal(
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ ...draft(), actorId: randomUUID() }),
+        })
+      ).status,
+      400,
+    );
+    assert.equal(saves, 1);
+    assert.ok(actors.every(actor => actor === id));
+    state.people[0].overrides.push(
+      { permission: 'learning.view', scope: 'OWN', effect: 'ALLOW' },
+      { permission: 'skill.claim', scope: 'OWN', effect: 'DENY' },
+    );
+    assert.equal((await fetch(url + '/catalogue', { headers })).status, 403);
+    assert.equal(options, 1);
+    assert.equal(
+      (await fetch(url, { method: 'POST', headers, body: JSON.stringify(draft()) })).status,
+      403,
+    );
+    assert.equal(saves, 1);
+    assert.equal((await fetch(url, { headers })).status, 200); // Revoked editing does not remove own profile reads.
+    state.people[0].overrides.push({ permission: 'skill.view', scope: 'OWN', effect: 'DENY' });
+    const reads = actors.length;
+    assert.equal((await fetch(url, { headers })).status, 403);
+    assert.equal((await fetch(url + '/journey', { headers })).status, 403);
+    assert.equal(journeyReads, 1);
+    assert.equal(actors.length, reads, 'Denied reads must never call the claim store');
     state.people[0].overrides.pop();
-    state.people[0].overrides.push({permission:'profile.view',scope:'OWN',effect:'DENY'});
-    assert.equal((await fetch(url,{headers})).status,403);
-  }finally{await new Promise<void>((resolve,reject)=>server.close(error=>error?reject(error):resolve()));}
+    state.people[0].overrides.push({ permission: 'profile.view', scope: 'OWN', effect: 'DENY' });
+    assert.equal((await fetch(url, { headers })).status, 403);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close(error => (error ? reject(error) : resolve())),
+    );
+  }
 });

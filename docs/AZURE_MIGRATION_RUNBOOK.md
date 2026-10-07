@@ -4,12 +4,12 @@ Version: 2026-10-06. Applies to this repository on `main`, SQL migrations 001–
 
 ## 1. Choose the path before creating anything
 
-| Path | What it preserves | Prerequisite |
-| --- | --- | --- |
-| Full migration | SQL schema and all exported table data, IDs, claims, history, learning, requests, access and Blob images | Readable source SQL or an existing verified full BACPAC; private source Blob access |
-| Fresh start | Repository schema and explicitly selected seed/provisioning data | Accept that existing records are **not** recovered |
-| Existing tenant, new eligible free database | Avoids changing employee Entra identities; still needs runtime binding verification | Offer eligibility and a complete export for data preservation |
-| New Azure account/subscription/tenant | New infrastructure and credentials; existing business IDs can be retained | Offer eligibility, source export and an approved person-to-new-object-ID mapping |
+| Path                                        | What it preserves                                                                                        | Prerequisite                                                                        |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Full migration                              | SQL schema and all exported table data, IDs, claims, history, learning, requests, access and Blob images | Readable source SQL or an existing verified full BACPAC; private source Blob access |
+| Fresh start                                 | Repository schema and explicitly selected seed/provisioning data                                         | Accept that existing records are **not** recovered                                  |
+| Existing tenant, new eligible free database | Avoids changing employee Entra identities; still needs runtime binding verification                      | Offer eligibility and a complete export for data preservation                       |
+| New Azure account/subscription/tenant       | New infrastructure and credentials; existing business IDs can be retained                                | Offer eligibility, source export and an approved person-to-new-object-ID mapping    |
 
 **Current blocker:** source SQL is paused after exhausting October compute. Its error says renewal is **1 November 2026, 00:00 UTC / 05:30 IST**. Creating a new identity/database cannot read the paused source. No confirmed full SQL export is currently recorded. Without a previously verified export, a no-paid full migration must wait for source availability. Git, seed JSON, screenshots and the KT schema are not backups of live records. Blob files can be copied independently while storage is accessible, but they do not reconstruct SQL metadata.
 
@@ -41,16 +41,16 @@ flowchart LR
 
 Record these outside Git in a restricted operator folder. Never place real employee rows, exports, SAS URLs or secrets in the documentation.
 
-| Item | Source | Target |
-| --- | --- | --- |
-| Tenant and subscription IDs | Existing IDs | Verified target IDs |
-| SQL server / database / collation | Source names and collation | Target names; same collation |
-| Application `ACCESS_ACCOUNT_ID` | Existing workspace UUID | **Same UUID for a full migration** |
-| SPA / API application IDs | Current registration IDs | Retained in same tenant or newly registered |
-| Runtime application ID / enterprise-application object ID | Existing identity | New restricted runtime identity |
-| Blob account / container | Existing private storage | New private account; preserve blob paths |
-| Deployment | Current exact commit + environment version | Preview and final production deployment IDs |
-| Backup | Export UTC time, SHA-256, row-count manifest | Import time and verification result |
+| Item                                                      | Source                                       | Target                                      |
+| --------------------------------------------------------- | -------------------------------------------- | ------------------------------------------- |
+| Tenant and subscription IDs                               | Existing IDs                                 | Verified target IDs                         |
+| SQL server / database / collation                         | Source names and collation                   | Target names; same collation                |
+| Application `ACCESS_ACCOUNT_ID`                           | Existing workspace UUID                      | **Same UUID for a full migration**          |
+| SPA / API application IDs                                 | Current registration IDs                     | Retained in same tenant or newly registered |
+| Runtime application ID / enterprise-application object ID | Existing identity                            | New restricted runtime identity             |
+| Blob account / container                                  | Existing private storage                     | New private account; preserve blob paths    |
+| Deployment                                                | Current exact commit + environment version   | Preview and final production deployment IDs |
+| Backup                                                    | Export UTC time, SHA-256, row-count manifest | Import time and verification result         |
 
 All `<PLACEHOLDERS>` in commands are intentionally incomplete; replace locally. Do not paste source secrets into a new tenant's environment accidentally.
 
@@ -226,20 +226,20 @@ Until the account tenant and authorized administrator mapping are verified, **Mi
 
 Copy example files into ignored `.env` files. Do not overwrite the only source configuration without a protected rollback copy. DefaultAzureCredential can select environment credentials before CLI; inspect/remove stale local credential overrides so setup uses the intended operator.
 
-| Server-only variable | Target value |
-| --- | --- |
-| `ACCESS_ACCOUNT_ID` | Preserved workspace UUID for full migration |
-| `AZURE_SQL_SERVER`, `AZURE_SQL_DATABASE` | Target SQL host/database |
-| `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`, `ENTRA_WEB_CLIENT_ID` | Approved target registrations |
-| `AZURE_SQL_RUNTIME_AUTH` | `client-secret` on Vercel |
-| `AZURE_SQL_CLIENT_ID`, `AZURE_SQL_CLIENT_SECRET` | New restricted runtime application's client ID/secret value |
-| `EVIDENCE_STORAGE_CONNECTION_STRING`, `EVIDENCE_STORAGE_CONTAINER` | Target private Blob configuration |
-| `PUBLIC_APP_ORIGIN` | Exact current deployment origin, no trailing slash |
-| `DEV_DIRECT_LOGIN` | `false` in production |
-| `HOSTED_DEMO_LOGIN` | `false` by default; explicitly opt in only to the gated demo |
-| `DEMO_LOGIN_ACCESS_CODE`, `DEMO_SESSION_SECRET` | New strong server-only values if demo is enabled; invalidate old cookies |
-| AI provider/model/key variables | Explicitly retained approved provider or newly configured provider; SQL migration does not move provider quotas |
-| `KNOWLEDGE_TRANSFER_ENABLED` | `true` if keeping the temporary guide |
+| Server-only variable                                               | Target value                                                                                                    |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `ACCESS_ACCOUNT_ID`                                                | Preserved workspace UUID for full migration                                                                     |
+| `AZURE_SQL_SERVER`, `AZURE_SQL_DATABASE`                           | Target SQL host/database                                                                                        |
+| `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`, `ENTRA_WEB_CLIENT_ID`    | Approved target registrations                                                                                   |
+| `AZURE_SQL_RUNTIME_AUTH`                                           | `client-secret` on Vercel                                                                                       |
+| `AZURE_SQL_CLIENT_ID`, `AZURE_SQL_CLIENT_SECRET`                   | New restricted runtime application's client ID/secret value                                                     |
+| `EVIDENCE_STORAGE_CONNECTION_STRING`, `EVIDENCE_STORAGE_CONTAINER` | Target private Blob configuration                                                                               |
+| `PUBLIC_APP_ORIGIN`                                                | Exact current deployment origin, no trailing slash                                                              |
+| `DEV_DIRECT_LOGIN`                                                 | `false` in production                                                                                           |
+| `HOSTED_DEMO_LOGIN`                                                | `false` by default; explicitly opt in only to the gated demo                                                    |
+| `DEMO_LOGIN_ACCESS_CODE`, `DEMO_SESSION_SECRET`                    | New strong server-only values if demo is enabled; invalidate old cookies                                        |
+| AI provider/model/key variables                                    | Explicitly retained approved provider or newly configured provider; SQL migration does not move provider quotas |
+| `KNOWLEDGE_TRANSFER_ENABLED`                                       | `true` if keeping the temporary guide                                                                           |
 
 Browser build variables: `VITE_ENTRA_TENANT_ID`, `VITE_ENTRA_WEB_CLIENT_ID`, `VITE_ENTRA_API_CLIENT_ID`, `VITE_AUTH_REDIRECT_URI`. They contain IDs/origin only, **never SQL/storage/model secrets**. Refer to `apps/api/.env.example`, `apps/web/.env.example` and the handover.
 
@@ -267,20 +267,20 @@ Do not fabricate an administrator from any person named "Admin" or a hierarchy p
 
 ## 15. Required acceptance gates
 
-| Gate | What to verify |
-| --- | --- |
-| Data parity | All user-table counts match pre-remap snapshot; preserve business IDs/revisions/content. Document runtime binding and approved identity differences |
-| Integrity | FK/CHECK constraints trusted/enabled; no orphan claims/events/reporting/evidence; `DBCC CHECKCONSTRAINTS WITH ALL_CONSTRAINTS` returns no violations |
-| Schema | Pinned migrations through 051, expected procedures/signatures, no unintended extra schema |
-| Runtime | Correct target principal/account binding; procedure-only grants; no owner/direct-table access; wrong account denied |
-| Identity | Correct tenant/API audience/delegated scope/SPA caller, mapped active admin and employee; unmapped user denied |
-| Employee | Dashboard, own profile/skills, claim draft/image reload, learning, requests and notification deep links |
-| Manager | Only current authorized reports; queue/drilldown/recommendation; exact reviewer/current-manager/no-self-review constraints |
-| AI + KT | Authorized bounded read tools, durable recent chats, shared quota, protected reader/schema/guide |
-| Storage | Same referenced blobs/hashes; valid previews; private anonymous access denied |
-| Freshness | Active tab bounded refresh, idle/background pause, backoff, last-check indicators, no form loss |
-| Release | docs/check, architecture, typecheck, tests, build; exact deployed commit/domain |
-| Cost | Free offer still applied, overage disabled, remaining-compute metric recorded, no unattended SQL client sessions |
+| Gate        | What to verify                                                                                                                                       |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Data parity | All user-table counts match pre-remap snapshot; preserve business IDs/revisions/content. Document runtime binding and approved identity differences  |
+| Integrity   | FK/CHECK constraints trusted/enabled; no orphan claims/events/reporting/evidence; `DBCC CHECKCONSTRAINTS WITH ALL_CONSTRAINTS` returns no violations |
+| Schema      | Pinned migrations through 051, expected procedures/signatures, no unintended extra schema                                                            |
+| Runtime     | Correct target principal/account binding; procedure-only grants; no owner/direct-table access; wrong account denied                                  |
+| Identity    | Correct tenant/API audience/delegated scope/SPA caller, mapped active admin and employee; unmapped user denied                                       |
+| Employee    | Dashboard, own profile/skills, claim draft/image reload, learning, requests and notification deep links                                              |
+| Manager     | Only current authorized reports; queue/drilldown/recommendation; exact reviewer/current-manager/no-self-review constraints                           |
+| AI + KT     | Authorized bounded read tools, durable recent chats, shared quota, protected reader/schema/guide                                                     |
+| Storage     | Same referenced blobs/hashes; valid previews; private anonymous access denied                                                                        |
+| Freshness   | Active tab bounded refresh, idle/background pause, backoff, last-check indicators, no form loss                                                      |
+| Release     | docs/check, architecture, typecheck, tests, build; exact deployed commit/domain                                                                      |
+| Cost        | Free offer still applied, overage disabled, remaining-compute metric recorded, no unattended SQL client sessions                                     |
 
 Do not fire every integration fixture at production automatically. Inspect each suite's rollback/mutation behavior; use a dedicated target rehearsal and synthetic records. Regular `npm test` does not need SQL/model credentials.
 
@@ -293,18 +293,18 @@ Do not fire every integration fixture at production automatically. Inspect each 
 
 ## 17. Common failures
 
-| Symptom | Check / response |
-| --- | --- |
-| Source monthly quota error | Wait for renewal or use existing verified export; a new target cannot unlock source data |
-| Free offer absent | Subscription/region/offer eligibility; stop before paid creation |
-| SqlPackage says target not empty | A migration/seed ran too early, or import partially populated it; inspect, do not drop business data blindly |
-| BACPAC external-user failure | Cross-tenant security portability rehearsal; preserve original archive/source users; no guessed exclusion switch |
-| Login succeeds, workspace denied | Target tenant + exact person mapping + active membership/account; no grant from role name/email alone |
-| Runtime 403 after import | Imported `AccessRuntimeAccount.principal_id`, new user SID, account UUID, procedure grants and matching DENYs |
-| Runtime cannot reach SQL | Target firewall/egress/TLS and client-secret value/expiry; portal login is unrelated to hosted credential |
-| Images missing | SQL export alone is incomplete; verify target container, exact blob names, server-only credential and byte hashes |
-| Demo remains expired | New session signing secret/origin/cookie; reauthenticate, don't copy browser state |
-| New quota burns quickly | Active testing, 60-minute idle tail, minimum memory/compute, querying tools/pools; monitor instead of promising unlimited free operation |
+| Symptom                          | Check / response                                                                                                                         |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Source monthly quota error       | Wait for renewal or use existing verified export; a new target cannot unlock source data                                                 |
+| Free offer absent                | Subscription/region/offer eligibility; stop before paid creation                                                                         |
+| SqlPackage says target not empty | A migration/seed ran too early, or import partially populated it; inspect, do not drop business data blindly                             |
+| BACPAC external-user failure     | Cross-tenant security portability rehearsal; preserve original archive/source users; no guessed exclusion switch                         |
+| Login succeeds, workspace denied | Target tenant + exact person mapping + active membership/account; no grant from role name/email alone                                    |
+| Runtime 403 after import         | Imported `AccessRuntimeAccount.principal_id`, new user SID, account UUID, procedure grants and matching DENYs                            |
+| Runtime cannot reach SQL         | Target firewall/egress/TLS and client-secret value/expiry; portal login is unrelated to hosted credential                                |
+| Images missing                   | SQL export alone is incomplete; verify target container, exact blob names, server-only credential and byte hashes                        |
+| Demo remains expired             | New session signing secret/origin/cookie; reauthenticate, don't copy browser state                                                       |
+| New quota burns quickly          | Active testing, 60-minute idle tail, minimum memory/compute, querying tools/pools; monitor instead of promising unlimited free operation |
 
 ## 18. Completion record
 
