@@ -61,4 +61,6 @@ Root `vercel.json` deploys services `api` (public `/api` and `/api/*`) and `web`
 
 KT is isolated in `apps/web/src/knowledge-transfer` and `apps/api/src/modules/knowledge-transfer`. Set **`KNOWLEDGE_TRANSFER_ENABLED=false`** in API deployment configuration and redeploy to disable its protected reader/AI endpoints. Removing it needs no SQL rollback, data deletion, new grants or core chat changes. Follow the handover's **Temporary Feature Removal** checklist and retain the permanent documentation.
 
+[Organization onboarding & SSO checklist](docs/ORGANIZATION_ONBOARDING_AND_SSO_REQUIREMENTS.md) distinguishes the data request from implemented provisioning/import behavior and records the current redirect, identity and effective-access contract.
+
 [Repository](https://github.com/utkarshpat/Skill-Management-App) · [Application](https://skill-management-app.vercel.app)
