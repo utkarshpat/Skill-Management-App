@@ -8,6 +8,8 @@
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "test": "tsx --test test/*.test.ts",
+    "db:validate": "node node_modules/prisma/build/index.js validate --schema prisma/schema.prisma",
+    "db:generate": "node node_modules/prisma/build/index.js generate --schema prisma/schema.prisma",
     "db:check": "node --env-file-if-exists=.env --import tsx src/database-cli.ts check",
     "db:migrate": "node --env-file-if-exists=.env --import tsx src/database-cli.ts migrate",
     "access:presets": "node --env-file-if-exists=.env --import tsx src/role-presets-cli.ts",
@@ -37,6 +39,7 @@
   "dependencies": {
     "@azure/identity": "4.13.3",
     "@azure/storage-blob": "12.34.0",
+    "@prisma/client": "^7.10.0",
     "express": "5.2.1",
     "helmet": "8.3.0",
     "jose": "6.2.12",
@@ -47,6 +50,7 @@
     "@types/express": "5.0.6",
     "@types/mssql": "12.3.0",
     "@types/node": "26.6.4",
+    "prisma": "7.10.0",
     "tsx": "4.23.15",
     "typescript": "7.0.2"
   }

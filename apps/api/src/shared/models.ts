@@ -1,0 +1,53 @@
+/**
+ * Code-First Entity Models generated from schema.prisma
+ * Canonical types for domain models across the capability platform.
+ */
+import type {
+  AccessPerson,
+  AccessOrgAssignment,
+  AccessOrgNode,
+  AccessWorkspace,
+  Account,
+  AppUser,
+  Department,
+  Team,
+  DeliveryUnit,
+  ReportingRelationship,
+  SkillCatalogue,
+  SkillClaimDraft,
+  SkillClaimEvidence,
+  SkillDefinitionVersion,
+  LearningPlan,
+  LearningQuiz,
+  LearningAttempt,
+  LearningRecommendation,
+  WorkflowRecord,
+  WorkflowEvent,
+  AiConversation,
+  AiAccountBudget,
+} from '@prisma/client';
+
+export type {
+  AccessPerson,
+  AccessOrgAssignment,
+  AccessOrgNode,
+  AccessWorkspace,
+  Account,
+  AppUser,
+  Department,
+  Team,
+  DeliveryUnit,
+  ReportingRelationship,
+  SkillCatalogue,
+  SkillClaimDraft,
+  SkillClaimEvidence,
+  SkillDefinitionVersion,
+  LearningPlan,
+  LearningQuiz,
+  LearningAttempt,
+  LearningRecommendation,
+  WorkflowRecord,
+  WorkflowEvent,
+  AiConversation,
+  AiAccountBudget,
+};

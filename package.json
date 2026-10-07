@@ -18,6 +18,8 @@
     "architecture:check": "node scripts/check-architecture.mjs",
     "docs:generate": "python scripts/generate-handover.py",
     "docs:check": "python scripts/generate-handover.py --check",
+    "db:generate": "npm run db:generate -w apps/api",
+    "db:validate": "npm run db:validate -w apps/api",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
