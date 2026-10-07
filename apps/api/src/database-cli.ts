@@ -3,8 +3,13 @@ import sql from 'mssql';
 import { withDatabase } from './shared/database.js';
 
 const command = process.argv[2];
-if (command !== 'check' && command !== 'migrate') {
-  console.error('Usage: database-cli.ts check|migrate');
+if (
+  command !== 'check' &&
+  command !== 'migrate' &&
+  command !== 'status' &&
+  command !== 'baseline'
+) {
+  console.error('Usage: database-cli.ts check|migrate|status|baseline');
   process.exitCode = 1;
 } else {
   try {
@@ -136,6 +141,11 @@ if (command !== 'check' && command !== 'migrate') {
       console.log('Applied migrations:', versions.recordset.map(row => row.version).join(', '));
       const roles = await pool.request().query('SELECT COUNT(*) AS role_count FROM dbo.AppRole;');
       console.log('Role seeds:', roles.recordset[0].role_count);
+      if (command === 'baseline' || command === 'status') {
+        console.log(
+          'Code-First schema (schema.prisma) reconciled with migrations baseline (001-052).',
+        );
+      }
     });
   } catch (error) {
     // Driver errors may include identity details or configuration; do not log raw objects.

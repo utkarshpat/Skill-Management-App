@@ -21,6 +21,8 @@
     "db:generate": "npm run db:generate -w apps/api",
     "db:validate": "npm run db:validate -w apps/api",
     "db:diff": "npm run db:diff -w apps/api",
+    "db:status": "npm run db:status -w apps/api",
+    "db:baseline": "npm run db:baseline -w apps/api",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

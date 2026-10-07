@@ -13,6 +13,8 @@
     "db:diff": "node node_modules/prisma/build/index.js migrate diff --from-empty --to-schema prisma/schema.prisma --script",
     "db:migrate:diff": "node node_modules/prisma/build/index.js migrate diff --from-empty --to-schema prisma/schema.prisma",
     "db:check": "node --env-file-if-exists=.env --import tsx src/database-cli.ts check",
+    "db:status": "node --env-file-if-exists=.env --import tsx src/database-cli.ts status",
+    "db:baseline": "node --env-file-if-exists=.env --import tsx src/database-cli.ts baseline",
     "db:migrate": "node --env-file-if-exists=.env --import tsx src/database-cli.ts migrate",
     "access:presets": "node --env-file-if-exists=.env --import tsx src/role-presets-cli.ts",
     "access:import": "node --env-file-if-exists=.env --import tsx src/access-import-cli.ts",
