@@ -1,50 +1,12 @@
+import { sqlFeatures } from './sql-features.js';
+
 export const legacyMigrationBaselineVersion = 52;
 
-export const filteredUniqueIndexes = [
-  {
-    table: 'AccessOrgNode',
-    name: 'UX_AccessOrg_Root',
-    columns: ['account_id', 'display_name'],
-    predicate: 'parent_id IS NULL',
-  },
-  {
-    table: 'AccessOrgNode',
-    name: 'UX_AccessOrg_Sibling',
-    columns: ['account_id', 'parent_id', 'display_name'],
-    predicate: 'parent_id IS NOT NULL',
-  },
-  {
-    table: 'AccessPerson',
-    name: 'UX_AccessPerson_Entra',
-    columns: ['account_id', 'entra_object_id'],
-    predicate: 'entra_object_id IS NOT NULL',
-  },
-  {
-    table: 'ProficiencyFramework',
-    name: 'UX_ProficiencyFramework_Common',
-    columns: ['framework_key'],
-    predicate: 'account_id IS NULL',
-  },
-  {
-    table: 'ReportingRelationship',
-    name: 'UX_Reporting_Open',
-    columns: ['account_id', 'employee_id'],
-    predicate: 'valid_until IS NULL',
-  },
-  {
-    table: 'SkillCatalogue',
-    name: 'UX_SkillCatalogue_Code',
-    columns: ['account_id', 'business_code'],
-    predicate: 'business_code IS NOT NULL',
-  },
-] as const;
-
-export const rowversionColumns = [
-  ['Account', 'record_version'],
-  ['AppUser', 'record_version'],
-  ['ReportingRelationship', 'record_version'],
-  ['UserPermission', 'record_version'],
-] as const;
+export const filteredUniqueIndexes = sqlFeatures.filteredUniqueIndexes;
+export const checkConstraints = sqlFeatures.checkConstraints;
+export const rowversionColumns = sqlFeatures.rowversionColumns.map(
+  ({ table, column }) => [table, column] as const,
+);
 
 type FilteredIndex = {
   table_name: string;

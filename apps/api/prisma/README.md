@@ -24,14 +24,19 @@ unchanged).
    `prisma/applied-schema.prisma` (the snapshot of what migrations already cover),
    writes the next numbered `database/migrations/NNN_name.sql` (Prisma's own
    transaction wrapper removed; the runner supplies it), and updates the snapshot.
-3. Review the SQL and hand-add anything Prisma cannot express (filtered unique
-   indexes, `rowversion`, check constraints). Add matching entries to
-   `src/database-baseline.ts` when new SQL-only invariants are introduced.
-4. Run `npm run db:migrate`; migrations are discovered from the directory.
+3. SQL-only features Prisma cannot express are declared in `src/sql-features.json`
+   (filtered unique indexes, `rowversion` columns, check constraints) and are
+   generated into the same migration (snapshot: `prisma/applied-sql-features.json`).
+   A rowversion column must be declared together with the new `Bytes @db.Binary(8)`
+   column in `schema.prisma`; converting an existing column is rejected. The baseline
+   verifier (`db:baseline`) reads the same file, so declaration, migration and
+   verification cannot drift.
+4. Review the SQL, then run `npm run db:migrate`; migrations are discovered from the directory.
 
-`npm run db:schema:check` (also run in CI) fails if `schema.prisma` changed without a
-generated migration. Prisma's `migrate dev` is intentionally not used: it needs a
-shadow database and cannot reproduce the SQL-only features above.
+`npm run db:schema:check` (also run in CI) fails if `schema.prisma` or
+`sql-features.json` changed without a generated migration. Prisma's `migrate dev` is
+intentionally not used: it needs a shadow database. Views and stored procedures are
+still hand-written SQL migrations.
 
 have a reviewed migration-generation and application
 path, `database/migrations` remains authoritative for database changes. Run `db:validate`,
