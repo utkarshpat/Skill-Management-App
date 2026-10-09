@@ -36,6 +36,10 @@ import {
 } from './modules/recommendations/index.js';
 import { registerDashboardRoutes } from './modules/dashboard/index.js';
 import {
+  registerCertificationRoutes,
+  type CertificationDependencies,
+} from './modules/skills/certification-routes.js';
+import {
   registerKnowledgeRoutes,
   type KnowledgeDependencies,
 } from './modules/knowledge-transfer/index.js';
@@ -49,6 +53,7 @@ export type AppDependencies = IdentityDependencies &
   LearningDependencies &
   WorkflowDependencies &
   RecommendationDependencies &
+  CertificationDependencies &
   KnowledgeDependencies;
 
 export function createApp(
@@ -95,6 +100,7 @@ export function createApp(
   );
   registerLearningRoutes(app, dependencies, store, demo);
   registerRecommendationRoutes(app, dependencies, store, demo);
+  registerCertificationRoutes(app, dependencies, store, demo);
   registerWorkflowRoutes(app, dependencies, store, demo);
   registerDashboardRoutes(
     app,

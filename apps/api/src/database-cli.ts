@@ -86,6 +86,7 @@ if (command !== 'check' && command !== 'migrate') {
           [50, '050_skill_evidence.sql'],
           [51, '051_submitted_skill_evidence.sql'],
           [52, '052_primary_capability.sql'],
+          [53, '053_employee_certifications.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

@@ -1,13 +1,10 @@
 import type { CertificationRecord } from './types';
 
 export function csvCell(value: string | number | undefined | null): string {
-  if (value === undefined || value === null) return '""';
-  const text = String(value);
-  // Prevent CSV injection by prepending apostrophe if cell starts with =, +, -, @
+  const text = value === undefined || value === null ? '' : String(value);
   const safe = /^[\s\u0000-\u001f]*[=+\-@]/.test(text) ? "'" + text : text;
   return '"' + safe.replaceAll('"', '""') + '"';
 }
-
 export function generateCertificationsCsv(records: CertificationRecord[]): string {
   const headers = [
     'Sr NO',
@@ -22,43 +19,55 @@ export function generateCertificationsCsv(records: CertificationRecord[]): strin
     'Active',
     'Email ID',
     'Email Type',
+    'Provider',
+    'Review Status',
+    'Verified',
+    'Credential ID',
+    'Issuer Verification URL',
   ];
-
-  const rows = records.map(item => [
-    item.srNo,
-    item.name,
-    item.employeeCode,
-    item.du,
-    item.category,
-    item.certificationName,
-    item.certificationDate,
-    item.doesNotExpire,
-    item.expiryDate,
-    item.active,
-    item.emailId,
-    item.emailType,
-  ]);
-
-  const csvContent = [headers, ...rows]
-    .map(row => row.map(csvCell).join(','))
-    .join('\r\n');
-
-  // Prefix UTF-8 BOM so Excel opens it with proper UTF-8 encoding
-  return '\uFEFF' + csvContent;
+  return (
+    '\uFEFF' +
+    [
+      headers,
+      ...records.map((item, index) => [
+        index + 1,
+        item.name,
+        item.employeeCode,
+        item.du,
+        item.category,
+        item.certificationName,
+        item.certificationDate,
+        item.doesNotExpire,
+        item.expiryDate,
+        item.active,
+        '',
+        '',
+        item.provider,
+        item.status,
+        item.verified ? 'Yes' : 'No',
+        item.credentialId,
+        item.credentialUrl,
+      ]),
+    ]
+      .map(row => row.map(csvCell).join(','))
+      .join('\r\n')
+  );
 }
-
 export function downloadCertificationsCsv(
   records: CertificationRecord[],
-  filename = `certifications-capability-report-${new Date().toISOString().slice(0, 10)}.csv`,
+  filename = `certifications-${new Date().toISOString().slice(0, 10)}.csv`,
 ): void {
-  const csv = generateCertificationsCsv(records);
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(
+    new Blob([generateCertificationsCsv(records)], { type: 'text/csv;charset=utf-8' }),
+  );
   const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  try {
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+  } finally {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
 }

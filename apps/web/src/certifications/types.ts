@@ -1,46 +1,65 @@
 export type CertificationStatus =
-  | 'DRAFT'
-  | 'SUBMITTED'
-  | 'APPROVED'
-  | 'CHANGES_REQUESTED'
-  | 'REJECTED';
-
-export interface CertificationRecord {
-  srNo: number;
+  'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED';
+export type CertificationView = 'mine' | 'queue' | 'directory';
+export interface CertificationFields {
+  certificationName: string;
+  provider: string;
+  category: string;
+  certificationDate: string;
+  expiryDate: string | null;
+  credentialId: string;
+  credentialUrl: string;
+}
+export interface CertificationRecord extends CertificationFields {
   id: string;
+  personId: string;
+  reviewerId: string | null;
+  revision: number;
   name: string;
   employeeCode: string;
   du: string;
-  category: string;
-  certificationName: string;
-  certificationDate: string; // YYYY-MM-DD
   doesNotExpire: 'Yes' | 'No';
-  expiryDate: string; // YYYY-MM-DD (e.g. 2050-12-31 if Does Not Expire)
   active: 'Y' | 'N';
-  emailId: string;
-  emailType: string;
-  provider: string; // e.g. Oracle, AWS, Microsoft, Google
-  credentialId?: string;
-  credentialUrl?: string;
-  evidenceUrl?: string;
-  evidenceFileName?: string;
   status: CertificationStatus;
-  feedbackNote?: string;
-  reviewedBy?: string;
-  reviewedAt?: string;
-  submittedAt?: string;
   verified: boolean;
+  feedbackNote: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  submittedAt: string | null;
+  canEdit: boolean;
+  canReview: boolean;
+  reviewReason: string;
+  routingMismatch: boolean;
+  history: { revision: number; action: string; at: string; actorName: string; feedback?: string }[];
 }
-
-export interface ExtractedCertificationDetails {
-  certificationName?: string;
-  provider?: string;
-  category?: string;
-  certificationDate?: string;
-  doesNotExpire?: 'Yes' | 'No';
-  expiryDate?: string;
-  credentialId?: string;
-  credentialUrl?: string;
-  recipientName?: string;
-  confidenceScore?: number;
+export interface CertificationPage {
+  items: CertificationRecord[];
+  total: number;
+  activeCount: number;
+  expiringSoonCount: number;
+  revision: number;
+  page: number;
+  pageSize: number;
+}
+export interface CertificationChange {
+  id: string;
+  revision: number;
+  action: 'SAVE' | 'SUBMIT' | 'REROUTE' | 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED';
+  fields?: CertificationFields;
+  feedback?: string;
+}
+export const statusLabel: Record<CertificationStatus, string> = {
+  DRAFT: 'Draft',
+  SUBMITTED: 'Awaiting review',
+  APPROVED: 'Approved',
+  CHANGES_REQUESTED: 'Changes requested',
+  REJECTED: 'Rejected',
+};
+export function issuerLink(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && !url.username && !url.password ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
 }

@@ -13,6 +13,7 @@ import { can, readActorAccess } from './modules/access/index.js';
 import { AssistantService, configuredProvider } from './modules/ai/index.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
 import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
+import { SqlCertificationStore } from './modules/skills/certification-store.js';
 import { configuredEvidence } from './modules/skills/evidence.js';
 import { SqlConversationsStore } from './modules/ai/conversations.js';
 import {
@@ -124,6 +125,9 @@ const app = createApp(
         recovery,
         workflows,
         recommendations,
+        certifications: process.env.ACCESS_ACCOUNT_ID
+          ? new SqlCertificationStore(process.env.ACCESS_ACCOUNT_ID)
+          : undefined,
         resolveAccess: access ? identity => access.resolveIdentity(identity) : undefined,
         profile: async identity => {
           const id = await access?.resolveIdentity(identity);

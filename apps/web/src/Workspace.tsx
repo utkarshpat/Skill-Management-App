@@ -48,6 +48,11 @@ export interface WorkspaceState {
     requests?: boolean;
     requestProfileCorrection?: boolean;
     certifications?: boolean;
+    ownCertifications?: boolean;
+    manageCertifications?: boolean;
+    reviewCertifications?: boolean;
+    certificationDirectory?: boolean;
+    exportCertifications?: boolean;
   };
   upcoming: { id: string; label: string; assigned: boolean; implemented: boolean }[];
 }
@@ -157,7 +162,7 @@ export function Workspace({
       label: 'Certifications',
       href: '/certifications',
       icon: Award,
-      visible: state?.capabilities.certifications !== false,
+      visible: state?.capabilities.certifications === true,
     },
     {
       id: 'requests',
@@ -245,10 +250,7 @@ export function Workspace({
               {view === 'profile' && <PersonalProfile workspace={state} />}
               {view === 'my-skills' && <MySkills actionsContainer={actionsContainer ?? null} />}
               {view === 'certifications' && (
-                <Certifications
-                  workspace={state}
-                  actionsContainer={actionsContainer ?? null}
-                />
+                <Certifications workspace={state} actionsContainer={actionsContainer ?? null} />
               )}
               {view === 'requests' && <Requests actionsContainer={actionsContainer} />}
               {view === 'learning' && <Learning actionsContainer={actionsContainer} />}

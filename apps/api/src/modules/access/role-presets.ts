@@ -11,6 +11,8 @@ export interface RolePreset {
 }
 const own: PermissionCode[] = [
   'profile.view',
+  'certification.view',
+  'certification.manage',
   'skill.claim',
   'learning.view',
   'learning.manage',
@@ -37,7 +39,7 @@ export const rolePresets: RolePreset[] = [
     key: 'employee',
     name: 'Employee',
     description:
-      'Own profile, claims, evidence, learning, requests and incidents; published skills.',
+      'Own profile, certifications, claims, learning, requests and incidents; published skills.',
     permissions: employee(),
     pending: planned('OWN', ['profile.edit', 'evidence.view', 'evidence.submit']),
   },

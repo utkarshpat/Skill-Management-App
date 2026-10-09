@@ -17,6 +17,7 @@ export {
   effectiveAccess,
   effectiveAccessSummary,
   effectiveClaimReview,
+  hasResolvedDirectReports,
   actionRegistry,
 } from './effective-access.js';
 export { readActorAccess } from './actor-context.js';

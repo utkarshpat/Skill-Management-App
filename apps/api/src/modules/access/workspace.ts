@@ -4,6 +4,7 @@ import {
   type LocalAccessState,
   type LocalPerson,
 } from './local-access-store.js';
+import { effectiveAccess } from './effective-access.js';
 
 // Navigation describes effective authority; it never grants that authority.
 // Future workflows remain explicitly unavailable until their services exist.
@@ -30,7 +31,16 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
       requests: available('request.view') || available('incident.view'),
       ownProfile,
       ownSkills,
-      certifications: ownProfile,
+      certifications:
+        can(state, person, 'certification.view', true) ||
+        effectiveAccess(state, person, 'certification.verify', 'DIRECT_REPORTS').allowed ||
+        can(state, person, 'certification.directory'),
+      ownCertifications: can(state, person, 'certification.view', true),
+      manageCertifications: can(state, person, 'certification.manage', true),
+      reviewCertifications: effectiveAccess(state, person, 'certification.verify', 'DIRECT_REPORTS')
+        .allowed,
+      certificationDirectory: can(state, person, 'certification.directory'),
+      exportCertifications: can(state, person, 'certification.export'),
       learning: can(state, person, 'learning.view', true),
       claimSkills:
         ownSkills && can(state, person, 'skill.claim', true) && can(state, person, 'skill.view'),

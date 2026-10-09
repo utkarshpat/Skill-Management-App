@@ -138,9 +138,16 @@ test('SQL assignability registry matches implemented service action/scope combin
     new URL('../../../database/migrations/036_learning_recommendations.sql', import.meta.url),
     'utf8',
   );
+  const certifications = await readFile(
+    new URL('../../../database/migrations/053_employee_certifications.sql', import.meta.url),
+    'utf8',
+  );
   const values =
     source.split('INSERT dbo.AccessImplementedScope VALUES')[1].split(';')[0] +
-    increment.split('INSERT dbo.AccessImplementedScope VALUES')[1].split(';')[0];
+    increment.split('INSERT dbo.AccessImplementedScope VALUES')[1].split(';')[0] +
+    certifications
+      .split('INSERT dbo.AccessImplementedScope(permission_code,scope_kind)')[1]
+      .split(';')[0];
   const sql = [...values.matchAll(/\('([^']+)','([^']+)'\)/g)].map(m => m[1] + ':' + m[2]).sort();
   assert.deepEqual(
     sql,

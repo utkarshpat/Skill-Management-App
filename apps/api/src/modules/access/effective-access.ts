@@ -8,6 +8,11 @@ const supported: Record<string, Assignment['scope'][]> = {
   'skill.view': ['OWN', 'ORGANIZATION'],
   'skill.claim': ['OWN'],
   'skill.verify': ['ORGANIZATION'],
+  'certification.view': ['OWN'],
+  'certification.manage': ['OWN'],
+  'certification.verify': ['ORGANIZATION'],
+  'certification.directory': ['ORGANIZATION'],
+  'certification.export': ['ORGANIZATION'],
   'skill.catalogue.manage': ['ORGANIZATION'],
   'learning.recommend': ['ORGANIZATION'],
   'learning.view': ['OWN'],
@@ -33,7 +38,11 @@ export const actionRegistry = permissionCatalogue.map(([code, label]) => ({
 export const isAssignable = (assignment: Assignment) =>
   Boolean(supported[assignment.permission]?.includes(assignment.scope));
 const accountId = 'local-demo-workspace';
-export function hasResolvedDirectReports(state: LocalAccessState, person: LocalPerson) {
+export function hasResolvedDirectReports(
+  state: LocalAccessState,
+  person: LocalPerson,
+  reportId?: string,
+) {
   if (!person.active) return false;
   if (!state.reporting) return person.hasDirectReports === true;
   const validChain = (id: string) => {
@@ -52,7 +61,10 @@ export function hasResolvedDirectReports(state: LocalAccessState, person: LocalP
     validChain(person.id) &&
     state.reporting.some(
       edge =>
-        edge.managerId === person.id && edge.personId !== person.id && validChain(edge.personId),
+        edge.managerId === person.id &&
+        edge.personId !== person.id &&
+        (!reportId || edge.personId === reportId) &&
+        validChain(edge.personId),
     )
   );
 }
@@ -165,7 +177,7 @@ export function effectiveAccess(
   const constraints =
     action === 'learning.recommend'
       ? ['CURRENT_DIRECT_MANAGER', 'ACTIVE_RECIPIENT', 'PUBLISHED_SKILL', 'RECIPIENT_ACCEPTANCE']
-      : action === 'skill.verify'
+      : action === 'skill.verify' || action === 'certification.verify'
         ? [
             'CURRENT_DIRECT_MANAGER',
             'ASSIGNED_REVIEWER',
@@ -175,19 +187,27 @@ export function effectiveAccess(
           ]
         : action.startsWith('request.') || action.startsWith('incident.')
           ? ['CURRENT_PARTICIPANT', 'WORKFLOW_STATE', 'REVISION_RECHECK']
-          : action === 'skill.claim'
-            ? ['OWN_CLAIM', 'EDITABLE_STATE', 'PUBLISHED_SKILL']
-            : action.startsWith('learning.')
-              ? ['OWN_PLAN', 'WORKFLOW_STATE']
-              : [];
+          : action.startsWith('certification.')
+            ? ['SERVER_RESOLVED_OWNER', 'REVISION_RECHECK', 'PRIVATE_DRAFTS']
+            : action === 'skill.claim'
+              ? ['OWN_CLAIM', 'EDITABLE_STATE', 'PUBLISHED_SKILL']
+              : action.startsWith('learning.')
+                ? ['OWN_PLAN', 'WORKFLOW_STATE']
+                : [];
   let reasonCode = 'DEFAULT_DENY',
     allowed = false;
   if (!implemented) reasonCode = 'UNAVAILABLE';
   else if (!Number.isFinite(at.getTime())) reasonCode = 'INVALID_TIME';
   else if (!person.active) reasonCode = 'INACTIVE_ACTOR';
-  else if (context === 'DIRECT_REPORTS' && !['skill.verify', 'learning.recommend'].includes(action))
+  else if (
+    context === 'DIRECT_REPORTS' &&
+    !['skill.verify', 'learning.recommend', 'certification.verify'].includes(action)
+  )
     reasonCode = 'UNSUPPORTED_SCOPE';
-  else if (context === 'WORKSPACE' && action === 'learning.recommend')
+  else if (
+    context === 'WORKSPACE' &&
+    ['learning.recommend', 'certification.verify'].includes(action)
+  )
     reasonCode = 'RESOURCE_SCOPE_REQUIRED';
   else if (context === 'DIRECT_REPORTS') {
     // SQL snapshots always resolve this flag. An unresolved relationship fails closed.
@@ -231,6 +251,12 @@ export function effectiveAccess(
     reasonCode = result.reason;
   }
   const prerequisites: { action: string; context: 'OWN' | 'WORKSPACE' }[] = [];
+  if (action.startsWith('certification.'))
+    prerequisites.push({ action: 'profile.view', context: 'OWN' });
+  if (action === 'certification.manage')
+    prerequisites.push({ action: 'certification.view', context: 'OWN' });
+  if (action === 'certification.export')
+    prerequisites.push({ action: 'certification.directory', context: 'WORKSPACE' });
   if (
     (action === 'skill.verify' && context === 'DIRECT_REPORTS') ||
     (action === 'skill.view' && context === 'OWN') ||
@@ -281,7 +307,7 @@ export function effectiveAccessSummary(state: LocalAccessState, person: LocalPer
     revision: state.revision,
     summaryOnly: true,
     decisions: actionRegistry.flatMap(action =>
-      ['skill.verify', 'learning.recommend'].includes(action.code)
+      ['skill.verify', 'learning.recommend', 'certification.verify'].includes(action.code)
         ? [effectiveAccess(state, person, action.code, 'DIRECT_REPORTS')]
         : (action.scopes.length
             ? action.scopes.map(scope =>
