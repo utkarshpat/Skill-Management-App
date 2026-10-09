@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Link, Navigate, useLocation } from 'react-router';
+import { Award, Sparkles } from 'lucide-react';
 import type { WorkspaceState } from './Workspace';
 import './capability-workspace.css';
 const MySkills = lazy(() => import('./MySkills').then(m => ({ default: m.MySkills })));
@@ -21,13 +22,23 @@ export function CapabilityPortfolio({
     <>
       <nav className="capability-tabs" aria-label="Skills and certifications">
         {workspace.capabilities.ownSkills && (
-          <Link to="/my-skills" aria-current={!certifications ? 'page' : undefined}>
-            Skills
+          <Link
+            to="/my-skills"
+            className="capability-tab-item"
+            aria-current={!certifications ? 'page' : undefined}
+          >
+            <Sparkles size={16} className="capability-tab-icon" aria-hidden="true" />
+            <span>Skills</span>
           </Link>
         )}
         {workspace.capabilities.certifications && (
-          <Link to="/certifications" aria-current={certifications ? 'page' : undefined}>
-            Certifications
+          <Link
+            to="/certifications"
+            className="capability-tab-item"
+            aria-current={certifications ? 'page' : undefined}
+          >
+            <Award size={16} className="capability-tab-icon" aria-hidden="true" />
+            <span>Certifications</span>
           </Link>
         )}
       </nav>

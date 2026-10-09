@@ -23,6 +23,8 @@ export function CertificationProfileView({
   onAdd,
   onView,
   onEdit,
+  canRenew = false,
+  onRenew = () => {},
   onSubmit,
   onReview,
 }: {
@@ -33,6 +35,8 @@ export function CertificationProfileView({
   onAdd: () => void;
   onView: (record: CertificationRecord) => void;
   onEdit: (record: CertificationRecord) => void;
+  canRenew?: boolean;
+  onRenew?: (record: CertificationRecord) => void;
   onSubmit: (record: CertificationRecord) => void;
   onReview: (record: CertificationRecord) => void;
 }) {
@@ -286,6 +290,10 @@ export function CertificationProfileView({
                           <span className={'skills-status ' + record.status.toLowerCase()}>
                             {certificationStatusLabels[record.status]}
                           </span>
+                          {record.status === 'APPROVED' &&
+                            credentialValidity(record.expiryDate, today) === 'Expired' && (
+                              <span className="cert-review-validity cert-expired">Expired</span>
+                            )}
                         </td>
                         <td>
                           <span
@@ -322,6 +330,22 @@ export function CertificationProfileView({
                                 <Pencil size={15} />
                               </button>
                             )}
+                            {canRenew &&
+                              record.status === 'APPROVED' &&
+                              record.expiryDate &&
+                              (Date.parse(record.expiryDate + 'T12:00:00Z') -
+                                Date.parse(today + 'T12:00:00Z')) /
+                                86400000 <=
+                                90 && (
+                                <button
+                                  aria-label={`Record renewal for ${record.certificationName}`}
+                                  title="Record renewal"
+                                  disabled={loading}
+                                  onClick={() => onRenew(record)}
+                                >
+                                  <RotateCcw size={15} />
+                                </button>
+                              )}
                             {record.canSubmit && (
                               <button
                                 aria-label={`${record.status === 'SUBMITTED' ? 'Reroute' : 'Submit'} ${record.certificationName} for review`}

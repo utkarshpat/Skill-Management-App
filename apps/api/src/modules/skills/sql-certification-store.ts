@@ -67,15 +67,55 @@ export class SqlCertificationStore implements CertificationStore {
   }
   async change(actor: string, change: CertificationChange) {
     await this.run(actor, change.action, change);
+    if ((change.action === 'SAVE' || change.action === 'SAVE_SUBMIT') && change.renewedFromId) {
+      try {
+        await withRuntimeDatabase(async pool =>
+          pool
+            .request()
+            .input('account_id', sql.UniqueIdentifier, this.account)
+            .input('actor_id', sql.UniqueIdentifier, actor)
+            .input('certification_id', sql.UniqueIdentifier, change.id)
+            .input('renewed_from_id', sql.UniqueIdentifier, change.renewedFromId)
+            .execute('dbo.LinkCertificationRenewal'),
+        );
+      } catch (e) {
+        const number = (e as { number?: number }).number;
+        if (number === 51003)
+          throw new AccessError(403, 'Only your own manager-reviewed credential can be renewed.');
+        if (number === 51004) throw new AccessError(404, 'Credential renewal is unavailable.');
+        if (number === 51009)
+          throw new AccessError(409, 'This credential changed. Refresh before retrying.');
+        if (number === 51010)
+          throw new AccessError(409, 'A renewal draft or submitted replacement already exists.');
+        throw e;
+      }
+    }
   }
   async notifications(actor: string) {
-    const sets = await this.run(actor, 'NOTIFICATIONS', {});
-    return sets[0].map(row => ({
+    const [sets, expiry] = await Promise.all([
+      this.run(actor, 'NOTIFICATIONS', {}),
+      withRuntimeDatabase(pool =>
+        pool
+          .request()
+          .input('account_id', sql.UniqueIdentifier, this.account)
+          .input('actor_id', sql.UniqueIdentifier, actor)
+          .execute('dbo.CertificationExpiryNotifications'),
+      ),
+    ]);
+    const regular = sets[0].map(row => ({
       id: String(row.id),
       at: row.at instanceof Date ? row.at.toISOString() : String(row.at),
       title: String(row.title),
       body: String(row.body),
       href: String(row.href),
     }));
+    const expiryItems = expiry.recordset.map(row => ({
+      id: String(row.id),
+      at: row.at instanceof Date ? row.at.toISOString() : String(row.at),
+      title: String(row.title),
+      body: String(row.body),
+      href: String(row.href),
+    }));
+    return [...regular, ...expiryItems];
   }
 }

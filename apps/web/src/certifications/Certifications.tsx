@@ -10,9 +10,14 @@ import type { WorkspaceState } from '../Workspace';
 import { CertificationDialog } from './CertificationDialog';
 import { CertificationReviewDialog } from './CertificationReviewDialog';
 import { CertificationImage } from './CertificationImage';
-import { certificationStatusLabels, credentialValidity } from './certification-model';
+import {
+  certificationRenewalFields,
+  certificationStatusLabels,
+  credentialValidity,
+} from './certification-model';
 import type { CertificationFields, CertificationPage, CertificationRecord } from './types';
 import { CertificationProfileView } from './CertificationProfileView';
+import { CertificationRecommendations } from './CertificationRecommendations';
 import { loadCertificationPortfolio } from './certification-portfolio';
 import './certifications.css';
 import '../skills-profile.css';
@@ -27,6 +32,7 @@ export function Certifications({
 }) {
   const [params, setParams] = useSearchParams();
   const view = params.get('tab') === 'queue' ? 'queue' : 'mine';
+  const recommendationsTab = params.get('tab') === 'recommendations';
   const [data, setData] = useState<CertificationPage>(),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true);
@@ -35,6 +41,9 @@ export function Certifications({
   const [editing, setEditing] = useState<CertificationRecord | null | undefined>(),
     [reviewing, setReviewing] = useState<CertificationRecord>(),
     [submitting, setSubmitting] = useState<CertificationRecord>();
+  const [renewalSource, setRenewalSource] = useState<CertificationRecord>();
+  const [renewalFields, setRenewalFields] = useState<CertificationFields>();
+  const renewalHandled = useRef<string | undefined>(undefined);
   const [submitError, setSubmitError] = useState(''),
     [busy, setBusy] = useState(false);
   const submissionLock = useRef(false);
@@ -74,6 +83,28 @@ export function Certifications({
       });
     return () => c.abort();
   }, [view, attempt]);
+  const renewalId = params.get('renew');
+  useEffect(() => {
+    if (!renewalId) {
+      renewalHandled.current = undefined;
+      return;
+    }
+    if (loading || !data || renewalHandled.current === renewalId) return;
+    renewalHandled.current = renewalId;
+    const next = new URLSearchParams(params);
+    next.delete('renew');
+    setParams(next, { replace: true });
+    const source = data.records.find(
+      record => record.id === renewalId && record.status === 'APPROVED' && record.expiryDate,
+    );
+    if (!data.canManage || !source) {
+      toast.error('This credential is unavailable for renewal. Refresh your certifications.');
+      return;
+    }
+    setRenewalSource(source);
+    setRenewalFields(certificationRenewalFields(source, today));
+    setEditing(null);
+  }, [params, renewalId, loading, data, setParams, today]);
   const changeView = (tab: string) => {
     const next = new URLSearchParams(params);
     next.set('tab', tab);
@@ -102,7 +133,13 @@ export function Certifications({
       await authenticatedFetch('/api/certifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: submit ? 'SAVE_SUBMIT' : 'SAVE', id, revision, fields }),
+        body: JSON.stringify({
+          action: submit ? 'SAVE_SUBMIT' : 'SAVE',
+          id,
+          revision,
+          fields,
+          ...(!submit && renewalSource ? { renewedFromId: renewalSource.id } : {}),
+        }),
       }),
       'Save failed. Your entries are still here.',
     );
@@ -139,8 +176,10 @@ export function Certifications({
   );
   return (
     <div className="certifications-container">
-      {!actionsContainer && <div className="my-skills-actions">{actions}</div>}
-      {actionsContainer && createPortal(actions, actionsContainer)}
+      {!recommendationsTab && !actionsContainer && (
+        <div className="my-skills-actions">{actions}</div>
+      )}
+      {!recommendationsTab && actionsContainer && createPortal(actions, actionsContainer)}
       {!personalOnly && (
         <nav className="cert-nav-tabs" aria-label="Certification views">
           <button
@@ -159,6 +198,15 @@ export function Certifications({
               Assigned reviews
             </button>
           )}
+          {(data?.canViewRecommendations || data?.canRecommend || recommendationsTab) && (
+            <button
+              className={`cert-nav-tab-btn ${recommendationsTab ? 'active' : ''}`}
+              aria-current={recommendationsTab ? 'page' : undefined}
+              onClick={() => changeView('recommendations')}
+            >
+              Recommendations
+            </button>
+          )}
         </nav>
       )}
       {error && (
@@ -170,15 +218,26 @@ export function Certifications({
         </section>
       )}
       {loading && <p role="status">Loading certifications…</p>}
-      {data && (
+      {data && recommendationsTab && (data.canViewRecommendations || data.canRecommend) && (
+        <CertificationRecommendations
+          sentOnly={Boolean(data.canRecommend && !data.canViewRecommendations)}
+        />
+      )}
+      {data && !recommendationsTab && (
         <CertificationProfileView
           loading={loading}
           records={data.records}
           today={today}
           canManage={data.canManage}
+          canRenew={data.canManage && data.canUploadImage}
           onAdd={() => setEditing(null)}
           onView={setViewing}
           onEdit={setEditing}
+          onRenew={record => {
+            setRenewalSource(record);
+            setRenewalFields(certificationRenewalFields(record, today));
+            setEditing(null);
+          }}
           onSubmit={record => {
             setSubmitError('');
             setSubmitting(record);
@@ -248,10 +307,14 @@ export function Certifications({
       {editing !== undefined && (
         <CertificationDialog
           initial={editing}
+          initialFields={renewalFields}
+          renewal={Boolean(renewalSource)}
           canSubmit={Boolean(data?.canSubmitNew)}
           imageAvailable={Boolean(data?.canUploadImage)}
           onClose={() => {
             setEditing(undefined);
+            setRenewalSource(undefined);
+            setRenewalFields(undefined);
             setAttempt(n => n + 1);
           }}
           onSave={save}

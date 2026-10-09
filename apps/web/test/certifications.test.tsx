@@ -5,6 +5,7 @@ import {
   certificationIdentityError,
   addCredentialMonths,
   credentialValidity,
+  certificationRenewalFields,
   certificationStatusLabels,
 } from '../src/certifications/certification-model';
 import { notificationDestination } from '../src/notification-model';
@@ -50,6 +51,20 @@ test('credential form validates dates, required issuer fields and safe links bef
   ])
     assert.ok(certificationFieldError({ ...fields, ...patch }, '2026-10-09'));
   assert.equal(notificationDestination('/certifications?tab=queue')?.kind, 'Certifications');
+  assert.equal(
+    notificationDestination('/certifications?renew=credential-id')?.label,
+    'Record renewal',
+  );
+});
+test('renewal draft keeps credential identity but resets dates, attachment-specific details and notes', () => {
+  assert.deepEqual(certificationRenewalFields(record('previous'), '2026-10-09'), {
+    ...fields,
+    certificationDate: '2026-10-09',
+    expiryDate: '',
+    credentialId: '',
+    credentialUrl: '',
+    notes: '',
+  });
 });
 
 test('credential wizard allows identity step before dates while draft saving still requires a complete credential', () => {
@@ -161,9 +176,11 @@ test('skills-style certification profile keeps review and expiry separate and ob
       ]}
       today="2026-10-09"
       canManage
+      canRenew
       onAdd={() => {}}
       onView={() => {}}
       onEdit={() => {}}
+      onRenew={() => {}}
       onSubmit={() => {}}
       onReview={() => {}}
     />,
@@ -173,9 +190,14 @@ test('skills-style certification profile keeps review and expiry separate and ob
   assert.match(html, /Filter certification review status/);
   assert.match(html, /Filter credential validity/);
   assert.match(html, /Expired/);
+  assert.match(
+    html,
+    /Manager reviewed<\/span><span class="cert-review-validity cert-expired">Expired<\/span>/,
+  );
   assert.match(html, /Certification profile overview/);
   assert.doesNotMatch(html, /Edit Azure Fundamentals draft/);
   assert.doesNotMatch(html, /Submit Azure Fundamentals for review/);
   assert.match(html, /Edit Draft credential draft/);
   assert.match(html, /Submit Draft credential for review/);
+  assert.match(html, /Record renewal for Azure Fundamentals/);
 });

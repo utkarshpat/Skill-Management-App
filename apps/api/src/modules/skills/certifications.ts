@@ -39,7 +39,13 @@ export interface CertificationQuery {
   search: string;
 }
 export type CertificationChange =
-  | { action: 'SAVE' | 'SAVE_SUBMIT'; id: string; revision: number; fields: CertificationFields }
+  | {
+      action: 'SAVE' | 'SAVE_SUBMIT';
+      id: string;
+      revision: number;
+      fields: CertificationFields;
+      renewedFromId?: string;
+    }
   | {
       action: 'SUBMIT' | 'APPROVE' | 'REQUEST_CHANGES' | 'REJECT';
       id: string;
@@ -110,7 +116,9 @@ export function certificationChange(input: unknown, now = new Date()): Certifica
   const revision = Number(v.revision);
   if (v.action === 'SAVE' || v.action === 'SAVE_SUBMIT') {
     if (
-      Object.keys(v).some(k => !['action', 'id', 'revision', 'fields'].includes(k)) ||
+      Object.keys(v).some(
+        k => !['action', 'id', 'revision', 'fields', 'renewedFromId'].includes(k),
+      ) ||
       !v.fields ||
       typeof v.fields !== 'object' ||
       Array.isArray(v.fields)
@@ -133,6 +141,10 @@ export function certificationChange(input: unknown, now = new Date()): Certifica
       )
     )
       fail('Invalid credential fields.');
+    const renewedFromId =
+      v.renewedFromId === undefined ? undefined : certificationId(v.renewedFromId);
+    if (renewedFromId && v.action !== 'SAVE')
+      fail('Renewal links can only be set while saving a draft.');
     const certificationDate = day(f.certificationDate),
       expiryDate = f.expiryDate === null ? null : day(f.expiryDate);
     if (
@@ -155,6 +167,7 @@ export function certificationChange(input: unknown, now = new Date()): Certifica
       action: v.action,
       id,
       revision,
+      ...(renewedFromId ? { renewedFromId } : {}),
       fields: {
         certificationName: text(f.certificationName, 200, 'certification name', true),
         provider: text(f.provider, 120, 'issuer', true),

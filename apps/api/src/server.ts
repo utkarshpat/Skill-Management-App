@@ -14,6 +14,7 @@ import { AssistantService, configuredProvider } from './modules/ai/index.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
 import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
 import { SqlCertificationStore } from './modules/skills/sql-certification-store.js';
+import { SqlCertificationRecommendationStore } from './modules/skills/sql-certification-recommendation-store.js';
 import { configuredEvidence } from './modules/skills/evidence.js';
 import { SqlConversationsStore } from './modules/ai/conversations.js';
 import {
@@ -45,6 +46,9 @@ const evidenceStore = configuredEvidence(process.env);
 const certificationImages = configuredEvidence(process.env, 'certification');
 const certifications = process.env.ACCESS_ACCOUNT_ID
   ? new SqlCertificationStore(process.env.ACCESS_ACCOUNT_ID)
+  : undefined;
+const certificationRecommendations = process.env.ACCESS_ACCOUNT_ID
+  ? new SqlCertificationRecommendationStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
 const catalogue = process.env.ACCESS_ACCOUNT_ID
   ? new SqlCatalogueStore(process.env.ACCESS_ACCOUNT_ID)
@@ -123,6 +127,7 @@ const app = createApp(
         catalogue,
         claims,
         certifications,
+        certificationRecommendations,
         evidenceStore,
         certificationImages,
         learning,

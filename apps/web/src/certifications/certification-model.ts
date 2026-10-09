@@ -97,3 +97,13 @@ export function certificationFields(record: CertificationRecord): CertificationF
     notes,
   };
 }
+export function certificationRenewalFields(record: CertificationRecord, today: string) {
+  return {
+    ...certificationFields(record),
+    certificationDate: today,
+    expiryDate: '',
+    credentialId: '',
+    credentialUrl: '',
+    notes: '',
+  };
+}

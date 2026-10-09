@@ -3,6 +3,7 @@ import type { EvidenceStore, EvidenceState } from './evidence.js';
 import {
   can,
   canReviewAssigned,
+  effectiveAccess,
   type AccessStore,
   type LocalAccessState,
   type LocalPerson,
@@ -111,6 +112,8 @@ export function registerCertificationRoutes(
         canManage: can(state, actor, 'skill.claim', true),
         canSubmitNew: canSubmitNewCertification(state, actor),
         canReview: canReviewAssigned(state, actor),
+        canRecommend: effectiveAccess(state, actor, 'learning.recommend', 'DIRECT_REPORTS').allowed,
+        canViewRecommendations: can(state, actor, 'learning.view', true),
         canUploadImage: Boolean(deps?.certificationImages),
         records: result.records.map(r => {
           const access = certificationAccess(state, actor, r);

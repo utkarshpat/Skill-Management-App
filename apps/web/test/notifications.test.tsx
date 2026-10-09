@@ -9,6 +9,16 @@ test('notification actions target implemented internal destinations without gran
     'Open recommendation',
   );
   assert.equal(notificationDestination('/skill-reviews?claim=123')?.kind, 'Skill reviews');
+  assert.equal(
+    notificationDestination('/certifications?tab=recommendations&recommendation=123')?.label,
+    'Open certification recommendation',
+  );
+  assert.equal(
+    notificationDestination(
+      '/skill-reviews?type=certifications&tab=recommendations&recommendation=123',
+    )?.label,
+    'Open certification recommendation',
+  );
   assert.equal(notificationDestination('/my-skills?claim=123')?.label, 'View skill claim');
   assert.equal(notificationDestination('/profile')?.label, 'View profile');
 });

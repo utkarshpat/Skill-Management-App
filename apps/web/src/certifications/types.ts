@@ -37,4 +37,6 @@ export interface CertificationPage {
   canManage: boolean;
   canSubmitNew: boolean;
   canReview: boolean;
+  canRecommend?: boolean;
+  canViewRecommendations?: boolean;
 }

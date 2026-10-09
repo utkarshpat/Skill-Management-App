@@ -20,7 +20,10 @@ import { toast } from '../toast';
 
 function RequiredMark() {
   return (
-    <span className="cert-required-mark" aria-hidden="true"> *</span>
+    <span className="cert-required-mark" aria-hidden="true">
+      {' '}
+      *
+    </span>
   );
 }
 
@@ -146,8 +149,13 @@ function ComboBox({
             onChange(e.target.value);
             if (!open) setOpen(true);
           }}
-          onFocus={() => { setOpen(true); setFocused(true); }}
-          onBlur={() => { setFocused(false); }}
+          onFocus={() => {
+            setOpen(true);
+            setFocused(true);
+          }}
+          onBlur={() => {
+            setFocused(false);
+          }}
         />
         <button
           type="button"
@@ -190,12 +198,16 @@ function ComboBox({
 /* ── Main dialog ──────────────────────────────────────── */
 export function CertificationDialog({
   initial,
+  initialFields,
+  renewal = false,
   onClose,
   onSave,
   canSubmit,
   imageAvailable = false,
 }: {
   initial?: CertificationRecord | null;
+  initialFields?: CertificationFields;
+  renewal?: boolean;
   canSubmit: boolean;
   imageAvailable?: boolean;
   onClose: () => void;
@@ -207,7 +219,7 @@ export function CertificationDialog({
   ) => Promise<number>;
 }) {
   const [fields, setFields] = useState<CertificationFields>(() =>
-    initial ? certificationFields(initial) : emptyCertification(),
+    initial ? certificationFields(initial) : (initialFields ?? emptyCertification()),
   );
   const [step, setStep] = useState(0),
     [error, setError] = useState(''),
@@ -240,7 +252,9 @@ export function CertificationDialog({
       : 'Attach a certificate file before continuing.';
   }
   const baseline = useRef(
-    JSON.stringify(initial ? certificationFields(initial) : emptyCertification()),
+    JSON.stringify(
+      initial ? certificationFields(initial) : (initialFields ?? emptyCertification()),
+    ),
   );
   const close = () => {
     if (busy) return;
@@ -384,7 +398,9 @@ export function CertificationDialog({
 
   return (
     <FormDialog
-      title={initial ? 'Update certification' : 'Add certification'}
+      title={
+        initial ? 'Update certification' : renewal ? 'Renew certification' : 'Add certification'
+      }
       subtitle={fields.certificationName || 'Record a credential for your capability profile'}
       onClose={close}
       busy={busy}
@@ -398,6 +414,12 @@ export function CertificationDialog({
           label: 'Certificate & details',
           content: (
             <div className="skill-details-layout certification-entry-layout">
+              {renewal && (
+                <p className="cert-renewal-note">
+                  This creates a new credential record. Your current manager-reviewed credential
+                  stays unchanged while the renewed certificate is submitted for review.
+                </p>
+              )}
               <section className="certification-image-pane">
                 <CertificateImageUploader
                   url={selectedImage === undefined ? storedImage.url : localImageUrl}
@@ -431,7 +453,10 @@ export function CertificationDialog({
 
                   {/* Certification name — full width */}
                   <label className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <span>Certification name<RequiredMark /></span>
+                    <span>
+                      Certification name
+                      <RequiredMark />
+                    </span>
                     <input
                       value={fields.certificationName}
                       maxLength={200}
@@ -442,7 +467,10 @@ export function CertificationDialog({
 
                   {/* Issuer combobox */}
                   <label className="form-group">
-                    <span>Issuer<RequiredMark /></span>
+                    <span>
+                      Issuer
+                      <RequiredMark />
+                    </span>
                     <ComboBox
                       value={fields.provider}
                       onChange={v => update('provider', v)}
@@ -455,7 +483,10 @@ export function CertificationDialog({
 
                   {/* Category combobox */}
                   <label className="form-group">
-                    <span>Category<RequiredMark /></span>
+                    <span>
+                      Category
+                      <RequiredMark />
+                    </span>
                     <ComboBox
                       value={fields.category}
                       onChange={v => update('category', v)}
@@ -468,7 +499,10 @@ export function CertificationDialog({
 
                   {/* Issue date + Expiry date side by side */}
                   <label className="form-group">
-                    <span>Issue date<RequiredMark /></span>
+                    <span>
+                      Issue date
+                      <RequiredMark />
+                    </span>
                     <input
                       type="date"
                       value={fields.certificationDate}

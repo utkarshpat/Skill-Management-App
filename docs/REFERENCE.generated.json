@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "f2b77a9ba75bab4b",
+  "revision": "69a88439c5961a3a",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -59,7 +59,9 @@
       "053_certification_records.sql",
       "054_certification_images.sql",
       "055_required_certificate_image.sql",
-      "056_certificate_files.sql"
+      "056_certificate_files.sql",
+      "057_certification_expiry_reminders.sql",
+      "058_certification_review_workspace.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -4239,6 +4241,12 @@
             "nullable": false,
             "declaration": "updated_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
             "source": "053_certification_records.sql"
+          },
+          "renewed_from_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "renewed_from_id uniqueidentifier NULL",
+            "source": "057_certification_expiry_reminders.sql"
           }
         },
         "pk": [
@@ -4270,6 +4278,18 @@
               "person_id"
             ],
             "source": "053_certification_records.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "renewed_from_id"
+            ],
+            "target": "CertificationRecord",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "057_certification_expiry_reminders.sql"
           }
         ],
         "constraints": [
@@ -4296,6 +4316,14 @@
           {
             "sql": "CHECK(LEN(LTRIM(RTRIM(certification_name)))>0 AND LEN(LTRIM(RTRIM(provider)))>0 AND LEN(LTRIM(RTRIM(category)))>0)",
             "source": "053_certification_records.sql"
+          },
+          {
+            "sql": "CONSTRAINT FK_CertificationRecord_RenewedFrom FOREIGN KEY(account_id,renewed_from_id) REFERENCES dbo.CertificationRecord(account_id,id)",
+            "source": "057_certification_expiry_reminders.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_CertificationRecord_NotSelfRenewal CHECK(renewed_from_id IS NULL OR renewed_from_id<>id)",
+            "source": "057_certification_expiry_reminders.sql"
           }
         ],
         "indexes": [
@@ -4321,6 +4349,27 @@
             ],
             "filter": "",
             "source": "053_certification_records.sql"
+          },
+          {
+            "name": "IX_CertificationRecord_RenewalSource",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "renewed_from_id",
+              "status"
+            ],
+            "filter": "WHERE renewed_from_id IS NOT NULL",
+            "source": "057_certification_expiry_reminders.sql"
+          },
+          {
+            "name": "UX_CertificationRecord_ActiveRenewal",
+            "unique": true,
+            "columns": [
+              "account_id",
+              "renewed_from_id"
+            ],
+            "filter": "WHERE renewed_from_id IS NOT NULL AND status<>'CHANGES_REQUESTED' AND status<>'REJECTED'",
+            "source": "057_certification_expiry_reminders.sql"
           }
         ],
         "domain": "Skills & claims"
@@ -4454,6 +4503,260 @@
           }
         ],
         "domain": "Skills & claims"
+      },
+      "CertificationRecommendation": {
+        "source": "058_certification_review_workspace.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "sender_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "sender_id uniqueidentifier NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "certification_name": {
+            "type": "nvarchar(200)",
+            "nullable": false,
+            "declaration": "certification_name nvarchar(200) NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "provider": {
+            "type": "nvarchar(120)",
+            "nullable": false,
+            "declaration": "provider nvarchar(120) NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "category": {
+            "type": "nvarchar(80)",
+            "nullable": false,
+            "declaration": "category nvarchar(80) NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "reason": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "reason nvarchar(2000) NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "credential_url": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "credential_url nvarchar(1000) NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "target_date": {
+            "type": "date",
+            "nullable": true,
+            "declaration": "target_date date NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "status": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "status varchar(20) NOT NULL CHECK(status IN('PENDING','DISCUSSION','ACCEPTED','DECLINED'))",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL CHECK(revision>0)",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "response": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "response nvarchar(2000) NOT NULL DEFAULT N''",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "created_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "created_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "updated_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "updated_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "058_certification_review_workspace.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "sender_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "058_certification_review_workspace.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "058_certification_review_workspace.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id)",
+            "source": "058_certification_review_workspace.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,sender_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "058_certification_review_workspace.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "058_certification_review_workspace.sql"
+          },
+          {
+            "sql": "CHECK(sender_id<>person_id)",
+            "source": "058_certification_review_workspace.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_CertificationRecommendation_Person",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "person_id",
+              "updated_at"
+            ],
+            "filter": "",
+            "source": "058_certification_review_workspace.sql"
+          },
+          {
+            "name": "IX_CertificationRecommendation_Sender",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "sender_id",
+              "updated_at"
+            ],
+            "filter": "",
+            "source": "058_certification_review_workspace.sql"
+          }
+        ],
+        "domain": "Learning & recommendations"
+      },
+      "CertificationRecommendationEvent": {
+        "source": "058_certification_review_workspace.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "actor_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "actor_id uniqueidentifier NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "action": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "action varchar(20) NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "message": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "message nvarchar(2000) NOT NULL",
+            "source": "058_certification_review_workspace.sql"
+          },
+          "created_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "created_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "058_certification_review_workspace.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id",
+          "revision"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "id"
+            ],
+            "target": "CertificationRecommendation",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "058_certification_review_workspace.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id,revision)",
+            "source": "058_certification_review_workspace.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,id) REFERENCES dbo.CertificationRecommendation(account_id,id)",
+            "source": "058_certification_review_workspace.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Learning & recommendations"
       }
     },
     "views": {
@@ -4730,6 +5033,36 @@
       "path": "/api/recommendations/respond",
       "module": "recommendations",
       "source": "apps/api/src/modules/recommendations/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/certification-recommendations",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/certification-recommendation-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/certification-recommendations/analytics",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/certification-recommendation-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/certification-recommendations/people",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/certification-recommendation-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/certification-recommendations/send",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/certification-recommendation-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/certification-recommendations/respond",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/certification-recommendation-routes.ts"
     },
     {
       "method": "GET",
@@ -5092,6 +5425,36 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL,\n @mime_type varchar(100)=NULL,@file_name nvarchar(255)=NULL",
       "source": "database/migrations/056_certificate_files.sql"
+    },
+    {
+      "name": "LinkCertificationRenewal",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,\n @certification_id uniqueidentifier,@renewed_from_id uniqueidentifier",
+      "source": "database/migrations/057_certification_expiry_reminders.sql"
+    },
+    {
+      "name": "CertificationExpiryNotifications",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/057_certification_expiry_reminders.sql"
+    },
+    {
+      "name": "CertificationRecommendationCan",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@sender uniqueidentifier,@person uniqueidentifier)\nRETURNS bit",
+      "source": "database/migrations/058_certification_review_workspace.sql"
+    },
+    {
+      "name": "CertificationReviewAnalytics",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/058_certification_review_workspace.sql"
+    },
+    {
+      "name": "CertificationRecommendations",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@action varchar(20),@payload nvarchar(max)",
+      "source": "database/migrations/058_certification_review_workspace.sql"
     }
   ],
   "groups": {
@@ -5142,7 +5505,9 @@
       "LearningQuiz",
       "LearningAttempt",
       "LearningRecommendation",
-      "LearningRecommendationEvent"
+      "LearningRecommendationEvent",
+      "CertificationRecommendation",
+      "CertificationRecommendationEvent"
     ],
     "Requests & incidents": [
       "WorkflowRecord",

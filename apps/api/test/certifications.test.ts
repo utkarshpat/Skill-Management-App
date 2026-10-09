@@ -28,6 +28,16 @@ const fields = {
 test('certification input rejects forged owners, review status, unsafe URLs and invalid dates', () => {
   const change = { action: 'SAVE_SUBMIT', id: randomUUID(), revision: 0, fields };
   assert.equal(certificationChange(change).action, 'SAVE_SUBMIT');
+  const sourceId = randomUUID();
+  const renewal = certificationChange({
+    action: 'SAVE',
+    id: randomUUID(),
+    revision: 0,
+    fields,
+    renewedFromId: sourceId,
+  });
+  assert.ok(renewal.action === 'SAVE' && renewal.renewedFromId === sourceId);
+  assert.throws(() => certificationChange({ ...change, renewedFromId: sourceId }));
   for (const patch of [
     { personId: randomUUID() },
     { reviewerId: randomUUID() },
@@ -59,9 +69,32 @@ test('certification input rejects forged owners, review status, unsafe URLs and 
       feedback: 'Forged approval',
     }),
   );
+  assert.throws(() =>
+    certificationChange({
+      action: 'APPROVE',
+      id: change.id,
+      revision: 1,
+      feedback: 'Approved',
+      renewedFromId: sourceId,
+    }),
+  );
   assert.throws(() => certificationQuery({ view: 'directory' }));
   assert.throws(() => certificationQuery({ view: 'queue', personId: change.id }));
   assert.throws(() => certificationQuery({ page: ['1'] }));
+});
+
+test('expiry reminder migration is owner-bound, date-staged and keeps renewal history linked', async () => {
+  const source = await readFile(
+    new URL('../../../database/migrations/057_certification_expiry_reminders.sql', import.meta.url),
+    'utf8',
+  );
+  for (const days of [14, 10, 7, 5, 3, 0]) assert.match(source, new RegExp(`\\(${days}\\)`));
+  assert.match(source, /c\.person_id=@actor_id AND c\.status='APPROVED'/);
+  assert.match(source, /renewal\.status IN\('SUBMITTED','APPROVED'\)/);
+  assert.match(source, /CertificationExpiryNotifications/);
+  assert.match(source, /LinkCertificationRenewal/);
+  assert.match(source, /certification\.renewal_started/);
+  assert.match(source, /UX_CertificationRecord_ActiveRenewal/);
 });
 
 async function fixture() {

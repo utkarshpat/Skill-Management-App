@@ -40,6 +40,10 @@ import {
   type CertificationDependencies,
 } from './modules/skills/certification-routes.js';
 import {
+  registerCertificationRecommendationRoutes,
+  type CertificationRecommendationDependencies,
+} from './modules/skills/certification-recommendation-routes.js';
+import {
   registerKnowledgeRoutes,
   type KnowledgeDependencies,
 } from './modules/knowledge-transfer/index.js';
@@ -54,6 +58,7 @@ export type AppDependencies = IdentityDependencies &
   WorkflowDependencies &
   RecommendationDependencies &
   CertificationDependencies &
+  CertificationRecommendationDependencies &
   KnowledgeDependencies;
 
 export function createApp(
@@ -84,6 +89,10 @@ export function createApp(
           certificationNotifications: dependencies.certifications?.notifications.bind(
             dependencies.certifications,
           ),
+          certificationRecommendationNotifications:
+            dependencies.certificationRecommendations?.notifications.bind(
+              dependencies.certificationRecommendations,
+            ),
         }
       : undefined,
     store,
@@ -103,6 +112,7 @@ export function createApp(
   );
   registerLearningRoutes(app, dependencies, store, demo);
   registerCertificationRoutes(app, dependencies, store, demo);
+  registerCertificationRecommendationRoutes(app, dependencies, store, demo);
   registerRecommendationRoutes(app, dependencies, store, demo);
   registerWorkflowRoutes(app, dependencies, store, demo);
   registerDashboardRoutes(

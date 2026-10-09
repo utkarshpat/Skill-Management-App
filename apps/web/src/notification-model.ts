@@ -16,9 +16,25 @@ export function notificationDestination(href: string) {
       kind: 'Learn & Grow',
       icon: BookOpen,
     },
-    '/skill-reviews': { label: 'Review claim', kind: 'Skill reviews', icon: ClipboardCheck },
+    '/skill-reviews': {
+      label: url.searchParams.has('recommendation')
+        ? 'Open certification recommendation'
+        : url.searchParams.get('type') === 'certifications'
+          ? 'Review certification'
+          : 'Review claim',
+      kind: 'Skill reviews',
+      icon: ClipboardCheck,
+    },
     '/my-skills': { label: 'View skill claim', kind: 'My skills', icon: ClipboardCheck },
-    '/certifications': { label: 'View certification', kind: 'Certifications', icon: ClipboardCheck },
+    '/certifications': {
+      label: url.searchParams.has('renew')
+        ? 'Record renewal'
+        : url.searchParams.has('recommendation')
+          ? 'Open certification recommendation'
+          : 'View certification',
+      kind: 'Certifications',
+      icon: ClipboardCheck,
+    },
     '/profile': { label: 'View profile', kind: 'Profile & access', icon: Bell },
   };
   return actions[url.pathname];
