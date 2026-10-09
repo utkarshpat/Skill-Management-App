@@ -70,7 +70,7 @@ export const emptyCertification = (): CertificationFields => ({
   provider: '',
   category: '',
   certificationDate: '',
-  expiryDate: null,
+  expiryDate: '',
   credentialId: '',
   credentialUrl: '',
   notes: '',

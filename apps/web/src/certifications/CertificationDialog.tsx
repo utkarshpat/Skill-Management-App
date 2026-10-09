@@ -20,13 +20,7 @@ import { toast } from '../toast';
 
 function RequiredMark() {
   return (
-    <>
-      {' '}
-      <span className="cert-required-mark" aria-hidden="true">
-        *
-      </span>
-      <span className="sr-only">required</span>
-    </>
+    <span className="cert-required-mark" aria-hidden="true"> *</span>
   );
 }
 
@@ -94,6 +88,7 @@ function ComboBox({
   id?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [inputVal, setInputVal] = useState(value);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -106,7 +101,10 @@ function ComboBox({
   useEffect(() => {
     if (!open) return;
     function handle(e: MouseEvent) {
-      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setFocused(false);
+      }
     }
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
@@ -114,18 +112,12 @@ function ComboBox({
 
   const isOtherSelected = value !== '' && !presets.includes(value);
   const typed = inputVal.trim().toLowerCase();
-
-  // suggestions: when user types ≥3 chars, filter presets
-  const suggestions =
-    typed.length >= 3
-      ? presets.filter(p => p.toLowerCase().includes(typed) && p.toLowerCase() !== typed)
-      : [];
-
+  // show only matching when user has typed something; otherwise show full list
+  const isFiltering = typed.length > 0;
   const listItems: string[] = ['Other', ...presets];
-  const filtered =
-    typed.length >= 3
-      ? listItems.filter(p => p === 'Other' || p.toLowerCase().includes(typed))
-      : listItems;
+  const filtered = isFiltering
+    ? listItems.filter(p => p === 'Other' || p.toLowerCase().includes(typed))
+    : listItems;
 
   function select(item: string) {
     if (item === 'Other') {
@@ -138,12 +130,9 @@ function ComboBox({
     setOpen(false);
   }
 
-  const showDropdown = open || suggestions.length > 0;
-  const showSuggestions = !open && suggestions.length > 0;
-
   return (
     <div ref={containerRef} className="cert-combobox" style={{ position: 'relative' }}>
-      <div className="cert-combobox-field">
+      <div className={`cert-combobox-field${focused ? ' cert-combobox-focused' : ''}`}>
         <input
           id={id}
           type="text"
@@ -157,7 +146,8 @@ function ComboBox({
             onChange(e.target.value);
             if (!open) setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => { setOpen(true); setFocused(true); }}
+          onBlur={() => { setFocused(false); }}
         />
         <button
           type="button"
@@ -165,14 +155,18 @@ function ComboBox({
           className="cert-combobox-toggle"
           disabled={disabled}
           aria-label="Show options"
-          onClick={() => setOpen(o => !o)}
+          onMouseDown={e => {
+            e.preventDefault(); // prevent input blur before toggling
+            setOpen(o => !o);
+            setFocused(true);
+          }}
         >
           ▾
         </button>
       </div>
-      {(open || showSuggestions) && (
+      {open && (
         <ul className="cert-combobox-list" role="listbox">
-          {(open ? filtered : suggestions).map(item => (
+          {filtered.map(item => (
             <li
               key={item}
               role="option"
@@ -186,7 +180,7 @@ function ComboBox({
               {item}
             </li>
           ))}
-          {open && filtered.length === 0 && <li className="cert-combobox-empty">No matches</li>}
+          {filtered.length === 0 && <li className="cert-combobox-empty">No matches</li>}
         </ul>
       )}
     </div>
@@ -437,8 +431,7 @@ export function CertificationDialog({
 
                   {/* Certification name — full width */}
                   <label className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    Certification name
-                    <RequiredMark />
+                    <span>Certification name<RequiredMark /></span>
                     <input
                       value={fields.certificationName}
                       maxLength={200}
@@ -449,8 +442,7 @@ export function CertificationDialog({
 
                   {/* Issuer combobox */}
                   <label className="form-group">
-                    Issuer
-                    <RequiredMark />
+                    <span>Issuer<RequiredMark /></span>
                     <ComboBox
                       value={fields.provider}
                       onChange={v => update('provider', v)}
@@ -463,8 +455,7 @@ export function CertificationDialog({
 
                   {/* Category combobox */}
                   <label className="form-group">
-                    Category
-                    <RequiredMark />
+                    <span>Category<RequiredMark /></span>
                     <ComboBox
                       value={fields.category}
                       onChange={v => update('category', v)}
@@ -477,8 +468,7 @@ export function CertificationDialog({
 
                   {/* Issue date + Expiry date side by side */}
                   <label className="form-group">
-                    Issue date
-                    <RequiredMark />
+                    <span>Issue date<RequiredMark /></span>
                     <input
                       type="date"
                       value={fields.certificationDate}
