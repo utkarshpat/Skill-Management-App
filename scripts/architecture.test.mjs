@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { checkSources, imports } from './check-architecture.mjs';
 
@@ -8,6 +9,13 @@ const ai = 'apps/api/src/modules/ai/';
 const shared = 'apps/api/src/shared/';
 const web = 'apps/web/src/';
 const fixture = (...entries) => new Map(entries);
+
+test('Vercel web service serves every explicit SPA route directly', () => {
+  const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
+  const webRoute = config.services.web.rewrites.find(route => route.destination === '/index.html');
+  assert.ok(webRoute, 'web service must rewrite supported routes to the SPA entry point');
+  assert.match(webRoute.source, /(?:^|\|)certifications(?:\||\))/);
+});
 
 test('public module contracts pass; private adapters and re-exports are rejected', () => {
   const sources = fixture(

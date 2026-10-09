@@ -17,7 +17,7 @@
       "outputDirectory": "dist",
       "rewrites": [
         {
-          "source": "/:page(access|workspace|profile|my-skills|skills|skill-reviews|learning|requests|preview|knowledgetransfer)",
+          "source": "/:page(access|workspace|profile|my-skills|certifications|skills|skill-reviews|learning|requests|preview|knowledgetransfer)",
           "destination": "/index.html"
         }
       ]

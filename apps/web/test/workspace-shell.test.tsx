@@ -54,6 +54,7 @@ test('supported deep links are explicit and unknown paths do not masquerade as t
     '/workspace',
     '/profile',
     '/my-skills',
+    '/certifications',
     '/skills',
     '/skill-reviews',
     '/learning',
