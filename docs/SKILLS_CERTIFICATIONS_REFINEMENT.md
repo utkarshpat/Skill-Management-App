@@ -11,6 +11,9 @@ The first implemented increment repairs the new Certifications feature. Skills r
 - Review notes, saved reviewer/date, immutable audit entries and participant notification links.
 - Independent expiry and review status; approval never verifies the issuer or creates skill proficiency.
 - No simulated document extraction or issuer lookup. File attachments are explicitly unavailable.
+- Unified personal sidebar entry **Capabilities**, with permission-gated Skills and Certifications tabs. Existing portfolio URLs and their claim deep links remain valid.
+- Certification portfolio uses the Skills profile's shared metric, table, filter, pagination and overview styles. Total/review/pending/draft metrics and review distribution use every authorized certification page, not only the first 25 records. Search, category, review status, validity and To complete/Reviewed views filter the loaded portfolio. Renewal attention keeps expiry independent of manager approval. Credential details and saved feedback open in a read-only dialog; edit/submit/review controls still come from each server record. Multi-page loading rejects changed totals, duplicate IDs and incomplete results; these reads are independently authorized pages, not one atomic SQL snapshot.
+- **Reviews** opens a combined pending queue with All, Skills and Certifications filters and counts from the existing authorized APIs. Each batch reads one page from each source; it is explicitly labelled instead of pretending to be globally sorted pagination. Skill history, team analytics and recommendations remain in the skill workbench. Decisions keep separate proficiency and credential forms and existing execution-time access checks. Legacy certification queue links redirect to the certification review filter.
 
 The feature shares existing skill read/claim/review permissions. It does not create automatic grants or expose an organization-wide directory. The approved current-manager selection is recorded in the Access Management baseline.
 
@@ -25,8 +28,8 @@ The old browser store `cil.certifications.v1` is left untouched. It contains no 
 ## Recommended next increments
 
 1. **Connect evidence:** allow a certification to be referenced by an employee's skill claim through a server-validated owner-bound link. Show credential review and validity alongside the skill evidence without changing the skill's proficiency or claim status.
-2. **Credential evidence storage:** reuse the private evidence architecture with certification-specific upload/read authorization, immutable submitted snapshots, retention/delete policy and file validation. Add real extraction only as a reviewed draft assist; unknown fields stay unknown.
-3. **Unified UX:** consistent draft/submission/feedback language, a combined personal attention view and a manager workbench separating skill proficiency review from credential review. Keep private drafts and personal learning logs excluded.
+2. **Credential evidence follow-up:** one private certificate image, replacement/removal, server file validation and submitted-state locks are implemented in migration 054. Finish retention cleanup, authenticated hosted acceptance and operational scanning. Add real extraction only as a reviewed draft assist; unknown fields stay unknown.
+3. **Further unified UX:** extend the combined portfolio navigation and pending review queue with a personal attention view and globally ordered server pagination if needed. Keep private drafts and personal learning logs excluded; preserve separate skill proficiency and credential review semantics.
 4. **Renewal/version history:** relate a new credential to an earlier credential through validated ownership and show previous reviews without allowing historical approved facts to be overwritten.
 5. **Catalogue mapping and reporting:** optional links to published catalogue skills with version-aware display. Define implemented reporting permission/resource scopes before adding directory exports or department/unit analytics.
 

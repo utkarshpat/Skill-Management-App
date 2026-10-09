@@ -9,7 +9,6 @@ import {
   Inbox,
   Layers,
   Plus,
-  RefreshCw,
   Sparkles,
 } from 'lucide-react';
 import { authenticatedFetch } from './auth';
@@ -181,14 +180,6 @@ export function Dashboard() {
           <h2>Your day, in focus</h2>
           <p>Move work forward, build skills and keep track of what changes.</p>
         </div>
-        <button
-          className="secondary-button"
-          onClick={() => setAttempt(n => n + 1)}
-          aria-label="Refresh dashboard"
-        >
-          <RefreshCw size={17} />
-          Refresh
-        </button>
       </div>
       <RefreshIndicator status={freshness} />
       {error && (

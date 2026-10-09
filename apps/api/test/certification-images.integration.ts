@@ -5,16 +5,16 @@ import { readFile } from 'node:fs/promises';
 import sql from 'mssql';
 import { withDatabase } from '../src/shared/database.js';
 const account = process.env.ACCESS_ACCOUNT_ID;
-assert.ok(account, 'Set ACCESS_ACCOUNT_ID for a workspace with schema through 052.');
+assert.ok(account, 'Set ACCESS_ACCOUNT_ID for a workspace with schema through 053.');
 const migration = await readFile(
-  new URL('../../../database/migrations/053_certification_records.sql', import.meta.url),
+  new URL('../../../database/migrations/054_certification_images.sql', import.meta.url),
   'utf8',
 );
 await withDatabase(async pool => {
   const version = (
     await pool.request().query('SELECT MAX(version) AS version FROM dbo.SchemaMigration')
   ).recordset[0].version;
-  assert.ok(version >= 52, 'Schema through 052 is required.');
+  assert.ok(version >= 53, 'Schema through 053 is required.');
   const baseline = (
     await pool
       .request()
@@ -22,13 +22,15 @@ await withDatabase(async pool => {
       .query('SELECT revision FROM dbo.AccessWorkspace WHERE account_id=@account')
   ).recordset[0].revision;
   for (const scenario of [
+    'required',
+    'required-combined',
     'roundtrip',
-    'self-review',
-    'foreign-save',
+    'foreign',
     'stale',
-    'approved-edit',
-    'deny',
+    'locked',
+    'draft-manager',
     'reassigned',
+    'deny',
     'inactive',
   ] as const) {
     const tx = new sql.Transaction(pool);
@@ -38,8 +40,19 @@ await withDatabase(async pool => {
       aborted = true;
     });
     try {
-      if (version < 53)
+      if (version < 54)
         for (const batch of migration.split(/^GO\s*$/m))
+          if (batch.trim()) await new sql.Request(tx).batch(batch);
+      if (version < 55)
+        for (const batch of (
+          await readFile(
+            new URL(
+              '../../../database/migrations/055_required_certificate_image.sql',
+              import.meta.url,
+            ),
+            'utf8',
+          )
+        ).split(/^GO\s*$/m))
           if (batch.trim()) await new sql.Request(tx).batch(batch);
       const owner = randomUUID(),
         manager = randomUUID(),
@@ -78,93 +91,92 @@ await withDatabase(async pool => {
           .input('operation', sql.VarChar(20), operation)
           .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload))
           .execute<Record<string, unknown>>('dbo.CertificationWorkspace');
+
       await run(owner, 'SAVE', { id, revision: 0, fields });
-      if (version >= 54)
-        await new sql.Request(tx)
-          .input('account', sql.UniqueIdentifier, account)
-          .input('id', sql.UniqueIdentifier, id)
-          .query(
-            `INSERT dbo.CertificationImageRecord(account_id,certification_id,evidence_id,blob_name,bytes,width,height) VALUES(@account,@id,NEWID(),'rollback-fixture',100,50,50);`,
-          );
-      await run(owner, 'SAVE_SUBMIT', { id, revision: 1, fields });
-      const review = () =>
-        run(manager, 'APPROVE', { id, revision: 2, feedback: 'Checked issuer transcript' });
+      const imageRun = (
+        actor: string,
+        operation = 'READ',
+        revision = 1,
+        image = randomUUID(),
+      ): Promise<sql.IProcedureResult<Record<string, unknown>>> =>
+        new sql.Request(tx)
+          .input('account_id', sql.UniqueIdentifier, account)
+          .input('actor_id', sql.UniqueIdentifier, actor)
+          .input('claim_id', sql.UniqueIdentifier, id)
+          .input('operation', sql.VarChar(8), operation)
+          .input('expected_revision', sql.Int, revision)
+          .input('evidence_id', sql.UniqueIdentifier, image)
+          .input(
+            'blob_name',
+            sql.VarChar(160),
+            `${account.toLowerCase()}/certifications/${id}/${image}.webp`,
+          )
+          .input('bytes', sql.Int, 100)
+          .input('width', sql.Int, 50)
+          .input('height', sql.Int, 50)
+          .execute('dbo.CertificationImage');
       const rejected = (work: Promise<unknown>, number: number) =>
         assert.rejects(work, e => (e as { number: number }).number === number);
-      if (scenario === 'roundtrip') {
-        const queue = await run(manager, 'LIST', { view: 'queue' });
-        assert.equal(
-          String(
-            (queue.recordsets as unknown as Record<string, unknown>[][])[1][0].personId,
-          ).toLowerCase(),
-          owner.toLowerCase(),
-        );
-        const runtime: sql.IResult<{ recordsRead: number }> = await new sql.Request(tx)
+      if (scenario === 'required')
+        await rejected(run(owner, 'SUBMIT', { id, revision: 1, feedback: '' }), 51012);
+      else if (scenario === 'required-combined')
+        await rejected(run(owner, 'SAVE_SUBMIT', { id: randomUUID(), revision: 0, fields }), 51012);
+      else if (scenario === 'roundtrip') {
+        const first = randomUUID(),
+          second = randomUUID();
+        assert.equal((await imageRun(owner, 'ADD', 1, first)).recordset[0].revision, 2);
+        const replaced = await imageRun(owner, 'ADD', 2, second);
+        assert.equal(replaced.recordset[0].revision, 3);
+        const items = (replaced.recordsets as unknown as Record<string, unknown>[][])[1];
+        assert.equal(items.length, 1);
+        assert.equal(String(items[0].id).toLowerCase(), second);
+        const removed = await imageRun(owner, 'REMOVE', 3);
+        assert.equal(removed.recordset[0].revision, 4);
+        assert.equal((removed.recordsets as unknown as unknown[][])[1].length, 0);
+        await imageRun(owner, 'ADD', 4);
+        await run(owner, 'SUBMIT', { id, revision: 5, feedback: '' });
+        assert.equal((await imageRun(manager)).recordset[0].canUpload, false);
+        await new sql.Request(tx)
           .input('account', sql.UniqueIdentifier, account)
-          .input('manager', sql.UniqueIdentifier, manager)
-          .input(
-            'payload',
-            sql.NVarChar(sql.MAX),
-            JSON.stringify({ id, revision: 2, feedback: 'Checked issuer transcript' }),
-          ).query(`EXECUTE AS USER=N'skill_management_runtime';
-          BEGIN TRY
-            EXEC dbo.CertificationWorkspace @account_id=@account,@actor_id=@manager,@operation='APPROVE',@payload=@payload;
-            SELECT HAS_PERMS_BY_NAME(N'dbo.CertificationRecord',N'OBJECT',N'SELECT') AS recordsRead;
-            REVERT;
-          END TRY BEGIN CATCH REVERT;THROW;END CATCH;`);
-        assert.equal(
-          runtime.recordset[0].recordsRead,
-          0,
-          'Runtime must use the guarded procedure.',
-        );
-        const result = await run(owner, 'GET', { id });
-        assert.equal(result.recordset[0].status, 'APPROVED');
-        assert.equal(
-          result.recordset[0].expiryDate,
-          '2021-01-01',
-          'Approval must not alter expiry',
-        );
-        assert.equal(result.recordset[0].revision, 3);
-        const audit: sql.IResult<{ action: string }> = await new sql.Request(tx)
-          .input('account', sql.UniqueIdentifier, account)
+          .input('actor', sql.UniqueIdentifier, owner)
           .input('id', sql.UniqueIdentifier, id)
-          .query<{ action: string }>(
-            'SELECT action FROM dbo.AccessAudit WHERE account_id=@account AND target_id=@id ORDER BY revision',
+          .query(
+            `EXECUTE AS USER='skill_management_runtime'; BEGIN TRY EXEC dbo.CertificationImage @account,@actor,@id; REVERT; END TRY BEGIN CATCH REVERT; THROW; END CATCH;`,
           );
-        assert.deepEqual(
-          audit.recordset.map(r => r.action),
-          ['certification.saved', 'certification.submitted', 'certification.approved'],
+        const permissions = await new sql.Request(tx).query(
+          "EXECUTE AS USER='skill_management_runtime'; SELECT HAS_PERMS_BY_NAME('dbo.CertificationImageRecord','OBJECT','SELECT') AS directRead; REVERT;",
         );
-      } else if (scenario === 'self-review')
-        await rejected(run(owner, 'APPROVE', { id, revision: 2, feedback: 'Self review' }), 51003);
-      else if (scenario === 'foreign-save')
-        await rejected(run(other, 'SAVE', { id, revision: 2, fields }), 51003);
-      else if (scenario === 'stale')
-        await rejected(run(manager, 'APPROVE', { id, revision: 3, feedback: 'Stale' }), 51009);
-      else if (scenario === 'approved-edit') {
-        await review();
-        await rejected(run(owner, 'SAVE', { id, revision: 3, fields }), 51010);
+        assert.equal(permissions.recordset[0].directRead, 0);
+      } else if (scenario === 'foreign') await rejected(imageRun(other, 'ADD'), 51003);
+      else if (scenario === 'stale') await rejected(imageRun(owner, 'ADD', 2), 51009);
+      else if (scenario === 'draft-manager') await rejected(imageRun(manager), 51003);
+      else if (scenario === 'locked') {
+        await imageRun(owner, 'ADD', 1);
+        await run(owner, 'SUBMIT', { id, revision: 2, feedback: '' });
+        await rejected(imageRun(owner, 'ADD', 3), 51003);
       } else {
+        await imageRun(owner, 'ADD', 1);
+        await run(owner, 'SUBMIT', { id, revision: 2, feedback: '' });
         const request = new sql.Request(tx)
           .input('account', sql.UniqueIdentifier, account)
           .input('owner', sql.UniqueIdentifier, owner)
           .input('manager', sql.UniqueIdentifier, manager)
           .input('other', sql.UniqueIdentifier, other);
-        if (scenario === 'deny')
-          await request.query(
-            "INSERT dbo.AccessPersonOverride(account_id,person_id,permission_code,scope_kind,effect,reason,valid_until) VALUES(@account,@manager,'skill.verify','ORGANIZATION','DENY',N'QA deny',DATEADD(hour,1,SYSUTCDATETIME()));",
-          );
-        else if (scenario === 'reassigned')
+        if (scenario === 'reassigned')
           await request.query(
             'UPDATE dbo.AccessOrgAssignment SET manager_id=@other WHERE account_id=@account AND person_id=@owner;',
+          );
+        else if (scenario === 'deny')
+          await request.query(
+            "INSERT dbo.AccessPersonOverride(account_id,person_id,permission_code,scope_kind,effect,reason,valid_until) VALUES(@account,@manager,'skill.verify','ORGANIZATION','DENY',N'QA deny',DATEADD(hour,1,SYSUTCDATETIME()));",
           );
         else
           await request.query(
             'UPDATE dbo.AccessPerson SET active=0 WHERE account_id=@account AND person_id=@owner;',
           );
-        await rejected(review(), 51003);
+        await rejected(imageRun(manager), 51003);
       }
-      console.log('Rollback certification scenario passed:', scenario);
+      console.log('Rollback certification image scenario passed:', scenario);
     } finally {
       if (!aborted) await tx.rollback();
     }

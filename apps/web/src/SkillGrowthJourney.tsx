@@ -1,14 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import {
-  ArrowRight,
-  BookOpen,
-  CheckCircle2,
-  Clock3,
-  RefreshCw,
-  Sparkles,
-  Target,
-} from 'lucide-react';
+import { ArrowRight, BookOpen, CheckCircle2, Clock3, Sparkles, Target } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import type { Claim } from './MySkills';
@@ -139,14 +131,6 @@ export function SkillGrowthJourney({ plans, canManage, onContinue, onResume }: P
             process.
           </p>
         </div>
-        <button
-          className="secondary-button"
-          disabled={loading}
-          onClick={() => setAttempt(value => value + 1)}
-        >
-          <RefreshCw size={16} />
-          Refresh
-        </button>
       </header>
       {error && (
         <p className="growth-journey-message" role="alert">

@@ -142,14 +142,6 @@ export function Recommendations({
           </p>
         </div>
         <div className="recommendation-actions">
-          <button
-            className="secondary-button"
-            disabled={loading}
-            onClick={() => setAttempt(n => n + 1)}
-          >
-            <RefreshCw size={16} />
-            Refresh
-          </button>
           {feed?.canSend && (
             <button className="admin-primary" onClick={() => setSending(true)}>
               <Plus size={17} />

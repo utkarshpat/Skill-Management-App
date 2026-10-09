@@ -10,6 +10,8 @@ The user selected the assigned current direct-manager policy for certification r
 
 Approval records a manager decision, independently of issuer validation and calendar-derived expiry. On 9 October 2026, user-approved migration 053 was installed on `skill-management-dev` and its rollback SQL fixture passed before and after installation, including restricted-runtime approval on installed 053. Other targets require installation and SQL verification; hosted deployment and authenticated browser acceptance remain pending.
 
+Migration 054 extends the same record policy to private certificate images. Owners may attach, replace or remove the current image only in editable states; submitted/approved images are locked. Only the exact assigned current manager may read a submitted image, with current relationship, active-status, permission and no-self-review checks in both API and SQL. Image mutations recheck revision and authorization in the SQL transaction and audit the change. No public Blob URLs or broader evidence scopes are exposed. Previous replaced/removed private objects are retained; retention cleanup remains pending. Migration 054 is installed on `skill-management-dev`; hosted acceptance remains pending.
+
 1. Person, role and access are distinct. Permission, scope, relationship and workflow constraints must remain separate.
 2. Hierarchy does not automatically grant authority. The explicitly defined current direct-manager skill-review policy is relationship-derived authority.
 3. Access templates are reusable permission bundles. Scoped allow/deny exceptions require a reason and expiry.

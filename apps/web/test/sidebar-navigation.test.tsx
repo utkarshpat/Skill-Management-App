@@ -56,6 +56,31 @@ test('defaults prioritize daily work across permission combinations and put prof
     ['requests', 'profile'],
   );
 });
+test('portfolio navigation combines both destinations without restoring denied tabs or reviews', () => {
+  for (const pathname of ['/my-skills', '/certifications']) {
+    const items = personalNavigationItems(
+      { ownProfile: true, ownSkills: true, certifications: true, reviewSkills: true },
+      pathname,
+    );
+    assert.equal(items.filter(item => item.label === 'Capabilities').length, 1);
+    assert.equal(
+      items.some(item => item.id === 'certifications'),
+      false,
+    );
+    assert.equal(items.find(item => item.id === 'my-skills')?.active, true);
+    assert.equal(items.find(item => item.id === 'skill-reviews')?.label, 'Reviews');
+  }
+  const limited = personalNavigationItems(
+    { ownProfile: true, ownSkills: false, certifications: true, reviewSkills: false },
+    '/certifications',
+  );
+  assert.equal(limited.find(item => item.id === 'my-skills')?.href, '/certifications');
+  assert.equal(
+    limited.some(item => item.id === 'skill-reviews'),
+    false,
+  );
+  assert.equal(personalNavigationItems({ ownProfile: false, ownSkills: false }).length, 0);
+});
 test('stored display preference cannot create links or restore revoked navigation', () => {
   const allowed = [{ id: 'dashboard' }, { id: 'learning' }, { id: 'profile' }];
   assert.deepEqual(

@@ -270,14 +270,6 @@ export function SkillReviews() {
                     : `${data?.total ?? 0} ${data?.total === 1 ? 'claim' : 'claims'}${filtered ? ' matching your filters' : ' assigned to you'}`}
                 </p>
               </div>
-              <button
-                className="secondary-button review-refresh"
-                disabled={loading}
-                onClick={() => setAttempt(n => n + 1)}
-              >
-                <RefreshCw size={16} className={loading ? 'review-spin' : ''} />
-                <span>Refresh</span>
-              </button>
             </header>
             <form
               className="review-filters"

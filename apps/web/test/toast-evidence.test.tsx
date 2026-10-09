@@ -17,6 +17,40 @@ test('Browser compression rejects unsupported and oversized files before decode'
     compressEvidenceImage(new File([new Uint8Array(10485761)], 'huge.png', { type: 'image/png' })),
   );
 });
+test('certificate compression enforces the 5 MB original limit while evidence retains 10 MB', async () => {
+  const original = globalThis.createImageBitmap;
+  let decodes = 0;
+  globalThis.createImageBitmap = async () => {
+    decodes++;
+    throw Error('Synthetic decode failure');
+  };
+  try {
+    await assert.rejects(
+      compressEvidenceImage(
+        new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'too-large.png', { type: 'image/png' }),
+        5,
+      ),
+      /up to 5 MB/,
+    );
+    assert.equal(decodes, 0);
+    await assert.rejects(
+      compressEvidenceImage(
+        new File([new Uint8Array(5 * 1024 * 1024)], 'boundary.png', { type: 'image/png' }),
+        5,
+      ),
+      /could not be opened/,
+    );
+    await assert.rejects(
+      compressEvidenceImage(
+        new File([new Uint8Array(6 * 1024 * 1024)], 'evidence.png', { type: 'image/png' }),
+      ),
+      /could not be opened/,
+    );
+    assert.equal(decodes, 2);
+  } finally {
+    globalThis.createImageBitmap = original;
+  }
+});
 
 test('Toast success does not claim previews, AI responses or navigation are saved', async () => {
   const events: { message: string; kind: string }[] = [];

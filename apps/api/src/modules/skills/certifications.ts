@@ -20,6 +20,7 @@ export interface CertificationFields {
   notes: string;
 }
 export interface Certification extends CertificationFields {
+  hasImage?: boolean;
   id: string;
   revision: number;
   personId: string;

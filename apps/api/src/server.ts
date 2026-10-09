@@ -42,6 +42,7 @@ const claims = process.env.ACCESS_ACCOUNT_ID
   ? new SqlClaimsStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
 const evidenceStore = configuredEvidence(process.env);
+const certificationImages = configuredEvidence(process.env, 'certification');
 const certifications = process.env.ACCESS_ACCOUNT_ID
   ? new SqlCertificationStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
@@ -123,6 +124,7 @@ const app = createApp(
         claims,
         certifications,
         evidenceStore,
+        certificationImages,
         learning,
         practice,
         planner,

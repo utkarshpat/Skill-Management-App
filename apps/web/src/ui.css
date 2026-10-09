@@ -1629,6 +1629,10 @@ input[type='checkbox'] {
   font-size: 18px;
   line-height: 1.4;
   margin: 0;
+  overflow-wrap: anywhere;
+}
+.form-dialog-header > div {
+  min-width: 0;
 }
 .form-dialog-header button {
   color: var(--muted);
@@ -1660,8 +1664,12 @@ input[type='checkbox'] {
 .form-dialog-body {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   padding: 16px 20px;
-  overflow: hidden;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 .form-dialog-footer {
   display: flex;
@@ -1677,6 +1685,8 @@ input[type='checkbox'] {
   margin-right: auto;
   font-size: 12px;
   color: var(--muted);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .form-dialog-message {
   padding: 8px 20px;

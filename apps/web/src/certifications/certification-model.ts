@@ -12,13 +12,18 @@ export function credentialValidity(expiry: string | null, today: string) {
   const days = (Date.parse(expiry + 'T12:00:00Z') - Date.parse(today + 'T12:00:00Z')) / 86400000;
   return days <= 90 ? 'Expires soon' : 'Current';
 }
-export function certificationFieldError(fields: CertificationFields, today: string) {
+export function certificationIdentityError(fields: CertificationFields) {
   if (!fields.certificationName.trim() || fields.certificationName.trim().length > 200)
     return 'Enter a certification name (up to 200 characters).';
   if (!fields.provider.trim() || fields.provider.trim().length > 120)
     return 'Enter an issuer (up to 120 characters).';
   if (!fields.category.trim() || fields.category.trim().length > 80)
     return 'Enter a category (up to 80 characters).';
+  return '';
+}
+export function certificationFieldError(fields: CertificationFields, today: string) {
+  const identityError = certificationIdentityError(fields);
+  if (identityError) return identityError;
   const validDay = (value: string) =>
     /^20\d{2}-\d{2}-\d{2}$/.test(value) &&
     Number.isFinite(Date.parse(value + 'T12:00:00Z')) &&

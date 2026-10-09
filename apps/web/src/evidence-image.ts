@@ -1,9 +1,9 @@
-export async function compressEvidenceImage(file: File): Promise<Blob> {
+export async function compressEvidenceImage(file: File, maxInputMb = 10): Promise<Blob> {
   if (
     !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
-    file.size > 10 * 1024 * 1024
+    file.size > maxInputMb * 1024 * 1024
   )
-    throw Error('Choose JPEG, PNG or WebP, up to 10 MB.');
+    throw Error(`Choose JPEG, PNG or WebP, up to ${maxInputMb} MB.`);
   const image = await createImageBitmap(file).catch(() => {
     throw Error('This image could not be opened.');
   });

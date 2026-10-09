@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { FormDialog } from '../FormDialog';
 import type { CertificationRecord } from './types';
 import { credentialValidity } from './certification-model';
+import { CertificationImage } from './CertificationImage';
 export function CertificationReviewDialog({
   certification,
   onClose,
@@ -46,6 +47,7 @@ export function CertificationReviewDialog({
       busy={busy}
       className="certification-review-modal"
     >
+      <CertificationImage id={certification.id} />
       <section className="cert-review-banner">
         <h3>{certification.certificationName}</h3>
         <p>

@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "698a553283bdaffd",
+  "revision": "77628b18ecdecdd6",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -56,7 +56,9 @@
       "050_skill_evidence.sql",
       "051_submitted_skill_evidence.sql",
       "052_primary_capability.sql",
-      "053_certification_records.sql"
+      "053_certification_records.sql",
+      "054_certification_images.sql",
+      "055_required_certificate_image.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -4321,6 +4323,120 @@
           }
         ],
         "domain": "Skills & claims"
+      },
+      "CertificationImageRecord": {
+        "source": "054_certification_images.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "054_certification_images.sql"
+          },
+          "certification_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "certification_id uniqueidentifier NOT NULL",
+            "source": "054_certification_images.sql"
+          },
+          "evidence_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "evidence_id uniqueidentifier NOT NULL",
+            "source": "054_certification_images.sql"
+          },
+          "blob_name": {
+            "type": "varchar(160)",
+            "nullable": false,
+            "declaration": "blob_name varchar(160) NOT NULL",
+            "source": "054_certification_images.sql"
+          },
+          "bytes": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "bytes int NOT NULL",
+            "source": "054_certification_images.sql"
+          },
+          "width": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "width int NOT NULL",
+            "source": "054_certification_images.sql"
+          },
+          "height": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "height int NOT NULL",
+            "source": "054_certification_images.sql"
+          },
+          "active": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "active bit NOT NULL DEFAULT 1",
+            "source": "054_certification_images.sql"
+          },
+          "created_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "created_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "054_certification_images.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "certification_id",
+          "evidence_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "certification_id"
+            ],
+            "target": "CertificationRecord",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "054_certification_images.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,certification_id,evidence_id)",
+            "source": "054_certification_images.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,certification_id) REFERENCES dbo.CertificationRecord(account_id,id)",
+            "source": "054_certification_images.sql"
+          },
+          {
+            "sql": "CHECK(bytes BETWEEN 1 AND 1048576)",
+            "source": "054_certification_images.sql"
+          },
+          {
+            "sql": "CHECK(width BETWEEN 1 AND 1920)",
+            "source": "054_certification_images.sql"
+          },
+          {
+            "sql": "CHECK(height BETWEEN 1 AND 1920)",
+            "source": "054_certification_images.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "UX_CertificationImageActive",
+            "unique": true,
+            "columns": [
+              "account_id",
+              "certification_id"
+            ],
+            "filter": "WHERE active=1",
+            "source": "054_certification_images.sql"
+          }
+        ],
+        "domain": "Skills & claims"
       }
     },
     "views": {
@@ -4607,6 +4723,18 @@
     {
       "method": "POST",
       "path": "/api/certifications",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/certification-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/certifications/:id/image",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/certification-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/certifications/:id/image/:image",
       "module": "skills",
       "source": "apps/api/src/modules/skills/certification-routes.ts"
     },
@@ -4940,7 +5068,13 @@
       "name": "CertificationWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/053_certification_records.sql"
+      "source": "database/migrations/055_required_certificate_image.sql"
+    },
+    {
+      "name": "CertificationImage",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL",
+      "source": "database/migrations/054_certification_images.sql"
     }
   ],
   "groups": {
@@ -4982,7 +5116,8 @@
       "SkillClaimDraft",
       "SkillClaimNotification",
       "SkillClaimEvidence",
-      "CertificationRecord"
+      "CertificationRecord",
+      "CertificationImageRecord"
     ],
     "Learning & recommendations": [
       "LearningPlan",

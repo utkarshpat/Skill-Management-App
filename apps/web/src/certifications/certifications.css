@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  padding: 1.5rem;
+  padding: 0;
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
@@ -128,7 +128,7 @@
 }
 @media (max-width: 600px) {
   .certifications-container {
-    padding: 0.75rem;
+    padding: 0;
   }
   .cert-record-heading {
     flex-direction: column;
@@ -750,6 +750,95 @@
   margin-bottom: 1.25rem;
 }
 
+.certification-wizard .cert-meta-grid {
+  border: 0;
+  padding: 0;
+  margin: 16px 0;
+  grid-template-columns: 1fr;
+}
+.certification-wizard .cert-meta-grid label,
+.certification-wizard .cert-meta-grid input,
+.certification-wizard .cert-meta-grid textarea {
+  min-width: 0;
+}
+.cert-wizard-help {
+  margin: 12px 24px;
+  color: var(--muted);
+}
+.cert-discard-prompt {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+}
+.cert-discard-prompt > span {
+  margin-right: auto;
+}
+.certificate-image-uploader {
+  margin: 12px 0 20px;
+  min-width: 0;
+}
+.certificate-dropzone {
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  background: var(--raised);
+  overflow-wrap: anywhere;
+}
+.certificate-dropzone.dragging {
+  border-color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+.certificate-dropzone > svg {
+  color: var(--accent-ink);
+}
+.certificate-dropzone img,
+.certificate-read-image {
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.certificate-image-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.certificate-image-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.certification-details-pane {
+  border-left: 1px solid var(--line);
+}
+.certification-entry-layout {
+  grid-template-columns: 0.95fr 1.05fr;
+}
+.certification-details-pane .cert-meta-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.certification-details-pane .cert-meta-grid > label:first-of-type,
+.certification-details-pane .cert-meta-grid > label:has(textarea),
+.certification-details-pane .cert-meta-grid > label:has(input[type='checkbox']),
+.certification-details-pane .cert-meta-grid > p {
+  grid-column: 1 / -1;
+}
+@media (max-width: 800px) {
+  .certification-entry-layout,
+  .certification-details-pane .cert-meta-grid {
+    grid-template-columns: 1fr;
+  }
+  .certification-details-pane {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+}
+
 @media (max-width: 600px) {
   .cert-meta-grid {
     grid-template-columns: 1fr;
@@ -879,4 +968,20 @@
 
 .button-tone-teal:hover {
   background: #059669 !important;
+}
+.cert-expiry-date {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+.certification-profile,
+.certification-profile .skills-content-grid,
+.certification-profile .skills-list-card {
+  min-width: 0;
+}
+.certification-profile .skills-insight-card > p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
 }

@@ -1,4 +1,5 @@
-import type { Express } from 'express';
+import { raw, type Express } from 'express';
+import type { EvidenceStore, EvidenceState } from './evidence.js';
 import {
   can,
   canReviewAssigned,
@@ -22,6 +23,7 @@ export interface CertificationDependencies {
   resolveAccess?: (identity: Identity) => Promise<string | undefined>;
   access?: AccessStore;
   certifications?: CertificationStore;
+  certificationImages?: EvidenceStore;
 }
 export function registerCertificationRoutes(
   app: Express,
@@ -100,7 +102,11 @@ export function registerCertificationRoutes(
         canManage: can(state, actor, 'skill.claim', true),
         canSubmitNew: canSubmitNewCertification(state, actor),
         canReview: canReviewAssigned(state, actor),
-        records: result.records.map(r => ({ ...r, ...certificationAccess(state, actor, r) })),
+        canUploadImage: Boolean(deps?.certificationImages),
+        records: result.records.map(r => {
+          const access = certificationAccess(state, actor, r);
+          return { ...r, ...access, canSubmit: access.canSubmit && r.hasImage === true };
+        }),
       });
     } catch (e) {
       if (e instanceof AccessError) res.status(e.status).json({ error: { message: e.message } });
@@ -136,11 +142,92 @@ export function registerCertificationRoutes(
         if (!certificationAccess(fresh.state, fresh.actor, record).canReview)
           throw new AccessError(403, 'Current assigned review is unavailable.');
       }
+      if (change.action === 'SUBMIT' || change.action === 'SAVE_SUBMIT') {
+        if (!deps?.certificationImages)
+          throw new AccessError(503, 'Certificate image storage is not configured.');
+        if (change.revision === 0)
+          throw new AccessError(
+            400,
+            'Save a draft and attach a certificate image before submitting.',
+          );
+        const image = await deps.certificationImages.read(actor.id, change.id);
+        if (!image.items.length)
+          throw new AccessError(400, 'Attach a certificate image before submitting.');
+      }
       await deps!.certifications!.change(actor.id, change);
-      res.json({ saved: true });
+      res.json({ saved: true, revision: change.revision + 1 });
     } catch (e) {
       if (e instanceof AccessError) res.status(e.status).json({ error: { message: e.message } });
       else next(e);
     }
   });
+  const imageState = (state: EvidenceState) => ({
+    ...state,
+    items: state.items.map(({ blobName, ...item }) => item),
+  });
+  const imageContext = async (res: { locals: Record<string, any> }, id: unknown, write = false) => {
+    const certification = certificationId(id),
+      actorId = res.locals.certificationContext.actor.id;
+    const record = await deps!.certifications!.get(actorId, certification);
+    const fresh = await context(actorId),
+      access = certificationAccess(fresh.state, fresh.actor, record);
+    if (write ? !access.canEdit : record.personId !== actorId && !access.canReview)
+      throw new AccessError(403, 'Certification image access is unavailable.');
+    if (!deps?.certificationImages)
+      throw new AccessError(503, 'Certificate image storage is not configured.');
+    return { actor: fresh.actor.id, id: certification, images: deps.certificationImages };
+  };
+  app.get('/api/certifications/:id/image', async (req, res, next) => {
+    try {
+      const c = await imageContext(res, req.params.id);
+      const state = await c.images.read(c.actor, c.id);
+      await imageContext(res, c.id);
+      res.json(imageState(state));
+    } catch (e) {
+      if (e instanceof AccessError) res.status(e.status).json({ error: { message: e.message } });
+      else next(e);
+    }
+  });
+  app.get('/api/certifications/:id/image/:image', async (req, res, next) => {
+    try {
+      const c = await imageContext(res, req.params.id);
+      const data = await c.images.image(c.actor, c.id, certificationId(req.params.image));
+      await imageContext(res, c.id);
+      res.type('image/webp').send(data);
+    } catch (e) {
+      if (e instanceof AccessError) res.status(e.status).json({ error: { message: e.message } });
+      else next(e);
+    }
+  });
+  for (const method of ['post', 'delete'] as const)
+    app[method](
+      '/api/certifications/:id/image',
+      raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '1mb' }),
+      async (req, res, next) => {
+        try {
+          const c = await imageContext(res, req.params.id, true);
+          const header = req.headers['x-certification-revision'],
+            revision = Number(header);
+          if (
+            typeof header !== 'string' ||
+            !/^[1-9]\d*$/.test(header) ||
+            !Number.isSafeInteger(revision)
+          )
+            throw new AccessError(400, 'Save the certification draft first.');
+          if (method === 'post' && !Buffer.isBuffer(req.body))
+            throw new AccessError(400, 'Choose a JPEG, PNG or WebP image.');
+          if (method === 'delete' && !c.images.remove)
+            throw new AccessError(503, 'Image removal unavailable.');
+          const state =
+            method === 'post'
+              ? await c.images.upload(c.actor, c.id, revision, req.body)
+              : await c.images.remove!(c.actor, c.id, revision);
+          res.json(imageState(state));
+        } catch (e) {
+          if (e instanceof AccessError)
+            res.status(e.status).json({ error: { message: e.message } });
+          else next(e);
+        }
+      },
+    );
 }

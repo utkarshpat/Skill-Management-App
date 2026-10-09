@@ -164,14 +164,7 @@ export function TeamCapability({
             )}
           </form>
         )}
-        <button
-          className="secondary-button team-refresh"
-          disabled={loading}
-          onClick={() => setAttempt(n => n + 1)}
-        >
-          <RefreshCw size={16} />
-          Refresh
-        </button>
+
         {navigation}
       </div>
       {loading && (

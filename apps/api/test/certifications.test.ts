@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { readFile } from 'node:fs/promises';
 import { createApp } from '../src/create-app.js';
+import type { EvidenceStore } from '../src/modules/skills/evidence.js';
+import { AccessError } from '../src/shared/errors.js';
 import { LocalAccessStore, type LocalPerson } from '../src/modules/access/local-access-store.js';
 import {
   certificationAccess,
@@ -102,6 +104,135 @@ async function fixture() {
   };
   return { store, state, owner, manager, unrelated, record };
 }
+
+test('certificate images bind owner/reviewer, hide storage keys and reject locked, revoked and invalid uploads', async () => {
+  const f = await fixture();
+  f.record.status = 'DRAFT';
+  let actor = f.owner.id,
+    writes = 0,
+    revoke = false;
+  const image = randomUUID(),
+    state = {
+      revision: 1,
+      canUpload: true,
+      items: [{ id: image, blobName: 'private-key.webp', bytes: 4, width: 1, height: 1 }],
+    };
+  const certifications: CertificationStore = {
+    read: async () => ({ records: [f.record], total: 1 }),
+    get: async () => f.record,
+    change: async () => {},
+    notifications: async () => [],
+  };
+  const images: EvidenceStore = {
+    read: async id => {
+      assert.equal(id, actor);
+      if (revoke) f.owner.active = false;
+      return state;
+    },
+    image: async () => Buffer.from('test'),
+    upload: async (id, _cert, revision) => {
+      assert.equal(id, actor);
+      if (revision !== 1) throw new AccessError(409, 'Changed');
+      writes++;
+      return { ...state, revision: 2 };
+    },
+    remove: async () => {
+      writes++;
+      return { ...state, revision: 2, items: [] };
+    },
+  };
+  const server = createApp({
+    verify: async header => {
+      if (header !== 'Bearer test') throw Error();
+      return { tenantId: 'test', objectId: 'test' };
+    },
+    resolveAccess: async () => actor,
+    profile: async () => undefined,
+    access: f.store,
+    certifications,
+    certificationImages: images,
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const url = `http://127.0.0.1:${address.port}/api/certifications/${f.record.id}/image`,
+    headers = {
+      Authorization: 'Bearer test',
+      'Content-Type': 'image/png',
+      'X-Certification-Revision': '1',
+    };
+  try {
+    assert.equal((await fetch(url)).status, 401);
+    const read = await fetch(url, { headers });
+    assert.equal(read.status, 200);
+    assert.equal(read.headers.get('cache-control'), 'no-store');
+    assert.ok(!JSON.stringify(await read.json()).includes('private-key'));
+    assert.equal(
+      (await fetch(url + '/' + image, { headers })).headers.get('content-type'),
+      'image/webp',
+    );
+    assert.equal(
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers: { ...headers, 'X-Certification-Revision': '0' },
+          body: 'x',
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: '{}',
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (await fetch(url, { method: 'POST', headers, body: new Uint8Array(1048577) })).status,
+      413,
+    );
+    assert.equal(
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers: { ...headers, 'X-Certification-Revision': '2' },
+          body: 'x',
+        })
+      ).status,
+      409,
+    );
+    assert.equal(writes, 0);
+    const originalItems = state.items;
+    state.items = [];
+    const missing = await fetch(url.replace('/' + f.record.id + '/image', ''), {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'SAVE_SUBMIT', id: f.record.id, revision: 1, fields }),
+    });
+    assert.equal(missing.status, 400);
+    state.items = originalItems;
+    assert.equal((await fetch(url, { method: 'POST', headers, body: 'x' })).status, 200);
+    assert.equal((await fetch(url, { method: 'DELETE', headers })).status, 200);
+    actor = f.manager.id;
+    assert.equal((await fetch(url, { headers })).status, 403);
+    f.record.status = 'SUBMITTED';
+    assert.equal((await fetch(url, { headers })).status, 200);
+    assert.equal((await fetch(url, { method: 'POST', headers, body: 'x' })).status, 403);
+    actor = f.owner.id;
+    assert.equal((await fetch(url, { method: 'DELETE', headers })).status, 403);
+    actor = f.unrelated.id;
+    assert.equal((await fetch(url, { headers })).status, 403);
+    actor = f.owner.id;
+    revoke = true;
+    assert.equal((await fetch(url, { headers })).status, 403);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close(e => (e ? reject(e) : resolve())));
+  }
+});
 test('certification actions require exact assigned current manager and lock approved records', async () => {
   const { state, owner, manager, unrelated, record } = await fixture();
   assert.equal(certificationAccess(state, manager, record).canReview, true);

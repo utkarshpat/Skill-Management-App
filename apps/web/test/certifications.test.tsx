@@ -2,10 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   certificationFieldError,
+  certificationIdentityError,
   credentialValidity,
   certificationStatusLabels,
 } from '../src/certifications/certification-model';
 import { notificationDestination } from '../src/notification-model';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { CertificationProfileView } from '../src/certifications/CertificationProfileView';
+import { loadCertificationPortfolio } from '../src/certifications/certification-portfolio';
+import type { CertificationRecord, CertificationPage } from '../src/certifications/types';
 
 const fields = {
   certificationName: 'Azure Fundamentals',
@@ -37,4 +42,108 @@ test('credential form validates dates, required issuer fields and safe links bef
   ])
     assert.ok(certificationFieldError({ ...fields, ...patch }, '2026-10-09'));
   assert.equal(notificationDestination('/certifications?tab=queue')?.kind, 'Certifications');
+});
+
+test('credential wizard allows identity step before dates while draft saving still requires a complete credential', () => {
+  const incomplete = { ...fields, certificationDate: '', expiryDate: null };
+  assert.equal(certificationIdentityError(incomplete), '');
+  assert.ok(certificationFieldError(incomplete, '2026-10-09'));
+  for (const patch of [
+    { certificationName: ' ' },
+    { provider: '' },
+    { category: ' ' },
+    { provider: 'x'.repeat(121) },
+  ]) {
+    assert.ok(certificationIdentityError({ ...incomplete, ...patch }));
+  }
+});
+
+const record = (id: string): CertificationRecord => ({
+  ...fields,
+  id,
+  revision: 1,
+  personId: 'owner',
+  name: 'Employee',
+  employeeCode: 'QA',
+  status: 'APPROVED',
+  feedback: 'Issuer transcript checked',
+  canEdit: false,
+  canSubmit: false,
+  canReview: false,
+});
+const page = (records: CertificationRecord[], total = records.length): CertificationPage => ({
+  records,
+  total,
+  page: 1,
+  pageSize: 25,
+  canManage: true,
+  canSubmitNew: true,
+  canReview: false,
+});
+test('portfolio counts use every authorized page and reject changing, incomplete or duplicate results', async () => {
+  const records = Array.from({ length: 26 }, (_, i) => record(String(i)));
+  const requested: number[] = [];
+  const result = await loadCertificationPortfolio(async n => {
+    requested.push(n);
+    return page(records.slice((n - 1) * 25, n * 25), 26);
+  }, new AbortController().signal);
+  assert.equal(result.records.length, 26);
+  assert.deepEqual(requested, [1, 2]);
+  await assert.rejects(
+    loadCertificationPortfolio(
+      async n => page(n === 1 ? records.slice(0, 25) : [], n === 1 ? 26 : 25),
+      new AbortController().signal,
+    ),
+    /changed while loading/,
+  );
+  await assert.rejects(
+    loadCertificationPortfolio(
+      async n => page(n === 1 ? records.slice(0, 25) : [records[0]], 26),
+      new AbortController().signal,
+    ),
+    /changed while loading/,
+  );
+  await assert.rejects(
+    loadCertificationPortfolio(async () => page([], 1), new AbortController().signal),
+    /changed while loading/,
+  );
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(
+    loadCertificationPortfolio(async () => page([], 0), controller.signal),
+    { name: 'AbortError' },
+  );
+});
+test('skills-style certification profile keeps review and expiry separate and obeys record controls', () => {
+  const html = renderToStaticMarkup(
+    <CertificationProfileView
+      records={[
+        record('reviewed'),
+        {
+          ...record('draft'),
+          certificationName: 'Draft credential',
+          status: 'DRAFT',
+          canEdit: true,
+          canSubmit: true,
+        },
+      ]}
+      today="2026-10-09"
+      canManage
+      onAdd={() => {}}
+      onView={() => {}}
+      onEdit={() => {}}
+      onSubmit={() => {}}
+      onReview={() => {}}
+    />,
+  );
+  assert.match(html, /Total certifications: 2/);
+  assert.match(html, /Manager reviewed: 1/);
+  assert.match(html, /Filter certification review status/);
+  assert.match(html, /Filter credential validity/);
+  assert.match(html, /Expired/);
+  assert.match(html, /Certification profile overview/);
+  assert.doesNotMatch(html, /Edit Azure Fundamentals draft/);
+  assert.doesNotMatch(html, /Submit Azure Fundamentals for review/);
+  assert.match(html, /Edit Draft credential draft/);
+  assert.match(html, /Submit Draft credential for review/);
 });

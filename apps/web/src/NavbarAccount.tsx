@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { Link } from 'react-router';
-import { LogOut } from 'lucide-react';
+import { LogOut, RefreshCw } from 'lucide-react';
 import { Notifications } from './Notifications';
 import { ThemeSwitcher } from './Theme';
 import { signOut } from './auth';
@@ -25,6 +25,15 @@ export function NavbarAccount({
     .join('');
   return (
     <div className="navbar-account-controls">
+      <button
+        type="button"
+        className="navbar-icon"
+        aria-label="Refresh current page"
+        title="Refresh current page"
+        onClick={() => window.location.reload()}
+      >
+        <RefreshCw size={20} aria-hidden="true" />
+      </button>
       <ThemeSwitcher />
       <Notifications id={id + '-notifications'} />
       <button

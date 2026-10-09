@@ -41,6 +41,8 @@ export class SqlCertificationStore implements CertificationStore {
           409,
           'An active current reporting manager with review access is required.',
         );
+      if (number === 51012)
+        throw new AccessError(400, 'Attach a certificate image before submitting.');
       if (number === 51000 || number === 547)
         throw new AccessError(400, 'Check credential details and review feedback.');
       throw e;

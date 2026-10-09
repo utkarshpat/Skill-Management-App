@@ -19,6 +19,7 @@ export interface EvidenceStore {
   read(actor: string, claim: string): Promise<EvidenceState>;
   upload(actor: string, claim: string, revision: number, data: Buffer): Promise<EvidenceState>;
   image(actor: string, claim: string, id: string): Promise<Buffer>;
+  remove?(actor: string, claim: string, revision: number): Promise<EvidenceState>;
 }
 export async function compressEvidence(data: Buffer) {
   if (!data.length || data.length > 1048576)
@@ -45,6 +46,7 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
     private account: string,
     connection: string,
     container: string,
+    private kind: 'skill' | 'certification' = 'skill',
   ) {
     this.container =
       BlobServiceClient.fromConnectionString(connection).getContainerClient(container);
@@ -70,7 +72,7 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
           .input('bytes', sql.Int, item?.bytes ?? null)
           .input('width', sql.Int, item?.width ?? null)
           .input('height', sql.Int, item?.height ?? null)
-          .execute('dbo.SkillEvidence');
+          .execute(this.kind === 'certification' ? 'dbo.CertificationImage' : 'dbo.SkillEvidence');
         const sets = result.recordsets as unknown as [
           sql.IRecordSet<{ revision: number; canUpload: boolean }>,
           sql.IRecordSet<EvidenceItem>,
@@ -79,6 +81,11 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
       });
     } catch (e) {
       const number = (e as { number?: number }).number;
+      if (number === 2812 || number === 208)
+        throw new AccessError(
+          503,
+          'Image storage schema is unavailable. Apply the required migration.',
+        );
       if (number === 51003) throw new AccessError(403, 'Evidence access is unavailable.');
       if (number === 51009) throw new AccessError(409, 'Claim changed. Refresh before uploading.');
       if (number === 51004) throw new AccessError(404, 'Evidence unavailable.');
@@ -94,7 +101,7 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
     await this.run(actor, claim, 'CHECK', revision);
     const image = await compressEvidence(data);
     const id = crypto.randomUUID(),
-      blobName = `${this.account.toLowerCase()}/${claim.toLowerCase()}/${id}.webp`,
+      blobName = `${this.account.toLowerCase()}/${this.kind === 'certification' ? 'certifications/' : ''}${claim.toLowerCase()}/${id}.webp`,
       blob = this.container.getBlockBlobClient(blobName);
     const properties = await this.container.getProperties();
     if (properties.blobPublicAccess)
@@ -128,8 +135,15 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
       throw new AccessError(404, 'Evidence unavailable.');
     return buffer;
   }
+  remove(actor: string, claim: string, revision: number) {
+    if (this.kind !== 'certification') throw new AccessError(400, 'Removal unavailable.');
+    return this.run(actor, claim, 'REMOVE', revision);
+  }
 }
-export function configuredEvidence(env: NodeJS.ProcessEnv) {
+export function configuredEvidence(
+  env: NodeJS.ProcessEnv,
+  kind: 'skill' | 'certification' = 'skill',
+) {
   return env.ACCESS_ACCOUNT_ID &&
     env.EVIDENCE_STORAGE_CONNECTION_STRING &&
     env.EVIDENCE_STORAGE_CONTAINER
@@ -137,6 +151,7 @@ export function configuredEvidence(env: NodeJS.ProcessEnv) {
         env.ACCESS_ACCOUNT_ID,
         env.EVIDENCE_STORAGE_CONNECTION_STRING,
         env.EVIDENCE_STORAGE_CONTAINER,
+        kind,
       )
     : undefined;
 }

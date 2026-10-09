@@ -69,7 +69,7 @@
 .skill-wizard .form-dialog-body form,
 .skill-wizard .form-dialog-fields,
 .skill-wizard [data-form-page]:not([hidden]) {
-  height: 100%;
+  height: auto;
 }
 .skill-wizard h3 {
   font-size: 15px;
@@ -96,7 +96,7 @@
 .skill-review-layout {
   display: grid;
   grid-template-columns: 1fr 1.05fr;
-  height: 100%;
+  height: auto;
   min-height: 0;
 }
 .skill-selection-layout > section,
@@ -121,13 +121,25 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 10px;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
-.skill-wizard .access-form .skill-search input {
+.skill-wizard .access-form .skill-search:focus-within {
+  border-color: var(--accent-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-ink) 20%, transparent);
+  outline: none;
+}
+.skill-wizard .access-form .skill-search input,
+.skill-wizard .access-form .skill-search input:focus,
+.skill-wizard .access-form .skill-search input:focus-visible {
   border: 0;
   background: transparent;
   min-height: 36px;
   padding: 8px 0;
-  outline-offset: 0;
+  outline: none;
+  box-shadow: none;
+  flex: 1;
 }
 .skill-search svg {
   color: var(--muted);
@@ -535,10 +547,7 @@
   margin: 5px 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: block;
 }
 .skill-preview-card {
   border: 1px solid var(--line);
@@ -724,9 +733,6 @@
   .skill-review-section {
     padding: 5px 0;
   }
-  .skill-summary-text {
-    -webkit-line-clamp: 2;
-  }
   .skill-helper {
     font-size: 11px;
   }
@@ -810,9 +816,6 @@
   }
   .skill-preview-empty {
     padding: 20px;
-  }
-  .skill-summary-text {
-    -webkit-line-clamp: unset;
   }
   .skill-discard > div {
     flex-wrap: wrap;

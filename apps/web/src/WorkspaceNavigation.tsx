@@ -1,5 +1,5 @@
 import { SidebarNavigation } from './SidebarNavigation';
-import { Award, BookOpen, Compass, ShieldCheck, UserRound } from 'lucide-react';
+import { BookOpen, Compass, ShieldCheck, UserRound } from 'lucide-react';
 
 export const administrationShellFor = (pathname: string, administration: boolean) =>
   pathname === '/access' || administration;
@@ -9,11 +9,11 @@ export const personalPageTitle = (pathname: string | undefined) =>
     : pathname === '/learning'
       ? 'Learning & development'
       : pathname === '/skill-reviews'
-        ? 'Skill reviews'
+        ? 'Reviews'
         : pathname === '/my-skills'
-          ? 'My skills'
+          ? 'Capabilities'
           : pathname === '/certifications'
-            ? 'Certifications'
+            ? 'Capabilities'
             : pathname === '/profile'
               ? 'My profile'
               : pathname === '/skills'
@@ -61,14 +61,18 @@ export function personalNavigationItems(
     ...(capabilities.learning
       ? [{ id: 'learning', label: 'Learn & Grow', href: '/learning', icon: BookOpen }]
       : []),
-    ...(capabilities.ownSkills
-      ? [{ id: 'my-skills', label: 'My skills', href: '/my-skills', icon: Compass }]
-      : []),
-    ...(capabilities.certifications
-      ? [{ id: 'certifications', label: 'Certifications', href: '/certifications', icon: Award }]
+    ...(capabilities.ownSkills || capabilities.certifications
+      ? [
+          {
+            id: 'my-skills',
+            label: 'Capabilities',
+            href: capabilities.ownSkills ? '/my-skills' : '/certifications',
+            icon: Compass,
+          },
+        ]
       : []),
     ...(capabilities.reviewSkills
-      ? [{ id: 'skill-reviews', label: 'Skill reviews', href: '/skill-reviews', icon: ShieldCheck }]
+      ? [{ id: 'skill-reviews', label: 'Reviews', href: '/skill-reviews', icon: ShieldCheck }]
       : []),
     ...(capabilities.requests
       ? [{ id: 'requests', label: 'Requests', href: '/requests', icon: ShieldCheck }]
@@ -76,7 +80,12 @@ export function personalNavigationItems(
     ...(capabilities.ownProfile
       ? [{ id: 'profile', label: 'My profile', href: '/profile', icon: UserRound }]
       : []),
-  ].map(item => ({ ...item, active: pathname === item.href }));
+  ].map(item => ({
+    ...item,
+    active:
+      pathname === item.href ||
+      (item.id === 'my-skills' && ['/my-skills', '/certifications'].includes(pathname ?? '')),
+  }));
 }
 export function PersonalCapabilityNavigation({
   capabilities,

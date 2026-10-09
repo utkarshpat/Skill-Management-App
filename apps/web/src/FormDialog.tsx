@@ -56,7 +56,7 @@ export function FormDialog({
     document.body.style.overflow = 'hidden';
     element.showModal();
     const input = Array.from(element.querySelectorAll<HTMLElement>('input,select,textarea')).find(
-      field => !field.closest('[hidden]') && !field.hasAttribute('disabled'),
+      field => !field.closest('[hidden]') && !field.hasAttribute('disabled') && field.tabIndex >= 0,
     );
     if (!className.includes('skill-wizard') || window.matchMedia('(min-width:801px)').matches)
       input?.focus();
@@ -77,6 +77,7 @@ export function FormDialog({
     ).filter(
       node =>
         !node.hasAttribute('disabled') &&
+        node.tabIndex >= 0 &&
         !node.closest('[hidden]') &&
         node.getClientRects().length > 0,
     );
@@ -175,7 +176,7 @@ export function FormDialog({
           ))}
         </nav>
       )}
-      <div className="form-dialog-body">
+      <div className="form-dialog-body" tabIndex={0} role="region" aria-label={`${title} content`}>
         {formId ? (
           <form
             id={formId}

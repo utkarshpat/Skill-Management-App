@@ -2,7 +2,6 @@ import { SidebarNavigation } from './SidebarNavigation';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import {
-  Award,
   BookOpen,
   ChevronRight,
   Compass,
@@ -20,19 +19,17 @@ const PersonalProfile = lazy(() =>
   import('./PersonalProfile').then(module => ({ default: module.PersonalProfile })),
 );
 const SkillReviews = lazy(() =>
-  import('./SkillReviews').then(module => ({ default: module.SkillReviews })),
+  import('./ReviewWorkspace').then(module => ({ default: module.ReviewWorkspace })),
 );
-const MySkills = lazy(() => import('./MySkills').then(module => ({ default: module.MySkills })));
+const CapabilityPortfolio = lazy(() =>
+  import('./CapabilityPortfolio').then(module => ({ default: module.CapabilityPortfolio })),
+);
 const Learning = lazy(() => import('./Learning').then(module => ({ default: module.Learning })));
 const Requests = lazy(() => import('./Requests').then(module => ({ default: module.Requests })));
 const SkillCatalogue = lazy(() =>
   import('./SkillCatalogue').then(module => ({ default: module.SkillCatalogue })),
 );
 const Dashboard = lazy(() => import('./Dashboard').then(module => ({ default: module.Dashboard })));
-const Certifications = lazy(() =>
-  import('./certifications/Certifications').then(module => ({ default: module.Certifications })),
-);
-
 export interface WorkspaceState {
   person: { id: string; displayName: string; employeeCode: string; roles: string[] };
   authentication: 'microsoft' | 'local-demo';
@@ -126,7 +123,7 @@ export function Workspace({
   const sections = [
     {
       id: 'skill-reviews',
-      label: 'Skill reviews',
+      label: 'Reviews',
       href: '/skill-reviews',
       icon: ShieldCheck,
       visible: state?.capabilities.reviewSkills,
@@ -147,17 +144,10 @@ export function Workspace({
     },
     {
       id: 'my-skills',
-      label: 'My skills',
-      href: '/my-skills',
+      label: 'Capabilities',
+      href: state?.capabilities.ownSkills ? '/my-skills' : '/certifications',
       icon: Compass,
-      visible: state?.capabilities.ownSkills,
-    },
-    {
-      id: 'certifications',
-      label: 'Certifications',
-      href: '/certifications',
-      icon: Award,
-      visible: Boolean(state?.capabilities.certifications),
+      visible: state?.capabilities.ownSkills || state?.capabilities.certifications,
     },
     {
       id: 'requests',
@@ -183,9 +173,13 @@ export function Workspace({
   ];
   const permitted =
     view === 'overview' ||
-    (view === 'skills'
-      ? catalogueRouteAllowed(state?.capabilities)
-      : sections.some(section => section.id === view && section.visible));
+    (view === 'certifications'
+      ? Boolean(state?.capabilities.certifications)
+      : view === 'my-skills'
+        ? Boolean(state?.capabilities.ownSkills)
+        : view === 'skills'
+          ? catalogueRouteAllowed(state?.capabilities)
+          : sections.some(section => section.id === view && section.visible));
   const sidebarContent = (close: () => void = () => {}) => (
     <>
       <Link className="admin-brand" to="/workspace">
@@ -204,7 +198,7 @@ export function Workspace({
               label,
               href,
               icon,
-              active: view === id,
+              active: view === id || (id === 'my-skills' && view === 'certifications'),
             })),
           ...(state?.capabilities.administration
             ? [
@@ -243,16 +237,17 @@ export function Workspace({
             <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
               {view === 'overview' && <Dashboard />}
               {view === 'profile' && <PersonalProfile workspace={state} />}
-              {view === 'my-skills' && <MySkills actionsContainer={actionsContainer ?? null} />}
-              {view === 'certifications' && (
-                <Certifications
+              {(view === 'my-skills' || view === 'certifications') && (
+                <CapabilityPortfolio
                   workspace={state}
                   actionsContainer={actionsContainer ?? null}
                 />
               )}
               {view === 'requests' && <Requests actionsContainer={actionsContainer} />}
               {view === 'learning' && <Learning actionsContainer={actionsContainer} />}
-              {view === 'skill-reviews' && <SkillReviews />}
+              {view === 'skill-reviews' && (
+                <SkillReviews certificationsAllowed={Boolean(state.capabilities.certifications)} />
+              )}
               {view === 'skills' && <SkillCatalogue actionsContainer={actionsContainer ?? null} />}
             </Suspense>
           </>
@@ -291,7 +286,9 @@ export function Workspace({
             <h1>
               {view === 'requests'
                 ? 'Requests & incidents'
-                : sections.find(section => section.id === view)?.label}
+                : sections.find(
+                    section => section.id === (view === 'certifications' ? 'my-skills' : view),
+                  )?.label}
             </h1>
           </div>
           <div className="page-actions" role="group" aria-label="Page actions" ref={setActions} />
@@ -332,13 +329,16 @@ export function Workspace({
               <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
                 {view === 'overview' && <Dashboard />}
                 {view === 'profile' && <PersonalProfile workspace={state} />}
-                {view === 'my-skills' && <MySkills actionsContainer={actions} />}
-                {view === 'certifications' && (
-                  <Certifications workspace={state} actionsContainer={actions} />
+                {(view === 'my-skills' || view === 'certifications') && (
+                  <CapabilityPortfolio workspace={state} actionsContainer={actions} />
                 )}
                 {view === 'requests' && <Requests actionsContainer={actions} />}
                 {view === 'learning' && <Learning actionsContainer={actions} />}
-                {view === 'skill-reviews' && <SkillReviews />}
+                {view === 'skill-reviews' && (
+                  <SkillReviews
+                    certificationsAllowed={Boolean(state.capabilities.certifications)}
+                  />
+                )}
                 {view === 'skills' && <SkillCatalogue actionsContainer={actions} />}
               </Suspense>
             </>

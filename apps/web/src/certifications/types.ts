@@ -11,6 +11,7 @@ export interface CertificationFields {
   notes: string;
 }
 export interface CertificationRecord extends CertificationFields {
+  hasImage?: boolean;
   id: string;
   revision: number;
   personId: string;
@@ -28,6 +29,7 @@ export interface CertificationRecord extends CertificationFields {
   reviewAccess?: { allowed: boolean; reasonCode: string };
 }
 export interface CertificationPage {
+  canUploadImage?: boolean;
   records: CertificationRecord[];
   total: number;
   page: number;
