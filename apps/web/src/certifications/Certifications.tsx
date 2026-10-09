@@ -131,7 +131,7 @@ export function Certifications({
   const actions = (
     <div className="cert-header-actions">
       {data?.canManage && (
-        <button className="primary-button" disabled={loading} onClick={() => setEditing(null)}>
+        <button className="admin-primary" disabled={loading} onClick={() => setEditing(null)}>
           <Plus size={16} /> Add certification
         </button>
       )}

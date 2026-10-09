@@ -985,3 +985,222 @@
   line-height: 1.6;
   color: var(--muted);
 }
+
+/* ═══════════════════════════════════════════════════════
+   Combobox (Issuer / Category)
+═══════════════════════════════════════════════════════ */
+.cert-combobox {
+  position: relative;
+}
+.cert-combobox-field {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  overflow: visible;
+  background: var(--surface);
+}
+.cert-combobox-field input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  min-width: 0;
+  border-radius: 0.5rem 0 0 0.5rem;
+}
+.cert-combobox-field:focus-within {
+  border-color: var(--accent-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-ink) 18%, transparent);
+}
+.cert-combobox-toggle {
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--line);
+  padding: 0 10px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 0 0.5rem 0.5rem 0;
+  line-height: 1;
+}
+.cert-combobox-toggle:hover {
+  background: var(--raised);
+}
+.cert-combobox-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.cert-combobox-list li {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13.5px;
+  color: var(--ink);
+  border-radius: 4px;
+  margin: 0 4px;
+}
+.cert-combobox-list li:hover,
+.cert-combobox-list li:focus {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.cert-combobox-list li.selected {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.cert-combobox-list li:first-child {
+  font-weight: 600;
+  color: var(--accent-ink);
+  border-bottom: 1px solid var(--line);
+  border-radius: 4px 4px 0 0;
+  margin-bottom: 2px;
+}
+.cert-combobox-empty {
+  color: var(--muted) !important;
+  font-style: italic;
+  cursor: default !important;
+}
+.cert-combobox-empty:hover {
+  background: transparent !important;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Expiry date row (date input + quick-select dropdown)
+═══════════════════════════════════════════════════════ */
+.cert-expiry-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cert-expiry-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.cert-expiry-row input[type='date'] {
+  flex: 1;
+  min-width: 0;
+}
+.cert-expiry-preset {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 13px;
+  padding: 0.5rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  min-height: 42px;
+}
+.cert-no-expire-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  color: var(--ink);
+  cursor: pointer;
+  user-select: none;
+  margin-top: 2px;
+}
+.cert-no-expire-check input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  accent-color: var(--accent-ink);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Review & save — split layout (image left, details right)
+═══════════════════════════════════════════════════════ */
+.cert-review-split {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 0;
+  min-height: 0;
+}
+.cert-review-image-col,
+.cert-review-details-col {
+  padding: 20px 24px;
+  min-width: 0;
+}
+.cert-review-details-col {
+  border-left: 1px solid var(--line);
+  overflow-y: auto;
+}
+.cert-review-image-col img {
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  margin-top: 10px;
+}
+.cert-review-field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+.cert-review-field-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 8px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.cert-review-field-label {
+  color: var(--muted);
+  font-weight: 500;
+}
+.cert-review-field-value {
+  color: var(--ink);
+  font-weight: 600;
+  word-break: break-word;
+}
+@media (max-width: 800px) {
+  .cert-review-split {
+    grid-template-columns: 1fr;
+  }
+  .cert-review-details-col {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .cert-review-field-row {
+    grid-template-columns: 110px 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   Add certification button — icon alignment
+═══════════════════════════════════════════════════════ */
+.cert-header-actions .admin-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* expiry col div inside cert-meta-grid — stays in its column */
+.certification-details-pane .cert-meta-grid > div.cert-expiry-col {
+  grid-column: auto;
+}
+/* cert-no-expire-check label inside cert-meta-grid must NOT span */
+.certification-details-pane .cert-meta-grid label.cert-no-expire-check {
+  grid-column: auto;
+}

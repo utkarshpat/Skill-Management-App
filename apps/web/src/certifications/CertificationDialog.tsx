@@ -13,6 +13,179 @@ import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { toast } from '../toast';
 
+/* ── preset lists ─────────────────────────────────────── */
+const ISSUERS = [
+  'Microsoft',
+  'AWS',
+  'Google',
+  'Oracle',
+  'Cisco',
+  'CompTIA',
+  'PMI',
+  'Scrum Alliance',
+  'Salesforce',
+  'IBM',
+  'Red Hat',
+  'HashiCorp',
+  'Linux Foundation',
+  'ISACA',
+  'ISC²',
+];
+
+const CATEGORIES = [
+  'Cloud Architecture',
+  'Cloud & DevOps',
+  'Cybersecurity',
+  'Data / AI / ML',
+  'Database & Data',
+  'Frontend Development',
+  'Backend & API',
+  'Project Management',
+  'Networking',
+  'Software Development',
+  'Professional / Collaboration',
+  'Programming',
+  'DevOps',
+  'IT Infrastructure',
+];
+
+const EXPIRY_PRESETS = [
+  { label: '3 months', months: 3 },
+  { label: '6 months', months: 6 },
+  { label: '1 year', months: 12 },
+  { label: '2 years', months: 24 },
+  { label: '3 years', months: 36 },
+];
+
+/* ── helpers ──────────────────────────────────────────── */
+function addMonths(dateStr: string, months: number): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00Z');
+  d.setUTCMonth(d.getUTCMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+
+/* ── Combobox component ───────────────────────────────── */
+function ComboBox({
+  value,
+  onChange,
+  presets,
+  placeholder,
+  maxLength,
+  disabled,
+  id,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  presets: string[];
+  placeholder?: string;
+  maxLength?: number;
+  disabled?: boolean;
+  id?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [inputVal, setInputVal] = useState(value);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // keep inputVal in sync when external value changes
+  useEffect(() => {
+    setInputVal(value);
+  }, [value]);
+
+  // close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handle(e: MouseEvent) {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  const isOtherSelected = value !== '' && !presets.includes(value);
+  const typed = inputVal.trim().toLowerCase();
+
+  // suggestions: when user types ≥3 chars, filter presets
+  const suggestions =
+    typed.length >= 3
+      ? presets.filter(p => p.toLowerCase().includes(typed) && p.toLowerCase() !== typed)
+      : [];
+
+  const listItems: string[] = ['Other', ...presets];
+  const filtered =
+    typed.length >= 3
+      ? listItems.filter(p => p === 'Other' || p.toLowerCase().includes(typed))
+      : listItems;
+
+  function select(item: string) {
+    if (item === 'Other') {
+      onChange('');
+      setInputVal('');
+    } else {
+      onChange(item);
+      setInputVal(item);
+    }
+    setOpen(false);
+  }
+
+  const showDropdown = open || suggestions.length > 0;
+  const showSuggestions = !open && suggestions.length > 0;
+
+  return (
+    <div ref={containerRef} className="cert-combobox" style={{ position: 'relative' }}>
+      <div className="cert-combobox-field">
+        <input
+          id={id}
+          type="text"
+          value={inputVal}
+          disabled={disabled}
+          placeholder={isOtherSelected ? 'Type to enter...' : placeholder}
+          maxLength={maxLength}
+          autoComplete="off"
+          onChange={e => {
+            setInputVal(e.target.value);
+            onChange(e.target.value);
+            if (!open) setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          className="cert-combobox-toggle"
+          disabled={disabled}
+          aria-label="Show options"
+          onClick={() => setOpen(o => !o)}
+        >
+          ▾
+        </button>
+      </div>
+      {(open || showSuggestions) && (
+        <ul className="cert-combobox-list" role="listbox">
+          {(open ? filtered : suggestions).map(item => (
+            <li
+              key={item}
+              role="option"
+              aria-selected={value === item}
+              className={value === item || (item === 'Other' && isOtherSelected) ? 'selected' : ''}
+              onMouseDown={e => {
+                e.preventDefault();
+                select(item);
+              }}
+            >
+              {item}
+            </li>
+          ))}
+          {open && filtered.length === 0 && (
+            <li className="cert-combobox-empty">No matches</li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ── Main dialog ──────────────────────────────────────── */
 export function CertificationDialog({
   initial,
   onClose,
@@ -143,24 +316,64 @@ export function CertificationDialog({
       setBusy(false);
     }
   }
-  const preview = (
-    <div className="skill-preview-card">
-      {imageUrl && (
-        <img className="certificate-read-image" src={imageUrl} alt="Certificate image preview" />
-      )}
-      <h3>{fields.certificationName || 'Your certification'}</h3>
-      <p>
-        {fields.provider || 'Issuer'} &middot; {fields.category || 'Category'}
-      </p>
-      <span className="cert-category-badge">Draft</span>
-      <p>Issued: {fields.certificationDate || 'Choose an issue date'}</p>
-      <p>
-        {fields.expiryDate === null
-          ? 'Does not expire'
-          : `Expires: ${fields.expiryDate || 'Choose an expiry date'}`}
-      </p>
+
+  /* ── review & save preview (left: image, right: details) ── */
+  const reviewContent = (
+    <div className="cert-review-split">
+      {/* LEFT — certificate image */}
+      <section className="cert-review-image-col">
+        <h3>Certificate image</h3>
+        {imageUrl ? (
+          <a href={imageUrl} target="_blank" rel="noopener noreferrer" aria-label="Open certificate image">
+            <img className="certificate-read-image" src={imageUrl} alt="Certificate preview" />
+          </a>
+        ) : (
+          <p className="cert-help">No image attached.</p>
+        )}
+      </section>
+
+      {/* RIGHT — details to verify */}
+      <section className="cert-review-details-col">
+        <h3>Verify details</h3>
+        <div className="cert-review-field-list">
+          {[
+            ['Certification name', fields.certificationName],
+            ['Issuer', fields.provider],
+            ['Category', fields.category],
+            ['Issue date', fields.certificationDate],
+            [
+              'Expiry date',
+              fields.expiryDate === null ? 'Does not expire' : fields.expiryDate || '—',
+            ],
+            ['Credential ID', fields.credentialId || '—'],
+            ['Issuer / badge link', fields.credentialUrl || '—'],
+            ['Supporting notes', fields.notes || '—'],
+          ].map(([label, value]) => (
+            <div className="cert-review-field-row" key={label}>
+              <span className="cert-review-field-label">{label}</span>
+              <span className="cert-review-field-value">{value}</span>
+            </div>
+          ))}
+        </div>
+        <button type="button" className="skill-text-button" onClick={() => changeStep(0)}>
+          ← Edit details &amp; image
+        </button>
+        <div className="skill-next-steps">
+          <h3>What happens next</h3>
+          <ol>
+            <li>Save a draft and finish it later from My certifications.</li>
+            <li>Submit when ready for your assigned current manager's review.</li>
+            <li>Track feedback and status in My certifications.</li>
+          </ol>
+        </div>
+        <p className="cert-help">
+          Manager review records a decision; it does not verify the issuer or set a skill
+          proficiency level.
+        </p>
+      </section>
     </div>
   );
+
   return (
     <FormDialog
       title={initial ? 'Update certification' : 'Add certification'}
@@ -191,18 +404,15 @@ export function CertificationDialog({
                     setError('');
                   }}
                 />
-
-                <p className="cert-help">
-                  Your image is compressed automatically before saving. Use a clear, readable
-                  certificate.
-                </p>
               </section>
               <section className="certification-details-pane">
                 <h3>Certification details</h3>
                 <p className="cert-help">Fill in all details printed on your certificate.</p>
                 <fieldset className="cert-meta-grid" disabled={busy}>
                   <legend className="sr-only">Credential details</legend>
-                  <label className="form-group">
+
+                  {/* Certification name — full width */}
+                  <label className="form-group" style={{ gridColumn: '1 / -1' }}>
                     Certification name *
                     <input
                       value={fields.certificationName}
@@ -211,24 +421,34 @@ export function CertificationDialog({
                       autoComplete="off"
                     />
                   </label>
+
+                  {/* Issuer combobox */}
                   <label className="form-group">
                     Issuer *
-                    <input
+                    <ComboBox
                       value={fields.provider}
-                      maxLength={120}
+                      onChange={v => update('provider', v)}
+                      presets={ISSUERS}
                       placeholder="e.g. Microsoft, AWS, Oracle"
-                      onChange={e => update('provider', e.target.value)}
+                      maxLength={120}
+                      disabled={busy}
                     />
                   </label>
+
+                  {/* Category combobox */}
                   <label className="form-group">
                     Category *
-                    <input
+                    <ComboBox
                       value={fields.category}
+                      onChange={v => update('category', v)}
+                      presets={CATEGORIES}
+                      placeholder="e.g. Cloud Architecture"
                       maxLength={80}
-                      placeholder="e.g. Cloud architecture"
-                      onChange={e => update('category', e.target.value)}
+                      disabled={busy}
                     />
                   </label>
+
+                  {/* Issue date + Expiry date side by side */}
                   <label className="form-group">
                     Issue date *
                     <input
@@ -238,27 +458,54 @@ export function CertificationDialog({
                       onChange={e => update('certificationDate', e.target.value)}
                     />
                   </label>
-                  <label className="form-group">
-                    <span>
+
+                  {/* Expiry date column */}
+                  <div className="form-group cert-expiry-col">
+                    <label htmlFor="cert-expiry-date">
+                      Expiry date {fields.expiryDate !== null ? '*' : ''}
+                    </label>
+                    {fields.expiryDate !== null && (
+                      <>
+                        <div className="cert-expiry-row">
+                          <input
+                            id="cert-expiry-date"
+                            type="date"
+                            min={fields.certificationDate || undefined}
+                            value={fields.expiryDate}
+                            onChange={e => update('expiryDate', e.target.value)}
+                          />
+                          <select
+                            className="cert-expiry-preset"
+                            aria-label="Quick-fill expiry date"
+                            value=""
+                            onChange={e => {
+                              const months = parseInt(e.target.value, 10);
+                              if (months && fields.certificationDate) {
+                                update('expiryDate', addMonths(fields.certificationDate, months));
+                              }
+                            }}
+                          >
+                            <option value="">Quick fill…</option>
+                            {EXPIRY_PRESETS.map(p => (
+                              <option key={p.months} value={p.months}>
+                                {p.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                    <label className="cert-no-expire-check">
                       <input
                         type="checkbox"
                         checked={fields.expiryDate === null}
                         onChange={e => update('expiryDate', e.target.checked ? null : '')}
-                      />{' '}
-                      This credential does not expire
-                    </span>
-                  </label>
-                  {fields.expiryDate !== null && (
-                    <label className="form-group">
-                      Expiry date *
-                      <input
-                        type="date"
-                        min={fields.certificationDate || undefined}
-                        value={fields.expiryDate}
-                        onChange={e => update('expiryDate', e.target.value)}
                       />
+                      Does not expire
                     </label>
-                  )}
+                  </div>
+
+                  {/* Credential ID */}
                   <label className="form-group">
                     Credential ID (optional)
                     <input
@@ -267,6 +514,8 @@ export function CertificationDialog({
                       onChange={e => update('credentialId', e.target.value)}
                     />
                   </label>
+
+                  {/* Badge link */}
                   <label className="form-group">
                     Issuer / badge link (optional)
                     <input
@@ -277,7 +526,9 @@ export function CertificationDialog({
                       onChange={e => update('credentialUrl', e.target.value)}
                     />
                   </label>
-                  <label className="form-group">
+
+                  {/* Notes — full width */}
+                  <label className="form-group" style={{ gridColumn: '1 / -1' }}>
                     Supporting notes (optional)
                     <textarea
                       value={fields.notes}
@@ -286,6 +537,7 @@ export function CertificationDialog({
                       onChange={e => update('notes', e.target.value)}
                     />
                   </label>
+
                   <p className="cert-help">
                     Enter the details printed on your credential. Attach your certificate image on
                     the left.
@@ -297,56 +549,7 @@ export function CertificationDialog({
         },
         {
           label: 'Review & save',
-          content: (
-            <div className="skill-review-layout">
-              <section>
-                <h3>Review your certification information</h3>
-                <div className="skill-review-section">
-                  <h3>{fields.certificationName}</h3>
-                  <p>
-                    {fields.provider} &middot; {fields.category}
-                  </p>
-                  <button type="button" className="skill-text-button" onClick={() => changeStep(0)}>
-                    Edit credential
-                  </button>
-                </div>
-                {[
-                  ['Issue date', fields.certificationDate],
-                  [
-                    'Expiry date',
-                    fields.expiryDate === null ? 'Does not expire' : fields.expiryDate,
-                  ],
-                  ['Credential ID', fields.credentialId || 'Not provided'],
-                  ['Issuer / badge link', fields.credentialUrl || 'Not provided'],
-                  ['Supporting notes', fields.notes || 'Not provided'],
-                ].map(([label, value]) => (
-                  <div className="skill-review-section" key={label}>
-                    <h3>{label}</h3>
-                    <p className="skill-summary-text">{value}</p>
-                  </div>
-                ))}
-                <button type="button" className="skill-text-button" onClick={() => changeStep(0)}>
-                  Edit details & image
-                </button>
-              </section>
-              <section className="skill-save-preview">
-                <h3>Certification preview</h3>
-                {preview}
-                <div className="skill-next-steps">
-                  <h3>What happens next</h3>
-                  <ol>
-                    <li>Save a draft and finish it later from My certifications.</li>
-                    <li>Submit when ready for your assigned current manager's review.</li>
-                    <li>Track feedback and status in My certifications.</li>
-                  </ol>
-                </div>
-                <p className="cert-help">
-                  Manager review records a decision; it does not verify the issuer or set a skill
-                  proficiency level.
-                </p>
-              </section>
-            </div>
-          ),
+          content: reviewContent,
         },
       ]}
       footer={

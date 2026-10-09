@@ -147,10 +147,7 @@ export function CertificateImageUploader({
             {url ? 'Replace image' : 'Browse image'}
           </button>
         </div>
-        <p className="cert-help">
-          JPEG, PNG or WebP up to 5 MB. Automatically compressed below 1 MB. Saved with your draft;
-          shared with your assigned manager when submitted.
-        </p>
+        <p className="cert-help">JPEG, PNG or WebP up to 5 MB.</p>
       </div>
       {!available && <p className="cert-help">Certificate image storage is not configured.</p>}
       {(error || localError) && <p role="alert">{error || localError}</p>}
