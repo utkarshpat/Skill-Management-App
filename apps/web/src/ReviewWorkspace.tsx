@@ -30,6 +30,8 @@ export function ReviewWorkspace({
   const type =
     certificationsAllowed && params.get('type') === 'certifications' ? 'certifications' : 'skills';
   const [data, setData] = useState<CertificationPage>();
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState('');
   const [analytics, setAnalytics] = useState<{
     pending: number;
     expired: number;
@@ -83,7 +85,6 @@ export function ReviewWorkspace({
   useEffect(() => {
     if (type !== 'certifications') return;
     const controller = new AbortController();
-    setData(undefined);
     setError('');
     setLoading(true);
     setCredential(undefined);
@@ -96,7 +97,10 @@ export function ReviewWorkspace({
         if (!controller.signal.aborted) setData(value);
       })
       .catch(e => {
-        if (!controller.signal.aborted) setError(e.message);
+        if (!controller.signal.aborted) {
+          setData(undefined);
+          setError(e.message);
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -106,7 +110,8 @@ export function ReviewWorkspace({
   useEffect(() => {
     if (type !== 'certifications') return;
     const controller = new AbortController();
-    setAnalytics(undefined);
+    setAnalyticsLoading(true);
+    setAnalyticsError('');
     authenticatedFetch('/api/certification-recommendations/analytics', {
       signal: controller.signal,
     })
@@ -120,7 +125,13 @@ export function ReviewWorkspace({
         if (!controller.signal.aborted) setAnalytics(value);
       })
       .catch(e => {
-        if (!controller.signal.aborted) setError(e.message);
+        if (!controller.signal.aborted) {
+          setAnalytics(undefined);
+          setAnalyticsError(e.message);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setAnalyticsLoading(false);
       });
     return () => controller.abort();
   }, [attempt, type]);
@@ -202,7 +213,20 @@ export function ReviewWorkspace({
                 <MessageSquareMore size={18} /> Recommendations
               </button>
             )}
+            {!analytics && analyticsLoading && (
+              <span className="review-access-placeholder" aria-hidden="true">
+                <span />
+              </span>
+            )}
           </nav>
+          {analyticsError && certificationTab !== 'queue' && (
+            <div className="assigned-review-error" role="alert">
+              <span>{analyticsError}</span>
+              <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
+                Retry
+              </button>
+            </div>
+          )}
           {certificationTab === 'queue' && (
             <>
               <div className="assigned-review-summary" aria-label="Certification review summary">
@@ -210,7 +234,7 @@ export function ReviewWorkspace({
                   <span>
                     <Award size={17} /> Pending certifications
                   </span>
-                  <strong>{loading ? '—' : (data?.total ?? 0)}</strong>
+                  <strong>{data?.total ?? '—'}</strong>
                   <small>Ready for your review</small>
                 </article>
               </div>
@@ -248,11 +272,13 @@ export function ReviewWorkspace({
                 </div>
               )}
               {loading && (
-                <p className="assigned-review-loading" role="status">
-                  Checking current assignments…
-                </p>
+                <div className="assigned-review-skeleton" role="status">
+                  <span className="sr-only">Loading certification review queue…</span>
+                  <div aria-hidden="true" />
+                  <div aria-hidden="true" />
+                </div>
               )}
-              {data && (
+              {data && !loading && (
                 <>
                   <div className="combined-review-list">
                     {data.records.map(record => (
@@ -324,7 +350,7 @@ export function ReviewWorkspace({
             <section
               className="cert-review-analytics"
               aria-label="Assigned certification review analytics"
-              aria-busy={!analytics}
+              aria-busy={analyticsLoading}
             >
               <header>
                 <div>
@@ -372,7 +398,9 @@ export function ReviewWorkspace({
                   <p>
                     {analytics
                       ? 'No assigned certification categories to summarize.'
-                      : 'Loading authorized analytics…'}
+                      : analyticsLoading
+                        ? 'Loading authorized analytics…'
+                        : 'Analytics unavailable.'}
                   </p>
                 )}
               </div>
@@ -380,6 +408,14 @@ export function ReviewWorkspace({
           )}
           {certificationTab === 'recommendations' && analytics?.canRecommend && (
             <CertificationRecommendations sentOnly />
+          )}
+          {certificationTab === 'recommendations' && !analytics && analyticsLoading && (
+            <p role="status">Checking recommendation access…</p>
+          )}
+          {certificationTab === 'recommendations' && analytics && !analytics.canRecommend && (
+            <p role="status">
+              Certification recommendations are not available with your current access.
+            </p>
           )}
           {credential && (
             <CertificationReviewDialog

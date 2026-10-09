@@ -1,6 +1,7 @@
 /* Shared UI: laptop first, compact navigation, readable forms, restrained brand accents. */
 :root {
   font-family: 'Segoe UI', Arial, sans-serif;
+  scrollbar-gutter: stable;
   background: #f7f8fa;
   color: #202329;
   font-size: 14px;
