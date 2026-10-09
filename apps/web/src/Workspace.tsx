@@ -157,7 +157,7 @@ export function Workspace({
       label: 'Certifications',
       href: '/certifications',
       icon: Award,
-      visible: state?.capabilities.certifications !== false,
+      visible: Boolean(state?.capabilities.certifications),
     },
     {
       id: 'requests',

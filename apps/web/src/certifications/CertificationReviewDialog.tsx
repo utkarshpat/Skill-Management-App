@@ -1,210 +1,115 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { FormDialog } from '../FormDialog';
 import type { CertificationRecord } from './types';
-import {
-  CheckCheck,
-  ExternalLink,
-  MessageSquareMore,
-  ShieldCheck,
-  XCircle,
-} from 'lucide-react';
-
-interface CertificationReviewDialogProps {
-  certification: CertificationRecord;
-  onClose: () => void;
-  onDecision: (
-    id: string,
-    decision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED',
-    feedbackNote?: string,
-  ) => void;
-  reviewerName?: string;
-}
-
+import { credentialValidity } from './certification-model';
 export function CertificationReviewDialog({
   certification,
   onClose,
   onDecision,
-  reviewerName = 'Capability Lead / Manager',
-}: CertificationReviewDialogProps) {
-  const [feedback, setFeedback] = useState('');
-  const [decisionMode, setDecisionMode] = useState<
-    'idle' | 'CHANGES_REQUESTED' | 'REJECTED'
-  >('idle');
-
-  function handleApprove() {
-    onDecision(certification.id, 'APPROVED', feedback);
-    onClose();
+}: {
+  certification: CertificationRecord;
+  onClose: () => void;
+  onDecision: (
+    record: CertificationRecord,
+    action: 'APPROVE' | 'REQUEST_CHANGES' | 'REJECT',
+    feedback: string,
+  ) => Promise<void>;
+}) {
+  const [feedback, setFeedback] = useState(''),
+    [error, setError] = useState(''),
+    [busy, setBusy] = useState(false);
+  const saving = useRef(false);
+  async function decide(action: 'APPROVE' | 'REQUEST_CHANGES' | 'REJECT') {
+    if (saving.current || !certification.canReview) return;
+    if (!feedback.trim()) {
+      setError('Add a review note explaining your decision.');
+      return;
+    }
+    saving.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      await onDecision(certification, action, feedback.trim());
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Review failed. Your note is still here.');
+    } finally {
+      saving.current = false;
+      setBusy(false);
+    }
   }
-
-  function handleConfirmRejectionOrChanges() {
-    if (decisionMode === 'idle') return;
-    onDecision(certification.id, decisionMode, feedback);
-    onClose();
-  }
-
   return (
     <FormDialog
-      title="Verify Certification Record"
-      subtitle={`Review official credential claim for ${certification.name} (${certification.employeeCode})`}
+      title="Review certification"
+      subtitle={`${certification.name} · ${certification.employeeCode}`}
       onClose={onClose}
+      busy={busy}
       className="certification-review-modal"
     >
-      <div className="certification-review-content">
-        {/* Verification Summary Banner */}
-        <div className="cert-review-banner">
-          <div className="cert-review-banner-header">
-            <div>
-              <span className="cert-category-badge">{certification.category}</span>
-              <h3 className="cert-review-title">{certification.certificationName}</h3>
-              <p className="cert-review-issuer">
-                Issuer: <strong>{certification.provider}</strong> • Delivery Unit: <strong>{certification.du}</strong>
-              </p>
-            </div>
-            <div className="cert-review-status-pill">
-              <span className={`status-pill status-${certification.status.toLowerCase()}`}>
-                {certification.status}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Verification Metadata Grid */}
-        <div className="cert-meta-grid">
-          <div className="cert-meta-item">
-            <span className="meta-label">Candidate</span>
-            <span className="meta-value">{certification.name}</span>
-          </div>
-          <div className="cert-meta-item">
-            <span className="meta-label">Employee Code</span>
-            <span className="meta-value">{certification.employeeCode}</span>
-          </div>
-          <div className="cert-meta-item">
-            <span className="meta-label">Issue Date</span>
-            <span className="meta-value">{certification.certificationDate}</span>
-          </div>
-          <div className="cert-meta-item">
-            <span className="meta-label">Expiry Date</span>
-            <span className="meta-value">
-              {certification.doesNotExpire === 'Yes'
-                ? 'Does Not Expire (2050-12-31)'
-                : certification.expiryDate}
-            </span>
-          </div>
-          <div className="cert-meta-item">
-            <span className="meta-label">Credential ID</span>
-            <span className="meta-value">{certification.credentialId || 'N/A'}</span>
-          </div>
-          <div className="cert-meta-item">
-            <span className="meta-label">Work Email</span>
-            <span className="meta-value">{certification.emailId}</span>
-          </div>
-        </div>
-
-        {/* Evidence & Credential Link Verification */}
+      <section className="cert-review-banner">
+        <h3>{certification.certificationName}</h3>
+        <p>
+          {certification.provider} · {certification.category}
+        </p>
+        <p>
+          Issued {certification.certificationDate} ·{' '}
+          {credentialValidity(certification.expiryDate, new Date().toISOString().slice(0, 10))}
+          {certification.expiryDate && ` (${certification.expiryDate})`}
+        </p>
+        {certification.credentialId && <p>Credential ID: {certification.credentialId}</p>}
         {certification.credentialUrl && (
-          <div className="cert-evidence-box">
-            <div className="evidence-header">
-              <ShieldCheck size={18} className="text-teal" />
-              <h4>Digital Credential Verification Link</h4>
-            </div>
-            <div className="evidence-link-wrap">
-              <a
-                href={certification.credentialUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="cert-external-link"
-              >
-                <span>{certification.credentialUrl}</span>
-                <ExternalLink size={14} />
-              </a>
-            </div>
-            <p className="evidence-hint">
-              Click the link above to inspect the issuer's public badge / transcript.
-            </p>
-          </div>
+          <a href={certification.credentialUrl} target="_blank" rel="noopener noreferrer">
+            Open issuer / badge link
+          </a>
         )}
-
-        {/* Feedback / Reason Input */}
-        <div className="cert-feedback-section">
-          <label htmlFor="review-feedback">
-            Reviewer Feedback / Audit Note{' '}
-            {decisionMode !== 'idle' ? '(Mandatory for changes/rejection)' : '(Optional)'}
-          </label>
-          <textarea
-            id="review-feedback"
-            rows={3}
-            placeholder={
-              decisionMode === 'CHANGES_REQUESTED'
-                ? 'Specify the additional details or revised credential link required from the candidate…'
-                : decisionMode === 'REJECTED'
-                  ? 'State reason for not approving this certification…'
-                  : 'Add notes for the audit trail (optional)…'
-            }
-            value={feedback}
-            onChange={e => setFeedback(e.target.value)}
-          />
-        </div>
-
-        {/* Decision Actions Bar */}
-        <div className="certification-review-footer">
-          {decisionMode === 'idle' ? (
-            <>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={onClose}
-              >
-                Cancel
-              </button>
-              <div className="review-action-buttons">
-                <button
-                  type="button"
-                  className="secondary-button button-tone-rose"
-                  onClick={() => setDecisionMode('REJECTED')}
-                >
-                  <XCircle size={16} />
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button button-tone-blue"
-                  onClick={() => setDecisionMode('CHANGES_REQUESTED')}
-                >
-                  <MessageSquareMore size={16} />
-                  Request Changes
-                </button>
-                <button
-                  type="button"
-                  className="primary-button button-tone-teal"
-                  onClick={handleApprove}
-                >
-                  <CheckCheck size={16} />
-                  Approve & Verify
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="confirm-decision-row">
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => setDecisionMode('idle')}
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                className={`primary-button ${
-                  decisionMode === 'REJECTED' ? 'button-tone-rose' : 'button-tone-blue'
-                }`}
-                disabled={!feedback.trim()}
-                onClick={handleConfirmRejectionOrChanges}
-              >
-                Confirm {decisionMode === 'REJECTED' ? 'Rejection' : 'Changes Request'}
-              </button>
-            </div>
-          )}
-        </div>
+        {certification.notes && <p>{certification.notes}</p>}
+        <p>
+          Review the credential details and issuer link. Approval does not extend validity or
+          establish skill proficiency.
+        </p>
+      </section>
+      {!certification.canReview && (
+        <p role="alert">
+          Assigned review is unavailable:{' '}
+          {certification.reviewAccess?.reasonCode ?? 'Refresh your queue.'}
+        </p>
+      )}
+      {error && <p role="alert">{error}</p>}
+      <label className="form-group">
+        Review note *
+        <textarea
+          value={feedback}
+          maxLength={2000}
+          rows={4}
+          disabled={busy}
+          onChange={e => setFeedback(e.target.value)}
+        />
+      </label>
+      <div className="certification-review-footer">
+        <button className="secondary-button" disabled={busy} onClick={onClose}>
+          Cancel
+        </button>
+        <button
+          className="secondary-button"
+          disabled={busy || !certification.canReview}
+          onClick={() => void decide('REJECT')}
+        >
+          Do not approve
+        </button>
+        <button
+          className="secondary-button"
+          disabled={busy || !certification.canReview}
+          onClick={() => void decide('REQUEST_CHANGES')}
+        >
+          Request changes
+        </button>
+        <button
+          className="primary-button"
+          disabled={busy || !certification.canReview}
+          onClick={() => void decide('APPROVE')}
+        >
+          {busy ? 'Saving…' : 'Approve with note'}
+        </button>
       </div>
     </FormDialog>
   );

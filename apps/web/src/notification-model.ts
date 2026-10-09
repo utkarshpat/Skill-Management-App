@@ -18,6 +18,7 @@ export function notificationDestination(href: string) {
     },
     '/skill-reviews': { label: 'Review claim', kind: 'Skill reviews', icon: ClipboardCheck },
     '/my-skills': { label: 'View skill claim', kind: 'My skills', icon: ClipboardCheck },
+    '/certifications': { label: 'View certification', kind: 'Certifications', icon: ClipboardCheck },
     '/profile': { label: 'View profile', kind: 'Profile & access', icon: Bell },
   };
   return actions[url.pathname];

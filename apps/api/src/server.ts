@@ -13,6 +13,7 @@ import { can, readActorAccess } from './modules/access/index.js';
 import { AssistantService, configuredProvider } from './modules/ai/index.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
 import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
+import { SqlCertificationStore } from './modules/skills/sql-certification-store.js';
 import { configuredEvidence } from './modules/skills/evidence.js';
 import { SqlConversationsStore } from './modules/ai/conversations.js';
 import {
@@ -41,6 +42,9 @@ const claims = process.env.ACCESS_ACCOUNT_ID
   ? new SqlClaimsStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
 const evidenceStore = configuredEvidence(process.env);
+const certifications = process.env.ACCESS_ACCOUNT_ID
+  ? new SqlCertificationStore(process.env.ACCESS_ACCOUNT_ID)
+  : undefined;
 const catalogue = process.env.ACCESS_ACCOUNT_ID
   ? new SqlCatalogueStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
@@ -117,6 +121,7 @@ const app = createApp(
         knowledgeTransfer,
         catalogue,
         claims,
+        certifications,
         evidenceStore,
         learning,
         practice,

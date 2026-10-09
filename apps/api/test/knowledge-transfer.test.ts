@@ -35,8 +35,8 @@ test('KT rejects forged authority/history and oversized context before any provi
 });
 
 test('KT inventory preserves actual FK tuples and treats view and quota tables honestly', () => {
-  assert.equal(Object.keys(content.schema.tables).length, 44);
-  assert.equal(content.schema.migrations.length, 52);
+  assert.equal(Object.keys(content.schema.tables).length, 45);
+  assert.equal(content.schema.migrations.length, 53);
   assert.equal(content.schema.tables.AccessPerson.columns.job_title.type, 'nvarchar(100)');
   assert.equal(content.schema.tables.AccessPerson.columns.grade.nullable, true);
   assert.ok(

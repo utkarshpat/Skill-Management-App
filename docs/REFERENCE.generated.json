@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "79abc9133aa3d73a",
+  "revision": "698a553283bdaffd",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -55,7 +55,8 @@
       "049_paginated_access_audit.sql",
       "050_skill_evidence.sql",
       "051_submitted_skill_evidence.sql",
-      "052_primary_capability.sql"
+      "052_primary_capability.sql",
+      "053_certification_records.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -4124,6 +4125,202 @@
         ],
         "indexes": [],
         "domain": "Skills & claims"
+      },
+      "CertificationRecord": {
+        "source": "053_certification_records.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "053_certification_records.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "053_certification_records.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "053_certification_records.sql"
+          },
+          "reviewer_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "reviewer_id uniqueidentifier NULL",
+            "source": "053_certification_records.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL CHECK(revision>0)",
+            "source": "053_certification_records.sql"
+          },
+          "certification_name": {
+            "type": "nvarchar(200)",
+            "nullable": false,
+            "declaration": "certification_name nvarchar(200) NOT NULL",
+            "source": "053_certification_records.sql"
+          },
+          "provider": {
+            "type": "nvarchar(120)",
+            "nullable": false,
+            "declaration": "provider nvarchar(120) NOT NULL",
+            "source": "053_certification_records.sql"
+          },
+          "category": {
+            "type": "nvarchar(80)",
+            "nullable": false,
+            "declaration": "category nvarchar(80) NOT NULL",
+            "source": "053_certification_records.sql"
+          },
+          "issue_date": {
+            "type": "date",
+            "nullable": false,
+            "declaration": "issue_date date NOT NULL",
+            "source": "053_certification_records.sql"
+          },
+          "expiry_date": {
+            "type": "date",
+            "nullable": true,
+            "declaration": "expiry_date date NULL",
+            "source": "053_certification_records.sql"
+          },
+          "credential_id": {
+            "type": "nvarchar(200)",
+            "nullable": false,
+            "declaration": "credential_id nvarchar(200) NOT NULL",
+            "source": "053_certification_records.sql"
+          },
+          "credential_url": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "credential_url nvarchar(1000) NOT NULL",
+            "source": "053_certification_records.sql"
+          },
+          "notes": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "notes nvarchar(2000) NOT NULL",
+            "source": "053_certification_records.sql"
+          },
+          "status": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "status varchar(20) NOT NULL CHECK(status IN('DRAFT','SUBMITTED','APPROVED','CHANGES_REQUESTED','REJECTED'))",
+            "source": "053_certification_records.sql"
+          },
+          "feedback": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "feedback nvarchar(2000) NOT NULL DEFAULT N''",
+            "source": "053_certification_records.sql"
+          },
+          "submitted_at": {
+            "type": "datetime2",
+            "nullable": true,
+            "declaration": "submitted_at datetime2 NULL",
+            "source": "053_certification_records.sql"
+          },
+          "reviewed_at": {
+            "type": "datetime2",
+            "nullable": true,
+            "declaration": "reviewed_at datetime2 NULL",
+            "source": "053_certification_records.sql"
+          },
+          "updated_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "updated_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "053_certification_records.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "053_certification_records.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "reviewer_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "053_certification_records.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id)",
+            "source": "053_certification_records.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "053_certification_records.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,reviewer_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "053_certification_records.sql"
+          },
+          {
+            "sql": "CHECK(expiry_date IS NULL OR expiry_date>=issue_date)",
+            "source": "053_certification_records.sql"
+          },
+          {
+            "sql": "CHECK(reviewer_id IS NULL OR reviewer_id<>person_id)",
+            "source": "053_certification_records.sql"
+          },
+          {
+            "sql": "CHECK(LEN(LTRIM(RTRIM(certification_name)))>0 AND LEN(LTRIM(RTRIM(provider)))>0 AND LEN(LTRIM(RTRIM(category)))>0)",
+            "source": "053_certification_records.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_Certification_Person",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "person_id",
+              "updated_at"
+            ],
+            "filter": "",
+            "source": "053_certification_records.sql"
+          },
+          {
+            "name": "IX_Certification_Reviewer",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "reviewer_id",
+              "status",
+              "updated_at"
+            ],
+            "filter": "",
+            "source": "053_certification_records.sql"
+          }
+        ],
+        "domain": "Skills & claims"
       }
     },
     "views": {
@@ -4400,6 +4597,18 @@
       "path": "/api/recommendations/respond",
       "module": "recommendations",
       "source": "apps/api/src/modules/recommendations/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/certifications",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/certification-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/certifications",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/certification-routes.ts"
     },
     {
       "method": "POST",
@@ -4720,6 +4929,18 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@query nvarchar(100)=N'',@page int=1,@skill_id uniqueidentifier=NULL",
       "source": "database/migrations/052_primary_capability.sql"
+    },
+    {
+      "name": "CertificationCanReview",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@id uniqueidentifier)\nRETURNS bit",
+      "source": "database/migrations/053_certification_records.sql"
+    },
+    {
+      "name": "CertificationWorkspace",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
+      "source": "database/migrations/053_certification_records.sql"
     }
   ],
   "groups": {
@@ -4760,7 +4981,8 @@
       "SkillVersionCriterion",
       "SkillClaimDraft",
       "SkillClaimNotification",
-      "SkillClaimEvidence"
+      "SkillClaimEvidence",
+      "CertificationRecord"
     ],
     "Learning & recommendations": [
       "LearningPlan",

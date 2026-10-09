@@ -4,6 +4,12 @@ Status: user-approved Access Management baseline as of 4 October 2026. Future UI
 
 ## Locked invariants
 
+### Certification increment — 9 October 2026
+
+The user selected the assigned current direct-manager policy for certification review. The implementation in migration 053 shares the existing `profile.view`/`skill.view` personal-read prerequisites, `skill.claim` personal claim-management prerequisites (including published-catalogue view), and `skill.verify` assigned-review policy. Permission IDs and stored grants are retained; labels identify both skill and certification claims. No organization directory, new grant scope, title-based authority or automatic skill approval is introduced. Certification reads/writes independently enforce owner, active account/people, current reporting chain, exact assigned reviewer, submitted state, no self-review and revision checks. Submitted and approved credential details are immutable. Returned/rejected records may be corrected and explicitly resubmitted. Manager reassignment requires explicit rerouting; it does not silently transfer submitted reviews.
+
+Approval records a manager decision, independently of issuer validation and calendar-derived expiry. On 9 October 2026, user-approved migration 053 was installed on `skill-management-dev` and its rollback SQL fixture passed before and after installation, including restricted-runtime approval on installed 053. Other targets require installation and SQL verification; hosted deployment and authenticated browser acceptance remain pending.
+
 1. Person, role and access are distinct. Permission, scope, relationship and workflow constraints must remain separate.
 2. Hierarchy does not automatically grant authority. The explicitly defined current direct-manager skill-review policy is relationship-derived authority.
 3. Access templates are reusable permission bundles. Scoped allow/deny exceptions require a reason and expiry.

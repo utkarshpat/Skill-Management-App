@@ -10,38 +10,28 @@ export function csvCell(value: string | number | undefined | null): string {
 
 export function generateCertificationsCsv(records: CertificationRecord[]): string {
   const headers = [
-    'Sr NO',
     'Name',
     'Employee Code',
-    'DU',
     'Category',
     'Certification Name',
     'Certification Date',
     'Does Not Expire',
     'Expiry Date',
-    'Active',
-    'Email ID',
-    'Email Type',
+    'Review status',
   ];
 
   const rows = records.map(item => [
-    item.srNo,
     item.name,
     item.employeeCode,
-    item.du,
     item.category,
     item.certificationName,
     item.certificationDate,
-    item.doesNotExpire,
+    item.expiryDate === null ? 'Yes' : 'No',
     item.expiryDate,
-    item.active,
-    item.emailId,
-    item.emailType,
+    item.status,
   ]);
 
-  const csvContent = [headers, ...rows]
-    .map(row => row.map(csvCell).join(','))
-    .join('\r\n');
+  const csvContent = [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
 
   // Prefix UTF-8 BOM so Excel opens it with proper UTF-8 encoding
   return '\uFEFF' + csvContent;

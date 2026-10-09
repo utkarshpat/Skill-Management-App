@@ -30,7 +30,7 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
       requests: available('request.view') || available('incident.view'),
       ownProfile,
       ownSkills,
-      certifications: ownProfile,
+      certifications: ownSkills,
       learning: can(state, person, 'learning.view', true),
       claimSkills:
         ownSkills && can(state, person, 'skill.claim', true) && can(state, person, 'skill.view'),

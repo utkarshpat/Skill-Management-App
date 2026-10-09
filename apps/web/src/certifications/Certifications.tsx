@@ -1,587 +1,376 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router';
-import type { CertificationRecord } from './types';
-import { loadStoredCertifications, saveStoredCertifications } from './initial-data';
-import { downloadCertificationsCsv } from './certification-reports';
-import { CertificationDialog } from './CertificationDialog';
-import { CertificationReviewDialog } from './CertificationReviewDialog';
+import { Award, Plus, RefreshCw, Search } from 'lucide-react';
+import { authenticatedFetch } from '../auth';
+import { readApiResponse } from '../api-response';
+import { FormDialog } from '../FormDialog';
 import { toast } from '../toast';
 import type { WorkspaceState } from '../Workspace';
+import { CertificationDialog } from './CertificationDialog';
+import { CertificationReviewDialog } from './CertificationReviewDialog';
+import { certificationStatusLabels, credentialValidity } from './certification-model';
+import type { CertificationFields, CertificationPage, CertificationRecord } from './types';
 import './certifications.css';
-import {
-  Award,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  FileSpreadsheet,
-  Filter,
-  Plus,
-  RefreshCw,
-  Search,
-  ShieldCheck,
-  UserCheck,
-  Users,
-} from 'lucide-react';
 
 export function Certifications({
-  workspace,
   actionsContainer,
 }: {
   workspace?: WorkspaceState;
   actionsContainer?: HTMLDivElement | null;
 }) {
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  // Role detection
-  const person = workspace?.person;
-  const roles = person?.roles || [];
-  const capabilities = workspace?.capabilities;
-
-  const isCapabilityLead = useMemo(() => {
-    return Boolean(
-      roles.some(r =>
-        /capability lead|delivery unit head|department head|chro|administrator|admin/i.test(r),
-      ) ||
-        capabilities?.administration ||
-        capabilities?.manageCatalogue,
-    );
-  }, [roles, capabilities]);
-
-  const isManager = useMemo(() => {
-    return Boolean(
-      isCapabilityLead ||
-        capabilities?.reviewSkills ||
-        roles.some(r => /manager|lead/i.test(r)),
-    );
-  }, [isCapabilityLead, capabilities, roles]);
-
-  // Allowed tabs based on role
-  const allowedTabs = useMemo(() => {
-    if (isCapabilityLead) return ['directory', 'queue', 'mine'] as const;
-    if (isManager) return ['queue', 'mine'] as const;
-    return ['mine'] as const;
-  }, [isCapabilityLead, isManager]);
-
-  // Tab State
-  const defaultTab = isCapabilityLead ? 'directory' : isManager ? 'queue' : 'mine';
-  const paramTab = searchParams.get('tab');
-  const initialTab =
-    paramTab && (allowedTabs as readonly string[]).includes(paramTab)
-      ? (paramTab as 'directory' | 'queue' | 'mine')
-      : defaultTab;
-
-  const [activeTab, setActiveTab] = useState<'directory' | 'queue' | 'mine'>(initialTab);
-
-  // Sync tab with URL search params
-  const handleTabChange = (tab: 'directory' | 'queue' | 'mine') => {
-    setActiveTab(tab);
-    const next = new URLSearchParams(searchParams);
-    next.set('tab', tab);
-    setSearchParams(next, { replace: true });
-  };
-
-  const [records, setRecords] = useState<CertificationRecord[]>(() =>
-    loadStoredCertifications(),
-  );
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDu, setSelectedDu] = useState<string>('ALL');
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [selectedActive, setSelectedActive] = useState<string>('ALL');
-
-  // Modals state
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [editingCert, setEditingCert] = useState<CertificationRecord | null>(null);
-  const [reviewingCert, setReviewingCert] = useState<CertificationRecord | null>(null);
-
-  // Listen for storage sync
+  const [params, setParams] = useSearchParams();
+  const view = params.get('tab') === 'queue' ? 'queue' : 'mine';
+  const [data, setData] = useState<CertificationPage>(),
+    [error, setError] = useState(''),
+    [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState(''),
+    [query, setQuery] = useState(''),
+    [page, setPage] = useState(1),
+    [attempt, setAttempt] = useState(0);
+  const [editing, setEditing] = useState<CertificationRecord | null | undefined>(),
+    [reviewing, setReviewing] = useState<CertificationRecord>(),
+    [submitting, setSubmitting] = useState<CertificationRecord>();
+  const [submitError, setSubmitError] = useState(''),
+    [busy, setBusy] = useState(false);
+  const submissionLock = useRef(false);
+  const [today, setToday] = useState(() => new Date().toISOString().slice(0, 10));
   useEffect(() => {
-    const handleUpdate = () => {
-      setRecords(loadStoredCertifications());
+    const refreshDate = () => setToday(new Date().toISOString().slice(0, 10));
+    const timer = window.setInterval(refreshDate, 60_000);
+    window.addEventListener('focus', refreshDate);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refreshDate);
     };
-    window.addEventListener('certifications-updated', handleUpdate);
-    return () => window.removeEventListener('certifications-updated', handleUpdate);
   }, []);
-
-  function persistAndSet(updated: CertificationRecord[]) {
-    setRecords(updated);
-    saveStoredCertifications(updated);
-  }
-
-  // Calculate Metrics
-  const metrics = useMemo(() => {
-    // If regular employee, metrics only reflect own portfolio
-    const baseRecords =
-      !isManager && person?.displayName
-        ? records.filter(
-            r =>
-              r.name.toLowerCase() === person.displayName.toLowerCase() ||
-              (person.employeeCode && r.employeeCode === person.employeeCode),
-          )
-        : records;
-
-    const total = baseRecords.length;
-    const activeCount = baseRecords.filter(r => r.active === 'Y').length;
-    const pendingQueueCount = records.filter(r => r.status === 'SUBMITTED').length;
-
-    const now = new Date();
-    const in90Days = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-    const expiringSoonCount = baseRecords.filter(r => {
-      if (r.doesNotExpire === 'Yes' || r.active !== 'Y') return false;
-      const exp = new Date(r.expiryDate);
-      return exp >= now && exp <= in90Days;
-    }).length;
-
-    return { total, activeCount, pendingQueueCount, expiringSoonCount };
-  }, [records, isManager, person]);
-
-  // Unique filters
-  const duOptions = useMemo(() => {
-    return Array.from(new Set(records.map(r => r.du))).sort();
-  }, [records]);
-
-  const categoryOptions = useMemo(() => {
-    return Array.from(new Set(records.map(r => r.category))).sort();
-  }, [records]);
-
-  // Filtered records
-  const filteredRecords = useMemo(() => {
-    return records.filter(r => {
-      // Tab based scoping
-      if (activeTab === 'queue' && r.status !== 'SUBMITTED') return false;
-
-      if (activeTab === 'mine') {
-        const currentName = person?.displayName?.toLowerCase();
-        const currentCode = person?.employeeCode;
-        const matchesCurrent =
-          (currentName && r.name.toLowerCase() === currentName) ||
-          (currentCode && r.employeeCode === currentCode);
-        // Fallback for demo when user is Anupriya
-        if (!matchesCurrent && (!person || person.displayName === 'Anupriya Banerjee')) {
-          if (r.name !== 'Anupriya Banerjee' && r.employeeCode !== '704427') return false;
-        } else if (!matchesCurrent) {
-          return false;
-        }
-      }
-
-      if (selectedDu !== 'ALL' && r.du !== selectedDu) return false;
-      if (selectedCategory !== 'ALL' && r.category !== selectedCategory) return false;
-      if (selectedActive !== 'ALL' && r.active !== selectedActive) return false;
-
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const match =
-          r.name.toLowerCase().includes(q) ||
-          r.employeeCode.toLowerCase().includes(q) ||
-          r.certificationName.toLowerCase().includes(q) ||
-          r.category.toLowerCase().includes(q) ||
-          r.emailId.toLowerCase().includes(q) ||
-          r.provider.toLowerCase().includes(q);
-        if (!match) return false;
-      }
-
-      return true;
-    });
-  }, [records, activeTab, selectedDu, selectedCategory, selectedActive, searchQuery, person]);
-
-  // Handlers
-  function handleSaveCertification(
-    newRecord: CertificationRecord,
-    submittedForReview: boolean,
-  ) {
-    let updated: CertificationRecord[];
-    const exists = records.some(r => r.id === newRecord.id);
-
-    if (exists) {
-      updated = records.map(r => (r.id === newRecord.id ? newRecord : r));
-    } else {
-      updated = [newRecord, ...records];
-    }
-
-    persistAndSet(updated);
-    toast.success(
-      submittedForReview
-        ? 'Certification submitted for verification to Capability Lead / Manager.'
-        : 'Certification saved as draft.',
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setQuery(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+  useEffect(() => {
+    setPage(1);
+  }, [view]);
+  useEffect(() => {
+    const c = new AbortController();
+    setLoading(true);
+    setError('');
+    setData(undefined);
+    const q = new URLSearchParams({ view, page: String(page), search: query });
+    authenticatedFetch('/api/certifications?' + q, { signal: c.signal })
+      .then(r => readApiResponse<CertificationPage>(r, 'Certifications could not be loaded.'))
+      .then(result => {
+        if (!c.signal.aborted) setData(result);
+      })
+      .catch(e => {
+        if (!c.signal.aborted) setError(e.message);
+      })
+      .finally(() => {
+        if (!c.signal.aborted) setLoading(false);
+      });
+    return () => c.abort();
+  }, [view, page, query, attempt]);
+  const changeView = (tab: string) => {
+    setPage(1);
+    setSearch('');
+    setQuery('');
+    const next = new URLSearchParams(params);
+    next.set('tab', tab);
+    setParams(next);
+  };
+  async function mutate(payload: object, message: string) {
+    await readApiResponse(
+      await authenticatedFetch('/api/certifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+      'Save failed. Your entries are still here.',
     );
+    toast.success(message);
+    setAttempt(n => n + 1);
+    window.dispatchEvent(new Event('notifications-updated'));
   }
-
-  function handleReviewDecision(
-    id: string,
-    decision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED',
-    feedbackNote?: string,
-  ) {
-    const updated = records.map(r => {
-      if (r.id !== id) return r;
-      return {
-        ...r,
-        status: decision,
-        active: decision === 'APPROVED' ? ('Y' as const) : r.active,
-        verified: decision === 'APPROVED',
-        feedbackNote,
-        reviewedBy: person?.displayName || 'Capability Reviewer',
-        reviewedAt: new Date().toISOString().slice(0, 10),
-      };
-    });
-
-    persistAndSet(updated);
-
-    if (decision === 'APPROVED') {
-      toast.success('Certification approved and verified successfully.');
-    } else if (decision === 'CHANGES_REQUESTED') {
-      toast.success('Feedback sent. Changes requested from candidate.');
-    } else {
-      toast.error('Certification rejected.');
+  const save = (id: string, revision: number, fields: CertificationFields, submit: boolean) =>
+    mutate(
+      { action: submit ? 'SAVE_SUBMIT' : 'SAVE', id, revision, fields },
+      submit
+        ? 'Certification submitted to your assigned current manager.'
+        : 'Certification draft saved.',
+    );
+  async function submit() {
+    if (!submitting || submissionLock.current) return;
+    submissionLock.current = true;
+    setBusy(true);
+    setSubmitError('');
+    try {
+      await mutate(
+        { action: 'SUBMIT', id: submitting.id, revision: submitting.revision },
+        'Certification submitted to your assigned current manager.',
+      );
+      setSubmitting(undefined);
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'Submission failed.');
+    } finally {
+      submissionLock.current = false;
+      setBusy(false);
     }
   }
-
-  function handleDownloadReport() {
-    downloadCertificationsCsv(
-      records,
-      `sopra-steria-capability-certifications-${new Date().toISOString().slice(0, 10)}.csv`,
-    );
-    toast.success('Capability Lead Certification report downloaded (CSV).');
-  }
-
-  const actionButtons = (
+  const actions = (
     <div className="cert-header-actions">
-      {isCapabilityLead && (
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={handleDownloadReport}
-          title="Download CSV report matching Capability Lead format"
-        >
-          <FileSpreadsheet size={16} />
-          Export Capability Report (CSV)
+      <button
+        className="secondary-button"
+        disabled={loading}
+        onClick={() => setAttempt(n => n + 1)}
+      >
+        <RefreshCw size={16} /> Refresh
+      </button>
+      {data?.canManage && (
+        <button className="primary-button" onClick={() => setEditing(null)}>
+          <Plus size={16} /> Add certification
         </button>
       )}
-      <button
-        type="button"
-        className="primary-button"
-        onClick={() => {
-          setEditingCert(null);
-          setShowAddDialog(true);
-        }}
-      >
-        <Plus size={16} />
-        Add Certification
-      </button>
     </div>
   );
-
   return (
     <div className="certifications-container">
-      {/* Top Header */}
       <header className="certifications-header">
         <div className="cert-header-title-wrap">
           <h1>
-            <Award className="cert-header-award-icon" size={26} />
-            Certifications & Credentials
+            <Award size={26} /> Certifications
           </h1>
-          <p>
-            {isCapabilityLead
-              ? 'Organization capability governance, credential compliance, and verification workbench.'
-              : isManager
-                ? 'Team verification queue and professional credential compliance.'
-                : 'Manage your verified industry credentials, licenses, and renewals.'}
-          </p>
+          <p>Your credentials, renewal dates and manager review—in one place.</p>
         </div>
-        {!actionsContainer && actionButtons}
+        {!actionsContainer && actions}
       </header>
-
-      {actionsContainer && createPortal(actionButtons, actionsContainer)}
-
-      {/* KPI Metric Summary Cards */}
-      <section className="cert-kpi-grid" aria-label="Certification Metrics">
-        <div className="cert-kpi-card">
-          <div className="cert-kpi-icon kpi-blue">
-            <Award size={22} />
-          </div>
-          <div className="cert-kpi-body">
-            <span className="cert-kpi-label">
-              {isCapabilityLead ? 'Total Credentials' : 'My Credentials'}
-            </span>
-            <span className="cert-kpi-value">{metrics.total}</span>
-            <span className="cert-kpi-hint">
-              {isCapabilityLead ? 'Across capability units' : 'Registered in profile'}
-            </span>
-          </div>
-        </div>
-
-        <div className="cert-kpi-card">
-          <div className="cert-kpi-icon kpi-teal">
-            <CheckCircle2 size={22} />
-          </div>
-          <div className="cert-kpi-body">
-            <span className="cert-kpi-label">Active & Valid</span>
-            <span className="cert-kpi-value">{metrics.activeCount}</span>
-            <span className="cert-kpi-hint">Compliance verified</span>
-          </div>
-        </div>
-
-        <div className="cert-kpi-card">
-          <div className="cert-kpi-icon kpi-amber">
-            <Clock size={22} />
-          </div>
-          <div className="cert-kpi-body">
-            <span className="cert-kpi-label">Expiring Soon</span>
-            <span className="cert-kpi-value">{metrics.expiringSoonCount}</span>
-            <span className="cert-kpi-hint">Within 90 days</span>
-          </div>
-        </div>
-
-        {isManager && (
-          <div className="cert-kpi-card">
-            <div className="cert-kpi-icon kpi-rose">
-              <ShieldCheck size={22} />
-            </div>
-            <div className="cert-kpi-body">
-              <span className="cert-kpi-label">Verification Queue</span>
-              <span className="cert-kpi-value">{metrics.pendingQueueCount}</span>
-              <span className="cert-kpi-hint">Awaiting manager decision</span>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* Navigation Sub-Tabs with Role Gating */}
-      <nav className="cert-nav-tabs" role="tablist" aria-label="Certification Views">
-        {isCapabilityLead && (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'directory'}
-            className={`cert-nav-tab-btn ${activeTab === 'directory' ? 'active' : ''}`}
-            onClick={() => handleTabChange('directory')}
-          >
-            <FileSpreadsheet size={16} />
-            Capability Lead Directory
-          </button>
-        )}
-
-        {isManager && (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'queue'}
-            className={`cert-nav-tab-btn ${activeTab === 'queue' ? 'active' : ''}`}
-            onClick={() => handleTabChange('queue')}
-          >
-            <ShieldCheck size={16} />
-            Verification Queue
-            {metrics.pendingQueueCount > 0 && (
-              <span className="cert-tab-badge">{metrics.pendingQueueCount}</span>
-            )}
-          </button>
-        )}
-
+      {actionsContainer && createPortal(actions, actionsContainer)}
+      <nav className="cert-nav-tabs" aria-label="Certification views">
         <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === 'mine'}
-          className={`cert-nav-tab-btn ${activeTab === 'mine' ? 'active' : ''}`}
-          onClick={() => handleTabChange('mine')}
+          className={`cert-nav-tab-btn ${view === 'mine' ? 'active' : ''}`}
+          aria-current={view === 'mine' ? 'page' : undefined}
+          onClick={() => changeView('mine')}
         >
-          <UserCheck size={16} />
-          My Certifications
+          My certifications
         </button>
+        {(data?.canReview || view === 'queue') && (
+          <button
+            className={`cert-nav-tab-btn ${view === 'queue' ? 'active' : ''}`}
+            aria-current={view === 'queue' ? 'page' : undefined}
+            onClick={() => changeView('queue')}
+          >
+            Assigned reviews
+          </button>
+        )}
       </nav>
-
-      {/* Filter and Search Bar */}
-      <section className="cert-filter-bar">
-        <div className="cert-search-box">
-          <Search size={16} className="cert-search-icon" />
+      <p className="cert-help">
+        {view === 'mine'
+          ? 'Save a draft, check the details, then submit it to your current manager. For a renewal, add a new credential; reviewed records stay locked.'
+          : 'Review submitted credentials assigned to you from your current direct reports. Private drafts are excluded.'}
+      </p>
+      <div className="cert-filter-bar">
+        <label className="cert-search-box">
+          <Search size={16} />
+          <span className="sr-only">Search certifications</span>
           <input
             type="search"
+            value={search}
+            maxLength={100}
             placeholder={
-              activeTab === 'mine'
-                ? 'Search your certifications by title, provider, category...'
-                : 'Search candidate, employee code, cert name, category...'
+              view === 'mine'
+                ? 'Search certification or issuer'
+                : 'Search certification, issuer or employee'
             }
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
           />
-        </div>
-
-        <div className="cert-filter-selects">
-          {activeTab !== 'mine' && (
-            <select
-              value={selectedDu}
-              onChange={e => setSelectedDu(e.target.value)}
-              aria-label="Filter by DU"
-            >
-              <option value="ALL">All DUs</option>
-              {duOptions.map(du => (
-                <option key={du} value={du}>
-                  {du}
-                </option>
-              ))}
-            </select>
+        </label>
+        {data && (
+          <span>
+            {data.total} {view === 'mine' ? 'credentials' : 'pending reviews'}
+          </span>
+        )}
+      </div>
+      {error && (
+        <section className="profile-panel" role="alert">
+          <p>{error}</p>
+          <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
+            Retry
+          </button>
+        </section>
+      )}
+      {loading && <p role="status">Loading certifications…</p>}
+      {data?.records.length === 0 && (
+        <section className="cert-empty-state-cell">
+          <Award size={32} />
+          <h2>
+            {query
+              ? 'No matching certifications'
+              : view === 'mine'
+                ? 'Start your credential portfolio'
+                : 'No assigned reviews waiting'}
+          </h2>
+          <p>
+            {query
+              ? 'Try a different certification name or issuer.'
+              : view === 'mine'
+                ? 'Add your first credential using the details on your certificate.'
+                : 'New submissions from your assigned direct reports will appear here.'}
+          </p>
+          {!query && view === 'mine' && data.canManage && (
+            <button className="primary-button" onClick={() => setEditing(null)}>
+              Add certification
+            </button>
           )}
-
-          <select
-            value={selectedCategory}
-            onChange={e => setSelectedCategory(e.target.value)}
-            aria-label="Filter by Category"
-          >
-            <option value="ALL">All Categories</option>
-            {categoryOptions.map(c => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={selectedActive}
-            onChange={e => setSelectedActive(e.target.value)}
-            aria-label="Filter by Active Status"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="Y">Active (Y)</option>
-            <option value="N">Inactive / Expired (N)</option>
-          </select>
-        </div>
-      </section>
-
-      {/* Table Section */}
-      <section className="cert-table-container">
-        <table className="cert-data-table">
-          <thead>
-            <tr>
-              <th>Sr NO</th>
-              {activeTab !== 'mine' && <th>Name</th>}
-              {activeTab !== 'mine' && <th>Employee Code</th>}
-              <th>DU</th>
-              <th>Category</th>
-              <th>Certification Name</th>
-              <th>Certification Date</th>
-              <th>Does Not Expire</th>
-              <th>Expiry Date</th>
-              <th>Active</th>
-              {activeTab !== 'mine' && <th>Email ID</th>}
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRecords.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={activeTab === 'mine' ? 10 : 13}
-                  className="cert-empty-state-cell"
-                >
-                  <Award size={32} className="cert-empty-icon" />
-                  <p className="cert-empty-title">
-                    {activeTab === 'queue'
-                      ? 'No pending verification requests'
-                      : activeTab === 'mine'
-                        ? 'No personal certifications recorded'
-                        : 'No records matching the selected filters'}
-                  </p>
-                  <p className="cert-empty-hint">
-                    {activeTab === 'mine'
-                      ? 'Add your professional certifications to showcase verified credentials in your profile.'
-                      : 'All submissions have been reviewed.'}
-                  </p>
-                  {activeTab === 'mine' && (
-                    <button
-                      type="button"
-                      className="primary-button"
-                      style={{ marginTop: '0.75rem' }}
-                      onClick={() => setShowAddDialog(true)}
-                    >
-                      <Plus size={15} /> Add Certification
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ) : (
-              filteredRecords.map(item => (
-                <tr key={item.id}>
-                  <td>{item.srNo}</td>
-                  {activeTab !== 'mine' && <td className="cert-name-cell">{item.name}</td>}
-                  {activeTab !== 'mine' && <td>{item.employeeCode}</td>}
-                  <td>{item.du}</td>
-                  <td>
-                    <span className="cert-category-badge">{item.category}</span>
-                  </td>
-                  <td style={{ fontWeight: 500, maxWidth: '280px' }}>
-                    {item.certificationName}
-                  </td>
-                  <td>{item.certificationDate}</td>
-                  <td>{item.doesNotExpire}</td>
-                  <td>{item.expiryDate}</td>
-                  <td>
-                    <span className={`badge-active-${item.active.toLowerCase()}`}>
-                      {item.active}
-                    </span>
-                  </td>
-                  {activeTab !== 'mine' && (
-                    <td style={{ fontSize: '0.8rem' }}>{item.emailId}</td>
-                  )}
-                  <td>
-                    <span className={`status-pill status-${item.status.toLowerCase()}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  <td>
-                    {isManager && item.status === 'SUBMITTED' ? (
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
-                        onClick={() => setReviewingCert(item)}
-                      >
-                        Verify
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
-                        onClick={() => {
-                          setEditingCert(item);
-                          setShowAddDialog(true);
-                        }}
-                      >
-                        Edit
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))
+        </section>
+      )}
+      <div className="cert-record-list">
+        {data?.records.map(record => (
+          <article className="cert-record-card" key={record.id}>
+            <div className="cert-record-heading">
+              <div>
+                <span className="cert-category-badge">{record.category}</span>
+                <h2>{record.certificationName}</h2>
+                <p>
+                  {record.provider}
+                  {view === 'queue' && ` · ${record.name} (${record.employeeCode})`}
+                </p>
+              </div>
+              <span className={`status-pill status-${record.status.toLowerCase()}`}>
+                {certificationStatusLabels[record.status]}
+              </span>
+            </div>
+            <div className="cert-record-meta">
+              <span>Issued {record.certificationDate}</span>
+              <span
+                className={
+                  credentialValidity(record.expiryDate, today) === 'Expired' ? 'cert-expired' : ''
+                }
+              >
+                {credentialValidity(record.expiryDate, today)}
+                {record.expiryDate && ` · ${record.expiryDate}`}
+              </span>
+            </div>
+            {record.feedback && (
+              <div className="cert-feedback">
+                <strong>Manager feedback</strong>
+                <p>{record.feedback}</p>
+                {record.reviewedBy && (
+                  <small>
+                    {record.reviewedBy}
+                    {record.reviewedAt && ` · ${new Date(record.reviewedAt).toLocaleDateString()}`}
+                  </small>
+                )}
+              </div>
             )}
-          </tbody>
-        </table>
-      </section>
-
-      {/* Add / Edit Certification Dialog with AI Autofill */}
-      {showAddDialog && (
+            <details>
+              <summary>Credential details</summary>
+              {record.credentialId && <p>Credential ID: {record.credentialId}</p>}
+              {record.credentialUrl ? (
+                <a href={record.credentialUrl} target="_blank" rel="noopener noreferrer">
+                  Open issuer / badge link
+                </a>
+              ) : (
+                <p>No issuer link provided.</p>
+              )}
+              {record.notes && <p>{record.notes}</p>}
+              <p>Manager review is separate from issuer validation and skill proficiency.</p>
+            </details>
+            <div className="cert-header-actions">
+              {record.canEdit && (
+                <button className="secondary-button" onClick={() => setEditing(record)}>
+                  {record.status === 'DRAFT' ? 'Edit draft' : 'Update details'}
+                </button>
+              )}
+              {record.canSubmit && (
+                <button
+                  className="primary-button"
+                  onClick={() => {
+                    setSubmitError('');
+                    setSubmitting(record);
+                  }}
+                >
+                  {record.status === 'SUBMITTED' ? 'Route to current manager' : 'Submit to manager'}
+                </button>
+              )}
+              {record.canReview && (
+                <button className="primary-button" onClick={() => setReviewing(record)}>
+                  Review credential
+                </button>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+      {data && data.total > data.pageSize && (
+        <nav className="cert-pagination" aria-label="Certification pages">
+          <button
+            className="secondary-button"
+            disabled={page === 1 || loading}
+            onClick={() => setPage(p => p - 1)}
+          >
+            Previous
+          </button>
+          <span>
+            Page {page} of {Math.ceil(data.total / data.pageSize)}
+          </span>
+          <button
+            className="secondary-button"
+            disabled={page * data.pageSize >= data.total || loading}
+            onClick={() => setPage(p => p + 1)}
+          >
+            Next
+          </button>
+        </nav>
+      )}
+      {editing !== undefined && (
         <CertificationDialog
-          initial={editingCert}
-          currentUser={{
-            name: person?.displayName || 'Anupriya Banerjee',
-            employeeCode: person?.employeeCode || '704427',
-          }}
-          onClose={() => {
-            setShowAddDialog(false);
-            setEditingCert(null);
-          }}
-          onSave={handleSaveCertification}
+          initial={editing}
+          canSubmit={editing ? editing.canSubmit : Boolean(data?.canSubmitNew)}
+          onClose={() => setEditing(undefined)}
+          onSave={save}
         />
       )}
-
-      {/* Verification Review Dialog (Skill Review Flow) */}
-      {reviewingCert && (
+      {reviewing && (
         <CertificationReviewDialog
-          certification={reviewingCert}
-          reviewerName={person?.displayName || 'Capability Lead'}
-          onClose={() => setReviewingCert(null)}
-          onDecision={handleReviewDecision}
+          certification={reviewing}
+          onClose={() => setReviewing(undefined)}
+          onDecision={(record, action, feedback) =>
+            mutate(
+              { action, id: record.id, revision: record.revision, feedback },
+              'Certification review saved.',
+            )
+          }
         />
+      )}
+      {submitting && (
+        <FormDialog
+          title="Submit to your current manager?"
+          onClose={() => setSubmitting(undefined)}
+          busy={busy}
+        >
+          <p>
+            <strong>{submitting.certificationName}</strong>
+          </p>
+          <p>
+            Your current active manager will be assigned this review. The details become read-only
+            while awaiting a decision.
+          </p>
+          {submitError && <p role="alert">{submitError}</p>}
+          <div className="certification-dialog-footer">
+            <button
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => setSubmitting(undefined)}
+            >
+              Keep as draft
+            </button>
+            <button className="primary-button" disabled={busy} onClick={() => void submit()}>
+              {busy ? 'Submitting…' : 'Submit to manager'}
+            </button>
+          </div>
+        </FormDialog>
       )}
     </div>
   );
