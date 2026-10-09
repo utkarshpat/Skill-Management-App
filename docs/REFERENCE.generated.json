@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "77628b18ecdecdd6",
+  "revision": "f2b77a9ba75bab4b",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -58,7 +58,8 @@
       "052_primary_capability.sql",
       "053_certification_records.sql",
       "054_certification_images.sql",
-      "055_required_certificate_image.sql"
+      "055_required_certificate_image.sql",
+      "056_certificate_files.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -4380,6 +4381,18 @@
             "nullable": false,
             "declaration": "created_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
             "source": "054_certification_images.sql"
+          },
+          "mime_type": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "mime_type varchar(100) NOT NULL CONSTRAINT DF_CertificationImageRecord_mime_type DEFAULT('image/webp')",
+            "source": "056_certificate_files.sql"
+          },
+          "file_name": {
+            "type": "nvarchar(255)",
+            "nullable": false,
+            "declaration": "file_name nvarchar(255) NOT NULL CONSTRAINT DF_CertificationImageRecord_file_name DEFAULT(N'certificate.webp')",
+            "source": "056_certificate_files.sql"
           }
         },
         "pk": [
@@ -4422,6 +4435,10 @@
           {
             "sql": "CHECK(height BETWEEN 1 AND 1920)",
             "source": "054_certification_images.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_CertificationImageRecord_file CHECK(bytes BETWEEN 1 AND 5242880 AND mime_type IN('image/webp','application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','text/plain') AND ((mime_type='image/webp' AND width BETWEEN 1 AND 1920 AND height BETWEEN 1 AND 1920) OR (mime_type<>'image/webp' AND width IS NULL AND height IS NULL)))",
+            "source": "056_certificate_files.sql"
           }
         ],
         "indexes": [
@@ -5073,8 +5090,8 @@
     {
       "name": "CertificationImage",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL",
-      "source": "database/migrations/054_certification_images.sql"
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL,\n @mime_type varchar(100)=NULL,@file_name nvarchar(255)=NULL",
+      "source": "database/migrations/056_certificate_files.sql"
     }
   ],
   "groups": {

@@ -6,12 +6,29 @@ import {
   certificationFieldError,
   certificationFields,
   emptyCertification,
+  addCredentialMonths,
 } from './certification-model';
 import type { CertificationFields, CertificationRecord } from './types';
-import { CertificateImageUploader, useCertificationImage } from './CertificationImage';
+import {
+  CertificateFilePreview,
+  CertificateImageUploader,
+  useCertificationImage,
+} from './CertificationImage';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { toast } from '../toast';
+
+function RequiredMark() {
+  return (
+    <>
+      {' '}
+      <span className="cert-required-mark" aria-hidden="true">
+        *
+      </span>
+      <span className="sr-only">required</span>
+    </>
+  );
+}
 
 /* ── preset lists ─────────────────────────────────────── */
 const ISSUERS = [
@@ -58,13 +75,6 @@ const EXPIRY_PRESETS = [
 ];
 
 /* ── helpers ──────────────────────────────────────────── */
-function addMonths(dateStr: string, months: number): string {
-  if (!dateStr) return '';
-  const d = new Date(dateStr + 'T12:00:00Z');
-  d.setUTCMonth(d.getUTCMonth() + months);
-  return d.toISOString().slice(0, 10);
-}
-
 /* ── Combobox component ───────────────────────────────── */
 function ComboBox({
   value,
@@ -176,9 +186,7 @@ function ComboBox({
               {item}
             </li>
           ))}
-          {open && filtered.length === 0 && (
-            <li className="cert-combobox-empty">No matches</li>
-          )}
+          {open && filtered.length === 0 && <li className="cert-combobox-empty">No matches</li>}
         </ul>
       )}
     </div>
@@ -212,7 +220,7 @@ export function CertificationDialog({
     [savingBusy, setBusy] = useState(false),
     [discard, setDiscard] = useState(false);
   const [imageBusy, setImageBusy] = useState(false),
-    [selectedImage, setSelectedImage] = useState<Blob | null | undefined>(),
+    [selectedImage, setSelectedImage] = useState<File | undefined>(),
     [localImageUrl, setLocalImageUrl] = useState('');
   const imageChanged = useRef(false),
     revision = useRef(initial?.revision ?? 0);
@@ -229,14 +237,13 @@ export function CertificationDialog({
   }, [selectedImage]);
   const imageUrl = selectedImage === undefined ? storedImage.url : localImageUrl;
   function imageError() {
-    if (imageBusy || storedImage.loading)
-      return 'Wait for the certificate image to finish loading.';
+    if (imageBusy || storedImage.loading) return 'Wait for the certificate file to finish loading.';
     if (storedImage.error && selectedImage === undefined) return storedImage.error;
     if (!imageAvailable)
-      return 'Certificate image storage is unavailable. Try again when uploads are configured.';
+      return 'Certificate file storage is unavailable. Try again when uploads are configured.';
     return (selectedImage === undefined ? Boolean(storedImage.url) : Boolean(selectedImage))
       ? ''
-      : 'Attach a certificate image before continuing.';
+      : 'Attach a certificate file before continuing.';
   }
   const baseline = useRef(
     JSON.stringify(initial ? certificationFields(initial) : emptyCertification()),
@@ -278,23 +285,27 @@ export function CertificationDialog({
     setBusy(true);
     setError('');
     try {
+      if (imageChanged.current && !selectedImage)
+        throw Error('Choose the replacement certificate file before saving.');
       if (imageChanged.current) {
+        const file = selectedImage!;
         revision.current = await onSave(id.current, revision.current, fields, false);
         baseline.current = JSON.stringify(fields);
         const root = `/api/certifications/${encodeURIComponent(id.current)}/image`;
         const result = await readApiResponse<{ revision: number }>(
           await authenticatedFetch(root, {
-            method: selectedImage ? 'POST' : 'DELETE',
+            method: 'POST',
             headers: {
               'X-Certification-Revision': String(revision.current),
-              ...(selectedImage ? { 'Content-Type': selectedImage.type } : {}),
+              'Content-Type': file.type,
+              'X-Certificate-File-Name': encodeURIComponent(file.name),
             },
-            ...(selectedImage ? { body: selectedImage } : {}),
+            body: file,
           }),
-          'Your credential details were saved as a draft, but the image change failed. Retry to finish saving.',
+          'Your credential details were saved as a draft, but the file change failed. Retry to finish saving.',
         );
         if (!Number.isSafeInteger(result.revision) || result.revision <= revision.current)
-          throw Error('Image save could not be confirmed. Refresh your records before retrying.');
+          throw Error('File save could not be confirmed. Refresh your records before retrying.');
         revision.current = result.revision;
         imageChanged.current = false;
         if (submit) revision.current = await onSave(id.current, revision.current, fields, true);
@@ -317,18 +328,21 @@ export function CertificationDialog({
     }
   }
 
-  /* ── review & save preview (left: image, right: details) ── */
+  /* ── review & save preview (left: file, right: details) ── */
   const reviewContent = (
     <div className="cert-review-split">
-      {/* LEFT — certificate image */}
+      {/* LEFT — certificate file */}
       <section className="cert-review-image-col">
-        <h3>Certificate image</h3>
-        {imageUrl ? (
-          <a href={imageUrl} target="_blank" rel="noopener noreferrer" aria-label="Open certificate image">
-            <img className="certificate-read-image" src={imageUrl} alt="Certificate preview" />
-          </a>
+        <h3>Certificate file</h3>
+        {imageUrl && (selectedImage || storedImage.file) ? (
+          <CertificateFilePreview
+            url={imageUrl}
+            mimeType={selectedImage?.type ?? storedImage.file!.mimeType}
+            fileName={selectedImage?.name ?? storedImage.file!.fileName}
+            className="certificate-read-image"
+          />
         ) : (
-          <p className="cert-help">No image attached.</p>
+          <p className="cert-help">No file attached.</p>
         )}
       </section>
 
@@ -356,7 +370,7 @@ export function CertificationDialog({
           ))}
         </div>
         <button type="button" className="skill-text-button" onClick={() => changeStep(0)}>
-          ← Edit details &amp; image
+          ← Edit details &amp; file
         </button>
         <div className="skill-next-steps">
           <h3>What happens next</h3>
@@ -393,6 +407,16 @@ export function CertificationDialog({
               <section className="certification-image-pane">
                 <CertificateImageUploader
                   url={selectedImage === undefined ? storedImage.url : localImageUrl}
+                  file={
+                    selectedImage
+                      ? {
+                          id: 'selected',
+                          fileName: selectedImage.name,
+                          mimeType: selectedImage.type,
+                          bytes: selectedImage.size,
+                        }
+                      : storedImage.file
+                  }
                   loading={storedImage.loading}
                   error={storedImage.error}
                   busy={busy}
@@ -413,7 +437,8 @@ export function CertificationDialog({
 
                   {/* Certification name — full width */}
                   <label className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    Certification name *
+                    Certification name
+                    <RequiredMark />
                     <input
                       value={fields.certificationName}
                       maxLength={200}
@@ -424,7 +449,8 @@ export function CertificationDialog({
 
                   {/* Issuer combobox */}
                   <label className="form-group">
-                    Issuer *
+                    Issuer
+                    <RequiredMark />
                     <ComboBox
                       value={fields.provider}
                       onChange={v => update('provider', v)}
@@ -437,7 +463,8 @@ export function CertificationDialog({
 
                   {/* Category combobox */}
                   <label className="form-group">
-                    Category *
+                    Category
+                    <RequiredMark />
                     <ComboBox
                       value={fields.category}
                       onChange={v => update('category', v)}
@@ -450,7 +477,8 @@ export function CertificationDialog({
 
                   {/* Issue date + Expiry date side by side */}
                   <label className="form-group">
-                    Issue date *
+                    Issue date
+                    <RequiredMark />
                     <input
                       type="date"
                       value={fields.certificationDate}
@@ -462,7 +490,7 @@ export function CertificationDialog({
                   {/* Expiry date column */}
                   <div className="form-group cert-expiry-col">
                     <label htmlFor="cert-expiry-date">
-                      Expiry date {fields.expiryDate !== null ? '*' : ''}
+                      Expiry date{fields.expiryDate !== null && <RequiredMark />}
                     </label>
                     {fields.expiryDate !== null && (
                       <>
@@ -481,7 +509,10 @@ export function CertificationDialog({
                             onChange={e => {
                               const months = parseInt(e.target.value, 10);
                               if (months && fields.certificationDate) {
-                                update('expiryDate', addMonths(fields.certificationDate, months));
+                                update(
+                                  'expiryDate',
+                                  addCredentialMonths(fields.certificationDate, months),
+                                );
                               }
                             }}
                           >
@@ -507,7 +538,7 @@ export function CertificationDialog({
 
                   {/* Credential ID */}
                   <label className="form-group">
-                    Credential ID (optional)
+                    Credential ID
                     <input
                       value={fields.credentialId}
                       maxLength={200}
@@ -517,7 +548,7 @@ export function CertificationDialog({
 
                   {/* Badge link */}
                   <label className="form-group">
-                    Issuer / badge link (optional)
+                    Issuer / badge link
                     <input
                       type="url"
                       value={fields.credentialUrl}
@@ -529,7 +560,7 @@ export function CertificationDialog({
 
                   {/* Notes — full width */}
                   <label className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    Supporting notes (optional)
+                    Supporting notes
                     <textarea
                       value={fields.notes}
                       maxLength={2000}
@@ -539,7 +570,7 @@ export function CertificationDialog({
                   </label>
 
                   <p className="cert-help">
-                    Enter the details printed on your credential. Attach your certificate image on
+                    Enter the details printed on your credential. Attach your certificate file on
                     the left.
                   </p>
                 </fieldset>

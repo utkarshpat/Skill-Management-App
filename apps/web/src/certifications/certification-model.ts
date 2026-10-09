@@ -12,6 +12,19 @@ export function credentialValidity(expiry: string | null, today: string) {
   const days = (Date.parse(expiry + 'T12:00:00Z') - Date.parse(today + 'T12:00:00Z')) / 86400000;
   return days <= 90 ? 'Expires soon' : 'Current';
 }
+export function addCredentialMonths(date: string, months: number) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isInteger(months) || months < 0) return '';
+  const source = new Date(`${date}T12:00:00Z`);
+  if (!Number.isFinite(source.getTime()) || source.toISOString().slice(0, 10) !== date) return '';
+  const day = source.getUTCDate();
+  source.setUTCDate(1);
+  source.setUTCMonth(source.getUTCMonth() + months);
+  const lastDay = new Date(
+    Date.UTC(source.getUTCFullYear(), source.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  source.setUTCDate(Math.min(day, lastDay));
+  return source.toISOString().slice(0, 10);
+}
 export function certificationIdentityError(fields: CertificationFields) {
   if (!fields.certificationName.trim() || fields.certificationName.trim().length > 200)
     return 'Enter a certification name (up to 200 characters).';

@@ -3,7 +3,7 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
-import { compressEvidence } from '../src/modules/skills/evidence.js';
+import { prepareCertificateFile } from '../src/modules/skills/evidence.js';
 const app = express();
 app.use(express.json());
 const actor = randomUUID();
@@ -170,7 +170,7 @@ app.get('/api/certifications', (req, res) => {
 });
 app.post('/api/certifications', (req, res) => {
   if (['SUBMIT', 'SAVE_SUBMIT'].includes(req.body.action) && !images.has(req.body.id)) {
-    res.status(400).json({ error: { message: 'Attach a certificate image before submitting.' } });
+    res.status(400).json({ error: { message: 'Attach a certificate file before submitting.' } });
     return;
   }
   if (req.body.fields?.certificationName === 'Fail preview') {
@@ -190,7 +190,17 @@ app.post('/api/certifications', (req, res) => {
   });
   res.json({ saved: true, revision: record!.revision });
 });
-const images = new Map<string, { id: string; data: Buffer; width: number; height: number }>();
+const images = new Map<
+  string,
+  {
+    id: string;
+    data: Buffer;
+    mimeType: string;
+    fileName: string;
+    width: number | null;
+    height: number | null;
+  }
+>();
 app.get('/api/certifications/:id/image', (req, res) => {
   const image = images.get(req.params.id),
     record = records.find(r => r.id === req.params.id);
@@ -198,7 +208,16 @@ app.get('/api/certifications/:id/image', (req, res) => {
     revision: record?.revision ?? 1,
     canUpload: true,
     items: image
-      ? [{ id: image.id, bytes: image.data.length, width: image.width, height: image.height }]
+      ? [
+          {
+            id: image.id,
+            bytes: image.data.length,
+            width: image.width,
+            height: image.height,
+            mimeType: image.mimeType,
+            fileName: image.fileName,
+          },
+        ]
       : [],
   });
 });
@@ -208,19 +227,25 @@ app.get('/api/certifications/:id/image/:image', (req, res) => {
     res.sendStatus(404);
     return;
   }
-  res.type('image/webp').send(image.data);
+  res.type(image.mimeType).send(image.data);
 });
 app.post(
   '/api/certifications/:id/image',
-  express.raw({ type: ['image/png', 'image/jpeg', 'image/webp'], limit: '1mb' }),
+  express.raw({ type: () => true, limit: 5 * 1024 * 1024 }),
   async (req, res) => {
     const record = records.find(r => r.id === req.params.id);
     if (!record) {
       res.sendStatus(404);
       return;
     }
-    const image = await compressEvidence(req.body);
-    images.set(req.params.id, { id: randomUUID(), ...image });
+    const file = await prepareCertificateFile(
+      req.body,
+      String(req.headers['content-type'] ?? '')
+        .split(';')[0]
+        .trim(),
+      decodeURIComponent(String(req.headers['x-certificate-file-name'] ?? 'certificate')),
+    );
+    images.set(req.params.id, { id: randomUUID(), ...file });
     record.revision++;
     res.json({ revision: record.revision });
   },

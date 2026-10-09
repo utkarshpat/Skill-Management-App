@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   certificationFieldError,
   certificationIdentityError,
+  addCredentialMonths,
   credentialValidity,
   certificationStatusLabels,
 } from '../src/certifications/certification-model';
@@ -10,6 +11,7 @@ import { notificationDestination } from '../src/notification-model';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { CertificationProfileView } from '../src/certifications/CertificationProfileView';
 import { loadCertificationPortfolio } from '../src/certifications/certification-portfolio';
+import { prepareCertificateFile } from '../src/certifications/certificate-file';
 import type { CertificationRecord, CertificationPage } from '../src/certifications/types';
 
 const fields = {
@@ -28,6 +30,12 @@ test('credential expiry remains independent of approval and includes the complet
   assert.equal(credentialValidity('2027-10-09', '2026-10-09'), 'Current');
   assert.equal(credentialValidity(null, '2026-10-09'), 'No expiry');
   assert.equal(certificationStatusLabels.APPROVED, 'Manager reviewed');
+});
+test('expiry quick-fill clamps month ends and leap years without rolling into another month', () => {
+  assert.equal(addCredentialMonths('2026-01-31', 1), '2026-02-28');
+  assert.equal(addCredentialMonths('2024-01-31', 1), '2024-02-29');
+  assert.equal(addCredentialMonths('2026-10-09', 12), '2027-10-09');
+  assert.equal(addCredentialMonths('2026-02-30', 6), '');
 });
 test('credential form validates dates, required issuer fields and safe links before advancing', () => {
   assert.equal(certificationFieldError(fields, '2026-10-09'), '');
@@ -56,6 +64,30 @@ test('credential wizard allows identity step before dates while draft saving sti
   ]) {
     assert.ok(certificationIdentityError({ ...incomplete, ...patch }));
   }
+});
+
+test('certificate picker accepts common document formats and keeps the 5 MB limit', async () => {
+  for (const [name, type] of [
+    ['credential.pdf', 'application/pdf'],
+    ['credential.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    ['credential.txt', 'text/plain'],
+  ]) {
+    const file = await prepareCertificateFile(new File(['credential'], name, { type }));
+    assert.equal(file.name, name);
+    assert.equal(file.type, type);
+  }
+  await assert.rejects(
+    prepareCertificateFile(
+      new File(['credential'], 'credential.exe', { type: 'application/octet-stream' }),
+    ),
+    /PDF, JPEG, PNG, WebP, DOCX or TXT/,
+  );
+  await assert.rejects(
+    prepareCertificateFile(
+      new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'large.pdf', { type: 'application/pdf' }),
+    ),
+    /up to 5 MB/,
+  );
 });
 
 const record = (id: string): CertificationRecord => ({

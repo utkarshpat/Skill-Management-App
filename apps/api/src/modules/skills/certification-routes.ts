@@ -18,6 +18,15 @@ import {
   type CertificationStore,
 } from './certifications.js';
 
+const certificateMimeTypes = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+]);
+
 export interface CertificationDependencies {
   verify: (authorization: string | undefined) => Promise<Identity>;
   resolveAccess?: (identity: Identity) => Promise<string | undefined>;
@@ -191,9 +200,15 @@ export function registerCertificationRoutes(
   app.get('/api/certifications/:id/image/:image', async (req, res, next) => {
     try {
       const c = await imageContext(res, req.params.id);
-      const data = await c.images.image(c.actor, c.id, certificationId(req.params.image));
+      const imageId = certificationId(req.params.image),
+        metadata = (await c.images.read(c.actor, c.id)).items.find(i => i.id === imageId);
+      if (!metadata) throw new AccessError(404, 'Certificate file unavailable.');
+      const data = await c.images.image(c.actor, c.id, imageId);
       await imageContext(res, c.id);
-      res.type('image/webp').send(data);
+      res
+        .setHeader('X-Content-Type-Options', 'nosniff')
+        .type(metadata.mimeType ?? 'image/webp')
+        .send(data);
     } catch (e) {
       if (e instanceof AccessError) res.status(e.status).json({ error: { message: e.message } });
       else next(e);
@@ -202,7 +217,7 @@ export function registerCertificationRoutes(
   for (const method of ['post', 'delete'] as const)
     app[method](
       '/api/certifications/:id/image',
-      raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '1mb' }),
+      raw({ type: () => true, limit: 5 * 1024 * 1024 }),
       async (req, res, next) => {
         try {
           const c = await imageContext(res, req.params.id, true);
@@ -215,12 +230,30 @@ export function registerCertificationRoutes(
           )
             throw new AccessError(400, 'Save the certification draft first.');
           if (method === 'post' && !Buffer.isBuffer(req.body))
-            throw new AccessError(400, 'Choose a JPEG, PNG or WebP image.');
+            throw new AccessError(400, 'Choose a supported certificate file up to 5 MB.');
+          let fileName = 'certificate';
+          const mimeType = String(req.headers['content-type'] ?? '')
+            .split(';')[0]
+            .trim();
+          if (method === 'post') {
+            if (!certificateMimeTypes.has(mimeType))
+              throw new AccessError(400, 'Choose a supported certificate file up to 5 MB.');
+            try {
+              fileName = decodeURIComponent(
+                String(req.headers['x-certificate-file-name'] ?? 'certificate'),
+              );
+            } catch {
+              throw new AccessError(400, 'Certificate file name is invalid.');
+            }
+          }
           if (method === 'delete' && !c.images.remove)
             throw new AccessError(503, 'Image removal unavailable.');
           const state =
             method === 'post'
-              ? await c.images.upload(c.actor, c.id, revision, req.body)
+              ? await c.images.upload(c.actor, c.id, revision, req.body, {
+                  mimeType,
+                  fileName,
+                })
               : await c.images.remove!(c.actor, c.id, revision);
           res.json(imageState(state));
         } catch (e) {

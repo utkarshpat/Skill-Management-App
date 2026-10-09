@@ -115,8 +115,19 @@ test('certificate images bind owner/reviewer, hide storage keys and reject locke
     state = {
       revision: 1,
       canUpload: true,
-      items: [{ id: image, blobName: 'private-key.webp', bytes: 4, width: 1, height: 1 }],
+      items: [
+        {
+          id: image,
+          blobName: 'private-key',
+          bytes: 4,
+          width: 1,
+          height: 1,
+          mimeType: 'image/webp',
+          fileName: 'certificate.webp',
+        },
+      ],
     };
+  let uploadedFile: { mimeType: string; fileName: string } | undefined;
   const certifications: CertificationStore = {
     read: async () => ({ records: [f.record], total: 1 }),
     get: async () => f.record,
@@ -130,10 +141,11 @@ test('certificate images bind owner/reviewer, hide storage keys and reject locke
       return state;
     },
     image: async () => Buffer.from('test'),
-    upload: async (id, _cert, revision) => {
+    upload: async (id, _cert, revision, _data, file) => {
       assert.equal(id, actor);
       if (revision !== 1) throw new AccessError(409, 'Changed');
       writes++;
+      uploadedFile = file;
       return { ...state, revision: 2 };
     },
     remove: async () => {
@@ -192,7 +204,8 @@ test('certificate images bind owner/reviewer, hide storage keys and reject locke
       400,
     );
     assert.equal(
-      (await fetch(url, { method: 'POST', headers, body: new Uint8Array(1048577) })).status,
+      (await fetch(url, { method: 'POST', headers, body: new Uint8Array(5 * 1024 * 1024 + 1) }))
+        .status,
       413,
     );
     assert.equal(
@@ -205,7 +218,25 @@ test('certificate images bind owner/reviewer, hide storage keys and reject locke
       ).status,
       409,
     );
-    assert.equal(writes, 0);
+    assert.equal(
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'Content-Type': 'application/pdf',
+            'X-Certificate-File-Name': encodeURIComponent('issuer certificate.pdf'),
+          },
+          body: '%PDF-1.7 certificate',
+        })
+      ).status,
+      200,
+    );
+    assert.deepEqual(uploadedFile, {
+      mimeType: 'application/pdf',
+      fileName: 'issuer certificate.pdf',
+    });
+    assert.equal(writes, 1);
     const originalItems = state.items;
     state.items = [];
     const missing = await fetch(url.replace('/' + f.record.id + '/image', ''), {

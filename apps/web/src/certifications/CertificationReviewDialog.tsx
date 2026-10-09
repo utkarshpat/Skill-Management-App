@@ -78,7 +78,11 @@ export function CertificationReviewDialog({
       )}
       {error && <p role="alert">{error}</p>}
       <label className="form-group">
-        Review note *
+        Review note{' '}
+        <span className="cert-required-mark" aria-hidden="true">
+          *
+        </span>
+        <span className="sr-only"> required</span>
         <textarea
           value={feedback}
           maxLength={2000}

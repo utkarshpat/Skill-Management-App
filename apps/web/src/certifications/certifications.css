@@ -779,6 +779,33 @@
   margin: 12px 0 20px;
   min-width: 0;
 }
+.cert-required-mark {
+  color: var(--danger, #b42318);
+  font-weight: 700;
+}
+.certificate-file-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 150px;
+  padding: 16px;
+  color: var(--muted);
+}
+.certificate-file-preview > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-weight: 600;
+}
+.certificate-file-preview > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .certificate-dropzone {
   border: 2px dashed var(--line);
   border-radius: 12px;
@@ -1039,7 +1066,7 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 0.5rem;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   list-style: none;
   margin: 0;
   padding: 4px 0;

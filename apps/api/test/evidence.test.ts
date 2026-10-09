@@ -4,11 +4,50 @@ import sharp from 'sharp';
 import { BlockBlobClient } from '@azure/storage-blob';
 import {
   compressEvidence,
+  prepareCertificateFile,
   SqlBlobEvidenceStore,
   type EvidenceState,
 } from '../src/modules/skills/evidence.js';
 import { AccessError } from '../src/shared/errors.js';
 import { readFile } from 'node:fs/promises';
+test('certificate attachments allow validated PDF, DOCX and text, while images stay compressed', async () => {
+  const pdf = await prepareCertificateFile(
+    Buffer.from('%PDF-1.7\ncredential'),
+    'application/pdf',
+    '../../private\r\nname.pdf',
+  );
+  assert.equal(pdf.mimeType, 'application/pdf');
+  assert.equal(pdf.fileName, '.._.._private__name.pdf');
+  assert.equal(pdf.width, null);
+  assert.equal(pdf.data.toString('ascii', 0, 5), '%PDF-');
+  const docx = await prepareCertificateFile(
+      Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x01]),
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'credential.docx',
+    ),
+    text = await prepareCertificateFile(
+      Buffer.from('Issuer credential reference', 'utf8'),
+      'text/plain',
+      'credential.txt',
+    );
+  assert.equal(
+    docx.mimeType,
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  );
+  assert.equal(text.fileName, 'credential.txt');
+  await assert.rejects(
+    prepareCertificateFile(Buffer.from('not a pdf'), 'application/pdf', 'fake.pdf'),
+    /valid PDF/,
+  );
+  await assert.rejects(
+    prepareCertificateFile(Buffer.from([0, 1]), 'text/plain', 'bad.txt'),
+    /UTF-8/,
+  );
+  await assert.rejects(
+    prepareCertificateFile(Buffer.alloc(5 * 1024 * 1024 + 1), 'application/pdf', 'large.pdf'),
+    /up to 5 MB/,
+  );
+});
 test('Evidence compression validates decoded image, limits dimensions and strips metadata', async () => {
   const input = await sharp({
     create: { width: 2500, height: 1200, channels: 3, background: '#198596' },

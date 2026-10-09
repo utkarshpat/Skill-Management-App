@@ -89,6 +89,7 @@ if (command !== 'check' && command !== 'migrate') {
           [53, '053_certification_records.sql'],
           [54, '054_certification_images.sql'],
           [55, '055_required_certificate_image.sql'],
+          [56, '056_certificate_files.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

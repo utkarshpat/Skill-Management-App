@@ -10,6 +10,10 @@ const migration = await readFile(
   new URL('../../../database/migrations/054_certification_images.sql', import.meta.url),
   'utf8',
 );
+const filesMigration = await readFile(
+  new URL('../../../database/migrations/056_certificate_files.sql', import.meta.url),
+  'utf8',
+);
 await withDatabase(async pool => {
   const version = (
     await pool.request().query('SELECT MAX(version) AS version FROM dbo.SchemaMigration')
@@ -24,6 +28,9 @@ await withDatabase(async pool => {
   for (const scenario of [
     'required',
     'required-combined',
+    'pdf',
+    'docx',
+    'text',
     'roundtrip',
     'foreign',
     'stale',
@@ -53,6 +60,9 @@ await withDatabase(async pool => {
             'utf8',
           )
         ).split(/^GO\s*$/m))
+          if (batch.trim()) await new sql.Request(tx).batch(batch);
+      if (version < 56)
+        for (const batch of filesMigration.split(/^GO\s*$/m))
           if (batch.trim()) await new sql.Request(tx).batch(batch);
       const owner = randomUUID(),
         manager = randomUUID(),
@@ -98,6 +108,7 @@ await withDatabase(async pool => {
         operation = 'READ',
         revision = 1,
         image = randomUUID(),
+        mimeType = 'image/webp',
       ): Promise<sql.IProcedureResult<Record<string, unknown>>> =>
         new sql.Request(tx)
           .input('account_id', sql.UniqueIdentifier, account)
@@ -109,11 +120,17 @@ await withDatabase(async pool => {
           .input(
             'blob_name',
             sql.VarChar(160),
-            `${account.toLowerCase()}/certifications/${id}/${image}.webp`,
+            `${account.toLowerCase()}/certifications/${id}/${image}`,
           )
           .input('bytes', sql.Int, 100)
-          .input('width', sql.Int, 50)
-          .input('height', sql.Int, 50)
+          .input('width', sql.Int, mimeType === 'image/webp' ? 50 : null)
+          .input('height', sql.Int, mimeType === 'image/webp' ? 50 : null)
+          .input('mime_type', sql.VarChar(100), mimeType)
+          .input(
+            'file_name',
+            sql.NVarChar(255),
+            `certificate.${mimeType === 'application/pdf' ? 'pdf' : mimeType === 'text/plain' ? 'txt' : mimeType.endsWith('wordprocessingml.document') ? 'docx' : 'webp'}`,
+          )
           .execute('dbo.CertificationImage');
       const rejected = (work: Promise<unknown>, number: number) =>
         assert.rejects(work, e => (e as { number: number }).number === number);
@@ -121,7 +138,19 @@ await withDatabase(async pool => {
         await rejected(run(owner, 'SUBMIT', { id, revision: 1, feedback: '' }), 51012);
       else if (scenario === 'required-combined')
         await rejected(run(owner, 'SAVE_SUBMIT', { id: randomUUID(), revision: 0, fields }), 51012);
-      else if (scenario === 'roundtrip') {
+      else if (scenario === 'pdf' || scenario === 'docx' || scenario === 'text') {
+        const mimeType =
+          scenario === 'pdf'
+            ? 'application/pdf'
+            : scenario === 'docx'
+              ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+              : 'text/plain';
+        const added = await imageRun(owner, 'ADD', 1, randomUUID(), mimeType),
+          items = (added.recordsets as unknown as Record<string, unknown>[][])[1];
+        assert.equal(items[0].mimeType, mimeType);
+        assert.equal(items[0].width, null);
+        assert.equal(items[0].height, null);
+      } else if (scenario === 'roundtrip') {
         const first = randomUUID(),
           second = randomUUID();
         assert.equal((await imageRun(owner, 'ADD', 1, first)).recordset[0].revision, 2);
