@@ -2,6 +2,7 @@ import { SidebarNavigation } from './SidebarNavigation';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import {
+  Award,
   BookOpen,
   ChevronRight,
   Compass,
@@ -28,6 +29,9 @@ const SkillCatalogue = lazy(() =>
   import('./SkillCatalogue').then(module => ({ default: module.SkillCatalogue })),
 );
 const Dashboard = lazy(() => import('./Dashboard').then(module => ({ default: module.Dashboard })));
+const Certifications = lazy(() =>
+  import('./certifications/Certifications').then(module => ({ default: module.Certifications })),
+);
 
 export interface WorkspaceState {
   person: { id: string; displayName: string; employeeCode: string; roles: string[] };
@@ -43,11 +47,19 @@ export interface WorkspaceState {
     learning?: boolean;
     requests?: boolean;
     requestProfileCorrection?: boolean;
+    certifications?: boolean;
   };
   upcoming: { id: string; label: string; assigned: boolean; implemented: boolean }[];
 }
 type View =
-  'requests' | 'learning' | 'overview' | 'profile' | 'my-skills' | 'skills' | 'skill-reviews';
+  | 'requests'
+  | 'learning'
+  | 'overview'
+  | 'profile'
+  | 'my-skills'
+  | 'certifications'
+  | 'skills'
+  | 'skill-reviews';
 const currentView = (pathname: string): View =>
   pathname === '/requests'
     ? 'requests'
@@ -59,9 +71,11 @@ const currentView = (pathname: string): View =>
           ? 'profile'
           : pathname === '/my-skills'
             ? 'my-skills'
-            : pathname === '/skills'
-              ? 'skills'
-              : 'overview';
+            : pathname === '/certifications'
+              ? 'certifications'
+              : pathname === '/skills'
+                ? 'skills'
+                : 'overview';
 
 export function Workspace({
   embedded = false,
@@ -137,6 +151,13 @@ export function Workspace({
       href: '/my-skills',
       icon: Compass,
       visible: state?.capabilities.ownSkills,
+    },
+    {
+      id: 'certifications',
+      label: 'Certifications',
+      href: '/certifications',
+      icon: Award,
+      visible: state?.capabilities.certifications !== false,
     },
     {
       id: 'requests',
@@ -223,6 +244,12 @@ export function Workspace({
               {view === 'overview' && <Dashboard />}
               {view === 'profile' && <PersonalProfile workspace={state} />}
               {view === 'my-skills' && <MySkills actionsContainer={actionsContainer ?? null} />}
+              {view === 'certifications' && (
+                <Certifications
+                  workspace={state}
+                  actionsContainer={actionsContainer ?? null}
+                />
+              )}
               {view === 'requests' && <Requests actionsContainer={actionsContainer} />}
               {view === 'learning' && <Learning actionsContainer={actionsContainer} />}
               {view === 'skill-reviews' && <SkillReviews />}
@@ -306,6 +333,9 @@ export function Workspace({
                 {view === 'overview' && <Dashboard />}
                 {view === 'profile' && <PersonalProfile workspace={state} />}
                 {view === 'my-skills' && <MySkills actionsContainer={actions} />}
+                {view === 'certifications' && (
+                  <Certifications workspace={state} actionsContainer={actions} />
+                )}
                 {view === 'requests' && <Requests actionsContainer={actions} />}
                 {view === 'learning' && <Learning actionsContainer={actions} />}
                 {view === 'skill-reviews' && <SkillReviews />}

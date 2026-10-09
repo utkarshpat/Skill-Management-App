@@ -3,6 +3,7 @@ export const DEFAULT_SIDEBAR_ORDER = [
   'dashboard',
   'learning',
   'my-skills',
+  'certifications',
   'skill-reviews',
   'requests',
   'skills',

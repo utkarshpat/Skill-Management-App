@@ -1,5 +1,5 @@
 import { SidebarNavigation } from './SidebarNavigation';
-import { BookOpen, Compass, ShieldCheck, UserRound } from 'lucide-react';
+import { Award, BookOpen, Compass, ShieldCheck, UserRound } from 'lucide-react';
 
 export const administrationShellFor = (pathname: string, administration: boolean) =>
   pathname === '/access' || administration;
@@ -12,13 +12,15 @@ export const personalPageTitle = (pathname: string | undefined) =>
         ? 'Skill reviews'
         : pathname === '/my-skills'
           ? 'My skills'
-          : pathname === '/profile'
-            ? 'My profile'
-            : pathname === '/skills'
-              ? 'Skill catalogue'
-              : pathname === '/workspace'
-                ? 'My workspace'
-                : undefined;
+          : pathname === '/certifications'
+            ? 'Certifications'
+            : pathname === '/profile'
+              ? 'My profile'
+              : pathname === '/skills'
+                ? 'Skill catalogue'
+                : pathname === '/workspace'
+                  ? 'My workspace'
+                  : undefined;
 export const catalogueRouteAllowed = (capabilities: { catalogue?: boolean } | undefined) =>
   capabilities?.catalogue === true;
 export const catalogueNavigationVisible = (
@@ -33,6 +35,7 @@ export const isSupportedWorkspacePath = (pathname: string) =>
     '/workspace',
     '/profile',
     '/my-skills',
+    '/certifications',
     '/skills',
     '/skill-reviews',
     '/learning',
@@ -47,6 +50,7 @@ export interface PersonalNavigationCapabilities {
   reviewSkills?: boolean;
   learning?: boolean;
   requests?: boolean;
+  certifications?: boolean;
 }
 export function personalNavigationItems(
   capabilities?: PersonalNavigationCapabilities,
@@ -59,6 +63,9 @@ export function personalNavigationItems(
       : []),
     ...(capabilities.ownSkills
       ? [{ id: 'my-skills', label: 'My skills', href: '/my-skills', icon: Compass }]
+      : []),
+    ...(capabilities.certifications
+      ? [{ id: 'certifications', label: 'Certifications', href: '/certifications', icon: Award }]
       : []),
     ...(capabilities.reviewSkills
       ? [{ id: 'skill-reviews', label: 'Skill reviews', href: '/skill-reviews', icon: ShieldCheck }]
