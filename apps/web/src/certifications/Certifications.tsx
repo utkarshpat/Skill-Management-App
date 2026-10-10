@@ -12,6 +12,7 @@ import { CertificationReviewDialog } from './CertificationReviewDialog';
 import { CertificationImage } from './CertificationImage';
 import {
   certificationRenewalFields,
+  certificationRenewalId,
   certificationStatusLabels,
   credentialValidity,
 } from './certification-model';
@@ -83,7 +84,7 @@ export function Certifications({
       });
     return () => c.abort();
   }, [view, attempt]);
-  const renewalId = params.get('renew');
+  const renewalId = certificationRenewalId(params.get('renew'));
   useEffect(() => {
     if (!renewalId) {
       renewalHandled.current = undefined;

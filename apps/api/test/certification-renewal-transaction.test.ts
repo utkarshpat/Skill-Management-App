@@ -84,3 +84,22 @@ for (const action of ['SAVE', 'SAVE_SUBMIT'] as const) {
     });
   }
 }
+
+for (const number of [2601, 2627, 51013])
+  test(`ordinary credential correction maps SQL ${number} to an actionable response`, async () => {
+    const failure = Object.assign(new Error('SQL failure'), { number });
+    const request = {
+      input: () => request,
+      execute: async () => {
+        throw failure;
+      },
+    };
+    const store = new SqlCertificationStore(actor, async callback =>
+      callback({ request: () => request } as any),
+    );
+    const { renewedFromId: _source, ...ordinary } = change;
+    await assert.rejects(
+      store.change(actor, ordinary),
+      (error: any) => error.status === (number === 51013 ? 400 : 409),
+    );
+  });

@@ -5,6 +5,94 @@ import { authenticatedFetch } from './auth';
 import { FormDialog } from './FormDialog';
 import { ProficiencyEditor } from './ProficiencyEditor';
 import { isStandardFramework, standardLevels } from './proficiency';
+import { useSearchParams } from 'react-router';
+import { readApiResponse } from './api-response';
+import { BusinessWorkflows } from './business/BusinessWorkflows';
+import type { BusinessContext } from './business/business-model';
+import './business/business.css';
+
+export function SkillCatalogue({
+  actionsContainer,
+  onChanged,
+  amendmentsAllowed = false,
+}: {
+  actionsContainer: HTMLElement | null;
+  onChanged?: () => void;
+  amendmentsAllowed?: boolean;
+}) {
+  const [params, setParams] = useSearchParams();
+  const amendments = amendmentsAllowed && params.get('tab') === 'amendments';
+  return (
+    <>
+      {amendmentsAllowed && (
+        <nav className="bo-tabs" aria-label="Catalogue sections">
+          <button
+            aria-current={!amendments ? 'page' : undefined}
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              next.delete('tab');
+              next.delete('draftTicket');
+              setParams(next);
+            }}
+          >
+            Skills
+          </button>
+          <button
+            aria-current={amendments ? 'page' : undefined}
+            onClick={() => setParams({ tab: 'amendments' })}
+          >
+            Amendments
+          </button>
+        </nav>
+      )}
+      {amendments ? (
+        <CatalogueAmendments />
+      ) : (
+        <SkillDefinitions actionsContainer={actionsContainer} onChanged={onChanged} />
+      )}
+    </>
+  );
+}
+
+function CatalogueAmendments() {
+  const [context, setContext] = useState<BusinessContext>();
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    const abort = new AbortController();
+    setError('');
+    setContext(undefined);
+    authenticatedFetch('/api/business/context', { signal: abort.signal })
+      .then(response =>
+        readApiResponse<BusinessContext>(response, 'Catalogue amendments are unavailable.'),
+      )
+      .then(current => {
+        if (abort.signal.aborted) return;
+        if (!current.canAmend && !current.canApprove)
+          throw Error('Catalogue amendment access is not assigned.');
+        setContext(current);
+      })
+      .catch(e => {
+        if (!abort.signal.aborted) setError(e.message);
+      });
+    return () => abort.abort();
+  }, [attempt]);
+  if (error)
+    return (
+      <div role="alert" className="access-message">
+        {error}
+        <button className="secondary-button" onClick={() => setAttempt(v => v + 1)}>
+          Retry
+        </button>
+      </div>
+    );
+  if (!context) return <p role="status">Loading catalogue amendments…</p>;
+  return (
+    <div className="bo-page">
+      <BusinessWorkflows context={context} view="amendments" />
+    </div>
+  );
+}
 
 interface Level {
   rank: number;
@@ -49,7 +137,7 @@ async function responseBody(response: Response) {
     );
   return body as State;
 }
-export function SkillCatalogue({
+function SkillDefinitions({
   actionsContainer,
   onChanged,
 }: {

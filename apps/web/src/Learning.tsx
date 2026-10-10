@@ -173,7 +173,35 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
       .filter(Boolean),
     target = shiftDay(start || today, Math.max(0, names.length - 1));
   const schedule = learningPlanSchedule(start || today, names);
+  const manualCreate = useRef<LearningPlanCreateAttempt | null>(null);
+  async function createPlan(payload: Parameters<LearningPlanCreateAttempt['savePayload']>[0]) {
+    if (busy) return { ok: false };
+    setBusy(true);
+    setFormError('');
+    manualCreate.current ??= new LearningPlanCreateAttempt();
+    try {
+      await manualCreate.current.savePayload(payload, authenticatedFetch);
+      manualCreate.current = null;
+      setAttempt(n => n + 1);
+      window.dispatchEvent(new Event('learning-updated'));
+      return { ok: true };
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Could not confirm the plan.');
+      return { ok: false };
+    } finally {
+      setBusy(false);
+    }
+  }
   function openCreate(draft?: LearningPlanDraftInput) {
+    if (manualCreate.current?.pending) {
+      setCreating(true);
+      setPage(3);
+      setFormError(
+        'Retry the original confirmation to check whether this plan was saved before starting another plan.',
+      );
+      return;
+    }
+    manualCreate.current = null;
     const prefill = draft ? prefillLearningPlanDraft(draft, today) : undefined;
     setSelectedSkill(undefined);
     setFocus('General');
@@ -658,7 +686,9 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
           busy={busy}
           onClose={() => setCreating(false)}
           page={page}
-          onPageChange={setPage}
+          onPageChange={next => {
+            if (!manualCreate.current?.pending && !busy) setPage(next);
+          }}
           stepNavigation
           message={formError && <p role="alert">{formError}</p>}
           pages={[
@@ -829,7 +859,7 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
             <>
               <button
                 className="secondary-button"
-                disabled={busy}
+                disabled={busy || Boolean(manualCreate.current?.pending)}
                 onClick={() => (page ? setPage(page - 1) : setCreating(false))}
               >
                 {page ? 'Back' : 'Cancel'}
@@ -842,7 +872,7 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
                     if (page === 2 && !validate()) return;
                     setPage(page + 1);
                   } else if (validate())
-                    void change({
+                    void createPlan({
                       action: 'CREATE',
                       id: draftId,
                       revision: 0,

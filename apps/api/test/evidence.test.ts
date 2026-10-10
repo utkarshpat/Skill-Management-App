@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import { PDFDocument } from 'pdf-lib';
 import { zipSync, strToU8 } from 'fflate';
-import { BlockBlobClient } from '@azure/storage-blob';
+import { BlockBlobClient, ContainerClient } from '@azure/storage-blob';
 import {
   compressEvidence,
   prepareCertificateFile,
@@ -219,3 +219,49 @@ test('certificate documents reject signature-only, truncated and unrelated ZIP f
       ),
     );
 });
+
+for (const outcome of ['committed', 'unknown', 'rejected'] as const)
+  test(`Upload ${outcome} outcome never deletes a possibly committed attachment`, async t => {
+    const evidence = new SqlBlobEvidenceStore(
+      'account',
+      'UseDevelopmentStorage=true',
+      'evidence',
+      'certification',
+    );
+    let saved: typeof item | undefined;
+    let deleted = 0;
+    t.mock.method(ContainerClient.prototype, 'getProperties', async () => ({}));
+    t.mock.method(BlockBlobClient.prototype, 'uploadData', async () => ({}));
+    t.mock.method(BlockBlobClient.prototype, 'deleteIfExists', async () => {
+      deleted++;
+      return {};
+    });
+    t.mock.method(
+      evidence as any,
+      'run',
+      async (
+        _actor: string,
+        _claim: string,
+        action: string,
+        _revision: number,
+        attachment: typeof item,
+      ) => {
+        if (action === 'CHECK') return { revision: 4, canUpload: true, items: [] };
+        if (action === 'ADD') {
+          saved = attachment;
+          throw outcome === 'rejected'
+            ? new AccessError(409, 'Changed')
+            : new Error('Connection lost after SQL execution');
+        }
+        if (outcome === 'unknown') throw new Error('Database unavailable');
+        return { revision: 5, canUpload: true, items: [saved] };
+      },
+    );
+    const uploading = evidence.upload('actor', 'claim', 4, Buffer.from('Certificate facts'), {
+      mimeType: 'text/plain',
+      fileName: 'certificate.txt',
+    });
+    if (outcome === 'committed') assert.equal((await uploading).revision, 5);
+    else await assert.rejects(uploading);
+    assert.equal(deleted, outcome === 'rejected' ? 1 : 0);
+  });

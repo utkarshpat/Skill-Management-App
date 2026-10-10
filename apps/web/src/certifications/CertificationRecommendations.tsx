@@ -53,9 +53,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
   const [responseError, setResponseError] = useState('');
   const [responseRecheck, setResponseRecheck] = useState(false);
   const focused = params.get('recommendation') ?? '';
-  const [view, setView] = useState<'received' | 'sent'>(
-    sentOnly || params.get('direction') === 'sent' ? 'sent' : 'received',
-  );
+  const view = sentOnly || params.get('direction') === 'sent' ? 'sent' : 'received';
   const [loadedFeed, setFeed] = useState<{ key: string; value: Feed }>();
   const [recipientLoading, setRecipientLoading] = useState(true);
   const [people, setPeople] = useState<Person[]>([]);
@@ -94,7 +92,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
     setFeed(undefined);
     setDetail(undefined);
     setError('');
-    const query = new URLSearchParams({ view, page: String(page), search });
+    const query = new URLSearchParams({ view, page: String(focused ? 1 : page), search });
     if (focused) query.set('id', focused);
     authenticatedFetch('/api/certification-recommendations?' + query, { signal: c.signal })
       .then(r => readApiResponse<Feed>(r, 'Certification recommendations could not be loaded.'))
@@ -151,10 +149,11 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
     if (focused && !loading && feed?.items.length === 1) setDetail(feed.items[0]);
   }, [focused, loading, feed]);
 
-  const closeFocus = () => {
+  const closeFocus = (direction: 'sent' | 'received' = view) => {
     const next = new URLSearchParams(params);
     next.delete('recommendation');
-    next.delete('direction');
+    if (direction === 'sent') next.set('direction', 'sent');
+    else next.delete('direction');
     setParams(next, { replace: true });
     setDetail(undefined);
     setPage(1);
@@ -305,7 +304,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
       setUrl('');
       setTargetDate('');
       setPersonId('');
-      setView('sent');
+      closeFocus('sent');
       setPage(1);
       setAttempt(n => n + 1);
       window.dispatchEvent(new Event('notifications-updated'));
@@ -357,9 +356,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
             className="secondary-button"
             aria-pressed={view === 'received'}
             onClick={() => {
-              setView('received');
-              setPage(1);
-              closeFocus();
+              closeFocus('received');
             }}
           >
             Received
@@ -368,9 +365,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
             className="secondary-button"
             aria-pressed={view === 'sent'}
             onClick={() => {
-              setView('sent');
-              setPage(1);
-              closeFocus();
+              closeFocus('sent');
             }}
           >
             Sent

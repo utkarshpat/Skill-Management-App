@@ -236,7 +236,15 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
           : {}),
       });
     } catch (e) {
-      await blob.deleteIfExists().catch(() => undefined);
+      // SQL rejection is definite; a transport failure may arrive after commit.
+      if (e instanceof AccessError && [400, 403, 404, 409].includes(e.status)) {
+        await blob.deleteIfExists().catch(() => undefined);
+      } else {
+        const current = await this.read(actor, claim).catch(() => undefined);
+        if (current?.items.some(item => item.id === id && item.blobName === blobName))
+          return current;
+        // Retain the private object when the outcome cannot be established.
+      }
       throw e;
     }
   }

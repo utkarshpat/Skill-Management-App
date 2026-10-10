@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { readdir } from 'node:fs/promises';
 import { LocalAccessStore, AccessError } from '../src/modules/access/local-access-store.js';
 import { MemoryAiBudget } from '../src/modules/ai/budget.js';
 import type { Provider } from '../src/modules/ai/index.js';
@@ -34,9 +35,14 @@ test('KT rejects forged authority/history and oversized context before any provi
     assert.throws(() => guideInput({ question: 'Help', table }), AccessError);
 });
 
-test('KT inventory preserves actual FK tuples and treats view and quota tables honestly', () => {
+test('KT inventory preserves actual FK tuples and treats view and quota tables honestly', async () => {
   assert.equal(Object.keys(content.schema.tables).length, 56);
-  assert.equal(content.schema.migrations.length, 61);
+  assert.equal(
+    content.schema.migrations.length,
+    (await readdir(new URL('../../../database/migrations/', import.meta.url))).filter(file =>
+      /^\d{3}_.*\.sql$/.test(file),
+    ).length,
+  );
   assert.ok('CertificationImageRecord' in content.schema.tables);
   assert.equal(content.schema.tables.AccessPerson.columns.job_title.type, 'nvarchar(100)');
   assert.equal(content.schema.tables.AccessPerson.columns.grade.nullable, true);

@@ -31,6 +31,7 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
       requests: available('request.view') || available('incident.view'),
       businessOperations: can(state, person, 'reports.view'),
       amendments: can(state, person, 'skill.catalogue.propose'),
+      approveAmendments: can(state, person, 'request.approve'),
       businessAdministration:
         Boolean(person.business) &&
         ownProfile &&

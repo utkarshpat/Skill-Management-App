@@ -1,6 +1,6 @@
 # Business Operations: implementation and UX contract
 
-Status: approved requirements with a local implementation increment, 10 October 2026. Migrations 060–061 and feature activation are pending permanent installation; rollback SQL tests do not install them. The user approved multiple project memberships, explicitly scoped Business Operations, System Admin organization-wide Business Operations, manager-or-Business-Operations amendment eligibility, and a rich analytical dashboard with one-click filtering/export. Layout, chart choices and storage structures below are implementation proposals. No authority is assigned merely by this document or by installing table definitions.
+Status: approved requirements with a local implementation increment, 10 October 2026. Migrations 059–064 are installed on `skill-management-dev` as of 10 October 2026. The Personal baseline and verified existing administrator’s explicit System Admin responsibility are activated there. Additional scoped assignments and hosted/production acceptance remain pending; rollback tests alone do not install migrations. The user approved multiple project memberships, explicitly scoped Business Operations, System Admin organization-wide Business Operations, manager-or-Business-Operations amendment eligibility, and a rich analytical dashboard with one-click filtering/export. Layout, chart choices and storage structures below are implementation proposals. No authority is assigned merely by this document or by installing table definitions.
 
 ## Membership and authorization foundation
 
@@ -14,16 +14,16 @@ Status: approved requirements with a local implementation increment, 10 October 
 
 ## Dashboard layout proposal
 
-| Area | Content and interaction |
-| --- | --- |
-| Scope bar | Authorized DU/department/project selectors, capability filter when applicable, activity date range, visible filter chips, Reset and Export |
-| Summary cards | Unique employees, employees with current reviewed credentials, reviewed skill holders, pending submissions, expired credentials and credentials expiring in 30 days |
-| Trends | Skill/certification submissions and manager decisions over the selected activity period; explicit event timestamps |
-| Coverage | Skill/proficiency coverage heatmap and certification category/issuer distribution with stated denominators |
-| Renewal | Expiry timeline, 14/30/60/90-day filters, expired queue and employee/credential drill-down |
-| Comparisons | DU/department/project coverage within allowed scope; overlapping project memberships disclosed |
-| People and records | Searchable, sortable, paginated employees, claims and certifications; review and validity shown independently |
-| Demand and matching | Explicit demand requirements, scoped eligible candidates and explainable matches once those modules exist |
+| Area                | Content and interaction                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope bar           | Authorized DU/department/project selectors, capability filter when applicable, activity date range, visible filter chips, Reset and Export                          |
+| Summary cards       | Unique employees, employees with current reviewed credentials, reviewed skill holders, pending submissions, expired credentials and credentials expiring in 30 days |
+| Trends              | Skill/certification submissions and manager decisions over the selected activity period; explicit event timestamps                                                  |
+| Coverage            | Skill/proficiency coverage heatmap and certification category/issuer distribution with stated denominators                                                          |
+| Renewal             | Expiry timeline, 14/30/60/90-day filters, expired queue and employee/credential drill-down                                                                          |
+| Comparisons         | DU/department/project coverage within allowed scope; overlapping project memberships disclosed                                                                      |
+| People and records  | Searchable, sortable, paginated employees, claims and certifications; review and validity shown independently                                                       |
+| Demand and matching | Explicit demand requirements, scoped eligible candidates and explainable matches once those modules exist                                                           |
 
 Charts expose tooltips, readable labels, keyboard-accessible filters and a tabular alternative. Support light/dark themes and narrow screens. Use graphs only where they answer a specific question; keep operational drill-down tables accessible from the corresponding metric.
 
@@ -61,10 +61,9 @@ Charts expose tooltips, readable labels, keyboard-accessible filters and a tabul
 
 Acceptance includes a person in two projects; overlapping scope totals; membership removal; multiple scope/capability assignments; explicit DENY; inactive actor/employee; foreign account or forged scope ID; changed access during reads/exports; out-of-order filter requests; approved expired credentials; failed datasets; large paginated exports; and accessibility of chart-driven filters. Catalogue approval retries must not create duplicate entries. Live migrations and authenticated hosted acceptance are separate release steps.
 
-
 ## Implemented increment and release boundaries
 
-Code now implements the opt-in Personal baseline, explicit System Admin and Business Operations responsibilities, separate multi-project memberships, actor/account-bound APIs, scope explanations, and matching SQL enforcement. Migrations 060–061 are registered after pending migration 059. Existing unsupported grants are retained. The baseline starts disabled; existing authorized people/access administrators activate it and assign reviewed responsibilities through the previewed administration flow. Installing migrations alone does not automatically make legacy role holders organization-wide Business Operations users.
+Code now implements the opt-in Personal baseline, explicit System Admin and Business Operations responsibilities, separate multi-project memberships, actor/account-bound APIs, scope explanations, and matching SQL enforcement. Migrations 060–064 are registered after pending migration 059. Existing unsupported grants are retained. The baseline starts disabled; existing authorized people/access administrators activate it and assign reviewed responsibilities through the previewed administration flow. Installing migrations alone does not automatically make legacy role holders organization-wide Business Operations users.
 
 `/business` provides Analytics, Demand & matching, Amendments, and Projects & access according to canonical current action flags. Analytics has six scoped summary cards, reviewed proficiency heatmap (top 10 skills, all five ranks), issuer/category bars (top 15), expiry buckets, submission/decision activity, overlapping-scope comparisons (up to 30), searchable/sortable 25-row drill-downs and CSV/XLSX whole-result exports. Scope unions deduplicate people. Review and expiry are independent. Coverage/event periods are labelled. Superseded requests and exports are cancelled; obsolete filters hide prior data behind matching skeletons. A workflow tab change remounts its state, avoiding interpretation of an amendment row as a demand.
 
@@ -79,3 +78,15 @@ AI integration includes `business_insights`, `credential_expiry`, `business_peop
 Deliberate release limits: capability/domain-restricted responsibilities, reporting-subtree grants, historical membership authorization, chart/PDF exports and asynchronous export jobs are still target work. These controls are not offered. Synchronous exports cap at 50,000 matching rows and ask users to narrow larger results; CSV/XLSX exports cover every matching row within that bound. The administration screen uses an account-wide snapshot under current administration authority; large-roster administration search/bulk flows remain future optimization. Coherent SQL reads briefly hold serializable workspace locks; long exports can delay writes and need latency/load measurement before broader rollout. Scope authorization must not be traded for a shared cross-actor cache.
 
 Verification uses unit/API/UI tests, type checks, architecture checks, production builds and isolated synthetic SQL transactions in the development database. Rollback cases cover overlapping projects, DENY subtraction, inactive people/actors, forged scope IDs, individual action denies, baseline without roles, renewal validity, idempotent approvals/demands/shortlists and stale target revisions. The fixture asserts that its people and pending schema are absent afterwards. Browser acceptance uses loopback synthetic data; it is not hosted/SSO acceptance. Permanent migrations, reviewed baseline/responsibility activation and authenticated hosted acceptance remain release steps.
+
+Migration 062 corrects analytics/matching reliability without changing review authority. Demand qualification requires reviewed and current definitions on standard enterprise-v2, with ranks 1–5. Legacy/custom ranks remain recorded evidence without assumed equivalence. Coverage uses stable skill IDs and current catalogue names. Activity counts immutable audited submission/decision events for current authorized owners, retaining repeated cycles and events after return to draft. Current resource filters apply; dates select event timestamps. Missing audit history is not fabricated. Permanent installation of 059–062 remains pending.
+
+Migration 063 enforces renewal continuity: the same credential/issuer, issue date at least the source issue date, and no expiry or a current expiry extending the source. Invalid historical replacements cannot suppress reminders. Normal save conflicts are actionable. Migration 064 adds read-only recovery of exact actor-bound committed workflow commands from audited input; current action/scope/deny and matching checks remain enforced. It neither performs a new write nor authorizes one from an old preview. Permanent 059–064 installation, activation and hosted acceptance remain pending.
+
+## Development activation — 10 October 2026
+
+The current server-configured company workspace has the Personal baseline enabled for 17 active provisioned employees. Utkarsh Patel, matched to the signed-in Azure operator and independently verified as an existing authorized administrator, has an explicit Organization System Admin responsibility. The preview/recheck/transaction/audit flow was used for both changes. Additional Business Operations people/scopes and project memberships are assigned deliberately through administration; no role-name promotion or default project mapping was performed. Earlier pending-installation notes above are historical for this development target; hosted/production deployment remains separate.
+
+Organization resolution is bounded to the configured account and active provisioned people. Unknown/inactive accounts and non-null Organization resource bindings fail closed. Foreign-account people are excluded, and matching scoped denies subtract members even from Organization ALLOW. SQL administration may omit empty JSON arrays; the API now returns consistent empty collections and rejects malformed collection shapes so newly activated workspaces render correctly.
+
+See [development activation record](WORKSPACE_ACTIVATION_2026-10-10.md).

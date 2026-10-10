@@ -86,8 +86,7 @@ export function AssistantWidget() {
       const ticket = businessDraftHandoff.offer(current.actorId, draft);
       collapse();
       navigate(
-        '/business?tab=' +
-          (draft.kind === 'amendment_draft' ? 'amendments' : 'demand') +
+        (draft.kind === 'amendment_draft' ? '/skills?tab=amendments' : '/business?tab=demand') +
           '&draftTicket=' +
           encodeURIComponent(ticket),
       );

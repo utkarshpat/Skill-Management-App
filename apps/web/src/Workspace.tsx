@@ -1,6 +1,6 @@
 import { SidebarNavigation } from './SidebarNavigation';
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link, Navigate, useLocation } from 'react-router';
 import {
   BookOpen,
   ChevronRight,
@@ -52,6 +52,7 @@ export interface WorkspaceState {
     businessOperations?: boolean;
     businessAdministration?: boolean;
     amendments?: boolean;
+    approveAmendments?: boolean;
   };
   upcoming: { id: string; label: string; assigned: boolean; implemented: boolean }[];
 }
@@ -93,7 +94,7 @@ export function Workspace({
   actionsContainer?: HTMLDivElement | null;
   initialWorkspace?: WorkspaceState;
 }) {
-  const { pathname } = useLocation();
+  const { pathname, search: routeSearch } = useLocation();
   const [state, setState] = useState<WorkspaceState | undefined>(initialWorkspace);
   const [error, setError] = useState(''),
     [attempt, setAttempt] = useState(0);
@@ -136,10 +137,7 @@ export function Workspace({
       label: 'Business Operations',
       href: '/business',
       icon: LayoutDashboard,
-      visible:
-        state?.capabilities.businessOperations ||
-        state?.capabilities.businessAdministration ||
-        state?.capabilities.amendments,
+      visible: state?.capabilities.businessOperations || state?.capabilities.businessAdministration,
     },
     {
       id: 'skill-reviews',
@@ -234,6 +232,18 @@ export function Workspace({
       />
     </>
   );
+  if (
+    state &&
+    view === 'business' &&
+    !sections[0].visible &&
+    catalogueRouteAllowed(state.capabilities) &&
+    state.capabilities.amendments
+  ) {
+    const next = new URLSearchParams({ tab: 'amendments' });
+    const ticket = new URLSearchParams(routeSearch).get('draftTicket');
+    if (ticket) next.set('draftTicket', ticket);
+    return <Navigate replace to={'/skills?' + next} />;
+  }
   if (embedded)
     return (
       <>
@@ -269,7 +279,14 @@ export function Workspace({
               {view === 'skill-reviews' && (
                 <SkillReviews certificationsAllowed={Boolean(state.capabilities.certifications)} />
               )}
-              {view === 'skills' && <SkillCatalogue actionsContainer={actionsContainer ?? null} />}
+              {view === 'skills' && (
+                <SkillCatalogue
+                  actionsContainer={actionsContainer ?? null}
+                  amendmentsAllowed={Boolean(
+                    state.capabilities.amendments || state.capabilities.approveAmendments,
+                  )}
+                />
+              )}
             </Suspense>
           </>
         )}
@@ -361,7 +378,14 @@ export function Workspace({
                     certificationsAllowed={Boolean(state.capabilities.certifications)}
                   />
                 )}
-                {view === 'skills' && <SkillCatalogue actionsContainer={actions} />}
+                {view === 'skills' && (
+                  <SkillCatalogue
+                    actionsContainer={actions}
+                    amendmentsAllowed={Boolean(
+                      state.capabilities.amendments || state.capabilities.approveAmendments,
+                    )}
+                  />
+                )}
               </Suspense>
             </>
           )}

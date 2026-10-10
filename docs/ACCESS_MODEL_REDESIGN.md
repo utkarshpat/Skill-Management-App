@@ -1,6 +1,6 @@
 # Access management: approved baseline
 
-Status: user-approved Access Management baseline as of 4 October 2026. Future UI, backend, dashboard and AI access work must follow this contract. Approval of the design does not mean every scope or evaluator is implemented, and does not migrate production grants or replace currently enforced SQL checks. Named people and departments in the supplied specification are illustrative; actual relationships must come from current stored records.
+Status: user-approved Access Management baseline as of 4 October 2026. Development activation on 10 October 2026: migrations 059–064 are installed on `skill-management-dev`, the default Personal Workspace baseline is enabled, and verified existing administrator Utkarsh Patel has an explicit organization-bound System Admin responsibility. Other environments and hosted acceptance remain separate release steps. Future UI, backend, dashboard and AI access work must follow this contract. Approval of the design does not mean every scope or evaluator is implemented, and does not migrate production grants or replace currently enforced SQL checks. Named people and departments in the supplied specification are illustrative; actual relationships must come from current stored records.
 
 ## Locked invariants
 
@@ -148,9 +148,24 @@ The user requires a rich Business Operations analytical dashboard over the autho
 
 This increment documents approved requirements only. Multi-project persistence, resource-bound Business Operations scopes, default personal provisioning, master certification/provider catalogues, amendment approvals and demand/matching are not implemented by this document. Existing users/grants must be previewed and migrated through Recheck → Transaction → Audit; unsupported historical grants must not be silently removed or widened.
 
-
 ## Local implementation increment — migrations 060–061
 
 The approved workspace/Business Operations requirements above now have local service, SQL, web and AI code. Permanent installation and reviewed activation remain pending. Migrations create explicit bound responsibilities and multi-project memberships; they start the Personal baseline disabled and do not promote legacy organization grants. Supported new business bindings are organization, delivery unit, department and project; they apply to the new business action contract only, without making legacy unbound scopes assignable. Capability/domain restrictions and reporting-subtree authority remain unavailable.
 
 The business projection is read with actor access and contains current scope/action explanations. Current resource, account, deny, expiry and workflow checks remain authoritative in SQL. Dashboard rows/charts/exports and AI tool delivery recheck scope changes. `request.approve` now identifies implemented master-amendment decisions in this workspace; ordinary routed request approval remains unavailable. Manager claim review still uses the unchanged exact current assigned manager policy. For implemented features, activation instructions, verification and limits, see [Business Operations implementation contract](BUSINESS_OPERATIONS_DESIGN.md#implemented-increment-and-release-boundaries).
+
+Migration 062 is a local reliability correction: canonical-framework matching, stable-ID coverage, and immutable audited activity. It adds no authority or scope. Current actor, membership and matching DENY checks remain enforced. Historical aggregate events expose no private draft content. Permanent installation and reviewed activation remain pending.
+
+Migrations 063–064 locally add credential-renewal continuity and read-only workflow retry recovery. Recovery resolves current authority in SQL, verifies the original actor and exact audited payload, and cannot execute a new mutation with a stale preview. Exact current-manager review constraints are unchanged. Permanent installation remains pending.
+
+## Development activation — 10 October 2026
+
+The user explicitly authorized activation of the complete workspace model in the development database. Migrations 059–064 were installed on `skill-management-dev`. The Personal baseline was previewed, rechecked and enabled through the restricted runtime `SaveBusinessChange` transaction for 17 active provisioned employees, retaining existing DENY and record-state rules. The signed-in Azure operator was matched to the existing employee identity and verified to already hold people/access, audit and catalogue administration. An explicit organization-bound System Admin responsibility was then previewed, rechecked and assigned to Utkarsh Patel. Both changes have audit records. No other person was promoted based on a role name.
+
+Organization means the current server-configured company account/workspace, across its delivery units, departments and projects; it is not a department, every Microsoft tenant, or every company in the database. Resource bindings are rejected for an Organization responsibility. Scope resolution rejects inactive/unknown accounts, invalid bindings, inactive employees and foreign-account people. Matching scoped DENY still subtracts people from an organization allow. Review, attachment and private-data policies remain separate.
+
+Current direct-manager review/recommendation access resolves from current reporting relationships. Additional Business Operations leads still require explicit person/scope assignments; multi-project support is enabled but no project membership was invented. Capability/domain restrictions and reporting-subtree grants remain unavailable. The development activation supersedes earlier development-only pending-installation notes in this document; production/hosted deployment and authenticated browser acceptance are not established by it. See [activation record](WORKSPACE_ACTIVATION_2026-10-10.md).
+
+### Catalogue amendment navigation — 11 October 2026
+
+Amendment eligibility alone does not expose the Business Operations sidebar. That workspace requires current analytics or business-administration capability. Eligible managers and Business Operations users propose skill, certification and provider amendments from the catalogue's Amendments tab; authorized administrators review the same records there. Amendment approval discovery uses the implemented `request.approve` effective decision. AI amendment handoffs and source links point to `/skills?tab=amendments`; demand handoffs remain in Business Operations. Previous manager Business Operations URLs redirect to catalogue amendments without granting analytics authority. Backend and SQL amendment checks, preview/recheck/audit and current-manager review policy remain unchanged. These navigation changes require deployment before they appear on the hosted app.

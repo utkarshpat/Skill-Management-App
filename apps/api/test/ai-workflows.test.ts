@@ -25,8 +25,8 @@ test('workflow AI action notes require current record authority and reject stale
         record: {
           id,
           kind: 'REQUEST',
-          title: 'Help',
-          description: 'Facts',
+          title: '\u0001'.repeat(160),
+          description: '\u0001'.repeat(500),
           priority: 'NORMAL',
           status: 'IN_PROGRESS',
           revision,
@@ -100,6 +100,19 @@ test('workflow AI action notes require current record authority and reject stale
   assert.equal(
     (await service.workflowDraft(actor, input, AbortSignal.timeout(5000))).body,
     'Completed the user-supplied work.',
+  );
+  for (const notes of ['x'.repeat(500), '"'.repeat(500), '\u0001'.repeat(500)])
+    assert.equal(
+      (await service.workflowDraft(actor, { ...input, notes }, AbortSignal.timeout(5000))).body,
+      'Completed the user-supplied work.',
+    );
+  await assert.rejects(
+    service.chat(
+      actor,
+      { messages: [{ role: 'user', content: 'x'.repeat(2001) }] },
+      AbortSignal.timeout(5000),
+    ),
+    /2,000/,
   );
   after = 'revoke';
   await assert.rejects(

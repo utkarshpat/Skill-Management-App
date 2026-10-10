@@ -72,7 +72,9 @@ const recommendations = process.env.ACCESS_ACCOUNT_ID
 const workflows = process.env.ACCESS_ACCOUNT_ID
   ? new SqlWorkflowStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
-const business = process.env.ACCESS_ACCOUNT_ID ? new SqlBusinessStore(process.env.ACCESS_ACCOUNT_ID) : undefined;
+const business = process.env.ACCESS_ACCOUNT_ID
+  ? new SqlBusinessStore(process.env.ACCESS_ACCOUNT_ID)
+  : undefined;
 const provider = configuredProvider(process.env),
   aiBudget = access ? new SqlAiBudget(process.env.ACCESS_ACCOUNT_ID!) : undefined;
 const knowledgeTransfer =
@@ -97,11 +99,12 @@ const assistant = access
     )
   : undefined;
 const learningGenerator: QuizGenerator | undefined = assistant
-  ? async (actor, prompt, signal) => {
-      const result = await assistant.chat(
+  ? async (actor, prompt, signal, task) => {
+      const result = await assistant.learningOutput(
         actor,
-        { messages: [{ role: 'user', content: prompt }] },
+        prompt,
         signal,
+        task ?? { kind: 'quiz' },
       );
       return {
         artifact: result.artifact,

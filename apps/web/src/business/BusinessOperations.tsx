@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, Navigate, useSearchParams } from 'react-router';
 import {
   ArrowDownToLine,
   BarChart3,
@@ -16,6 +16,7 @@ import { BusinessAdministration } from './BusinessAdministration';
 import { BusinessWorkflows } from './BusinessWorkflows';
 import {
   businessFilters,
+  businessCoverageRows,
   updateBusinessFilters,
   type BusinessContext,
   type BusinessDashboard,
@@ -46,20 +47,23 @@ export function BusinessOperations() {
               ...(context.canDemandView ? [['demand', 'Demand & matching']] : []),
             ]
           : []),
-        ...(context.canAmend || context.canApprove ? [['amendments', 'Amendments']] : []),
         ...(context.canManage ? [['administration', 'Projects & access']] : []),
       ]
     : [];
   const selected = tabs.some(([id]) => id === tab) ? tab : tabs[0]?.[0];
+  if (context && tab === 'amendments' && (context.canAmend || context.canApprove)) {
+    const next = new URLSearchParams({ tab: 'amendments' });
+    const ticket = params.get('draftTicket');
+    if (ticket) next.set('draftTicket', ticket);
+    return <Navigate replace to={'/skills?' + next} />;
+  }
   return (
     <div className="bo-page">
       <header className="bo-heading">
         <div>
           <span className="bo-eyebrow">BUSINESS OPERATIONS</span>
           <h1>
-            {context && !context.canView
-              ? 'Master amendments & administration'
-              : 'Workforce intelligence'}
+            {context && !context.canView ? 'Business administration' : 'Workforce intelligence'}
           </h1>
           <p>
             {context && !context.canView
@@ -67,6 +71,11 @@ export function BusinessOperations() {
               : 'Skills, credentials and renewal priorities across your authorized scope.'}
           </p>
         </div>
+        {context && (context.canAmend || context.canApprove) && (
+          <Link className="secondary-button" to="/skills?tab=amendments">
+            Catalogue amendments
+          </Link>
+        )}
         <button
           className="secondary-button"
           onClick={() =>
@@ -104,8 +113,8 @@ export function BusinessOperations() {
       )}
       {context && selected === 'insights' && <Insights context={context} />}
       {context && selected === 'administration' && <BusinessAdministration onSaved={setContext} />}
-      {context && (selected === 'amendments' || selected === 'demand') && (
-        <BusinessWorkflows key={selected} context={context} view={selected} />
+      {context && selected === 'demand' && (
+        <BusinessWorkflows key={selected} context={context} view="demand" />
       )}
     </div>
   );
@@ -418,11 +427,11 @@ function Insights({ context }: { context: BusinessContext }) {
                 framework equivalence. Select a cell to inspect claims.
               </p>
               <div className="bo-heatmap">
-                {[...new Set(data.coverage.map(c => c.label))].map(label => (
-                  <div key={label}>
+                {businessCoverageRows(data.coverage).map(({ id, label, cells }) => (
+                  <div key={id}>
                     <strong>{label}</strong>
                     {[1, 2, 3, 4, 5].map(rank => {
-                      const cell = data.coverage.find(c => c.label === label && c.rank === rank);
+                      const cell = cells.get(rank);
                       return (
                         <button
                           key={rank}

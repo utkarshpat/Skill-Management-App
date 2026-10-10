@@ -176,6 +176,7 @@ export function registerRoutes(
         res.sendStatus(403);
         return;
       }
+      const notificationPolicy = JSON.stringify(effectiveAccessSummary(state, person));
       try {
         const feed = await loadNotificationFeed(notificationsFor(state, person), [
           {
@@ -207,6 +208,20 @@ export function registerRoutes(
               dependencies?.recommendationNotifications?.(person.id) ?? Promise.resolve([]),
           },
         ]);
+        const fresh = await readActorAccess(dependencies?.access ?? store, actor, {
+          includeAudit: true,
+        });
+        const current = fresh?.people.find(
+          item => item.id === actor && item.active && (!demo?.subject(req) || !item.entraObjectId),
+        );
+        if (
+          !fresh ||
+          !current ||
+          !can(fresh, current, 'profile.view', true) ||
+          fresh.revision !== state.revision ||
+          JSON.stringify(effectiveAccessSummary(fresh, current)) !== notificationPolicy
+        )
+          throw new AccessError(403, 'Notification access changed.');
         res.json(feed);
       } catch (error) {
         if (error instanceof AccessError) {

@@ -301,8 +301,11 @@ export class ToolRegistry {
             };
           },
           source: {
-            label: 'Business Operations · Master definitions and demand',
-            url: '/business',
+            label:
+              operation === 'MASTERS'
+                ? 'Catalogue · Master definitions'
+                : 'Business Operations · Demand',
+            url: operation === 'MASTERS' ? '/skills?tab=amendments' : '/business?tab=demand',
           },
           read: async ({ person, args }) => {
             const result = await business.workflow(person.id, operation, args);

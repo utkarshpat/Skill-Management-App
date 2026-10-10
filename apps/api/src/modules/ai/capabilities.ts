@@ -11,11 +11,7 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
   const workspace = workspaceFor(state, person),
     capabilities = workspace.capabilities;
   const pages = [{ label: 'Dashboard', url: '/workspace' }];
-  if (
-    capabilities.businessOperations ||
-    capabilities.businessAdministration ||
-    capabilities.amendments
-  )
+  if (capabilities.businessOperations || capabilities.businessAdministration)
     pages.push({ label: 'Business Operations', url: '/business' });
   if (capabilities.ownProfile) pages.push({ label: 'My profile', url: '/profile' });
   if (capabilities.ownSkills) pages.push({ label: 'My skills', url: '/my-skills' });
@@ -23,6 +19,8 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
   if (capabilities.learning) pages.push({ label: 'Learn & Grow', url: '/learning' });
   if (capabilities.reviewSkills) pages.push({ label: 'Skill reviews', url: '/skill-reviews' });
   if (capabilities.catalogue) pages.push({ label: 'Skill catalogue', url: '/skills' });
+  if (capabilities.catalogue && (capabilities.amendments || capabilities.approveAmendments))
+    pages.push({ label: 'Catalogue amendments', url: '/skills?tab=amendments' });
   if (capabilities.administration) {
     pages.push(
       { label: 'Administration dashboard', url: '/access?view=overview' },

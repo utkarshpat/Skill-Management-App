@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "b3bf59c7deac51dd",
+  "revision": "6c3665d42bd0fd5a",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -64,7 +64,10 @@
       "058_certification_review_workspace.sql",
       "059_certification_send_idempotency.sql",
       "060_business_operations.sql",
-      "061_business_workflows.sql"
+      "061_business_workflows.sql",
+      "062_business_audit_reliability.sql",
+      "063_credential_renewal_reliability.sql",
+      "064_business_workflow_recovery.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -1818,7 +1821,20 @@
             "source": "003_custom_access.sql"
           }
         ],
-        "indexes": [],
+        "indexes": [
+          {
+            "name": "IX_AccessAudit_WorkflowRecovery",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "target_id",
+              "actor_id",
+              "action"
+            ],
+            "filter": "",
+            "source": "064_business_workflow_recovery.sql"
+          }
+        ],
         "domain": "Access & organization"
       },
       "AccessOrgNode": {
@@ -6346,7 +6362,7 @@
       "name": "CertificationWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/055_required_certificate_image.sql"
+      "source": "database/migrations/063_credential_renewal_reliability.sql"
     },
     {
       "name": "CertificationImage",
@@ -6358,13 +6374,13 @@
       "name": "LinkCertificationRenewal",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,\n @certification_id uniqueidentifier,@renewed_from_id uniqueidentifier",
-      "source": "database/migrations/057_certification_expiry_reminders.sql"
+      "source": "database/migrations/063_credential_renewal_reliability.sql"
     },
     {
       "name": "CertificationExpiryNotifications",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/057_certification_expiry_reminders.sql"
+      "source": "database/migrations/063_credential_renewal_reliability.sql"
     },
     {
       "name": "CertificationRecommendationCan",
@@ -6478,7 +6494,7 @@
       "name": "BusinessDashboard",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@payload nvarchar(max),@export bit=0",
-      "source": "database/migrations/060_business_operations.sql"
+      "source": "database/migrations/062_business_audit_reliability.sql"
     },
     {
       "name": "BusinessScopeCovers",
@@ -6496,13 +6512,25 @@
       "name": "BusinessMatchRequirements",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@person uniqueidentifier,@requirements nvarchar(max)) RETURNS TABLE",
-      "source": "database/migrations/061_business_workflows.sql"
+      "source": "database/migrations/062_business_audit_reliability.sql"
     },
     {
       "name": "BusinessWorkflow",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(30),@payload nvarchar(max)",
       "source": "database/migrations/061_business_workflows.sql"
+    },
+    {
+      "name": "CertificationRenewalValid",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@source uniqueidentifier,@owner uniqueidentifier,@name nvarchar(200),@provider nvarchar(120),@issue date,@expiry date) RETURNS bit",
+      "source": "database/migrations/063_credential_renewal_reliability.sql"
+    },
+    {
+      "name": "BusinessWorkflowRecovery",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(30),@payload nvarchar(max)",
+      "source": "database/migrations/064_business_workflow_recovery.sql"
     }
   ],
   "groups": {

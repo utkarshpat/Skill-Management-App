@@ -45,6 +45,9 @@ test('catalogue navigation visibility retains the intended manager/reviewer rest
   assert.equal(catalogueNavigationVisible({ catalogue: true }), false);
   assert.equal(catalogueNavigationVisible({ catalogue: true, manageCatalogue: true }), true);
   assert.equal(catalogueNavigationVisible({ catalogue: true, reviewSkills: true }), true);
+  assert.equal(catalogueNavigationVisible({ catalogue: true, amendments: true }), true);
+  assert.equal(catalogueNavigationVisible({ catalogue: true, approveAmendments: true }), true);
+  assert.equal(catalogueNavigationVisible({ catalogue: false, amendments: true }), false);
   assert.equal(catalogueNavigationVisible({ catalogue: false, manageCatalogue: true }), false);
 });
 test('supported deep links are explicit and unknown paths do not masquerade as the dashboard', () => {

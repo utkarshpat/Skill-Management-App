@@ -1,5 +1,26 @@
 import { createHash } from 'node:crypto';
 import { AccessError } from '../../shared/errors.js';
+/** SQL JSON omits null collections when a subquery has no rows. */
+export function normalizeBusinessCollections<T extends object>(value: T, keys: string[]): T {
+  const result = { ...value };
+  const collections = result as Record<string, unknown>;
+  for (const key of keys) {
+    if (collections[key] === undefined || collections[key] === null) collections[key] = [];
+    else if (!Array.isArray(collections[key]))
+      throw new AccessError(503, 'Business Operations data is unavailable.');
+  }
+  return result;
+}
+export function normalizeBusinessAdministration(value: Record<string, unknown>) {
+  return normalizeBusinessCollections(value, [
+    'projects',
+    'memberships',
+    'responsibilities',
+    'people',
+    'nodes',
+    'historicalGrantsForReview',
+  ]);
+}
 export interface BusinessQuery {
   scopeId?: string;
   dataset: 'people' | 'skills' | 'certifications' | 'submissions';
@@ -80,6 +101,11 @@ export interface BusinessDashboard {
   pageSize: number;
 }
 export interface BusinessStore {
+  recoverWorkflow?(
+    actor: string,
+    operation: string,
+    payload: Record<string, unknown>,
+  ): Promise<Record<string, unknown> | null>;
   context(actor: string): Promise<BusinessContext>;
   dashboard(actor: string, query: BusinessQuery, exporting?: boolean): Promise<BusinessDashboard>;
   administration(actor: string): Promise<Record<string, unknown>>;
@@ -242,6 +268,11 @@ export function businessChange(value: unknown): BusinessChange {
       typeof p.active !== 'boolean'
     )
       throw new AccessError(400, 'Choose an implemented responsibility and scope.');
+    if (p.kind === 'ORGANIZATION' && p.scopeId !== undefined && p.scopeId !== null)
+      throw new AccessError(
+        400,
+        'Organization scope uses the server-configured account; do not supply a scope binding.',
+      );
     if (p.bundle === 'SYSTEM_ADMIN' && p.kind !== 'ORGANIZATION')
       throw new AccessError(400, 'System Admin requires organization scope.');
     const suppliedExpiry = p.validUntil ? string(p.validUntil, 40) : null;

@@ -1,8 +1,11 @@
+import { AccessError } from '../src/shared/errors.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { unzipSync, strFromU8 } from 'fflate';
 import {
+  normalizeBusinessAdministration,
+  normalizeBusinessCollections,
   businessQuery,
   businessChange,
   previewBusiness,
@@ -11,7 +14,7 @@ import {
   type BusinessStore,
 } from '../src/modules/business/business.js';
 import { businessWorkflow } from '../src/modules/business/workflows.js';
-import { assertBusinessScope } from '../src/modules/business/sql-store.js';
+import { assertBusinessScope, SqlBusinessStore } from '../src/modules/business/sql-store.js';
 import { businessCsv, businessXlsx } from '../src/modules/business/export.js';
 import {
   effectiveAccess,
@@ -590,4 +593,190 @@ test('business discovery hides unavailable modules and denied profile prerequisi
     { permission: 'audit.view', scope: 'ORGANIZATION', effect: 'ALLOW' },
   ];
   assert.equal(workspaceFor(s, p).capabilities.businessAdministration, false);
+});
+
+test('HTTP recovers an exact committed command without a second write and still denies revoked access', async t => {
+  let current = { ...context(), canDemandCreate: true },
+    writes = 0,
+    committed: string | undefined;
+  const s = state();
+  const access: AccessStore = {
+    snapshot: () => structuredClone(s),
+    person: () => s.people[0],
+    save: async () => s,
+  };
+  const business: BusinessStore = {
+    context: async () => structuredClone(current),
+    dashboard: async () => dashboard(),
+    administration: async () => ({}),
+    change: async () => {},
+    workflow: async (_actor, _operation, payload) => {
+      writes++;
+      const { accessRevision: _access, ...command } = payload;
+      committed = JSON.stringify(command);
+      current.revision++;
+      return { saved: true };
+    },
+    recoverWorkflow: async (_actor, _operation, payload) => {
+      if (!current.canDemandCreate) throw new AccessError(403, 'Revoked');
+      return JSON.stringify(payload) === committed ? { saved: true, replayed: true } : null;
+    },
+  };
+  const server = createApp({
+    verify: async () => ({ tenantId: actor, objectId: actor }),
+    resolveAccess: async () => actor,
+    profile: async () => undefined,
+    access,
+    business,
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const root = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/business`,
+    headers = { Authorization: 'Bearer trusted', 'Content-Type': 'application/json' };
+  const command = {
+    operation: 'SAVE_DEMAND',
+    payload: {
+      id: scope,
+      revision: 1,
+      scopeId: scope,
+      title: 'Retry fixture',
+      requirements: { skills: [], certifications: [person] },
+    },
+  };
+  const preview = await fetch(root + '/workflow/preview', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(command),
+  }).then(r => r.json());
+  const body = JSON.stringify({ ...command, previewReceipt: preview.receipt });
+  assert.equal((await fetch(root + '/workflow', { method: 'POST', headers, body })).status, 200);
+  const retry = await fetch(root + '/workflow', { method: 'POST', headers, body });
+  assert.equal(retry.status, 200);
+  assert.equal((await retry.json()).replayed, true);
+  assert.equal(writes, 1);
+  const altered = JSON.stringify({
+    ...command,
+    payload: { ...command.payload, title: 'Changed' },
+    previewReceipt: preview.receipt,
+  });
+  assert.equal(
+    (await fetch(root + '/workflow', { method: 'POST', headers, body: altered })).status,
+    409,
+  );
+  current.canDemandCreate = false;
+  assert.equal((await fetch(root + '/workflow', { method: 'POST', headers, body })).status, 403);
+  assert.equal(writes, 1);
+});
+
+test('Organization responsibilities are server-account bound and reject a supplied resource binding', () => {
+  const input = {
+    revision: 1,
+    kind: 'RESPONSIBILITY',
+    id: scope,
+    payload: {
+      personId: person,
+      bundle: 'BUSINESS_OPERATIONS',
+      kind: 'ORGANIZATION',
+      effect: 'ALLOW',
+      active: true,
+      validUntil: null,
+      reason: 'Organization reporting',
+    },
+  };
+  assert.equal(businessChange(input).payload.scopeId, null);
+  assert.equal(
+    businessChange({ ...input, payload: { ...input.payload, scopeId: null } }).payload.scopeId,
+    null,
+  );
+  for (const scopeId of [scope, '', 'another-account'])
+    assert.throws(
+      () => businessChange({ ...input, payload: { ...input.payload, scopeId } }),
+      e => e instanceof AccessError && e.status === 400,
+    );
+  assert.throws(() => businessQuery({ accountId: scope }), AccessError);
+  assert.throws(() => businessQuery({ actorId: person }), AccessError);
+});
+
+test('newly activated business administration returns empty collections without masking malformed data', () => {
+  const source = { revision: 1, personalBaseline: true, people: [{ id: actor }], projects: null };
+  const result = normalizeBusinessAdministration(source);
+  for (const key of [
+    'projects',
+    'memberships',
+    'responsibilities',
+    'nodes',
+    'historicalGrantsForReview',
+  ])
+    assert.deepEqual(result[key], []);
+  assert.deepEqual(result.people, source.people);
+  assert.equal(source.projects, null);
+  for (const value of ['[]', {}, 0])
+    assert.throws(
+      () => normalizeBusinessAdministration({ responsibilities: value }),
+      e => e instanceof AccessError && e.status === 503,
+    );
+});
+
+test('empty business scope, dashboard and workflow collections retain their array contracts', () => {
+  for (const keys of [
+    ['scopes'],
+    ['coverage', 'distribution', 'categories', 'comparisons', 'expiry', 'activity', 'rows'],
+    ['providers', 'certifications', 'skills'],
+    ['rows'],
+  ]) {
+    const source: Record<string, unknown> = { revision: 184, total: 0, [keys[0]]: null };
+    const result = normalizeBusinessCollections(source, keys);
+    for (const key of keys) assert.deepEqual(result[key], []);
+    assert.equal(source[keys[0]], null);
+    assert.equal(result.total, 0);
+    const existing = [{ id: actor }];
+    assert.deepEqual(
+      normalizeBusinessCollections({ [keys[0]]: existing }, keys)[keys[0]],
+      existing,
+    );
+    for (const malformed of ['[]', {}, 1, false])
+      assert.throws(
+        () => normalizeBusinessCollections({ [keys[0]]: malformed }, keys),
+        e => e instanceof AccessError && e.status === 503,
+      );
+  }
+});
+
+test('SQL business adapter normalizes empty reads before delivering them to web and AI consumers', async () => {
+  const store = new SqlBusinessStore(actor);
+  const emptyContext = { ...context(), scopes: undefined };
+  Object.defineProperty(store, 'execute', {
+    value: async (_actor: string, procedure: string) => {
+      if (procedure === 'dbo.BusinessContext') return { ...emptyContext };
+      if (procedure === 'dbo.BusinessDashboard')
+        return {
+          context: { ...emptyContext },
+          summary: { employees: 0 },
+          total: 0,
+          page: 1,
+          pageSize: 25,
+        };
+      return { revision: 1, total: 0 };
+    },
+  });
+  assert.deepEqual((await store.context(actor)).scopes, []);
+  const empty = await store.dashboard(actor, businessQuery({ search: 'no matching people' }));
+  for (const key of [
+    'coverage',
+    'distribution',
+    'categories',
+    'comparisons',
+    'expiry',
+    'activity',
+    'rows',
+  ] as const)
+    assert.deepEqual(empty[key], []);
+  assert.deepEqual(empty.context.scopes, []);
+  const masters = await store.workflow(actor, 'MASTERS', { page: 1 });
+  for (const key of ['providers', 'certifications', 'skills']) assert.deepEqual(masters[key], []);
+  for (const operation of ['AMENDMENTS', 'DEMANDS', 'MATCHES'])
+    assert.deepEqual((await store.workflow(actor, operation, { page: 1 })).rows, []);
+  const admin = await store.administration(actor);
+  for (const key of ['projects', 'memberships', 'responsibilities'])
+    assert.deepEqual(admin[key], []);
 });

@@ -13,9 +13,13 @@ assert.equal(
 const account = process.env.ACCESS_ACCOUNT_ID;
 assert.ok(account);
 const migrations = await Promise.all(
-  ['060_business_operations.sql', '061_business_workflows.sql'].map(file =>
-    readFile(new URL('../../../database/migrations/' + file, import.meta.url), 'utf8'),
-  ),
+  [
+    '060_business_operations.sql',
+    '061_business_workflows.sql',
+    '062_business_audit_reliability.sql',
+    '063_credential_renewal_reliability.sql',
+    '064_business_workflow_recovery.sql',
+  ].map(file => readFile(new URL('../../../database/migrations/' + file, import.meta.url), 'utf8')),
 );
 await withDatabase(async pool => {
   const info = (
@@ -27,6 +31,10 @@ await withDatabase(async pool => {
   assert.ok(info.version >= 58);
   const scenarios = [
     'scope-and-personal',
+    'organization-boundary',
+    'organization-runtime-boundary',
+    'renewal-validity',
+    'renewal-conflict',
     'workflow-and-matching',
     'scoped-deny',
     'foreign-scope',
@@ -88,6 +96,11 @@ await withDatabase(async pool => {
     VALUES(@account,@certA,@alice,1,N'BQA Credential',N'BQA Provider',N'Cloud',DATEADD(day,-30,CONVERT(date,SYSUTCDATETIME())),DATEADD(day,10,CONVERT(date,SYSUTCDATETIME())),'','','private notes must not escape','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME()),
     (@account,@certB,@bob,1,N'BQA Credential',N'BQA Provider',N'Cloud',DATEADD(day,-30,CONVERT(date,SYSUTCDATETIME())),DATEADD(day,-1,CONVERT(date,SYSUTCDATETIME())),'','','private notes must not escape','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME()),
     (@account,@draft,@alice,1,N'Hidden draft',N'BQA Provider',N'Cloud',CONVERT(date,SYSUTCDATETIME()),NULL,'','','private draft','DRAFT',NULL,NULL);
+    DECLARE @auditBase int=(SELECT revision FROM dbo.AccessWorkspace WHERE account_id=@account);
+    INSERT dbo.AccessAudit(account_id,revision,actor_id,target_id,action,after_json)
+    SELECT @account,@auditBase+ROW_NUMBER() OVER(ORDER BY c.id,e.action),c.person_id,c.id,e.action,(SELECT c.person_id FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)
+    FROM dbo.CertificationRecord c CROSS JOIN (VALUES('certification.submitted'),('certification.approved')) e(action) WHERE c.account_id=@account AND c.id IN(@certA,@certB);
+    UPDATE dbo.AccessWorkspace SET revision=@auditBase+4 WHERE account_id=@account;
    `);
       const execute = async (
         procedure: string,
@@ -104,6 +117,16 @@ await withDatabase(async pool => {
           `EXECUTE AS USER=N'skill_management_runtime'; BEGIN TRY EXEC dbo.${procedure} @account_id=@account,@actor_id=@actor${payload ? ',@payload=@payload' : ''}${operation ? ',@operation=@operation' : ''}; REVERT;END TRY BEGIN CATCH REVERT;THROW;END CATCH;`,
         );
       };
+      const recover = async (
+        actor: string,
+        operation: string,
+        payload: Record<string, unknown>,
+      ) => {
+        const { accessRevision: _access, ...command } = payload;
+        return JSON.parse(
+          (await execute('BusinessWorkflowRecovery', actor, command, operation)).recordset[0].json,
+        );
+      };
       const read = async (scopeId?: string) =>
         JSON.parse(
           (
@@ -114,7 +137,203 @@ await withDatabase(async pool => {
             )
           ).recordset[0].json,
         );
-      if (scenario === 'scope-and-personal') {
+      if (scenario === 'organization-boundary' || scenario === 'organization-runtime-boundary') {
+        const foreignAccount = randomUUID(),
+          foreignPerson = randomUUID(),
+          organizationGrant = randomUUID();
+        const boundaryRequest = (): sql.Request =>
+          new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .input('foreign', sql.UniqueIdentifier, foreignAccount)
+            .input('foreignPerson', sql.UniqueIdentifier, foreignPerson)
+            .input('lead', sql.UniqueIdentifier, ids.lead)
+            .input('org', sql.UniqueIdentifier, organizationGrant)
+            .input('a', sql.UniqueIdentifier, ids.a)
+            .input('alice', sql.UniqueIdentifier, ids.alice)
+            .input('bob', sql.UniqueIdentifier, ids.bob)
+            .input('inactive', sql.UniqueIdentifier, ids.inactive);
+        await boundaryRequest().query(`
+          INSERT dbo.Account(account_id,account_code,display_name,entra_tenant_id,status)
+          VALUES(@foreign,'BQA-foreign-'+CONVERT(varchar(36),@foreign),N'Foreign fixture',NEWID(),'ACTIVE');
+          INSERT dbo.AccessWorkspace(account_id,revision) VALUES(@foreign,1);
+          INSERT dbo.AccessPerson(account_id,person_id,display_name,employee_code,active)
+          VALUES(@foreign,@foreignPerson,N'Foreign employee','BQA-'+CONVERT(varchar(36),@foreignPerson),1);
+          UPDATE dbo.BusinessResponsibility SET active=0 WHERE account_id=@account AND person_id=@lead;
+          INSERT dbo.BusinessResponsibility VALUES(@account,@org,@lead,'BUSINESS_OPERATIONS','ORGANIZATION',NULL,'ALLOW',1,NULL,N'Fixture');
+        `);
+        const flags = async (): Promise<Record<string, boolean | number>> =>
+          (
+            await boundaryRequest().query(`
+          SELECT dbo.BusinessScopeValid(@account,'ORGANIZATION',NULL) AS valid,
+            dbo.BusinessScopeValid(@account,'ORGANIZATION',@a) AS invalidBinding,
+            dbo.BusinessScopeValid(NEWID(),'ORGANIZATION',NULL) AS unknownAccount,
+            dbo.BusinessScopeMatches(@account,@alice,'ORGANIZATION',NULL) AS ownMember,
+            dbo.BusinessScopeMatches(@account,@foreignPerson,'ORGANIZATION',NULL) AS foreignMember,
+            dbo.BusinessScopeMatches(@account,@inactive,'ORGANIZATION',NULL) AS inactiveMember,
+            dbo.BusinessScopeMatches(@account,@alice,'ORGANIZATION',@a) AS invalidMatch,
+            (SELECT COUNT(*) FROM dbo.BusinessScopePeople(@account,'ORGANIZATION',@a)) AS invalidPeople,
+            dbo.BusinessCan(@account,@lead,@alice,NULL) AS aliceAllowed,
+            dbo.BusinessCan(@account,@lead,@bob,NULL) AS bobAllowed,
+            dbo.BusinessCan(@account,@lead,@foreignPerson,NULL) AS foreignAllowed;
+        `)
+          ).recordset[0];
+        assert.deepEqual(await flags(), {
+          valid: true,
+          invalidBinding: false,
+          unknownAccount: false,
+          ownMember: true,
+          foreignMember: false,
+          inactiveMember: false,
+          invalidMatch: false,
+          invalidPeople: 0,
+          aliceAllowed: true,
+          bobAllowed: true,
+          foreignAllowed: false,
+        });
+        const readOrganization = async () =>
+          JSON.parse(
+            (
+              await execute(
+                'BusinessDashboard',
+                ids.lead,
+                businessQuery({ dataset: 'certifications', search: 'BQA' }),
+              )
+            ).recordset[0].json,
+          );
+        const result = await readOrganization();
+        assert.equal(result.total, 2);
+        assert.ok(!JSON.stringify(result).includes(foreignPerson));
+        assert.ok(!JSON.stringify(result).includes(ids.inactive));
+        if (scenario === 'organization-runtime-boundary') {
+          await assert.rejects(
+            boundaryRequest().query(`EXECUTE AS USER=N'skill_management_runtime';
+              BEGIN TRY EXEC dbo.BusinessContext @account_id=@foreign,@actor_id=@foreignPerson; REVERT;
+              END TRY BEGIN CATCH REVERT;THROW;END CATCH;`),
+            e => (e as { number: number }).number === 51003,
+          );
+        } else {
+          await boundaryRequest().query(
+            `INSERT dbo.BusinessResponsibility VALUES(@account,NEWID(),@lead,'BUSINESS_OPERATIONS','PROJECT',@a,'DENY',1,DATEADD(hour,1,SYSUTCDATETIME()),N'Fixture');`,
+          );
+          const denied = await flags();
+          assert.equal(denied.aliceAllowed, false);
+          assert.equal(denied.bobAllowed, true);
+          assert.equal((await readOrganization()).total, 1);
+          await boundaryRequest().query(
+            "UPDATE dbo.Account SET status='SUSPENDED' WHERE account_id=@account;",
+          );
+          assert.equal((await flags()).valid, false);
+          const count: number = (
+            await boundaryRequest().query(
+              "SELECT COUNT(*) AS people FROM dbo.BusinessScopePeople(@account,'ORGANIZATION',NULL)",
+            )
+          ).recordset[0].people;
+          assert.equal(count, 0);
+          await assert.rejects(read(), e => (e as { number: number }).number === 51003);
+        }
+      } else if (scenario === 'renewal-validity' || scenario === 'renewal-conflict') {
+        const request = (): sql.Request =>
+          new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .input('actor', sql.UniqueIdentifier, ids.alice)
+            .input('source', sql.UniqueIdentifier, ids.certA)
+            .input('renewal', sql.UniqueIdentifier, ids.draft);
+        const notifications = async (): Promise<any[]> =>
+          (
+            await request().query(
+              "EXECUTE AS USER=N'skill_management_runtime';EXEC dbo.CertificationExpiryNotifications @account,@actor;REVERT;",
+            )
+          ).recordset;
+        assert.equal(
+          (await notifications()).find((r: any) => r.id.toLowerCase().includes(ids.certA)).href,
+          '/certifications?renew=' + ids.certA,
+        );
+        const validity: { expired: boolean; unrelated: boolean; permanent: boolean } = (
+          await request().query(
+            "SELECT dbo.CertificationRenewalValid(@account,@source,@actor,N'BQA Credential',N'BQA Provider',CONVERT(date,SYSUTCDATETIME()),DATEADD(day,-1,CONVERT(date,SYSUTCDATETIME()))) AS expired,dbo.CertificationRenewalValid(@account,@source,@actor,N'Other credential',N'BQA Provider',CONVERT(date,SYSUTCDATETIME()),NULL) AS unrelated,dbo.CertificationRenewalValid(@account,@source,@actor,N'BQA Credential',N'BQA Provider',CONVERT(date,SYSUTCDATETIME()),NULL) AS permanent",
+          )
+        ).recordset[0];
+        assert.equal(validity.expired, false);
+        assert.equal(validity.unrelated, false);
+        assert.equal(validity.permanent, true);
+        await request().query(
+          "UPDATE dbo.CertificationRecord SET certification_name=N'BQA Credential',provider=N'BQA Provider',expiry_date=DATEADD(day,90,CONVERT(date,SYSUTCDATETIME())) WHERE account_id=@account AND id=@renewal;EXECUTE AS USER=N'skill_management_runtime';EXEC dbo.LinkCertificationRenewal @account,@actor,@renewal,@source;REVERT;",
+        );
+        if (scenario === 'renewal-validity') {
+          assert.ok(
+            (await notifications()).some((r: any) => r.id.toLowerCase().includes(ids.certA)),
+          );
+          await request().query(
+            "UPDATE dbo.CertificationRecord SET status='SUBMITTED' WHERE account_id=@account AND id=@renewal;",
+          );
+          assert.equal(
+            (await notifications()).some((r: any) => r.id.toLowerCase().includes(ids.certA)),
+            false,
+          );
+          await request().query(
+            'UPDATE dbo.CertificationRecord SET issue_date=DATEADD(day,-30,CONVERT(date,SYSUTCDATETIME())),expiry_date=DATEADD(day,-1,CONVERT(date,SYSUTCDATETIME())) WHERE account_id=@account AND id=@renewal;',
+          );
+          assert.ok(
+            (await notifications()).some((r: any) => r.id.toLowerCase().includes(ids.certA)),
+          );
+          await request().query(
+            "UPDATE dbo.CertificationRecord SET status='CHANGES_REQUESTED' WHERE account_id=@account AND id=@renewal;",
+          );
+          await assert.rejects(
+            execute(
+              'CertificationWorkspace',
+              ids.alice,
+              {
+                id: ids.draft,
+                revision: 1,
+                fields: {
+                  certificationName: 'BQA Credential',
+                  provider: 'BQA Provider',
+                  category: 'Cloud',
+                  certificationDate: new Date().toISOString().slice(0, 10),
+                  expiryDate: new Date().toISOString().slice(0, 10),
+                  credentialId: '',
+                  credentialUrl: '',
+                  notes: '',
+                },
+              },
+              'SAVE',
+            ),
+            (e: any) => e.number === 51013,
+          );
+        } else {
+          await request().query(
+            "UPDATE dbo.CertificationRecord SET status='CHANGES_REQUESTED' WHERE account_id=@account AND id=@renewal;",
+          );
+          await request()
+            .input('second', sql.UniqueIdentifier, randomUUID())
+            .query(
+              "INSERT dbo.CertificationRecord(account_id,id,person_id,revision,certification_name,provider,category,issue_date,expiry_date,credential_id,credential_url,notes,status) SELECT account_id,@second,person_id,1,certification_name,provider,category,issue_date,expiry_date,'','','','DRAFT' FROM dbo.CertificationRecord WHERE account_id=@account AND id=@renewal;EXECUTE AS USER=N'skill_management_runtime';EXEC dbo.LinkCertificationRenewal @account,@actor,@second,@source;REVERT;",
+            );
+          await assert.rejects(
+            execute(
+              'CertificationWorkspace',
+              ids.alice,
+              {
+                id: ids.draft,
+                revision: 1,
+                fields: {
+                  certificationName: 'BQA Credential',
+                  provider: 'BQA Provider',
+                  category: 'Cloud',
+                  certificationDate: new Date().toISOString().slice(0, 10),
+                  expiryDate: null,
+                  credentialId: '',
+                  credentialUrl: '',
+                  notes: '',
+                },
+              },
+              'SAVE',
+            ),
+            (e: any) => [2601, 2627].includes(e.number),
+          );
+        }
+      } else if (scenario === 'scope-and-personal') {
         const result = await read();
         assert.equal(result.summary.employees, 3);
         assert.equal(result.summary.certified, 1);
@@ -148,7 +367,7 @@ await withDatabase(async pool => {
           );
         assert.equal((await read(ids.ga)).summary.employees, 1);
       } else if (scenario === 'workflow-and-matching') {
-        const revision = async () =>
+        const revision = async (): Promise<number> =>
           Number(
             (
               await new sql.Request(tx)
@@ -157,7 +376,7 @@ await withDatabase(async pool => {
             ).recordset[0].revision,
           );
         const providerRequest = randomUUID();
-        let rev = await revision();
+        let rev: number = await revision();
         const proposeProvider = {
           id: providerRequest,
           revision: rev,
@@ -169,6 +388,7 @@ await withDatabase(async pool => {
           definition: { name: 'BQA Provider', active: true },
         };
         await execute('BusinessWorkflow', ids.lead, proposeProvider, 'PROPOSE');
+        assert.equal((await recover(ids.lead, 'PROPOSE', proposeProvider)).replayed, true);
         await execute('BusinessWorkflow', ids.lead, proposeProvider, 'PROPOSE');
         rev = await revision();
         await execute(
@@ -183,6 +403,16 @@ await withDatabase(async pool => {
           ids.admin,
           { id: providerRequest, revision: 1, accessRevision: rev, note: 'Reviewed' },
           'APPROVE_AMENDMENT',
+        );
+        assert.equal(
+          (
+            await recover(ids.admin, 'APPROVE_AMENDMENT', {
+              id: providerRequest,
+              revision: 1,
+              note: 'Reviewed',
+            })
+          ).replayed,
+          true,
         );
         const provider = (
           await new sql.Request(tx)
@@ -305,7 +535,7 @@ await withDatabase(async pool => {
         assert.equal(skillChoices.skills[0].levels[2].description, 'Criteria 3');
         const demand = randomUUID();
         rev = await revision();
-        const payload = {
+        const payload: Record<string, unknown> = {
           id: demand,
           revision: rev,
           accessRevision: rev,
@@ -318,6 +548,33 @@ await withDatabase(async pool => {
           },
         };
         await execute('BusinessWorkflow', ids.lead, payload, 'SAVE_DEMAND');
+        const { accessRevision: _recoveryRevision, ...recoverPayload } = payload;
+        const recovered = JSON.parse(
+          (await execute('BusinessWorkflowRecovery', ids.lead, recoverPayload, 'SAVE_DEMAND'))
+            .recordset[0].json,
+        );
+        assert.equal(recovered.replayed, true);
+        assert.equal(
+          JSON.parse(
+            (
+              await execute(
+                'BusinessWorkflowRecovery',
+                ids.lead,
+                { ...recoverPayload, title: 'Changed' },
+                'SAVE_DEMAND',
+              )
+            ).recordset[0].json,
+          ),
+          null,
+        );
+        assert.equal(
+          JSON.parse(
+            (await execute('BusinessWorkflowRecovery', ids.admin, recoverPayload, 'SAVE_DEMAND'))
+              .recordset[0].json,
+          ),
+          null,
+        );
+
         await execute('BusinessWorkflow', ids.lead, payload, 'SAVE_DEMAND');
         const matched = JSON.parse(
           (await execute('BusinessWorkflow', ids.lead, { id: demand, page: 1 }, 'MATCHES'))
@@ -368,6 +625,7 @@ await withDatabase(async pool => {
           note: 'Current reviewed credential',
         };
         await execute('BusinessWorkflow', ids.lead, shortlist, 'SHORTLIST');
+        assert.equal((await recover(ids.lead, 'SHORTLIST', shortlist)).replayed, true);
         await execute('BusinessWorkflow', ids.lead, shortlist, 'SHORTLIST');
         const counts: { count: number } = (
           await new sql.Request(tx)
@@ -378,6 +636,113 @@ await withDatabase(async pool => {
             )
         ).recordset[0];
         assert.equal(counts.count, 1);
+        const legacyFramework = randomUUID();
+        await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('framework', sql.UniqueIdentifier, legacyFramework)
+          .input('skill', sql.UniqueIdentifier, skillMaster.id)
+          .input('bob', sql.UniqueIdentifier, ids.bob).query(`
+          INSERT dbo.ProficiencyFramework(framework_id,account_id) VALUES(@framework,@account);
+          INSERT dbo.ProficiencyLevel VALUES(@framework,8,N'Legacy stage eight',N'Custom framework; no standard equivalence defined');
+          INSERT dbo.SkillDefinitionVersion(account_id,skill_id,definition_revision,framework_id,display_name,category,description,status) VALUES(@account,@skill,999991,@framework,N'Old custom skill',N'Cloud',N'Custom criteria','PUBLISHED');
+          INSERT dbo.SkillVersionCriterion VALUES(@account,@skill,999991,@framework,8,N'Custom criteria');
+          UPDATE dbo.SkillClaimDraft SET definition_revision=999991,claimed_rank=8,level_name=N'Legacy stage eight' WHERE account_id=@account AND person_id=@bob AND skill_id=@skill;
+        `);
+        const legacyMatch: { matched: boolean }[] = (
+          await new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .input('bob', sql.UniqueIdentifier, ids.bob)
+            .input(
+              'requirements',
+              sql.NVarChar(sql.MAX),
+              JSON.stringify({ skills: [{ id: skillMaster.id, minRank: 5 }], certifications: [] }),
+            )
+            .query('SELECT * FROM dbo.BusinessMatchRequirements(@account,@bob,@requirements)')
+        ).recordset;
+        assert.equal(legacyMatch[0].matched, false);
+
+        const secondSkill = randomUUID();
+        await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('skill', sql.UniqueIdentifier, skillMaster.id)
+          .input('secondSkill', sql.UniqueIdentifier, secondSkill)
+          .input('dana', sql.UniqueIdentifier, ids.dana).query(`
+          UPDATE dbo.SkillCatalogue SET display_name=N'BQA Renamed Cloud skill' WHERE account_id=@account AND skill_id=@skill;
+          INSERT dbo.SkillCatalogue(account_id,skill_id,display_name,category,description,status,definition_revision) VALUES(@account,@secondSkill,N'BQA Cloud skill',N'Cloud',N'New skill with former name','PUBLISHED',999992);
+          INSERT dbo.SkillDefinitionVersion(account_id,skill_id,definition_revision,framework_id,display_name,category,description,status) VALUES(@account,@secondSkill,999992,'00000000-0000-4000-8000-000000000002',N'BQA Cloud skill',N'Cloud',N'New skill with former name','PUBLISHED');
+          INSERT dbo.SkillVersionCriterion VALUES(@account,@secondSkill,999992,'00000000-0000-4000-8000-000000000002',3,N'Practitioner criteria');
+          INSERT dbo.SkillClaimDraft(account_id,claim_id,person_id,skill_id,revision,definition_revision,skill_name,category,claimed_rank,level_name,level_description,experience_months,description,status,submitted_at,reviewed_at) VALUES(@account,NEWID(),@dana,@secondSkill,1,999992,N'BQA Cloud skill',N'Cloud',3,N'Practitioner',N'Criteria 3',24,N'Fixture','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME());
+        `);
+        await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('cert', sql.UniqueIdentifier, ids.certA)
+          .query(
+            "UPDATE dbo.CertificationRecord SET status='CHANGES_REQUESTED' WHERE account_id=@account AND id=@cert;",
+          );
+        const collision = JSON.parse(
+          (await execute('BusinessDashboard', ids.lead, businessQuery({ dataset: 'skills' })))
+            .recordset[0].json,
+        );
+        const cells = collision.coverage.filter(
+          (c: any) => c.label === 'BQA Cloud skill' && c.rank === 3,
+        );
+        assert.equal(cells.length, 1);
+        assert.ok(
+          collision.coverage.some(
+            (c: any) =>
+              c.id.toLowerCase() === skillMaster.id.toLowerCase() &&
+              c.label === 'BQA Renamed Cloud skill',
+          ),
+        );
+        assert.equal(new Set(collision.coverage.map((c: any) => c.id)).size, 2);
+        const renderedCell = collision.coverage.find(
+          (c: any) => c.label === 'BQA Cloud skill' && c.rank === 3,
+        );
+        assert.equal(renderedCell.holders, 1);
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const beforeActivity = collision.activity.find((m: any) => m.label === currentMonth);
+        await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('cert', sql.UniqueIdentifier, ids.certA)
+          .query(
+            "UPDATE dbo.CertificationRecord SET status='SUBMITTED',submitted_at=SYSUTCDATETIME(),reviewed_at=NULL WHERE account_id=@account AND id=@cert;",
+          );
+        const afterActivity = JSON.parse(
+          (await execute('BusinessDashboard', ids.lead, businessQuery({ dataset: 'skills' })))
+            .recordset[0].json,
+        ).activity.find((m: any) => m.label === currentMonth);
+        assert.equal(afterActivity.decisions, beforeActivity.decisions);
+        // Returning to a private draft cannot erase already audited public events.
+        await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('cert', sql.UniqueIdentifier, ids.certA)
+          .query(
+            "UPDATE dbo.CertificationRecord SET status='DRAFT',submitted_at=NULL,reviewed_at=NULL WHERE account_id=@account AND id=@cert;",
+          );
+        const draftActivity = (await read()).activity.find((m: any) => m.label === currentMonth);
+        assert.equal(draftActivity.decisions, beforeActivity.decisions);
+        assert.equal(draftActivity.submissions, beforeActivity.submissions);
+        await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('cert', sql.UniqueIdentifier, ids.certA).query(`
+          DECLARE @r int=(SELECT revision FROM dbo.AccessWorkspace WHERE account_id=@account);
+          INSERT dbo.AccessAudit(account_id,revision,actor_id,target_id,action,after_json)
+          SELECT @account,@r+1,person_id,id,'certification.submitted',(SELECT c.person_id FOR JSON PATH,WITHOUT_ARRAY_WRAPPER) FROM dbo.CertificationRecord c WHERE account_id=@account AND id=@cert;
+          UPDATE dbo.AccessWorkspace SET revision=@r+1 WHERE account_id=@account;
+        `);
+        const nextActivity = (await read()).activity.find((m: any) => m.label === currentMonth);
+        assert.equal(nextActivity.submissions, beforeActivity.submissions + 1);
+        assert.equal(nextActivity.decisions, beforeActivity.decisions);
+        await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('actor', sql.UniqueIdentifier, ids.lead)
+          .query(
+            'UPDATE dbo.BusinessResponsibility SET active=0 WHERE account_id=@account AND person_id=@actor;',
+          );
+        await assert.rejects(
+          recover(ids.lead, 'SAVE_DEMAND', payload),
+          (e: any) => e.number === 51003,
+        );
       } else if (scenario === 'scoped-deny') {
         await new sql.Request(tx)
           .input('account', sql.UniqueIdentifier, account)

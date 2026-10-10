@@ -84,3 +84,20 @@ export function updateBusinessFilters(params: URLSearchParams, patch: Record<str
   if (!('page' in patch)) result.delete('page');
   return result;
 }
+
+/** Names may change or be reused; identity and drill-down always follow skill IDs. */
+export function businessCoverageRows(coverage: BusinessDashboard['coverage']) {
+  const rows = new Map<
+    string,
+    { id: string; label: string; cells: Map<number, BusinessDashboard['coverage'][number]> }
+  >();
+  for (const cell of coverage) {
+    let row = rows.get(cell.id);
+    if (!row) {
+      row = { id: cell.id, label: cell.label, cells: new Map() };
+      rows.set(cell.id, row);
+    }
+    row.cells.set(cell.rank, cell);
+  }
+  return [...rows.values()];
+}

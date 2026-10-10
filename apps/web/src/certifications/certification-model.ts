@@ -107,3 +107,9 @@ export function certificationRenewalFields(record: CertificationRecord, today: s
     notes: '',
   };
 }
+
+export function certificationRenewalId(value: string | null): string | undefined {
+  return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+    ? value.toLowerCase()
+    : undefined;
+}

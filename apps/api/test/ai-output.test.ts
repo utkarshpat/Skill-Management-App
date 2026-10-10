@@ -155,3 +155,109 @@ test('Gemini billing and quota failures have distinct safe, actionable messages'
     );
   }
 });
+
+test('quiz delivery enforces explicit, default and follow-up question counts', async () => {
+  const store = await LocalAccessStore.open(),
+    actor = store.snapshot().people[0].id;
+  for (const [messages, returned, accepted] of [
+    [[{ role: 'user', content: 'Give me a 10-question quiz on networking' }], 3, false],
+    [[{ role: 'user', content: 'Give me a 10-question quiz on networking' }], 10, true],
+    [[{ role: 'user', content: 'Networking quiz' }], 3, false],
+    [[{ role: 'user', content: 'Networking quiz' }], 10, true],
+    [
+      [
+        { role: 'user', content: 'Give me a 10-question quiz on networking' },
+        { role: 'user', content: 'Make it 5' },
+      ],
+      10,
+      false,
+    ],
+    [
+      [
+        { role: 'user', content: 'Give me a 10-question quiz on networking' },
+        { role: 'user', content: 'Make it 5' },
+      ],
+      5,
+      true,
+    ],
+  ] as const) {
+    const assistant = new AssistantService(store, undefined, {
+      name: 'fixture',
+      complete: async () => ({
+        content: '',
+        calls: [
+          {
+            id: 'card',
+            type: 'function',
+            function: { name: 'present_output', arguments: JSON.stringify(quiz(returned)) },
+          },
+        ],
+      }),
+    });
+    const result = assistant.chat(actor, { messages });
+    if (accepted) assert.equal((await result).artifact?.questions.length, returned);
+    else await assert.rejects(result, e => e instanceof AccessError && e.status === 502);
+  }
+});
+
+test('internal learning context stays bounded without weakening public message limits', async () => {
+  const store = await LocalAccessStore.open(),
+    actor = store.snapshot().people[0].id;
+  let calls = 0;
+  const assistant = new AssistantService(store, undefined, {
+    name: 'fixture',
+    complete: async (messages, tools) => {
+      calls++;
+      const history = messages.filter(m => m.role === 'user');
+      assert.ok(history.every(m => m.content.length <= 2000));
+      assert.ok(
+        history
+          .map(m => m.content)
+          .join('')
+          .includes('END_INTAKE'),
+      );
+      assert.equal(
+        tools.some(t => t.function.name === 'present_output'),
+        history.at(-1)!.content.includes('task_draft'),
+      );
+      return history.at(-1)!.content.includes('task_draft')
+        ? {
+            content: '',
+            calls: [
+              {
+                id: 'draft',
+                type: 'function',
+                function: {
+                  name: 'present_output',
+                  arguments: JSON.stringify({
+                    kind: 'task_draft',
+                    title: 'Plan',
+                    summary: 'Review',
+                    body: 'Goal',
+                    steps: ['Practice'],
+                    questions: [],
+                  }),
+                },
+              },
+            ],
+          }
+        : { content: 'Use the daily budget.', calls: [] };
+    },
+  });
+  const prompt = 'Untrusted intake: ' + 'x'.repeat(4150) + 'END_INTAKE';
+  assert.equal(
+    (await assistant.learningOutput(actor, prompt, AbortSignal.timeout(5000), { kind: 'draft' }))
+      .artifact?.kind,
+    'task_draft',
+  );
+  assert.equal(
+    (await assistant.learningOutput(actor, prompt, AbortSignal.timeout(5000), { kind: 'answer' }))
+      .reply,
+    'Use the daily budget.',
+  );
+  await assert.rejects(
+    assistant.chat(actor, { messages: [{ role: 'user', content: prompt }] }),
+    e => e instanceof AccessError && e.status === 400,
+  );
+  assert.equal(calls, 2);
+});

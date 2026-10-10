@@ -124,16 +124,13 @@ export function taskSettings(text: string) {
     );
   const count = [...text.matchAll(/\b(\d{1,2})\s*(?:[- ]?questions?|mcqs?)\b/gi)].at(-1);
   const changedCount = text.match(/\b(?:make it|change it to|aur|isko)\s+(\d{1,2})\b/i);
+  const questionCount = quiz
+    ? Math.max(1, Math.min(20, Number(changedCount?.[1] ?? count?.[1] ?? 10)))
+    : undefined;
   return {
+    questionCount,
     kind: quiz ? 'quiz' : draft ? 'draft' : 'answer',
-    maxOutputTokens: quiz
-      ? Math.min(
-          6000,
-          1500 + Math.max(1, Math.min(20, Number(changedCount?.[1] ?? count?.[1] ?? 10))) * 225,
-        )
-      : draft
-        ? 2400
-        : 1200,
+    maxOutputTokens: quiz ? Math.min(6000, 1500 + questionCount! * 225) : draft ? 2400 : 1200,
   };
 }
 

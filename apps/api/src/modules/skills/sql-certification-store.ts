@@ -53,6 +53,13 @@ export class SqlCertificationStore implements CertificationStore {
         );
       if (number === 51012)
         throw new AccessError(400, 'Attach a certificate image before submitting.');
+      if (number === 2601 || number === 2627)
+        throw new AccessError(409, 'Another active renewal exists. Open that renewal to continue.');
+      if (number === 51013)
+        throw new AccessError(
+          400,
+          'Renew the same credential and issuer with current validity extending the original expiry.',
+        );
       if (number === 51000 || number === 547)
         throw new AccessError(400, 'Check credential details and review feedback.');
       throw e;
@@ -112,6 +119,11 @@ export class SqlCertificationStore implements CertificationStore {
         if (number === 51004) throw new AccessError(404, 'Credential renewal is unavailable.');
         if (number === 51009)
           throw new AccessError(409, 'This credential changed. Refresh before retrying.');
+        if (number === 51013)
+          throw new AccessError(
+            400,
+            'Renew the same credential and issuer with current validity extending the original expiry.',
+          );
         if (number === 51010 || number === 2601 || number === 2627)
           throw new AccessError(
             409,

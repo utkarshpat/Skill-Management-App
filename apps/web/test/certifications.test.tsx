@@ -233,3 +233,11 @@ test('portfolio pages load in bounded parallel batches and preserve page orderin
   );
   assert.equal(maximum, 2);
 });
+
+test('renewal deep links normalize SQL UUID casing and reject invalid identifiers', async () => {
+  const { certificationRenewalId } = await import('../src/certifications/certification-model');
+  const id = 'abcdefab-1234-4234-8234-abcdefabcdef';
+  assert.equal(certificationRenewalId(id.toUpperCase()), id);
+  assert.equal(certificationRenewalId('not-a-credential'), undefined);
+  assert.equal(certificationRenewalId(null), undefined);
+});

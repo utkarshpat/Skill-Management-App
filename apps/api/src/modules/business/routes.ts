@@ -184,8 +184,32 @@ export function registerBusinessRoutes(
   });
   app.post('/api/business/workflow', async (req, res, next) => {
     try {
-      const actor = res.locals.businessActor,
-        preview = await prepare(actor, req.body);
+      const actor = res.locals.businessActor;
+      if (
+        !req.body ||
+        typeof req.body !== 'object' ||
+        Array.isArray(req.body) ||
+        Object.keys(req.body).some(key => !['operation', 'payload', 'previewReceipt'].includes(key))
+      )
+        throw new AccessError(400, 'Unsupported action arguments.');
+      const command = businessWorkflow(req.body.operation, req.body.payload);
+      if (['MASTERS', 'AMENDMENTS', 'AMENDMENT', 'DEMANDS', 'MATCHES'].includes(command.operation))
+        throw new AccessError(400, 'Choose a change to confirm.');
+      if (
+        typeof req.body.previewReceipt !== 'string' ||
+        !/^[0-9a-f]{64}$/.test(req.body.previewReceipt)
+      )
+        throw new AccessError(409, 'Preview this action before confirming.');
+      const recovered = await deps!.business!.recoverWorkflow?.(
+        actor,
+        command.operation,
+        command.payload,
+      );
+      if (recovered) {
+        res.json(recovered);
+        return;
+      }
+      const preview = await prepare(actor, req.body);
       if (req.body.previewReceipt !== preview.receipt)
         throw new AccessError(409, 'Review this current action before confirming.');
       res.json(

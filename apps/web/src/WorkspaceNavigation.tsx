@@ -27,9 +27,25 @@ export const catalogueRouteAllowed = (capabilities: { catalogue?: boolean } | un
   capabilities?.catalogue === true;
 export const catalogueNavigationVisible = (
   capabilities:
-    { catalogue?: boolean; manageCatalogue?: boolean; reviewSkills?: boolean } | undefined,
+    | {
+        catalogue?: boolean;
+        manageCatalogue?: boolean;
+        reviewSkills?: boolean;
+        amendments?: boolean;
+        approveAmendments?: boolean;
+      }
+    | undefined,
 ) =>
-  Boolean(capabilities?.catalogue && (capabilities.manageCatalogue || capabilities.reviewSkills));
+  Boolean(
+    capabilities?.catalogue &&
+    (capabilities.manageCatalogue ||
+      capabilities.reviewSkills ||
+      capabilities.amendments ||
+      capabilities.approveAmendments),
+  );
+export const businessNavigationVisible = (
+  capabilities: { businessOperations?: boolean; businessAdministration?: boolean } | undefined,
+) => Boolean(capabilities?.businessOperations || capabilities?.businessAdministration);
 export const isSupportedWorkspacePath = (pathname: string) =>
   [
     '/',
@@ -64,9 +80,7 @@ export function personalNavigationItems(
 ) {
   if (!capabilities) return [];
   return [
-    ...(capabilities.businessOperations ||
-    capabilities.businessAdministration ||
-    capabilities.amendments
+    ...(businessNavigationVisible(capabilities)
       ? [{ id: 'business', label: 'Business Operations', href: '/business', icon: BarChart3 }]
       : []),
     ...(capabilities.learning

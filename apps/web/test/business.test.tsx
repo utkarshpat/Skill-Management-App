@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BusinessDraftHandoff } from '../src/business/business-draft-handoff';
-import { businessFilters, updateBusinessFilters } from '../src/business/business-model';
+import {
+  businessFilters,
+  updateBusinessFilters,
+  businessCoverageRows,
+} from '../src/business/business-model';
 import { personalNavigationItems, isSupportedWorkspacePath } from '../src/WorkspaceNavigation';
 test('business deep-link filters are bounded to recognized keys and reset pagination on filter changes', () => {
   const params = new URLSearchParams(
@@ -18,23 +22,25 @@ test('business deep-link filters are bounded to recognized keys and reset pagina
     'name_asc',
   );
 });
-test('business sidebar discovery uses canonical capability projections and supports manager amendment-only access', () => {
+test('business sidebar requires analytics or administration; amendment-only manager access stays in catalogue', () => {
   assert.ok(
     !personalNavigationItems({ ownProfile: true, ownSkills: true }).some(
       i => i.href === '/business',
     ),
   );
-  for (const capabilities of [
-    { businessOperations: true },
-    { businessAdministration: true },
-    { amendments: true },
-  ])
+  for (const capabilities of [{ businessOperations: true }, { businessAdministration: true }])
     assert.ok(
       personalNavigationItems(
         { ownProfile: true, ownSkills: true, ...capabilities },
         '/business',
       ).some(i => i.href === '/business' && i.active),
     );
+  assert.ok(
+    !personalNavigationItems(
+      { ownProfile: true, ownSkills: true, amendments: true },
+      '/business',
+    ).some(i => i.href === '/business'),
+  );
 });
 test('business AI handoff is single-use, actor-bound, expiring and cleared on sign-out', () => {
   const handoff = new BusinessDraftHandoff(),
@@ -55,4 +61,17 @@ test('business AI handoff is single-use, actor-bound, expiring and cleared on si
   const cleared = handoff.offer('actor', draft, 1000);
   handoff.clear();
   assert.equal(handoff.take('actor', cleared, 1001), undefined);
+});
+
+test('coverage keeps reused names separate and renamed snapshots under the same skill ID', () => {
+  const rows = businessCoverageRows([
+    { id: 'original', label: 'Cloud', rank: 2, holders: 3 },
+    { id: 'replacement', label: 'Cloud', rank: 2, holders: 1 },
+    { id: 'original', label: 'Renamed Cloud', rank: 3, holders: 2 },
+  ]);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].cells.get(2)?.holders, 3);
+  assert.equal(rows[0].cells.get(3)?.id, 'original');
+  assert.equal(rows[1].cells.get(2)?.id, 'replacement');
+  assert.equal(rows[1].cells.get(3), undefined);
 });

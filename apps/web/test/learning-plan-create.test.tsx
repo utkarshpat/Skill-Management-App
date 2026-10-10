@@ -121,3 +121,68 @@ test('simultaneous confirmations share one in-flight write', async () => {
   assert.equal((await first).id, (await second).id);
   assert.equal(writes, 1);
 });
+
+test('manual plans reconcile a lost response with all 60 tasks and skill focus intact', async () => {
+  const attempt = new LearningPlanCreateAttempt();
+  const payload = {
+    action: 'CREATE' as const,
+    revision: 0 as const,
+    id: crypto.randomUUID(),
+    title: 'Networking',
+    goal: 'Practice',
+    timezone: 'Asia/Calcutta',
+    dailyMinutes: 30,
+    targetDate: '2026-12-01',
+    focus: 'Backend',
+    skillId: crypto.randomUUID(),
+    tasks: Array.from({ length: 60 }, (_, i) => ({
+      id: crypto.randomUUID(),
+      title: `Task ${i}`,
+      estimatedMinutes: 30,
+      plannedDate: '2026-10-10',
+    })),
+  };
+  let saved = '',
+    writes = 0;
+  const result = await attempt.savePayload(payload, async (_url, init) => {
+    if (init?.method === 'POST') {
+      writes++;
+      saved = JSON.parse(String(init.body)).id;
+      throw Error('Lost response');
+    }
+    return json({ plans: [{ id: saved.toUpperCase() }] });
+  });
+  assert.equal(writes, 1);
+  assert.deepEqual(result, payload);
+  assert.equal(attempt.pending, false);
+});
+
+test('manual uncertain confirmations prevent changed intent and blocked reads prevent another write', async () => {
+  const attempt = new LearningPlanCreateAttempt();
+  const payload = {
+    action: 'CREATE' as const,
+    revision: 0 as const,
+    id: crypto.randomUUID(),
+    title: 'Networking',
+    goal: 'Practice',
+    timezone: 'UTC',
+    dailyMinutes: 30,
+    targetDate: '2026-10-10',
+    tasks: [
+      { id: crypto.randomUUID(), title: 'Read', estimatedMinutes: 30, plannedDate: '2026-10-10' },
+    ],
+  };
+  let writes = 0;
+  const fetcher = async (_url: string, init?: RequestInit): Promise<Response> => {
+    if (init?.method === 'POST') writes++;
+    throw Error('Disconnected');
+  };
+  await assert.rejects(attempt.savePayload(payload, fetcher), /could not be confirmed/);
+  assert.equal(attempt.pending, true);
+  await assert.rejects(
+    attempt.savePayload({ ...payload, id: crypto.randomUUID() }, fetcher),
+    /original confirmation/,
+  );
+  await assert.rejects(attempt.savePayload(payload, fetcher), /Disconnected/);
+  assert.equal(writes, 1);
+});

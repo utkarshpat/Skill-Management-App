@@ -303,11 +303,21 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
                   >
                     {['ORGANIZATION', 'DELIVERY_UNIT', 'DEPARTMENT', 'PROJECT'].map(k => (
                       <option key={k} value={k}>
-                        {k.replaceAll('_', ' ')}
+                        {k === 'ORGANIZATION'
+                          ? 'Organization (entire company workspace)'
+                          : k.replaceAll('_', ' ')}
                       </option>
                     ))}
                   </select>
                 </label>
+                {scopeKind === 'ORGANIZATION' && (
+                  <p className="bo-note">
+                    Organization covers active provisioned employees in this company workspace,
+                    across its delivery units, departments and projects. Matching denies still
+                    apply. It does not grant access to other accounts, private files or unrelated
+                    claim reviews.
+                  </p>
+                )}
                 {scopeKind !== 'ORGANIZATION' && (
                   <label>
                     Scope binding <span className="bo-required">*</span>

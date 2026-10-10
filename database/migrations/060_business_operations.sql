@@ -32,6 +32,7 @@ CREATE OR ALTER FUNCTION dbo.BusinessSystemAdmin(@account uniqueidentifier,@acto
 END;
 GO
 CREATE OR ALTER FUNCTION dbo.BusinessScopeValid(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier) RETURNS bit AS BEGIN
+ IF NOT EXISTS(SELECT 1 FROM dbo.Account WHERE account_id=@account AND status='ACTIVE') RETURN 0;
  IF @kind='ORGANIZATION' AND @scope IS NULL RETURN 1;
  IF @kind='PROJECT' AND EXISTS(SELECT 1 FROM dbo.BusinessProject WHERE account_id=@account AND id=@scope AND active=1) RETURN 1;
  IF EXISTS(SELECT 1 FROM dbo.AccessOrgNode n WHERE n.account_id=@account AND n.node_id=@scope AND n.kind=@kind AND n.active=1 AND (n.kind='DELIVERY_UNIT' AND n.parent_id IS NULL OR n.kind='DEPARTMENT' AND EXISTS(SELECT 1 FROM dbo.AccessOrgNode u WHERE u.account_id=n.account_id AND u.node_id=n.parent_id AND u.kind='DELIVERY_UNIT' AND u.active=1 AND u.parent_id IS NULL))) RETURN 1;
@@ -45,6 +46,7 @@ CREATE OR ALTER FUNCTION dbo.BusinessResponsibilityUsable(@account uniqueidentif
 END;
 GO
 CREATE OR ALTER FUNCTION dbo.BusinessScopeMatches(@account uniqueidentifier,@person uniqueidentifier,@kind varchar(20),@scope uniqueidentifier) RETURNS bit AS BEGIN
+ IF dbo.BusinessScopeValid(@account,@kind,@scope)<>1 RETURN 0;
  IF NOT EXISTS(SELECT 1 FROM dbo.AccessPerson WHERE account_id=@account AND person_id=@person AND active=1) RETURN 0;
  IF @kind='ORGANIZATION' RETURN 1;
  IF @kind='PROJECT' AND EXISTS(SELECT 1 FROM dbo.BusinessProjectMember m JOIN dbo.BusinessProject p ON p.account_id=m.account_id AND p.id=m.project_id AND p.active=1 WHERE m.account_id=@account AND m.person_id=@person AND m.project_id=@scope AND m.active=1) RETURN 1;
@@ -59,6 +61,7 @@ CREATE OR ALTER FUNCTION dbo.BusinessScopeMatches(@account uniqueidentifier,@per
 END;
 GO
 CREATE OR ALTER FUNCTION dbo.BusinessScopePeople(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier) RETURNS TABLE AS RETURN (
+ SELECT members.person_id FROM (
  SELECT p.person_id FROM dbo.AccessPerson p WHERE p.account_id=@account AND p.active=1 AND @kind='ORGANIZATION'
  UNION ALL
  SELECT m.person_id FROM dbo.BusinessProjectMember m JOIN dbo.BusinessProject p ON p.account_id=m.account_id AND p.id=m.project_id AND p.active=1 JOIN dbo.AccessPerson person ON person.account_id=m.account_id AND person.person_id=m.person_id AND person.active=1 WHERE m.account_id=@account AND m.active=1 AND @kind='PROJECT' AND m.project_id=@scope
@@ -68,6 +71,7 @@ CREATE OR ALTER FUNCTION dbo.BusinessScopePeople(@account uniqueidentifier,@kind
  JOIN dbo.AccessOrgNode d ON d.account_id=a.account_id AND d.node_id=COALESCE(a.department_id,t.parent_id) AND d.kind='DEPARTMENT' AND d.active=1
  JOIN dbo.AccessOrgNode u ON u.account_id=d.account_id AND u.node_id=d.parent_id AND u.kind='DELIVERY_UNIT' AND u.active=1 AND u.parent_id IS NULL
  WHERE a.account_id=@account AND (@kind='DEPARTMENT' AND d.node_id=@scope OR @kind='DELIVERY_UNIT' AND u.node_id=@scope)
+ ) members WHERE dbo.BusinessScopeValid(@account,@kind,@scope)=1
 );
 GO
 CREATE OR ALTER FUNCTION dbo.BusinessVisiblePeople(@account uniqueidentifier,@actor uniqueidentifier,@selected uniqueidentifier) RETURNS TABLE AS RETURN (

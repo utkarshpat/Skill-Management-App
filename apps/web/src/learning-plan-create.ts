@@ -7,7 +7,7 @@ import {
 } from './learning-plan-draft';
 
 type Fetcher = (url: string, options?: RequestInit) => Promise<Response>;
-interface Payload {
+export interface LearningPlanCreatePayload {
   action: 'CREATE';
   id: string;
   revision: 0;
@@ -16,16 +16,26 @@ interface Payload {
   timezone: string;
   dailyMinutes: number;
   targetDate: string;
+  focus?: string;
+  skillId?: string;
   tasks: { id: string; title: string; estimatedMinutes: number; plannedDate: string }[];
 }
 
 // One confirmation keeps one identity even if the write succeeds but its response is lost.
 export class LearningPlanCreateAttempt {
-  private payload?: Payload;
+  private payload?: LearningPlanCreatePayload;
   private signature?: string;
   private attempted = false;
-  private running?: Promise<Payload>;
-  save(input: LearningPlanDraftInput, timezone: string, fetcher: Fetcher): Promise<Payload> {
+  private confirmed = false;
+  get pending() {
+    return Boolean(this.payload && !this.confirmed);
+  }
+  private running?: Promise<LearningPlanCreatePayload>;
+  save(
+    input: LearningPlanDraftInput,
+    timezone: string,
+    fetcher: Fetcher,
+  ): Promise<LearningPlanCreatePayload> {
     const draft = prefillLearningPlanDraft(input, '');
     if (!learningDraftReviewable(draft) || !draft.startDate)
       return Promise.reject(Error('Review the plan name, goal, tasks and start date.'));
@@ -57,6 +67,20 @@ export class LearningPlanCreateAttempt {
         })),
       };
     }
+    return this.savePayload(this.payload, fetcher);
+  }
+  savePayload(
+    input: LearningPlanCreatePayload,
+    fetcher: Fetcher,
+  ): Promise<LearningPlanCreatePayload> {
+    if (this.payload && JSON.stringify(this.payload) !== JSON.stringify(input))
+      return Promise.reject(
+        Error(
+          'Retry the original confirmation before editing this plan. Check Calendar if the save status is uncertain.',
+        ),
+      );
+    if (this.running) return this.running;
+    this.payload ??= structuredClone(input);
     const payload = this.payload;
     const exists = async () => {
       const current = await readApiResponse<{ plans: { id: string }[] }>(
@@ -66,7 +90,10 @@ export class LearningPlanCreateAttempt {
       return current.plans.some(plan => plan.id.toLowerCase() === payload.id.toLowerCase());
     };
     this.running = (async () => {
-      if (this.attempted && (await exists())) return payload;
+      if (this.attempted && (await exists())) {
+        this.confirmed = true;
+        return payload;
+      }
       this.attempted = true;
       try {
         await readApiResponse(
@@ -77,12 +104,21 @@ export class LearningPlanCreateAttempt {
           }),
           'Could not add the plan to Calendar.',
         );
+        this.confirmed = true;
         return payload;
       } catch (error) {
         const status = (error as { status?: number })?.status;
-        if (status && status < 500 && status !== 409) throw error;
+        if (status && status < 500 && status !== 409) {
+          this.payload = undefined;
+          this.signature = undefined;
+          this.attempted = false;
+          throw error;
+        }
         try {
-          if (await exists()) return payload;
+          if (await exists()) {
+            this.confirmed = true;
+            return payload;
+          }
         } catch {
           /* Keep the original failure; a retry must recheck before writing. */
         }
