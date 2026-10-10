@@ -113,7 +113,8 @@ test('failed refresh does not start a retry loop and cleanup suppresses queued w
 });
 function timedEnvironment() {
   const env = environment();
-  let id = 0;
+  let id = 0,
+    cancels = 0;
   const tasks = new Map<number, { at: number; callback: () => void }>();
   return {
     ...env,
@@ -123,9 +124,12 @@ function timedEnvironment() {
       return key;
     },
     cancel: (key: unknown) => {
+      cancels++;
       tasks.delete(key as number);
     },
     pending: () => tasks.size,
+    schedules: () => id,
+    cancellations: () => cancels,
     tick: async (ms: number) => {
       const end = env.now() + ms;
       for (;;) {
@@ -169,6 +173,37 @@ test('adaptive timer refreshes active users then stops entirely after idle timeo
   assert.equal(modes.at(-1), 'live');
   stop();
   assert.equal(env.pending(), 0);
+});
+
+test('scroll storms reuse one timer while extending idle time without additional network reads', async () => {
+  const env = timedEnvironment();
+  let calls = 0;
+  const modes: string[] = [];
+  const stop = startActivityRefresh(
+    async () => {
+      calls++;
+    },
+    [],
+    env,
+    { pollMs: 300_000, onStatus: status => modes.push(status.mode) },
+  );
+  await settle();
+  for (let i = 0; i < 1000; i++) {
+    env.advance(1);
+    env.document.dispatchEvent(new Event('scroll'));
+  }
+  assert.equal(env.schedules(), 1);
+  assert.equal(env.cancellations(), 0);
+  assert.equal(env.pending(), 1);
+  assert.equal(calls, 1);
+  await env.tick(119_000);
+  assert.equal(modes.at(-1), 'live');
+  assert.equal(env.pending(), 1);
+  await env.tick(1_000);
+  assert.equal(modes.at(-1), 'idle');
+  assert.equal(env.pending(), 0);
+  assert.equal(calls, 1);
+  stop();
 });
 test('background tabs cancel timers and resume with a fresh check on return', async () => {
   const env = timedEnvironment();

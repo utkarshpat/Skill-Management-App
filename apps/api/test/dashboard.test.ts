@@ -10,6 +10,7 @@ import type {
   AccessStore,
 } from '../src/modules/access/index.js';
 import { createApp } from '../src/create-app.js';
+import { AccessError } from '../src/shared/errors.js';
 const actor = '00000000-0000-4000-8000-000000000001';
 function fixture(grants: Assignment[]) {
   const person: LocalPerson = {
@@ -35,6 +36,193 @@ const own = (permission: Assignment['permission']): Assignment => ({
   permission,
   scope: 'OWN',
   effect: 'ALLOW',
+});
+
+test('dashboard overview replaces five requests with one, shares learning only within that request', async t => {
+  const { state, person } = fixture([
+    own('profile.view'),
+    own('skill.view'),
+    own('learning.view'),
+    own('learning.manage'),
+    own('request.view'),
+    { permission: 'skill.verify', scope: 'ORGANIZATION', effect: 'ALLOW' },
+  ]);
+  let identities = 0,
+    snapshots = 0,
+    plans = 0,
+    summaries = 0,
+    workflowReads = 0;
+  const access: AccessStore = {
+    snapshot: () => structuredClone(state),
+    actorSnapshot: () => {
+      snapshots++;
+      return structuredClone(state);
+    },
+    person: () => person,
+    save: async () => state,
+  };
+  const server = createApp({
+    verify: async auth => {
+      if (auth !== 'Bearer trusted') throw Error();
+      return { tenantId: actor, objectId: actor };
+    },
+    profile: async () => undefined,
+    resolveAccess: async () => {
+      identities++;
+      return actor;
+    },
+    access,
+    claims: {
+      ...sources.claims!,
+      summary: async id => {
+        summaries++;
+        return sources.claims!.summary!(id);
+      },
+    },
+    learning: {
+      ...sources.learning!,
+      read: async id => {
+        assert.equal(id, actor);
+        plans++;
+        return sources.learning!.read(id);
+      },
+    },
+    workflows: {
+      ...sources.workflows!,
+      list: async (...args) => {
+        workflowReads++;
+        return sources.workflows!.list(...args);
+      },
+    },
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const root = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/dashboard`;
+  const headers = { Authorization: 'Bearer trusted' };
+  try {
+    const manifest = await (await fetch(root, { headers })).json();
+    assert.equal(manifest.cards.length, 4);
+    const legacy = await Promise.all(
+      manifest.cards.map((card: { endpoint: string }) =>
+        fetch(root.replace('/api/dashboard', '') + card.endpoint, { headers }),
+      ),
+    );
+    assert.ok(legacy.every(response => response.status === 200));
+    assert.equal(identities, 5);
+    assert.equal(snapshots, 9);
+    assert.equal(plans, 2);
+    identities = snapshots = plans = summaries = workflowReads = 0;
+    const response = await fetch(root + '/overview', { headers });
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    assert.equal(data.actorId, actor);
+    assert.equal(data.cards.length, 4);
+    assert.equal(data.cardData.capability.data.total, 80);
+    assert.equal(data.cardData.learning.data.total, 0);
+    assert.equal(data.cardData.attention.data.total, 0);
+    assert.equal(data.cardData.requests.data.total, 0);
+    assert.equal(identities, 1);
+    assert.equal(snapshots, 2);
+    assert.equal(plans, 1);
+    assert.equal(summaries, 1);
+    assert.equal(workflowReads, 1);
+    t.diagnostic(
+      'Four-card dashboard: HTTP requests 5 -> 1; identity resolution 5 -> 1; access reads 9 -> 2; learning reads 2 -> 1.',
+    );
+    assert.equal((await fetch(root + '/overview', { headers })).status, 200);
+    assert.equal(plans, 2);
+    const before = summaries;
+    assert.equal((await fetch(root + '/overview?scope=ORGANIZATION', { headers })).status, 400);
+    assert.equal((await fetch(root + '/overview?status=SUBMITTED', { headers })).status, 400);
+    assert.equal((await fetch(root + '/overview')).status, 401);
+    assert.equal(summaries, before);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+
+test('dashboard overview discards every card after mid-read denial, revision change or deactivation', async () => {
+  const { state, person } = fixture([own('profile.view'), own('skill.view'), own('learning.view')]);
+  let mode: 'deny' | 'revision' | 'inactive' | 'sql-deny' = 'deny';
+  const server = createApp({
+    verify: async () => ({ tenantId: actor, objectId: actor }),
+    resolveAccess: async () => actor,
+    profile: async () => undefined,
+    access: {
+      snapshot: () => structuredClone(state),
+      person: () => person,
+      save: async () => state,
+    },
+    ...sources,
+    learning: {
+      ...sources.learning!,
+      read: async id => {
+        if (mode === 'deny') person.overrides = [{ ...own('learning.view'), effect: 'DENY' }];
+        if (mode === 'revision') state.revision++;
+        if (mode === 'inactive') person.active = false;
+        if (mode === 'sql-deny') throw new AccessError(403, 'No longer permitted');
+        return sources.learning!.read(id);
+      },
+    },
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/dashboard/overview`;
+  try {
+    for (const next of ['deny', 'revision', 'inactive', 'sql-deny'] as const) {
+      mode = next;
+      person.active = true;
+      person.overrides = [];
+      const response = await fetch(url);
+      assert.equal(response.status, mode === 'revision' ? 409 : 403);
+      const body = await response.json();
+      assert.equal(body.cardData, undefined);
+      assert.ok(!JSON.stringify(body).includes('verified'));
+    }
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+
+test('dashboard overview preserves independent cards on transient failure and does not expose upstream errors', async () => {
+  const { state, person } = fixture([
+    own('profile.view'),
+    own('skill.view'),
+    own('learning.view'),
+    own('learning.manage'),
+  ]);
+  let learningCalls = 0;
+  const server = createApp({
+    verify: async () => ({ tenantId: actor, objectId: actor }),
+    resolveAccess: async () => actor,
+    profile: async () => undefined,
+    access: {
+      snapshot: () => structuredClone(state),
+      person: () => person,
+      save: async () => state,
+    },
+    ...sources,
+    learning: {
+      ...sources.learning!,
+      read: () => {
+        learningCalls++;
+        throw Error('upstream-secret');
+      },
+    },
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:${(server.address() as { port: number }).port}/api/dashboard/overview`,
+    );
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.cardData.capability.data.total, 80);
+    assert.equal(body.cardData.learning.error.status, 503);
+    assert.equal(body.cardData.attention.data.partial, true);
+    assert.equal(learningCalls, 1);
+    assert.ok(!JSON.stringify(body).includes('upstream-secret'));
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
 });
 const sources: DashboardSources = {
   claims: {

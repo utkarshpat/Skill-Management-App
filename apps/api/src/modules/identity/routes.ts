@@ -228,7 +228,8 @@ export function registerRoutes(
     res.setHeader('Cache-Control', 'no-store');
     async function sendProfile(profile: Profile, mode?: string) {
       try {
-        const organizationDetails = await dependencies?.ownOrganization?.(profile.id);
+        const organizationDetails =
+          profile.organizationDetails ?? (await dependencies?.ownOrganization?.(profile.id));
         const own = organizationDetails
           ? { ...profile, organization: organizationDetails.workspace, organizationDetails }
           : profile;
@@ -280,7 +281,20 @@ export function registerRoutes(
       });
       return;
     }
-    const profile = await dependencies!.profile(identity);
+    let profile: Profile | undefined;
+    try {
+      profile = await dependencies!.profile(identity);
+    } catch (error) {
+      if (!(error instanceof AccessError)) throw error;
+      res.status(error.status).json({
+        error: {
+          code: 'EMPLOYEE_PROFILE_UNAVAILABLE',
+          message: error.message,
+          requestId: res.locals.requestId,
+        },
+      });
+      return;
+    }
     if (!profile) {
       res.status(403).json({
         error: {

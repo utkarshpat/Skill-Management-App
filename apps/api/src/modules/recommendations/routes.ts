@@ -2,6 +2,7 @@ import { readActorAccess } from '../access/index.js';
 import type { Express, Request, Response } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import { can, effectiveAccess, type AccessStore } from '../access/index.js';
+import type { LocalPerson } from '../access/index.js';
 import { AccessError } from '../../shared/errors.js';
 import {
   recommendationAccess,
@@ -57,12 +58,15 @@ export function registerRecommendationRoutes(
     try {
       if (!deps?.recommendations)
         throw new AccessError(503, 'Recommendation storage is not configured.');
-      const actor = res.locals.recommendationActor,
+      let actor = res.locals.recommendationActor,
         state = res.locals.recommendationState;
       let value;
       if (action === 'SEND') {
-        const input = sendRecommendation(req.body),
-          decision = recommendationAccess(state, actor, input.personId);
+        const input = sendRecommendation(req.body);
+        state = await (deps?.access ?? store)!.snapshot({ includeAudit: false });
+        actor = state.people.find((person: LocalPerson) => person.id === actor.id && person.active);
+        if (!actor) throw new AccessError(403, 'Recommendation access changed.');
+        const decision = recommendationAccess(state, actor, input.personId);
         if (!decision.allowed)
           throw new AccessError(403, 'Recommendation denied: ' + decision.reasonCode);
         value = await deps.recommendations.send(actor.id, input);

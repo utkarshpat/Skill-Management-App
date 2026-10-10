@@ -1,5 +1,8 @@
+import { certificatePreviewUrl } from './certificate-preview-url';
+import { CertificateFilePreview } from './CertificateFilePreview';
+export { CertificateFilePreview } from './CertificateFilePreview';
 import { useEffect, useRef, useState } from 'react';
-import { Download, FileText, ImagePlus, Upload } from 'lucide-react';
+import { FileText, ImagePlus, Upload } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { prepareCertificateFile } from './certificate-file';
@@ -14,70 +17,51 @@ export interface CertificateFileInfo {
 
 export function useCertificationImage(id?: string) {
   const [state, setState] = useState({
+    id,
     url: '',
     loading: Boolean(id),
     error: '',
     file: undefined as CertificateFileInfo | undefined,
   });
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setState({ id, url: '', loading: false, error: '', file: undefined });
+      return;
+    }
     const controller = new AbortController();
     let url = '';
-    setState({ url: '', loading: true, error: '', file: undefined });
+    setState({ id, url: '', loading: true, error: '', file: undefined });
     const root = `/api/certifications/${encodeURIComponent(id)}/image`;
     (async () => {
       const result = await readApiResponse<{ items: CertificateFileInfo[] }>(
         await authenticatedFetch(root, { signal: controller.signal }),
         'Certificate file could not be loaded.',
       );
+      controller.signal.throwIfAborted();
       const file = result.items[0];
       if (file) {
         const response = await authenticatedFetch(`${root}/${encodeURIComponent(file.id)}`, {
           signal: controller.signal,
         });
         if (!response.ok) throw Error('Certificate file could not be loaded.');
-        url = URL.createObjectURL(await response.blob());
+        url = await certificatePreviewUrl(() => response.blob(), controller.signal);
+        if (controller.signal.aborted) {
+          URL.revokeObjectURL(url);
+          url = '';
+          return;
+        }
       }
-      if (!controller.signal.aborted) setState({ url, loading: false, error: '', file });
+      if (!controller.signal.aborted) setState({ id, url, loading: false, error: '', file });
     })().catch(e => {
       if (!controller.signal.aborted)
-        setState({ url: '', loading: false, error: e.message, file: undefined });
+        setState({ id, url: '', loading: false, error: e.message, file: undefined });
     });
     return () => {
       controller.abort();
       if (url) URL.revokeObjectURL(url);
     };
   }, [id]);
-  return state;
-}
-
-export function CertificateFilePreview({
-  url,
-  mimeType,
-  fileName,
-  className = '',
-}: {
-  url: string;
-  mimeType: string;
-  fileName: string;
-  className?: string;
-}) {
-  if (mimeType.startsWith('image/'))
-    return (
-      <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Open certificate image">
-        <img className={className || undefined} src={url} alt="Certificate preview" />
-      </a>
-    );
-  return (
-    <div className="certificate-file-preview">
-      <FileText size={32} aria-hidden="true" />
-      <span title={fileName}>{fileName}</span>
-      <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${fileName}`}>
-        <Download size={16} aria-hidden="true" />
-        Open file
-      </a>
-    </div>
-  );
+  return state.id === id ? state : { url: '', loading: Boolean(id), error: '', file: undefined };
 }
 
 export function CertificateImageUploader({

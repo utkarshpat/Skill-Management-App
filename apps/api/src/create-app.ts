@@ -1,3 +1,5 @@
+import { registerBusinessRoutes, type BusinessDependencies } from './modules/business/index.js';
+import { startRequestTiming } from './shared/request-timing.js';
 import { randomUUID } from 'node:crypto';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
@@ -59,21 +61,53 @@ export type AppDependencies = IdentityDependencies &
   RecommendationDependencies &
   CertificationDependencies &
   CertificationRecommendationDependencies &
-  KnowledgeDependencies;
+  KnowledgeDependencies & BusinessDependencies;
 
 export function createApp(
   dependencies?: AppDependencies,
-  options: { developmentStore?: AccessStore; hostedDemo?: HostedDemoConfig } = {},
+  options: {
+    developmentStore?: AccessStore;
+    hostedDemo?: HostedDemoConfig;
+    onRequestTiming?: (metric: {
+      requestId: string;
+      method: string;
+      route: string;
+      status: number;
+      durationMs: number;
+      databaseCalls: number;
+      databaseMs: number;
+      databaseConnectionRetries: number;
+      databasePhases: ReturnType<ReturnType<typeof startRequestTiming>['result']>['databasePhases'];
+    }) => void;
+  } = {},
 ) {
   const app = express();
   const store = options.developmentStore;
   const demo = store ? createDevelopmentSessions(store, Date.now, options.hostedDemo) : undefined;
   app.disable('x-powered-by');
   app.use(helmet());
-  app.use((_req, res, next) => {
+  app.use((req, res, next) => {
     res.locals.requestId = randomUUID();
     res.setHeader('X-Request-Id', res.locals.requestId);
-    next();
+    if (!options.onRequestTiming) {
+      next();
+      return;
+    }
+    const timing = startRequestTiming();
+    res.once('finish', () => {
+      try {
+        options.onRequestTiming?.({
+          requestId: res.locals.requestId,
+          method: req.method,
+          route: req.route?.path ? String(req.route.path) : 'unmatched',
+          status: res.statusCode,
+          ...timing.result(),
+        });
+      } catch {
+        /* Telemetry failures cannot change request behavior. */
+      }
+    });
+    timing.run(next);
   });
   app.use(express.json({ limit: '128kb' }));
   identityRoutes(
@@ -123,6 +157,7 @@ export function createApp(
     store,
     demo,
   );
+  registerBusinessRoutes(app, dependencies, store, demo);
   aiRoutes(app, dependencies, store, demo);
   // Temporary KT feature: no business persistence or changes to core policy.
   registerKnowledgeRoutes(app, dependencies, demo);

@@ -201,3 +201,35 @@ test('skills-style certification profile keeps review and expiry separate and ob
   assert.match(html, /Submit Draft credential for review/);
   assert.match(html, /Record renewal for Azure Fundamentals/);
 });
+
+test('portfolio pages load in bounded parallel batches and preserve page ordering', async () => {
+  const records = Array.from({ length: 101 }, (_, i) => record(String(i)));
+  const waiting = new Map<number, () => void>();
+  let active = 0,
+    maximum = 0;
+  const pending = loadCertificationPortfolio(async n => {
+    if (n > 1) {
+      active++;
+      maximum = Math.max(active, maximum);
+      await new Promise<void>(resolve => waiting.set(n, resolve));
+      active--;
+    }
+    return page(records.slice((n - 1) * 25, n * 25), 101);
+  }, new AbortController().signal);
+  const tick = () => new Promise<void>(resolve => setImmediate(resolve));
+  await tick();
+  assert.deepEqual([...waiting.keys()], [2, 3]);
+  waiting.get(3)!();
+  await tick();
+  assert.deepEqual([...waiting.keys()], [2, 3]);
+  waiting.get(2)!();
+  await tick();
+  assert.deepEqual([...waiting.keys()], [2, 3, 4, 5]);
+  waiting.get(5)!();
+  waiting.get(4)!();
+  assert.deepEqual(
+    (await pending).records.map(row => row.id),
+    records.map(row => row.id),
+  );
+  assert.equal(maximum, 2);
+});

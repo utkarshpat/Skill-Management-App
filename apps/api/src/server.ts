@@ -1,3 +1,4 @@
+import { SqlBusinessStore } from './modules/business/index.js';
 import { SqlAiBudget } from './modules/ai/budget.js';
 import { KnowledgeTransferService } from './modules/knowledge-transfer/index.js';
 import { SqlRecommendationStore } from './modules/recommendations/index.js';
@@ -9,7 +10,8 @@ import { ownProfile } from './modules/identity/index.js';
 import { closeRuntimeDatabase } from './shared/database.js';
 import { developmentLoginEnabled, hostedDemoConfig } from './modules/identity/index.js';
 import { SqlAccessStore } from './modules/access/sql-access-store.js';
-import { can, readActorAccess } from './modules/access/index.js';
+import { createEmployeeProfileReader } from './modules/identity/employee-profile.js';
+import { StoredEmployeeDirectoryProvider } from './modules/identity/employee-directory.js';
 import { AssistantService, configuredProvider } from './modules/ai/index.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
 import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
@@ -39,6 +41,14 @@ const developmentStore = hostedDemo || developmentLoginEnabled(process.env) ? ac
 const organization = process.env.ACCESS_ACCOUNT_ID
   ? new SqlOrganizationStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
+const employeeDirectory = new StoredEmployeeDirectoryProvider();
+const employeeProfile = createEmployeeProfileReader({
+  access,
+  resolveIdentity: async identity => access?.resolveIdentity(identity),
+  directory: employeeDirectory,
+  ownOrganization: organization?.ownOrganization.bind(organization),
+  legacyProfile: ownProfile,
+});
 const claims = process.env.ACCESS_ACCOUNT_ID
   ? new SqlClaimsStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
@@ -62,6 +72,7 @@ const recommendations = process.env.ACCESS_ACCOUNT_ID
 const workflows = process.env.ACCESS_ACCOUNT_ID
   ? new SqlWorkflowStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
+const business = process.env.ACCESS_ACCOUNT_ID ? new SqlBusinessStore(process.env.ACCESS_ACCOUNT_ID) : undefined;
 const provider = configuredProvider(process.env),
   aiBudget = access ? new SqlAiBudget(process.env.ACCESS_ACCOUNT_ID!) : undefined;
 const knowledgeTransfer =
@@ -82,6 +93,7 @@ const assistant = access
       learning,
       workflows,
       aiBudget!,
+      business,
     )
   : undefined;
 const learningGenerator: QuizGenerator | undefined = assistant
@@ -121,6 +133,7 @@ const app = createApp(
         verify: tokenVerifier(config),
         access,
         organization,
+        business,
         ownOrganization: organization?.ownOrganization.bind(organization),
         assistant,
         knowledgeTransfer,
@@ -137,34 +150,19 @@ const app = createApp(
         workflows,
         recommendations,
         resolveAccess: access ? identity => access.resolveIdentity(identity) : undefined,
-        profile: async identity => {
-          const id = await access?.resolveIdentity(identity);
-          if (!id) return ownProfile(identity);
-          const state = await readActorAccess(access!, id);
-          const person = state.people.find(person => person.id === id);
-          if (!person || !can(state, person, 'profile.view', true)) return undefined;
-          return {
-            id: person.id,
-            displayName: person.displayName,
-            employeeCode: person.employeeCode,
-            jobTitle: person.jobTitle,
-            grade: person.grade,
-            primaryCapabilityId: person.primaryCapabilityId,
-            primaryCapabilityName: person.primaryCapabilityName,
-            primaryCapabilityStatus: person.primaryCapabilityStatus,
-            organization: 'Development Workspace',
-            status: person.active ? 'ACTIVE' : 'SUSPENDED',
-            roles: state.roles
-              .filter(role => person.roleIds.includes(role.id))
-              .map(role => role.name),
-            canManageAccess: can(state, person, 'permissions.manage'),
-            canViewSkills:
-              can(state, person, 'skill.view') || can(state, person, 'skill.catalogue.manage'),
-          };
-        },
+        profile: employeeProfile,
       }
     : undefined,
-  { developmentStore, hostedDemo },
+  {
+    developmentStore,
+    hostedDemo,
+    ...(process.env.HTTP_TIMING_ENABLED === 'true'
+      ? {
+          onRequestTiming: (metric: object) =>
+            console.info(JSON.stringify({ event: 'http.timing', ...metric })),
+        }
+      : {}),
+  },
 );
 // Vercel owns the listener and lifecycle; local/Azure Node hosting keeps its server.
 export default app;

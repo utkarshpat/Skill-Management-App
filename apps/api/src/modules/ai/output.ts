@@ -2,7 +2,14 @@ import { AccessError } from '../../shared/errors.js';
 import type { ToolDefinition } from './tool-registry.js';
 
 export interface Presentation {
-  kind: 'task_draft' | 'skill_draft' | 'request_draft' | 'incident_draft' | 'practice_quiz';
+  kind:
+    | 'task_draft'
+    | 'skill_draft'
+    | 'request_draft'
+    | 'incident_draft'
+    | 'amendment_draft'
+    | 'demand_draft'
+    | 'practice_quiz';
   title: string;
   summary: string;
   body: string;
@@ -22,7 +29,15 @@ export const presentationTool: ToolDefinition = {
       properties: {
         kind: {
           type: 'string',
-          enum: ['task_draft', 'skill_draft', 'request_draft', 'incident_draft', 'practice_quiz'],
+          enum: [
+            'task_draft',
+            'skill_draft',
+            'request_draft',
+            'incident_draft',
+            'amendment_draft',
+            'demand_draft',
+            'practice_quiz',
+          ],
         },
         title: { type: 'string' },
         summary: { type: 'string' },
@@ -70,9 +85,15 @@ function text(value: unknown, max: number, empty = false): string {
 export function presentation(value: unknown): Presentation {
   const item = record(value, ['kind', 'title', 'summary', 'body', 'steps', 'questions']);
   if (
-    !['task_draft', 'skill_draft', 'request_draft', 'incident_draft', 'practice_quiz'].includes(
-      String(item.kind),
-    )
+    ![
+      'task_draft',
+      'skill_draft',
+      'request_draft',
+      'incident_draft',
+      'amendment_draft',
+      'demand_draft',
+      'practice_quiz',
+    ].includes(String(item.kind))
   )
     invalid();
   if (!Array.isArray(item.steps) || item.steps.length > 12 || !Array.isArray(item.questions))

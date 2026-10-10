@@ -11,6 +11,12 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
   const workspace = workspaceFor(state, person),
     capabilities = workspace.capabilities;
   const pages = [{ label: 'Dashboard', url: '/workspace' }];
+  if (
+    capabilities.businessOperations ||
+    capabilities.businessAdministration ||
+    capabilities.amendments
+  )
+    pages.push({ label: 'Business Operations', url: '/business' });
   if (capabilities.ownProfile) pages.push({ label: 'My profile', url: '/profile' });
   if (capabilities.ownSkills) pages.push({ label: 'My skills', url: '/my-skills' });
   if (capabilities.requests) pages.push({ label: 'Requests', url: '/requests' });
@@ -181,6 +187,11 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
   return {
     pages,
     guidance,
+    canDraftDemand: can(state, person, 'demand.create'),
+    canDraftAmendment: can(state, person, 'skill.catalogue.propose'),
+    businessPolicy: person.business
+      ? { revision: state.revision, scopes: person.business.scopes }
+      : undefined,
     canDraftOwnSkill: capabilities.claimSkills,
     canManageCatalogue: capabilities.manageCatalogue,
     canDraftRequest,

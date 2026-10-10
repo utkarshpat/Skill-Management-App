@@ -1,6 +1,8 @@
+import { businessDraftHandoff } from './business/business-draft-handoff';
+import { InflightReads } from './inflight-reads';
 import { learningDraftHandoff } from './learning-draft-handoff';
 import { notifyResponse, notify } from './toast';
-import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser';
+import { createMicrosoftSession } from './microsoft-session';
 import { discoverDevelopmentLogin, parseDemoLogin, type DemoLoginState } from './development-login';
 
 const tenant = import.meta.env.VITE_ENTRA_TENANT_ID;
@@ -8,17 +10,22 @@ const web = import.meta.env.VITE_ENTRA_WEB_CLIENT_ID;
 const api = import.meta.env.VITE_ENTRA_API_CLIENT_ID;
 const redirectUri = import.meta.env.VITE_AUTH_REDIRECT_URI ?? window.location.origin + '/';
 export const signInConfigured = Boolean(tenant && web && api);
-const client = signInConfigured
-  ? new PublicClientApplication({
-      auth: {
-        clientId: web,
-        authority: `https://login.microsoftonline.com/${tenant}`,
-        redirectUri,
-        postLogoutRedirectUri: redirectUri,
-      },
-      cache: { cacheLocation: 'sessionStorage' },
-    })
-  : undefined;
+const microsoft = createMicrosoftSession(async () => {
+  const sdk = await import('@azure/msal-browser');
+  return {
+    createClient: () =>
+      new sdk.PublicClientApplication({
+        auth: {
+          clientId: web,
+          authority: `https://login.microsoftonline.com/${tenant}`,
+          redirectUri,
+          postLogoutRedirectUri: redirectUri,
+        },
+        cache: { cacheLocation: 'sessionStorage' },
+      }),
+    requiresInteraction: error => error instanceof sdk.InteractionRequiredAuthError,
+  };
+});
 const scopes = [`api://${api}/access_as_user`];
 let ready: Promise<void> | undefined;
 let demoSession = false;
@@ -51,6 +58,7 @@ export async function unlockDemoPeople(accessCode: string) {
 }
 export async function directSignIn(personId: string, accessCode?: string) {
   learningDraftHandoff.clear();
+  businessDraftHandoff.clear();
   try {
     sessionStorage.removeItem('pending-learning-draft');
   } catch {
@@ -66,27 +74,27 @@ export async function directSignIn(personId: string, accessCode?: string) {
   await refreshDevelopmentLogin();
   if (!demoSession) throw new Error('Demo session could not be verified.');
 }
-export function initializeAuth() {
-  return (ready ??= (async () => {
-    await refreshDevelopmentLogin();
-    if (demoSession) return;
-    if (!client) return;
-    await client.initialize();
-    const result = await client.handleRedirectPromise();
-    if (result) client.setActiveAccount(result.account);
-    if (!client.getActiveAccount() && client.getAllAccounts().length === 1)
-      client.setActiveAccount(client.getAllAccounts()[0]);
-  })());
+export async function initializeAuth() {
+  await (ready ??= refreshDevelopmentLogin()
+    .then(() => undefined)
+    .catch(error => {
+      ready = undefined;
+      throw error;
+    }));
+  if (!demoSession && signInConfigured) await microsoft.initialize();
 }
 export function signedIn() {
-  return demoSession || Boolean(client?.getActiveAccount());
+  return demoSession || Boolean(microsoft.client?.getActiveAccount());
 }
 export async function signIn() {
   await initializeAuth();
-  await client?.loginRedirect({ scopes, prompt: 'select_account' });
+  if (signInConfigured) await microsoft.initialize();
+  await microsoft.client?.loginRedirect({ scopes, prompt: 'select_account' });
 }
 export async function signOut() {
+  reads.invalidate();
   learningDraftHandoff.clear();
+  businessDraftHandoff.clear();
   try {
     sessionStorage.removeItem('pending-learning-draft');
   } catch {
@@ -99,33 +107,39 @@ export async function signOut() {
     window.location.assign('/');
     return;
   }
-  await client?.logoutRedirect({ account: client.getActiveAccount() });
+  await microsoft.client?.logoutRedirect({ account: microsoft.client.getActiveAccount() });
 }
 export async function profileToken() {
   await initializeAuth();
+  const client = microsoft.client;
   const account = client?.getActiveAccount();
   if (!client || !account) throw new Error('Please sign in.');
   try {
     return (await client.acquireTokenSilent({ scopes, account })).accessToken;
   } catch (error) {
-    if (error instanceof InteractionRequiredAuthError)
+    if (microsoft.requiresInteraction(error))
       await client.acquireTokenRedirect({ scopes, account });
     throw new Error('Please sign in again to continue.');
   }
 }
+const reads = new InflightReads(async (input, init) => {
+  try {
+    return await fetch(input, init);
+  } catch (error) {
+    if (!init?.signal?.aborted) notify('Connection interrupted. Please try again.', 'error');
+    throw error;
+  }
+});
 export async function authenticatedFetch(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   if (!isDemoSession()) headers.set('Authorization', `Bearer ${await profileToken()}`);
   const wasDemo = isDemoSession();
-  const response = await fetch(path, {
+  const response = await reads.fetch(path, {
     ...init,
     headers,
     signal: init.signal
       ? AbortSignal.any([init.signal, AbortSignal.timeout(90000)])
       : AbortSignal.timeout(90000),
-  }).catch(error => {
-    if (!init.signal?.aborted) notify('Connection interrupted. Please try again.', 'error');
-    throw error;
   });
   if (wasDemo && response.status === 401) {
     demoSession = false;

@@ -1,10 +1,16 @@
-import { useEffect, useState } from 'react';
+import { WriteIntent } from '../write-intent';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { ArrowRight, Award, Plus, Search, Send } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
 import { toast } from '../toast';
+import {
+  certificationResponseFailure,
+  currentCertificationResponse,
+  canRespondToCertification,
+} from './certification-response';
 import '../recommendations.css';
 
 type Recommendation = {
@@ -42,11 +48,16 @@ const statusLabels = {
 
 export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: boolean }) {
   const [params, setParams] = useSearchParams();
+  const sendIntent = useRef(new WriteIntent());
+  const responseOperation = useRef<AbortController | undefined>(undefined);
+  const [responseError, setResponseError] = useState('');
+  const [responseRecheck, setResponseRecheck] = useState(false);
   const focused = params.get('recommendation') ?? '';
   const [view, setView] = useState<'received' | 'sent'>(
     sentOnly || params.get('direction') === 'sent' ? 'sent' : 'received',
   );
-  const [feed, setFeed] = useState<Feed>();
+  const [loadedFeed, setFeed] = useState<{ key: string; value: Feed }>();
+  const [recipientLoading, setRecipientLoading] = useState(true);
   const [people, setPeople] = useState<Person[]>([]);
   const [page, setPage] = useState(1),
     [attempt, setAttempt] = useState(0);
@@ -66,28 +77,51 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
     [personId, setPersonId] = useState(''),
     [message, setMessage] = useState('');
 
+  const feedKey = JSON.stringify([view, page, search, attempt, focused]);
+  const feed = loadedFeed?.key === feedKey ? loadedFeed.value : undefined;
+
   useEffect(() => {
     const c = new AbortController();
+    if (responseOperation.current) {
+      responseOperation.current.abort();
+      setSaving(false);
+    }
+    responseOperation.current = undefined;
+    setResponseError('');
+    setResponseRecheck(false);
+    setMessage('');
     setLoading(true);
+    setFeed(undefined);
+    setDetail(undefined);
     setError('');
     const query = new URLSearchParams({ view, page: String(page), search });
     if (focused) query.set('id', focused);
     authenticatedFetch('/api/certification-recommendations?' + query, { signal: c.signal })
       .then(r => readApiResponse<Feed>(r, 'Certification recommendations could not be loaded.'))
       .then(value => {
-        if (!c.signal.aborted) setFeed(value);
+        if (!c.signal.aborted) setFeed({ key: feedKey, value });
       })
       .catch(e => {
-        if (!c.signal.aborted) setError(e.message);
+        if (!c.signal.aborted) {
+          setFeed(undefined);
+          setDetail(undefined);
+          setError(e.message);
+        }
       })
       .finally(() => {
         if (!c.signal.aborted) setLoading(false);
       });
-    return () => c.abort();
+    return () => {
+      c.abort();
+      responseOperation.current?.abort();
+    };
   }, [view, page, search, attempt, focused]);
 
   useEffect(() => {
     if (!sending) return;
+    setRecipientLoading(true);
+    setPeople([]);
+    setPersonId('');
     const c = new AbortController();
     authenticatedFetch(
       '/api/certification-recommendations/people?search=' + encodeURIComponent(recipientSearch),
@@ -99,15 +133,17 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
       .then(value => {
         if (!c.signal.aborted) {
           setPeople(value.people);
-          setPersonId(current =>
-            value.people.some(person => person.id === current)
-              ? current
-              : value.people[0]?.id || '',
-          );
         }
       })
       .catch(e => {
-        if (!c.signal.aborted) setError(e.message);
+        if (!c.signal.aborted) {
+          setPeople([]);
+          setPersonId('');
+          setError(e.message);
+        }
+      })
+      .finally(() => {
+        if (!c.signal.aborted) setRecipientLoading(false);
       });
     return () => c.abort();
   }, [sending, recipientSearch]);
@@ -123,18 +159,88 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
     setDetail(undefined);
     setPage(1);
   };
-  const saveResponse = async (action: 'ACCEPT' | 'DECLINE' | 'DISCUSS') => {
-    if (!detail || saving) return;
+  const closeResponse = () => {
+    if (saving || responseOperation.current) return;
+    setResponseError('');
+    setResponseRecheck(false);
+    setMessage('');
+    if (focused) closeFocus();
+    else setDetail(undefined);
+    setAttempt(n => n + 1);
+  };
+  const responseFailed = (e: unknown, rechecking = false) => {
+    const failure = certificationResponseFailure(e);
+    if (failure.clear) {
+      setFeed(undefined);
+      setDetail(undefined);
+      setMessage('');
+      setError(failure.message);
+    } else {
+      setResponseError(failure.message);
+      setResponseRecheck(failure.recheck || rechecking);
+    }
+  };
+  const recheckResponse = async () => {
+    if (!detail || !feed || loading || saving || responseOperation.current) return;
+    const c = new AbortController();
+    responseOperation.current = c;
     setSaving(true);
+    try {
+      const query = new URLSearchParams({ view, id: detail.id });
+      const current = await readApiResponse<Feed>(
+        await authenticatedFetch('/api/certification-recommendations?' + query, {
+          signal: c.signal,
+        }),
+        'Current recommendation status could not be loaded.',
+      );
+      if (c.signal.aborted) return;
+      const record = currentCertificationResponse(current.items, detail.id);
+      setFeed({
+        key: feedKey,
+        value: {
+          ...feed,
+          canSend: current.canSend,
+          items: feed.items.map(item => (item.id === record.id ? record : item)),
+        },
+      });
+      setDetail(record);
+      setResponseError('');
+      setResponseRecheck(false);
+    } catch (e) {
+      if (!c.signal.aborted) responseFailed(e, true);
+    } finally {
+      if (responseOperation.current === c) {
+        responseOperation.current = undefined;
+        setSaving(false);
+      }
+    }
+  };
+  const saveResponse = async (action: 'ACCEPT' | 'DECLINE' | 'DISCUSS') => {
+    if (
+      !detail ||
+      !feed ||
+      loading ||
+      !canRespondToCertification(detail) ||
+      saving ||
+      responseRecheck ||
+      responseOperation.current
+    )
+      return;
+    const c = new AbortController();
+    responseOperation.current = c;
+    setSaving(true);
+    setResponseError('');
     try {
       await readApiResponse(
         await authenticatedFetch('/api/certification-recommendations/respond', {
           method: 'POST',
+          signal: c.signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: detail.id, revision: detail.revision, action, message }),
         }),
         'Your response could not be saved.',
       );
+      if (c.signal.aborted) return;
       toast.success(
         action === 'ACCEPT'
           ? 'Recommendation accepted.'
@@ -148,13 +254,36 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
       setAttempt(n => n + 1);
       window.dispatchEvent(new Event('notifications-updated'));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Your response could not be saved.');
+      if (!c.signal.aborted) responseFailed(e);
     } finally {
-      setSaving(false);
+      if (responseOperation.current === c) {
+        responseOperation.current = undefined;
+        setSaving(false);
+      }
     }
   };
   const send = async () => {
-    if (!personId || !name.trim() || !reason.trim() || saving) return;
+    if (
+      recipientLoading ||
+      !people.some(person => person.id === personId) ||
+      !personId ||
+      !name.trim() ||
+      !reason.trim() ||
+      saving
+    )
+      return;
+    const payload = {
+      personId,
+      certificationName: name.trim(),
+      provider: provider.trim(),
+      category: category.trim(),
+      reason: reason.trim(),
+      credentialUrl: url.trim(),
+      ...(targetDate ? { targetDate } : {}),
+    };
+    const id = sendIntent.current.begin(payload);
+    if (!id) return;
+    let saved = false;
     setSaving(true);
     setError('');
     try {
@@ -162,19 +291,11 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
         await authenticatedFetch('/api/certification-recommendations/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: crypto.randomUUID(),
-            personId,
-            certificationName: name,
-            provider,
-            category,
-            reason,
-            credentialUrl: url,
-            ...(targetDate ? { targetDate } : {}),
-          }),
+          body: JSON.stringify({ id, ...payload }),
         }),
         'The recommendation could not be sent.',
       );
+      saved = true;
       toast.success('Certification recommendation sent.');
       setSending(false);
       setName('');
@@ -189,8 +310,16 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
       setAttempt(n => n + 1);
       window.dispatchEvent(new Event('notifications-updated'));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'The recommendation could not be sent.');
+      const status = (e as { status?: number })?.status;
+      setError(
+        !status || status >= 500
+          ? 'Send status could not be confirmed. Retry unchanged details or check Sent recommendations.'
+          : e instanceof Error
+            ? e.message
+            : 'The recommendation could not be sent.',
+      );
     } finally {
+      sendIntent.current.finish(saved);
       setSaving(false);
     }
   };
@@ -209,7 +338,15 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
           </p>
         </div>
         {view === 'sent' && feed?.canSend && (
-          <button className="admin-primary" onClick={() => setSending(true)}>
+          <button
+            className="admin-primary"
+            onClick={() => {
+              setPersonId('');
+              setPeople([]);
+              setRecipientLoading(true);
+              setSending(true);
+            }}
+          >
             <Plus size={17} /> Recommend a certification
           </button>
         )}
@@ -263,7 +400,15 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
               : 'Recommendations from your current manager will appear here.'}
           </p>
           {view === 'sent' && feed.canSend && (
-            <button className="admin-primary" onClick={() => setSending(true)}>
+            <button
+              className="admin-primary"
+              onClick={() => {
+                setPersonId('');
+                setPeople([]);
+                setRecipientLoading(true);
+                setSending(true);
+              }}
+            >
               Recommend a certification
             </button>
           )}
@@ -301,7 +446,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
                 {statusLabels[item.status]}
               </span>
               <button className="secondary-button" onClick={() => setDetail(item)}>
-                {item.canRespond ? 'Respond' : 'View details'}
+                {canRespondToCertification(item) ? 'Respond' : 'View details'}
               </button>
             </div>
           </article>
@@ -332,15 +477,22 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
       {sending && (
         <FormDialog
           title="Recommend a certification"
-          onClose={() => setSending(false)}
+          busy={saving}
+          onClose={() => {
+            if (!saving) setSending(false);
+          }}
           footer={
             <>
-              <button className="secondary-button" onClick={() => setSending(false)}>
+              <button
+                className="secondary-button"
+                disabled={saving}
+                onClick={() => setSending(false)}
+              >
                 Cancel
               </button>
               <button
                 className="admin-primary"
-                disabled={saving || !personId || !name.trim() || !reason.trim()}
+                disabled={saving || recipientLoading || !personId || !name.trim() || !reason.trim()}
                 onClick={() => void send()}
               >
                 <Send size={16} /> Send recommendation
@@ -348,20 +500,36 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
             </>
           }
         >
-          <div className="cert-recommend-form">
+          <fieldset
+            disabled={saving}
+            className="cert-recommend-form"
+            style={{ border: 0, padding: 0, margin: 0 }}
+          >
             <label>
               <span>
                 <Search size={14} /> Find direct report
               </span>
               <input
                 value={recipientSearch}
-                onChange={event => setRecipientSearch(event.target.value)}
+                onChange={event => {
+                  setRecipientSearch(event.target.value);
+                  setPersonId('');
+                  setPeople([]);
+                  setRecipientLoading(true);
+                }}
                 placeholder="Search name or employee code"
               />
             </label>
             <label>
               Direct report
-              <select value={personId} onChange={event => setPersonId(event.target.value)}>
+              <select
+                disabled={recipientLoading}
+                value={personId}
+                onChange={event => setPersonId(event.target.value)}
+              >
+                <option value="">
+                  {recipientLoading ? 'Loading direct reports...' : 'Select a direct report'}
+                </option>
                 {people.map(person => (
                   <option key={person.id} value={person.id}>
                     {person.name} · {person.employeeCode}
@@ -433,49 +601,62 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
               This recommendation does not create or verify a certification record. The employee can
               respond and add the credential separately.
             </p>
-          </div>
+          </fieldset>
         </FormDialog>
       )}
-      {detail && (
+      {detail && feed && !loading && (
         <FormDialog
           title={detail.certificationName}
           subtitle={detail.provider || 'Certification recommendation'}
-          onClose={() => (focused ? closeFocus() : setDetail(undefined))}
+          busy={saving}
+          onClose={closeResponse}
           footer={
-            detail.canRespond ? (
+            canRespondToCertification(detail) ? (
               <>
                 <button
                   className="secondary-button"
-                  disabled={saving}
+                  disabled={saving || responseRecheck}
                   onClick={() => void saveResponse('DECLINE')}
                 >
                   Decline
                 </button>
                 <button
                   className="secondary-button"
-                  disabled={saving || !message.trim()}
+                  disabled={saving || responseRecheck || !message.trim()}
                   onClick={() => void saveResponse('DISCUSS')}
                 >
                   Ask to discuss
                 </button>
                 <button
                   className="admin-primary"
-                  disabled={saving}
+                  disabled={saving || responseRecheck}
                   onClick={() => void saveResponse('ACCEPT')}
                 >
                   Accept recommendation
                 </button>
               </>
             ) : (
-              <button
-                className="secondary-button"
-                onClick={() => (focused ? closeFocus() : setDetail(undefined))}
-              >
+              <button className="secondary-button" onClick={closeResponse}>
                 Close
               </button>
             )
           }
         >
+          {responseError && (
+            <p role="alert">
+              {responseError}{' '}
+              {responseRecheck && (
+                <button
+                  className="secondary-button"
+                  disabled={saving}
+                  onClick={() => void recheckResponse()}
+                >
+                  Check current status
+                </button>
+              )}
+            </p>
+          )}
+          <p>Status: {statusLabels[detail.status]}</p>
           <p>{detail.reason}</p>
           {detail.credentialUrl && (
             <p>
@@ -485,19 +666,22 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
             </p>
           )}
           {detail.targetDate && <p>Suggested target: {detail.targetDate}</p>}
-          {detail.canRespond && (
+          {canRespondToCertification(detail) && (
             <label>
               Your response
               <textarea
                 maxLength={2000}
                 rows={3}
+                disabled={saving}
                 value={message}
                 onChange={event => setMessage(event.target.value)}
                 placeholder="Optional note; required when asking to discuss"
               />
             </label>
           )}
-          {!detail.canRespond && detail.response && <p>Employee response: {detail.response}</p>}
+          {!canRespondToCertification(detail) && detail.response && (
+            <p>Employee response: {detail.response}</p>
+          )}
         </FormDialog>
       )}
     </section>

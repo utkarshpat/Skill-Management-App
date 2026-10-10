@@ -9,19 +9,29 @@ import type {
 } from './certifications.js';
 
 export class SqlCertificationStore implements CertificationStore {
-  constructor(private account: string) {}
-  private async run(actor: string, operation: string, payload: object) {
+  constructor(
+    private account: string,
+    private database: typeof withRuntimeDatabase = withRuntimeDatabase,
+  ) {}
+  private async run(
+    actor: string,
+    operation: string,
+    payload: object,
+    transaction?: sql.Transaction,
+  ) {
     try {
-      return await withRuntimeDatabase(async pool => {
-        const result = await pool
-          .request()
+      const execute = async (connection: sql.ConnectionPool | sql.Transaction) => {
+        const result = await (
+          connection instanceof sql.Transaction ? new sql.Request(connection) : connection.request()
+        )
           .input('account_id', sql.UniqueIdentifier, this.account)
           .input('actor_id', sql.UniqueIdentifier, actor)
           .input('operation', sql.VarChar(20), operation)
           .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload))
           .execute('dbo.CertificationWorkspace');
         return result.recordsets as unknown as sql.IRecordSet<Record<string, unknown>>[];
-      });
+      };
+      return transaction ? await execute(transaction) : await this.database(execute);
     } catch (e) {
       const number = (e as { number?: number }).number;
       if (number === 2812 || number === 208)
@@ -66,41 +76,73 @@ export class SqlCertificationStore implements CertificationStore {
     return this.records(sets[0])[0];
   }
   async change(actor: string, change: CertificationChange) {
-    await this.run(actor, change.action, change);
-    if ((change.action === 'SAVE' || change.action === 'SAVE_SUBMIT') && change.renewedFromId) {
+    if (!((change.action === 'SAVE' || change.action === 'SAVE_SUBMIT') && change.renewedFromId)) {
+      await this.run(actor, change.action, change);
+      return change.revision + 1;
+    }
+    // Both procedures use nested transactions. Only this outer transaction may
+    // commit the saved draft, renewal link, optional submission and their audits.
+    return this.database(async pool => {
+      const transaction = new sql.Transaction(pool);
+      let rolledBack = false;
+      transaction.on('rollback', () => {
+        rolledBack = true;
+      });
+      await transaction.begin();
       try {
-        await withRuntimeDatabase(async pool =>
-          pool
-            .request()
-            .input('account_id', sql.UniqueIdentifier, this.account)
-            .input('actor_id', sql.UniqueIdentifier, actor)
-            .input('certification_id', sql.UniqueIdentifier, change.id)
-            .input('renewed_from_id', sql.UniqueIdentifier, change.renewedFromId)
-            .execute('dbo.LinkCertificationRenewal'),
-        );
+        await this.run(actor, 'SAVE', change, transaction);
+        await new sql.Request(transaction)
+          .input('account_id', sql.UniqueIdentifier, this.account)
+          .input('actor_id', sql.UniqueIdentifier, actor)
+          .input('certification_id', sql.UniqueIdentifier, change.id)
+          .input('renewed_from_id', sql.UniqueIdentifier, change.renewedFromId)
+          .execute('dbo.LinkCertificationRenewal');
+        let revision = change.revision + 1;
+        if (change.action === 'SAVE_SUBMIT') {
+          await this.run(actor, 'SUBMIT', { ...change, revision }, transaction);
+          revision++;
+        }
+        await transaction.commit();
+        return revision;
       } catch (e) {
+        if (!rolledBack) await transaction.rollback().catch(() => undefined);
         const number = (e as { number?: number }).number;
         if (number === 51003)
           throw new AccessError(403, 'Only your own manager-reviewed credential can be renewed.');
         if (number === 51004) throw new AccessError(404, 'Credential renewal is unavailable.');
         if (number === 51009)
           throw new AccessError(409, 'This credential changed. Refresh before retrying.');
-        if (number === 51010)
-          throw new AccessError(409, 'A renewal draft or submitted replacement already exists.');
+        if (number === 51010 || number === 2601 || number === 2627)
+          throw new AccessError(
+            409,
+            'A renewal already exists or this credential cannot be renewed.',
+          );
         throw e;
       }
-    }
+    });
   }
+
   async notifications(actor: string) {
     const [sets, expiry] = await Promise.all([
       this.run(actor, 'NOTIFICATIONS', {}),
-      withRuntimeDatabase(pool =>
+      this.database(pool =>
         pool
           .request()
           .input('account_id', sql.UniqueIdentifier, this.account)
           .input('actor_id', sql.UniqueIdentifier, actor)
           .execute('dbo.CertificationExpiryNotifications'),
-      ),
+      ).catch(error => {
+        const number = (error as { number?: number }).number;
+        if (number === 51003)
+          throw new AccessError(403, 'Certification reminder access is no longer available.');
+        if (number === 51004) throw new AccessError(404, 'Certification reminders unavailable.');
+        if (number === 2812 || number === 208)
+          throw new AccessError(
+            503,
+            'Certification reminders are unavailable. Apply migration 057 first.',
+          );
+        throw error;
+      }),
     ]);
     const regular = sets[0].map(row => ({
       id: String(row.id),

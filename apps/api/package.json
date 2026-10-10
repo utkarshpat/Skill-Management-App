@@ -24,6 +24,7 @@
     "test:review-access": "node --env-file-if-exists=.env --import tsx test/review-access.integration.ts",
     "test:audit-fixes": "node --env-file-if-exists=.env --import tsx test/audit-fixes.integration.ts",
     "test:claims": "node --env-file-if-exists=.env --import tsx test/claims.integration.ts",
+    "test:certification-idempotency": "node --env-file-if-exists=.env --import tsx test/certification-idempotency.integration.ts",
     "test:certifications": "node --env-file-if-exists=.env --import tsx test/certifications.integration.ts",
     "test:conversations": "node --env-file-if-exists=.env --import tsx test/conversations.integration.ts",
     "catalogue:seed": "node --env-file-if-exists=.env --import tsx src/catalogue-seed-cli.ts",
@@ -33,15 +34,19 @@
     "test:recovery": "node --env-file-if-exists=.env --import tsx test/learning-recovery.integration.ts",
     "test:practice": "node --env-file-if-exists=.env --import tsx test/learning-practice.integration.ts",
     "test:workflows": "node --env-file-if-exists=.env --import tsx test/workflows.integration.ts",
-    "test:lifecycle": "node --env-file-if-exists=.env --import tsx test/workflow-lifecycle.integration.ts"
+    "test:lifecycle": "node --env-file-if-exists=.env --import tsx test/workflow-lifecycle.integration.ts",
+    "test:business": "node --env-file-if-exists=.env --import tsx test/business.integration.ts"
   },
   "dependencies": {
     "@azure/identity": "4.13.3",
     "@azure/storage-blob": "12.34.0",
     "express": "5.2.1",
+    "fast-xml-parser": "5.11.2",
+    "fflate": "0.8.3",
     "helmet": "8.3.0",
     "jose": "6.2.12",
     "mssql": "12.7.2",
+    "pdf-lib": "1.17.1",
     "sharp": "0.35.5"
   },
   "devDependencies": {

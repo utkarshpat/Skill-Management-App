@@ -1,7 +1,14 @@
 import { useId, useState } from 'react';
 import { AssistantRichText } from './AssistantRichText';
 export interface Artifact {
-  kind: 'task_draft' | 'skill_draft' | 'request_draft' | 'incident_draft' | 'practice_quiz';
+  kind:
+    | 'task_draft'
+    | 'skill_draft'
+    | 'request_draft'
+    | 'incident_draft'
+    | 'amendment_draft'
+    | 'demand_draft'
+    | 'practice_quiz';
   title: string;
   summary: string;
   body: string;
@@ -14,8 +21,15 @@ export function AssistantOutput({
   onDocument,
   onReviewRequest,
   onReviewPlan,
+  onReviewBusiness,
 }: {
   artifact: Artifact;
+  onReviewBusiness?: (draft: {
+    kind: 'amendment_draft' | 'demand_draft';
+    title: string;
+    body: string;
+    summary: string;
+  }) => void;
   onReview?: (description: string) => void;
   onDocument?: (content: string) => void;
   onReviewRequest?: (draft: {
@@ -46,13 +60,15 @@ export function AssistantOutput({
       <small>
         {quiz
           ? 'Learning · Practice test'
-          : artifact.kind === 'skill_draft'
-            ? 'Skill draft · Not saved'
-            : artifact.kind === 'request_draft'
-              ? 'Request draft · Not submitted'
-              : artifact.kind === 'incident_draft'
-                ? 'Incident draft · Not submitted'
-                : 'Task draft · Not scheduled'}
+          : ['amendment_draft', 'demand_draft'].includes(artifact.kind)
+            ? 'Business draft · Not saved'
+            : artifact.kind === 'skill_draft'
+              ? 'Skill draft · Not saved'
+              : artifact.kind === 'request_draft'
+                ? 'Request draft · Not submitted'
+                : artifact.kind === 'incident_draft'
+                  ? 'Incident draft · Not submitted'
+                  : 'Task draft · Not scheduled'}
       </small>
       <h3>{artifact.title}</h3>
       {quiz ? (
@@ -202,6 +218,21 @@ export function AssistantOutput({
               {artifact.kind === 'incident_draft'
                 ? 'Review incident draft'
                 : 'Review request draft'}
+            </button>
+          )}
+          {['amendment_draft', 'demand_draft'].includes(artifact.kind) && onReviewBusiness && (
+            <button
+              className="admin-primary"
+              onClick={() =>
+                onReviewBusiness({
+                  kind: artifact.kind as 'amendment_draft' | 'demand_draft',
+                  title: artifact.title,
+                  body,
+                  summary: artifact.summary,
+                })
+              }
+            >
+              Review business draft
             </button>
           )}
           {artifact.kind === 'skill_draft' && onReview && (

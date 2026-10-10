@@ -9,6 +9,9 @@ export interface Profile extends PrimaryCapabilityDetails {
   id: string;
   displayName: string;
   employeeCode: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
   jobTitle?: string | null;
   grade?: string | null;
   organization: string;

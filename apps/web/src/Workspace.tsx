@@ -29,8 +29,12 @@ const Requests = lazy(() => import('./Requests').then(module => ({ default: modu
 const SkillCatalogue = lazy(() =>
   import('./SkillCatalogue').then(module => ({ default: module.SkillCatalogue })),
 );
+const BusinessOperations = lazy(() =>
+  import('./business/BusinessOperations').then(module => ({ default: module.BusinessOperations })),
+);
 const Dashboard = lazy(() => import('./Dashboard').then(module => ({ default: module.Dashboard })));
 export interface WorkspaceState {
+  businessPolicyRevision?: number;
   person: { id: string; displayName: string; employeeCode: string; roles: string[] };
   authentication: 'microsoft' | 'local-demo';
   capabilities: {
@@ -45,10 +49,14 @@ export interface WorkspaceState {
     requests?: boolean;
     requestProfileCorrection?: boolean;
     certifications?: boolean;
+    businessOperations?: boolean;
+    businessAdministration?: boolean;
+    amendments?: boolean;
   };
   upcoming: { id: string; label: string; assigned: boolean; implemented: boolean }[];
 }
 type View =
+  | 'business'
   | 'requests'
   | 'learning'
   | 'overview'
@@ -58,21 +66,23 @@ type View =
   | 'skills'
   | 'skill-reviews';
 const currentView = (pathname: string): View =>
-  pathname === '/requests'
-    ? 'requests'
-    : pathname === '/learning'
-      ? 'learning'
-      : pathname === '/skill-reviews'
-        ? 'skill-reviews'
-        : pathname === '/profile'
-          ? 'profile'
-          : pathname === '/my-skills'
-            ? 'my-skills'
-            : pathname === '/certifications'
-              ? 'certifications'
-              : pathname === '/skills'
-                ? 'skills'
-                : 'overview';
+  pathname === '/business'
+    ? 'business'
+    : pathname === '/requests'
+      ? 'requests'
+      : pathname === '/learning'
+        ? 'learning'
+        : pathname === '/skill-reviews'
+          ? 'skill-reviews'
+          : pathname === '/profile'
+            ? 'profile'
+            : pathname === '/my-skills'
+              ? 'my-skills'
+              : pathname === '/certifications'
+                ? 'certifications'
+                : pathname === '/skills'
+                  ? 'skills'
+                  : 'overview';
 
 export function Workspace({
   embedded = false,
@@ -121,6 +131,16 @@ export function Workspace({
   const name = state?.person.displayName ?? 'Workspace member';
   const firstName = state ? name.trim().split(/\s+/)[0] || 'there' : 'there';
   const sections = [
+    {
+      id: 'business',
+      label: 'Business Operations',
+      href: '/business',
+      icon: LayoutDashboard,
+      visible:
+        state?.capabilities.businessOperations ||
+        state?.capabilities.businessAdministration ||
+        state?.capabilities.amendments,
+    },
     {
       id: 'skill-reviews',
       label: 'Reviews',
@@ -235,6 +255,7 @@ export function Workspace({
         {state && permitted && (
           <>
             <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
+              {view === 'business' && <BusinessOperations key={state?.businessPolicyRevision} />}
               {view === 'overview' && <Dashboard />}
               {view === 'profile' && <PersonalProfile workspace={state} />}
               {(view === 'my-skills' || view === 'certifications') && (
@@ -327,6 +348,7 @@ export function Workspace({
           {state && permitted && (
             <>
               <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
+                {view === 'business' && <BusinessOperations key={state?.businessPolicyRevision} />}
                 {view === 'overview' && <Dashboard />}
                 {view === 'profile' && <PersonalProfile workspace={state} />}
                 {(view === 'my-skills' || view === 'certifications') && (

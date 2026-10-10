@@ -16,4 +16,17 @@ test('database setup rejects missing or non-Azure targets and enforces TLS', () 
   assert.equal(config.options?.trustServerCertificate, false);
   assert.equal(config.authentication?.type, 'token-credential');
   assert.equal(config.pool?.min, 0);
+  assert.equal(config.validateConnection, 'socket');
+});
+
+test('database validation can retain query probes and rejects unsupported modes', () => {
+  const env = { AZURE_SQL_SERVER: 'sql-dev.database.windows.net', AZURE_SQL_DATABASE: 'dev' };
+  assert.equal(
+    databaseConfig({ ...env, AZURE_SQL_CONNECTION_VALIDATION: 'query' }).validateConnection,
+    true,
+  );
+  assert.throws(
+    () => databaseConfig({ ...env, AZURE_SQL_CONNECTION_VALIDATION: 'false' }),
+    /must be socket or query/,
+  );
 });

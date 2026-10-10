@@ -1,0 +1,21 @@
+# Employee directory boundary
+
+Implemented on 9 October 2026: the own SSO profile goes through `createEmployeeProfileReader` and an injected `EmployeeDirectoryProvider`. The default `StoredEmployeeDirectoryProvider` uses the already-authorized DB snapshot. It adds no SQL calls. Existing application person UUIDs, roles, permissions, skill/certification ownership and SQL reporting checks remain canonical.
+
+The normalized source contract has `employeeCode`, `displayName`, `firstName`, `lastName`, `email`, `entraObjectId`, `active`, `managerEmployeeCode`, `deliveryUnit`, `department`, and nullable `team`. Current SQL does not store separate first/last names or email; these are returned as null rather than guessed. The stored provider retains null manager employee codes when the compact actor snapshot does not expose the manager record. External providers resolve the persisted manager through a server-only relationship-complete snapshot when the compact projection omits reporting, and repeat that binding read after external I/O. Missing canonical reporting fails closed; manager mismatches still require audited synchronization. No full roster is sent upstream or returned in the profile. Project membership is not modelled as a separate concept.
+
+## Current flow
+
+Validated SSO identity → resolve existing local person → current local profile permission check → canonical stored employee/organisation snapshot → provider → strict DTO validation and identity/organisation reconciliation checks → existing profile response. Directory payloads cannot assign roles or capabilities. External providers trigger a fresh identity, active-status and permission recheck after I/O. Source errors or missing employees do not silently fall back to stored facts. Existing legacy-profile fallback for an identity not mapped to the custom-access workspace is preserved independently of directory failure.
+
+Routes and frontend retain their existing profile contract; optional nullable firstName/lastName/email are additive. Organisation is fetched once for SSO profiles and reused by the route. Demo profiles continue using their existing profile/organisation paths.
+
+## Future organisation API adapter
+
+Implement `EmployeeDirectoryProvider` with `source: 'external'` and inject it at the server composition root. The query contains the server-validated tenant/object identity and the existing local employee snapshot. Use the verified identity for the upstream lookup; browser-supplied employee codes must not select another employee. Map the agreed upstream JSON keys to the normalized contract, with authenticated server-to-server calls, bounded timeouts and no credential or employee-payload logging. API URL/authentication/key mapping are not implemented until the actual upstream contract is supplied. No environment switch pretends to enable a missing adapter.
+
+Before changing the provider, implement audited directory synchronization: preserve stable local person UUIDs, detect conflicting employee/object identities, reconcile organisation nodes using stable upstream identifiers, resolve managers without depending on their first login, reject reporting cycles, and define employment status/deactivation and refresh rules. Organisation facts differing from the persisted SQL relationships currently return a reconciliation error instead of displaying a different manager than the one used for authorization. The reader performs no writes or automatic provisioning; new employees still need provisioning. New hires, exits and manager changes require a background sync/webhook as well as any login refresh.
+
+Incoming department/client-account labels map to organisation departments, not the application's tenant/workspace Account. Project and team semantics must be explicitly agreed. Existing submitted review assignments retain their explicit rerouting policy. Access updates continue Preview → Recheck → Transaction → Audit; directory employment facts do not create administrator privileges or erase matching DENY overrides.
+
+This boundary and tests establish source isolation, not production readiness of an organisation API integration. A real adapter, persistence migrations for additional source fields, synchronization workflow and authenticated integration acceptance remain pending.

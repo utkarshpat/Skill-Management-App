@@ -16,6 +16,7 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
   const available = (permission: string) =>
     can(state, person, permission, true) || can(state, person, permission);
   return {
+    businessPolicyRevision: person.business ? state.revision : undefined,
     person: {
       id: person.id,
       displayName: person.displayName,
@@ -28,6 +29,14 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
         can(state, person, 'request.view', true) &&
         can(state, person, 'request.create', true),
       requests: available('request.view') || available('incident.view'),
+      businessOperations: can(state, person, 'reports.view'),
+      amendments: can(state, person, 'skill.catalogue.propose'),
+      businessAdministration:
+        Boolean(person.business) &&
+        ownProfile &&
+        can(state, person, 'permissions.manage') &&
+        can(state, person, 'users.manage') &&
+        can(state, person, 'audit.view'),
       ownProfile,
       ownSkills,
       certifications: ownSkills,
@@ -62,15 +71,20 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
         id: 'demand',
         label: 'Projects & demand',
         assigned: available('demand.view') || available('demand.create'),
-        implemented: false,
+        implemented: Boolean(person.business?.demandView),
       },
       {
         id: 'matching',
         label: 'Supply & matching',
         assigned: available('matching.view'),
-        implemented: false,
+        implemented: Boolean(person.business?.matchingView),
       },
-      { id: 'reports', label: 'Insights', assigned: available('reports.view'), implemented: false },
+      {
+        id: 'reports',
+        label: 'Business Operations',
+        assigned: available('reports.view'),
+        implemented: Boolean(person.business?.view),
+      },
     ].filter(item => item.assigned),
   };
 }

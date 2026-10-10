@@ -1,3 +1,4 @@
+import { readSqlJson } from '../../shared/sql-json.js';
 import sql from 'mssql';
 import type { Identity } from '../identity/index.js';
 import { withRuntimeDatabase } from '../../shared/database.js';
@@ -35,6 +36,7 @@ type ResultSets = [
       grade: string | null;
       active: boolean;
       hasDirectReports: boolean;
+      businessJson?: string;
       entraObjectId: string | null;
     }
   >,
@@ -120,6 +122,7 @@ export class SqlAccessStore implements AccessStore {
         primaryCapabilityStatus: row.primaryCapabilityStatus,
         active: row.active,
         hasDirectReports: Boolean(row.hasDirectReports),
+        ...(row.businessJson ? { business: readSqlJson(row.businessJson) } : {}),
         ...(row.entraObjectId ? { entraObjectId: row.entraObjectId.toLowerCase() } : {}),
         roleIds: (roles.get(row.id) ?? []).map(item => item.roleId.toLowerCase()),
         overrides: (overrides.get(row.id) ?? []).map(assignment),

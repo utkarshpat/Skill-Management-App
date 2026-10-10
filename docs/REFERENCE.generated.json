@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "69a88439c5961a3a",
+  "revision": "b3bf59c7deac51dd",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -61,7 +61,10 @@
       "055_required_certificate_image.sql",
       "056_certificate_files.sql",
       "057_certification_expiry_reminders.sql",
-      "058_certification_review_workspace.sql"
+      "058_certification_review_workspace.sql",
+      "059_certification_send_idempotency.sql",
+      "060_business_operations.sql",
+      "061_business_workflows.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -1248,6 +1251,12 @@
             "nullable": false,
             "declaration": "revision int NOT NULL CHECK(revision>0)",
             "source": "003_custom_access.sql"
+          },
+          "personal_baseline_enabled": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "personal_baseline_enabled bit NOT NULL CONSTRAINT DF_PersonalBaseline DEFAULT 0",
+            "source": "060_business_operations.sql"
           }
         },
         "pk": [
@@ -2397,6 +2406,18 @@
             ],
             "filter": "",
             "source": "010_skill_claim_reviews.sql"
+          },
+          {
+            "name": "IX_Business_SkillCoverage",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "status",
+              "skill_id",
+              "person_id"
+            ],
+            "filter": "INCLUDE(claimed_rank,submitted_at,reviewed_at)",
+            "source": "060_business_operations.sql"
           }
         ],
         "domain": "Skills & claims"
@@ -4370,6 +4391,18 @@
             ],
             "filter": "WHERE renewed_from_id IS NOT NULL AND status<>'CHANGES_REQUESTED' AND status<>'REJECTED'",
             "source": "057_certification_expiry_reminders.sql"
+          },
+          {
+            "name": "IX_Business_CertExpiry",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "status",
+              "expiry_date",
+              "person_id"
+            ],
+            "filter": "INCLUDE(provider,category,certification_name,submitted_at,reviewed_at)",
+            "source": "060_business_operations.sql"
           }
         ],
         "domain": "Skills & claims"
@@ -4757,6 +4790,841 @@
         ],
         "indexes": [],
         "domain": "Learning & recommendations"
+      },
+      "BusinessProject": {
+        "source": "060_business_operations.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "060_business_operations.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "060_business_operations.sql"
+          },
+          "name": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "name nvarchar(100) NOT NULL",
+            "source": "060_business_operations.sql"
+          },
+          "department_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "department_id uniqueidentifier NULL",
+            "source": "060_business_operations.sql"
+          },
+          "active": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "active bit NOT NULL",
+            "source": "060_business_operations.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "name"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "AccessWorkspace",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "060_business_operations.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "department_id"
+            ],
+            "target": "AccessOrgNode",
+            "targetColumns": [
+              "account_id",
+              "node_id"
+            ],
+            "source": "060_business_operations.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id)",
+            "source": "060_business_operations.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id,name)",
+            "source": "060_business_operations.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id) REFERENCES dbo.AccessWorkspace(account_id)",
+            "source": "060_business_operations.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,department_id) REFERENCES dbo.AccessOrgNode(account_id,node_id)",
+            "source": "060_business_operations.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Business Operations"
+      },
+      "BusinessProjectMember": {
+        "source": "060_business_operations.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "060_business_operations.sql"
+          },
+          "project_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "project_id uniqueidentifier NOT NULL",
+            "source": "060_business_operations.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "060_business_operations.sql"
+          },
+          "active": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "active bit NOT NULL",
+            "source": "060_business_operations.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "project_id",
+          "person_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "project_id"
+            ],
+            "target": "BusinessProject",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "060_business_operations.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "060_business_operations.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,project_id,person_id)",
+            "source": "060_business_operations.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,project_id) REFERENCES dbo.BusinessProject(account_id,id)",
+            "source": "060_business_operations.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "060_business_operations.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_BusinessProjectMember_Person",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "person_id",
+              "active",
+              "project_id"
+            ],
+            "filter": "",
+            "source": "060_business_operations.sql"
+          }
+        ],
+        "domain": "Business Operations"
+      },
+      "BusinessResponsibility": {
+        "source": "060_business_operations.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "060_business_operations.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "060_business_operations.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "060_business_operations.sql"
+          },
+          "bundle": {
+            "type": "varchar(30)",
+            "nullable": false,
+            "declaration": "bundle varchar(30) NOT NULL CHECK(bundle IN('BUSINESS_OPERATIONS','SYSTEM_ADMIN'))",
+            "source": "060_business_operations.sql"
+          },
+          "scope_kind": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "scope_kind varchar(20) NOT NULL CHECK(scope_kind IN('ORGANIZATION','DELIVERY_UNIT','DEPARTMENT','PROJECT'))",
+            "source": "060_business_operations.sql"
+          },
+          "scope_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "scope_id uniqueidentifier NULL",
+            "source": "060_business_operations.sql"
+          },
+          "effect": {
+            "type": "varchar(5)",
+            "nullable": false,
+            "declaration": "effect varchar(5) NOT NULL CHECK(effect IN('ALLOW','DENY'))",
+            "source": "060_business_operations.sql"
+          },
+          "active": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "active bit NOT NULL",
+            "source": "060_business_operations.sql"
+          },
+          "valid_until": {
+            "type": "datetime2",
+            "nullable": true,
+            "declaration": "valid_until datetime2 NULL",
+            "source": "060_business_operations.sql"
+          },
+          "reason": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "reason nvarchar(1000) NOT NULL",
+            "source": "060_business_operations.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "060_business_operations.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id)",
+            "source": "060_business_operations.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "060_business_operations.sql"
+          },
+          {
+            "sql": "CHECK((scope_kind='ORGANIZATION' AND scope_id IS NULL) OR (scope_kind<>'ORGANIZATION' AND scope_id IS NOT NULL))",
+            "source": "060_business_operations.sql"
+          },
+          {
+            "sql": "CHECK(bundle<>'SYSTEM_ADMIN' OR scope_kind='ORGANIZATION')",
+            "source": "060_business_operations.sql"
+          },
+          {
+            "sql": "CHECK(effect<>'DENY' OR valid_until IS NOT NULL)",
+            "source": "060_business_operations.sql"
+          },
+          {
+            "sql": "CHECK(LEN(LTRIM(RTRIM(reason)))>0)",
+            "source": "060_business_operations.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_BusinessResponsibility_Actor",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "person_id",
+              "active",
+              "effect",
+              "scope_kind"
+            ],
+            "filter": "",
+            "source": "060_business_operations.sql"
+          }
+        ],
+        "domain": "Business Operations"
+      },
+      "CredentialProvider": {
+        "source": "061_business_workflows.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "name": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "name nvarchar(100) NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "active": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "active bit NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL",
+            "source": "061_business_workflows.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "name"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "AccessWorkspace",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "061_business_workflows.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id)",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id,name)",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id) REFERENCES dbo.AccessWorkspace(account_id)",
+            "source": "061_business_workflows.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Business Operations"
+      },
+      "CredentialDefinition": {
+        "source": "061_business_workflows.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "name": {
+            "type": "nvarchar(100)",
+            "nullable": false,
+            "declaration": "name nvarchar(100) NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "provider_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "provider_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "category": {
+            "type": "nvarchar(80)",
+            "nullable": false,
+            "declaration": "category nvarchar(80) NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "description": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "description nvarchar(2000) NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "active": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "active bit NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL",
+            "source": "061_business_workflows.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "name",
+            "provider_id"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "provider_id"
+            ],
+            "target": "CredentialProvider",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "061_business_workflows.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id)",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id,name,provider_id)",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,provider_id) REFERENCES dbo.CredentialProvider(account_id,id)",
+            "source": "061_business_workflows.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Business Operations"
+      },
+      "MasterAmendment": {
+        "source": "061_business_workflows.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "type": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "type varchar(20) NOT NULL CHECK(type IN('SKILL','CERTIFICATION','PROVIDER'))",
+            "source": "061_business_workflows.sql"
+          },
+          "target_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "target_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "target_revision": {
+            "type": "int",
+            "nullable": true,
+            "declaration": "target_revision int NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "is_new": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "is_new bit NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "definition": {
+            "type": "nvarchar(max)",
+            "nullable": false,
+            "declaration": "definition nvarchar(max) NOT NULL CHECK(ISJSON(definition)=1)",
+            "source": "061_business_workflows.sql"
+          },
+          "reason": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "reason nvarchar(1000) NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "status": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "status varchar(20) NOT NULL CHECK(status IN('SUBMITTED','APPROVED','REJECTED'))",
+            "source": "061_business_workflows.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "decision_by": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "decision_by uniqueidentifier NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "decision_note": {
+            "type": "nvarchar(1000)",
+            "nullable": true,
+            "declaration": "decision_note nvarchar(1000) NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "created_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "created_at datetime2 NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "decided_at": {
+            "type": "datetime2",
+            "nullable": true,
+            "declaration": "decided_at datetime2 NULL",
+            "source": "061_business_workflows.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "decision_by"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "061_business_workflows.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id)",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,decision_by) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "061_business_workflows.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_MasterAmendment_Queue",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "status",
+              "created_at"
+            ],
+            "filter": "",
+            "source": "061_business_workflows.sql"
+          }
+        ],
+        "domain": "Business Operations"
+      },
+      "BusinessDemand": {
+        "source": "061_business_workflows.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "title": {
+            "type": "nvarchar(150)",
+            "nullable": false,
+            "declaration": "title nvarchar(150) NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "description": {
+            "type": "nvarchar(2000)",
+            "nullable": false,
+            "declaration": "description nvarchar(2000) NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "scope_kind": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "scope_kind varchar(20) NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "scope_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "scope_id uniqueidentifier NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "requirements": {
+            "type": "nvarchar(max)",
+            "nullable": false,
+            "declaration": "requirements nvarchar(max) NOT NULL CHECK(ISJSON(requirements)=1)",
+            "source": "061_business_workflows.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "created_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "created_at datetime2 NOT NULL",
+            "source": "061_business_workflows.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "061_business_workflows.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id)",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "CHECK(scope_kind IN('ORGANIZATION','DELIVERY_UNIT','DEPARTMENT','PROJECT'))",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "CHECK((scope_kind='ORGANIZATION' AND scope_id IS NULL) OR (scope_kind<>'ORGANIZATION' AND scope_id IS NOT NULL))",
+            "source": "061_business_workflows.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Business Operations"
+      },
+      "BusinessShortlist": {
+        "source": "061_business_workflows.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "demand_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "demand_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "actor_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "actor_id uniqueidentifier NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "note": {
+            "type": "nvarchar(1000)",
+            "nullable": false,
+            "declaration": "note nvarchar(1000) NOT NULL",
+            "source": "061_business_workflows.sql"
+          },
+          "created_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "created_at datetime2 NOT NULL",
+            "source": "061_business_workflows.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "demand_id",
+          "person_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "demand_id"
+            ],
+            "target": "BusinessDemand",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "actor_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "061_business_workflows.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,demand_id,person_id)",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,demand_id) REFERENCES dbo.BusinessDemand(account_id,id)",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "061_business_workflows.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,actor_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "061_business_workflows.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Business Operations"
       }
     },
     "views": {
@@ -4898,7 +5766,67 @@
     },
     {
       "method": "GET",
+      "path": "/api/business/context",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/business/dashboard",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/business/administration",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/business/administration/preview",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/business/administration",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/business/export",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/business/workflow/:operation",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/business/workflow/preview",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/business/workflow",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "GET",
       "path": "/api/dashboard",
+      "module": "dashboard",
+      "source": "apps/api/src/modules/dashboard/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard/overview",
       "module": "dashboard",
       "source": "apps/api/src/modules/dashboard/routes.ts"
     },
@@ -5190,13 +6118,13 @@
       "name": "AccessCan",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@person uniqueidentifier,@permission varchar(100),@own bit)\nRETURNS bit",
-      "source": "database/migrations/036_learning_recommendations.sql"
+      "source": "database/migrations/060_business_operations.sql"
     },
     {
       "name": "ReadAccessWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@include_audit bit=1,@audit_person_id uniqueidentifier=NULL",
-      "source": "database/migrations/052_primary_capability.sql"
+      "source": "database/migrations/060_business_operations.sql"
     },
     {
       "name": "SaveAccessChange",
@@ -5388,7 +6316,7 @@
       "name": "ReadActorAccessContext",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@include_notifications bit=0",
-      "source": "database/migrations/052_primary_capability.sql"
+      "source": "database/migrations/060_business_operations.sql"
     },
     {
       "name": "ReadAccessAuditPage",
@@ -5454,7 +6382,127 @@
       "name": "CertificationRecommendations",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@action varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/058_certification_review_workspace.sql"
+      "source": "database/migrations/059_certification_send_idempotency.sql"
+    },
+    {
+      "name": "BusinessLegacyDenied",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@permission varchar(100)) RETURNS bit",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessSystemAdmin",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier) RETURNS bit",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessScopeValid",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier) RETURNS bit",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessResponsibilityUsable",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@grant uniqueidentifier) RETURNS bit",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessScopeMatches",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@person uniqueidentifier,@kind varchar(20),@scope uniqueidentifier) RETURNS bit",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessScopePeople",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier) RETURNS TABLE",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessVisiblePeople",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@selected uniqueidentifier) RETURNS TABLE",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessCan",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@person uniqueidentifier,@selected uniqueidentifier) RETURNS bit",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessHasResponsibility",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier) RETURNS bit",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessHasAccess",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier) RETURNS bit",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessAmendCan",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier) RETURNS bit",
+      "source": "database/migrations/061_business_workflows.sql"
+    },
+    {
+      "name": "BusinessProjection",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier) RETURNS nvarchar(max)",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessContext",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessAdministration",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "SaveBusinessChange",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,@kind varchar(30),@id uniqueidentifier,@payload nvarchar(max)",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessDashboard",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@payload nvarchar(max),@export bit=0",
+      "source": "database/migrations/060_business_operations.sql"
+    },
+    {
+      "name": "BusinessScopeCovers",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier,@targetKind varchar(20),@target uniqueidentifier) RETURNS bit",
+      "source": "database/migrations/061_business_workflows.sql"
+    },
+    {
+      "name": "BusinessDemandCan",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@id uniqueidentifier) RETURNS bit",
+      "source": "database/migrations/061_business_workflows.sql"
+    },
+    {
+      "name": "BusinessMatchRequirements",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@person uniqueidentifier,@requirements nvarchar(max)) RETURNS TABLE",
+      "source": "database/migrations/061_business_workflows.sql"
+    },
+    {
+      "name": "BusinessWorkflow",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(30),@payload nvarchar(max)",
+      "source": "database/migrations/061_business_workflows.sql"
     }
   ],
   "groups": {
@@ -5512,6 +6560,16 @@
     "Requests & incidents": [
       "WorkflowRecord",
       "WorkflowEvent"
+    ],
+    "Business Operations": [
+      "BusinessProject",
+      "BusinessProjectMember",
+      "BusinessResponsibility",
+      "CredentialProvider",
+      "CredentialDefinition",
+      "MasterAmendment",
+      "BusinessDemand",
+      "BusinessShortlist"
     ],
     "AI & budget": [
       "AiConversation",

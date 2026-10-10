@@ -1,23 +1,54 @@
 // Read-only SQL benchmark. Outputs timings/counts only, never identities or payloads.
 import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
+import type sql from 'mssql';
 import { SqlAccessStore } from '../src/modules/access/sql-access-store.js';
 import { can } from '../src/modules/access/local-access-store.js';
-import { closeRuntimeDatabase } from '../src/shared/database.js';
+import { closeRuntimeDatabase, withRuntimeDatabase } from '../src/shared/database.js';
+import { startRequestTiming } from '../src/shared/request-timing.js';
 const account = process.env.ACCESS_ACCOUNT_ID;
 assert.ok(account);
 try {
   const store = new SqlAccessStore(account);
-  const start = performance.now(),
-    initial = await store.snapshot({ includeAudit: false });
+  const startedAt = new Date().toISOString();
+  const timing = startRequestTiming();
+  const initial = await timing.run(() => store.snapshot({ includeAudit: false }));
   console.log(
     JSON.stringify({
       kind: 'connection-and-workspace',
-      ms: Math.round(performance.now() - start),
+      startedAt,
+      ...timing.result(),
       people: initial.people.length,
       roles: initial.roles.length,
     }),
   );
+  // A/B on the same warm pool, alternating modes to reduce ordering bias.
+  // This CLI changes only its own connection configuration, never SQL data.
+  const pool = await withRuntimeDatabase(async connection => connection);
+  // The pinned driver's config property is exposed at runtime, but omitted by
+  // @types/mssql. This benchmark-only override is restored before continuing.
+  const config = (pool as typeof pool & { config: sql.config }).config;
+  const validation = config.validateConnection;
+  try {
+    for (let sample = 0; sample < 5; sample++)
+      for (const mode of sample % 2
+        ? (['socket', 'query'] as const)
+        : (['query', 'socket'] as const)) {
+        config.validateConnection = mode === 'query' ? true : 'socket';
+        const at = performance.now();
+        await store.snapshot({ includeAudit: false });
+        console.log(
+          JSON.stringify({
+            kind: 'warm-validation-comparison',
+            mode,
+            sample,
+            ms: Math.round(performance.now() - at),
+          }),
+        );
+      }
+  } finally {
+    config.validateConnection = validation;
+  }
   for (let sample = 0; sample < 3; sample++) {
     const at = performance.now(),
       state = await store.snapshot({ includeAudit: false });

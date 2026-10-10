@@ -41,7 +41,8 @@ export function startActivityRefresh(
     failures = 0,
     retryAt = 0,
     checkedAt: number | null = null,
-    timer: unknown;
+    timer: unknown,
+    timerAt: number | undefined;
   let previousStatus = '';
   const visible = () => environment.document.visibilityState === 'visible';
   const active = () => visible() && focused && environment.now() - lastActivity < idleMs;
@@ -55,22 +56,28 @@ export function startActivityRefresh(
     }
   };
   const plan = () => {
-    if (timer !== undefined) {
-      cancel(timer);
-      timer = undefined;
-    }
     publish();
-    if (disposed || !options.pollMs || !active() || running) return;
+    if (disposed || !options.pollMs || !active() || running) {
+      if (timer !== undefined) cancel(timer);
+      timer = undefined;
+      timerAt = undefined;
+      return;
+    }
     const due = Math.max(lastLoad + options.pollMs, retryAt),
       idleAt = lastActivity + idleMs;
-    timer = schedule(
-      () => {
-        timer = undefined;
-        if (active()) refresh(queued, options.pollMs);
-        else publish();
-      },
-      Math.max(1, Math.min(due, idleAt) - environment.now()),
-    );
+    const ms = Math.max(1, Math.min(due, idleAt) - environment.now());
+    const nextAt = environment.now() + ms;
+    // Scroll/key events can extend the idle deadline hundreds of times a second.
+    // Keep an earlier scheduled check; it will re-evaluate activity/freshness then.
+    if (timer !== undefined && timerAt !== undefined && timerAt <= nextAt) return;
+    if (timer !== undefined) cancel(timer);
+    timerAt = nextAt;
+    timer = schedule(() => {
+      timer = undefined;
+      timerAt = undefined;
+      if (active()) refresh(queued, options.pollMs);
+      else publish();
+    }, ms);
   };
   const refresh = (force = false, age = 300_000) => {
     if (disposed) return;
@@ -140,7 +147,7 @@ export function startActivityRefresh(
   environment.window.addEventListener('blur', blur);
   environment.document.addEventListener('visibilitychange', visibility);
   for (const event of ['pointerdown', 'keydown', 'scroll'])
-    environment.document.addEventListener(event, activity);
+    environment.document.addEventListener(event, activity, { passive: true });
   for (const event of events) environment.window.addEventListener(event, changed);
   refresh(true);
   return () => {

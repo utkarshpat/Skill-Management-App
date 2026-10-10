@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
+import { PDFDocument } from 'pdf-lib';
+import { zipSync, strToU8 } from 'fflate';
 import { BlockBlobClient } from '@azure/storage-blob';
 import {
   compressEvidence,
@@ -11,8 +13,10 @@ import {
 import { AccessError } from '../src/shared/errors.js';
 import { readFile } from 'node:fs/promises';
 test('certificate attachments allow validated PDF, DOCX and text, while images stay compressed', async () => {
+  const document = await PDFDocument.create();
+  document.addPage();
   const pdf = await prepareCertificateFile(
-    Buffer.from('%PDF-1.7\ncredential'),
+    Buffer.from(await document.save()),
     'application/pdf',
     '../../private\r\nname.pdf',
   );
@@ -21,7 +25,19 @@ test('certificate attachments allow validated PDF, DOCX and text, while images s
   assert.equal(pdf.width, null);
   assert.equal(pdf.data.toString('ascii', 0, 5), '%PDF-');
   const docx = await prepareCertificateFile(
-      Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x01]),
+      Buffer.from(
+        zipSync({
+          '[Content_Types].xml': strToU8(
+            '<Types><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+          ),
+          '_rels/.rels': strToU8(
+            '<Relationships><Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+          ),
+          'word/document.xml': strToU8(
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p/></w:body></w:document>',
+          ),
+        }),
+      ),
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'credential.docx',
     ),
@@ -37,7 +53,7 @@ test('certificate attachments allow validated PDF, DOCX and text, while images s
   assert.equal(text.fileName, 'credential.txt');
   await assert.rejects(
     prepareCertificateFile(Buffer.from('not a pdf'), 'application/pdf', 'fake.pdf'),
-    /valid PDF/,
+    /valid, readable PDF/,
   );
   await assert.rejects(
     prepareCertificateFile(Buffer.from([0, 1]), 'text/plain', 'bad.txt'),
@@ -181,4 +197,25 @@ test('Revoked reviewer access after Blob download is not swallowed', async t => 
     evidence.image('manager', 'claim', item.id),
     e => e instanceof AccessError && e.status === 403,
   );
+});
+
+test('certificate documents reject signature-only, truncated and unrelated ZIP files', async () => {
+  for (const source of [
+    Buffer.from('not a document %PDF-'),
+    Buffer.from('%PDF-1.7\ncredential'),
+    Buffer.from('%PDF-1.7\nstartxref\n0\n%%EOF'),
+  ])
+    await assert.rejects(prepareCertificateFile(source, 'application/pdf', 'broken.pdf'));
+  for (const source of [
+    Buffer.from('504b0304', 'hex'),
+    Buffer.from(zipSync({ 'random.txt': strToU8('not a credential') })),
+    Buffer.from(zipSync({ 'word/document.xml': strToU8('<broken>') })),
+  ])
+    await assert.rejects(
+      prepareCertificateFile(
+        source,
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'broken.docx',
+      ),
+    );
 });

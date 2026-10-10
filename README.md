@@ -4,6 +4,8 @@ Permission-driven workforce capability and learning platform. React/TypeScript +
 
 ## Project reference
 
+- [Employee directory integration](docs/EMPLOYEE_DIRECTORY_INTEGRATION.md): provider boundary for current DB employee details and a future organisation API; preserves local identity, permissions and reporting authority.
+
 - [Complete project handover](docs/HANDOVER.md): requirements, architecture, module ownership, workflows, AI, schema, deployment, testing, limitations and removal instructions.
 - [Azure migration with data](docs/AZURE_MIGRATION_RUNBOOK.md): step-by-step free-offer eligibility, SQL export/import, private evidence copy, identity/runtime remapping, deployment, acceptance and rollback. A paused source needs a verified backup or must resume before full export.
 - [Approved Access Management baseline](docs/ACCESS_MODEL_REDESIGN.md): mandatory policy for access-related changes. Approved target scopes are distinct from implemented enforcement.
@@ -35,7 +37,7 @@ Web: `http://localhost:5173/`. API: `http://127.0.0.1:3001/api/health` (liveness
 - Participant-scoped requests/incidents, searchable recipients, reassignment, resolution and notifications.
 - Authorized dashboard cards, personal navigation ordering and contextual AI with bounded context, recent durable conversations and shared SQL request budgets.
 
-Private compressed claim images are implemented and verified in the personal/demo deployment. File scanning, retention and delete/replace remain pending. Formal assessments, demand/matching and broader team/department/subtree grant scopes are not implemented. The handover records the dated 6 October 2026 Microsoft sign-in, SQL/runtime and image round-trip verification. A subsequent check on 6 October found Azure SQL paused after exhausting October's free quota; database-backed flows are currently unavailable until approved paid resumption or the 1 November quota renewal. This remains a personal/demo deployment; deferred login hardening and production prerequisites are documented in the handover.
+Private compressed claim images are implemented and verified in the personal/demo deployment. File scanning, retention and delete/replace remain pending. Formal assessments and broader claim-review/reporting-subtree grants remain unavailable. Business Operations, scoped demand/matching, master amendments and multi-project memberships now have local code in migrations 060–061; permanent deployment/activation is pending. These scopes do not widen claim-review authority. The handover records the dated 6 October 2026 Microsoft sign-in, SQL/runtime and image round-trip verification. A check on 6 October found Azure SQL paused after exhausting October's free quota. A read-only check on 10 October observed it Online with `BillOverUsage` exhaustion behavior; verify current quota/billing settings before relying on the historical free/AutoPause record. This remains a personal/demo deployment; deferred login hardening and production prerequisites are documented in the handover.
 
 ## Verification and schema changes
 
@@ -66,3 +68,10 @@ KT is isolated in `apps/web/src/knowledge-transfer` and `apps/api/src/modules/kn
 [Organization onboarding & SSO checklist](docs/ORGANIZATION_ONBOARDING_AND_SSO_REQUIREMENTS.md) distinguishes the data request from implemented provisioning/import behavior and records the current redirect, identity and effective-access contract.
 
 [Repository](https://github.com/utkarshpat/Skill-Management-App) · [Application](https://skill-management-app.vercel.app)
+
+
+### Business Operations increment (local; activation pending)
+
+See [implemented scope/UX/AI contract](docs/BUSINESS_OPERATIONS_DESIGN.md#implemented-increment-and-release-boundaries). `/business` provides authorized analytics/charts, expiry, CSV/XLSX exports, master amendments and scoped demand matching. System Admin is an explicit responsibility, independent of editable role names. Default Personal Workspace is opt-in during reviewed migration, and existing grant records are retained. Apply pending migrations 059–061 through the normal single-worker setup process before enabling the feature; then preview and activate baseline/responsibilities using an existing authorized access administrator. Installing schemas does not automatically grant anyone organization-wide analytics.
+
+AI tools use the same current scoped SQL data and recheck delivery. Human-reviewed amendment/demand drafts open a form; AI never saves or approves them. Exports cap at 50,000 rows; capability/domain bindings and asynchronous export jobs remain unavailable. Opt-in rollback verification: `RUN_BUSINESS_SQL_TESTS=1 npm run test:business -w apps/api` (development database only). Synthetic UI acceptance fixture: `node --import tsx apps/api/test/business-ui-preview.ts`, loopback 5188, after a web build.

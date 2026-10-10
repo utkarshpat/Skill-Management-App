@@ -22,7 +22,9 @@ export async function notifyResponse(path: string, method: string, response: Res
   } else if (
     ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) &&
     !/^\/api\/(ai|assistant|knowledge-transfer|dev-login)(\/|$)/.test(path) &&
-    (!/^\/api\/(my-skills|skill-reviews\/decision|workflows|recommendations)(\/|$)/.test(path) ||
+    (!/^\/api\/(my-skills|skill-reviews\/decision|workflows|recommendations|certifications|certification-recommendations)(\/|$)/.test(
+      path,
+    ) ||
       path.endsWith('/evidence')) &&
     !/(?:\/preview|\/planner)(?:[/?]|$)/.test(path)
   )

@@ -58,7 +58,7 @@ export interface CertificationStore {
     query: CertificationQuery,
   ): Promise<{ records: Certification[]; total: number }>;
   get(actor: string, id: string): Promise<Certification>;
-  change(actor: string, change: CertificationChange): Promise<void>;
+  change(actor: string, change: CertificationChange): Promise<number | void>;
   notifications(
     actor: string,
   ): Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;

@@ -1,5 +1,6 @@
 import sql from 'mssql';
 import sharp from 'sharp';
+import { validateCertificateDocument } from './certificate-document.js';
 import { BlobServiceClient } from '@azure/storage-blob';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
@@ -109,8 +110,11 @@ export async function prepareCertificateFile(source: Buffer, mimeType: string, f
       throw new AccessError(400, 'Choose a valid, single-frame JPEG, PNG or WebP image.');
     }
   } else if (mimeType === 'application/pdf') {
-    if (!source.subarray(0, 1024).includes(Buffer.from('%PDF-')))
-      throw new AccessError(400, 'This file is not a valid PDF.');
+    try {
+      await validateCertificateDocument(source, mimeType);
+    } catch {
+      throw new AccessError(400, 'This file is not a valid, readable PDF.');
+    }
   } else if (mimeType === 'text/plain') {
     try {
       if (source.includes(0)) throw Error();
@@ -118,8 +122,12 @@ export async function prepareCertificateFile(source: Buffer, mimeType: string, f
     } catch {
       throw new AccessError(400, 'Text certificates must be valid UTF-8.');
     }
-  } else if (source.subarray(0, 4).toString('hex') !== '504b0304') {
-    throw new AccessError(400, 'This file is not a valid DOCX document.');
+  } else {
+    try {
+      await validateCertificateDocument(source, mimeType);
+    } catch {
+      throw new AccessError(400, 'This file is not a valid DOCX document.');
+    }
   }
   return { data, mimeType: storedType, fileName: storedName, width, height };
 }

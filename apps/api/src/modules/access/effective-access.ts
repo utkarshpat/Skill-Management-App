@@ -1,3 +1,4 @@
+import { personalBaselinePermissions, systemAdminPermissions } from './business-policy.js';
 import { permissionCatalogue } from './access-catalogue.js';
 import { authorize, type Grant } from './domain/authorization.js';
 import type { Assignment, LocalAccessState, LocalPerson } from './local-access-store.js';
@@ -27,11 +28,50 @@ const supported: Record<string, Assignment['scope'][]> = {
 export const actionRegistry = permissionCatalogue.map(([code, label]) => ({
   code,
   label,
-  implemented: Boolean(supported[code]),
+  implemented:
+    Boolean(supported[code]) ||
+    [
+      'reports.view',
+      'reports.export',
+      'demand.view',
+      'demand.create',
+      'matching.view',
+      'matching.run',
+      'matching.shortlist',
+      'skill.catalogue.propose',
+      'request.approve',
+    ].includes(code),
+  bindingScopes:
+    code === 'request.approve'
+      ? ['ORGANIZATION']
+      : [
+            'reports.view',
+            'reports.export',
+            'demand.view',
+            'demand.create',
+            'matching.view',
+            'matching.run',
+            'matching.shortlist',
+            'skill.catalogue.propose',
+            'request.approve',
+          ].includes(code)
+        ? ['ORGANIZATION', 'DELIVERY_UNIT', 'DEPARTMENT', 'PROJECT']
+        : [],
   scopes: supported[code] ?? [],
 }));
 export const isAssignable = (assignment: Assignment) =>
   Boolean(supported[assignment.permission]?.includes(assignment.scope));
+const businessActions = new Set([
+  'reports.view',
+  'reports.export',
+  'demand.view',
+  'demand.create',
+  'matching.view',
+  'matching.run',
+  'matching.shortlist',
+  'skill.catalogue.propose',
+  'request.approve',
+]);
 const accountId = 'local-demo-workspace';
 export function hasResolvedDirectReports(state: LocalAccessState, person: LocalPerson) {
   if (!person.active) return false;
@@ -61,9 +101,12 @@ export interface EffectiveDecision {
   implemented: boolean;
   allowed: boolean;
   reasonCode: string;
-  resolvedScope: { kind: 'OWN' | 'ORGANIZATION' | 'DIRECT_REPORTS'; actorId: string };
+  resolvedScope: {
+    kind: 'OWN' | 'ORGANIZATION' | 'DIRECT_REPORTS' | 'BOUND_SCOPES';
+    actorId: string;
+  };
   sources: {
-    kind: 'TEMPLATE' | 'EXCEPTION' | 'RELATIONSHIP';
+    kind: 'TEMPLATE' | 'EXCEPTION' | 'RELATIONSHIP' | 'POLICY' | 'RESPONSIBILITY';
     id: string;
     label: string;
     effect: 'ALLOW' | 'DENY';
@@ -125,12 +168,189 @@ export function effectiveAccess(
   context: 'OWN' | 'WORKSPACE' | 'DIRECT_REPORTS' = 'OWN',
   at = new Date(),
 ): EffectiveDecision {
+  if (businessActions.has(action)) {
+    const projection = person.business,
+      sources: EffectiveDecision['sources'] = (projection?.scopes ?? [])
+        .filter(s => !s.validUntil || at.getTime() < Date.parse(s.validUntil))
+        .map(s => ({
+          kind: 'RESPONSIBILITY',
+          id: s.id,
+          label: s.label,
+          effect: s.effect,
+          scope: s.kind + (s.scopeId ? ':' + s.scopeId : ''),
+          ...(s.validUntil ? { validUntil: s.validUntil } : {}),
+          reason: s.reason,
+        }));
+    const denied = [
+      ...state.roles
+        .filter(r => person.roleIds.includes(r.id))
+        .flatMap(r =>
+          r.permissions.map(g => ({ g, id: r.id, label: r.name, kind: 'TEMPLATE' as const })),
+        ),
+      ...person.overrides.map(g => ({
+        g,
+        id: person.id,
+        label: 'Individual exception',
+        kind: 'EXCEPTION' as const,
+      })),
+    ].filter(
+      ({ g }) =>
+        g.permission === action &&
+        g.scope === 'ORGANIZATION' &&
+        g.effect === 'DENY' &&
+        (!g.validUntil || at.getTime() < Date.parse(g.validUntil)),
+    );
+    sources.push(
+      ...denied.map(({ g, id, label, kind }) => ({
+        kind,
+        id,
+        label,
+        effect: g.effect,
+        scope: g.scope,
+        validUntil: g.validUntil,
+        reason: g.reason,
+      })),
+    );
+    if (
+      action === 'skill.catalogue.propose' &&
+      projection?.amend &&
+      hasResolvedDirectReports(state, person)
+    )
+      sources.push({
+        kind: 'RELATIONSHIP',
+        id: 'current-direct-manager-amendments',
+        label: 'Current direct-manager amendment policy',
+        effect: 'ALLOW',
+        scope: 'DIRECT_REPORTS',
+      });
+    const currentBinding = sources.some(
+      source => source.kind === 'RESPONSIBILITY' && source.effect === 'ALLOW',
+    );
+    const managerAmendment =
+      action === 'skill.catalogue.propose' && hasResolvedDirectReports(state, person);
+    const prerequisites =
+      action === 'request.approve'
+        ? ['permissions.manage', 'users.manage', 'audit.view', 'skill.catalogue.manage']
+        : action === 'skill.catalogue.propose' || action === 'demand.create'
+          ? ['skill.view']
+          : [];
+    if (action === 'request.approve')
+      for (const permission of prerequisites)
+        sources.push(
+          ...effectiveAccess(state, person, permission, 'WORKSPACE', at).sources.map(source => ({
+            ...source,
+            label: permission + ' · ' + source.label,
+          })),
+        );
+    const allowed =
+      (action === 'request.approve' || currentBinding || managerAmendment) &&
+      prerequisites.every(
+        permission => effectiveAccess(state, person, permission, 'WORKSPACE', at).allowed,
+      ) &&
+      !denied.length &&
+      context === 'WORKSPACE' &&
+      person.active &&
+      Number.isFinite(at.getTime()) &&
+      Boolean(
+        action === 'skill.catalogue.propose'
+          ? projection?.amend
+          : action === 'request.approve'
+            ? projection?.approve
+            : projection?.view,
+      ) &&
+      (action !== 'reports.export' || projection?.export === true) &&
+      (action !== 'demand.view' || projection?.demandView === true) &&
+      (action !== 'demand.create' || projection?.demandCreate === true) &&
+      (action !== 'matching.view' || projection?.matchingView === true) &&
+      (action !== 'matching.run' || projection?.matchingRun === true) &&
+      (action !== 'matching.shortlist' || projection?.shortlist === true) &&
+      effectiveAccess(state, person, 'profile.view', 'OWN', at).allowed;
+    return {
+      action,
+      implemented: Boolean(projection),
+      allowed,
+      reasonCode: !projection
+        ? 'UNAVAILABLE'
+        : allowed
+          ? 'BOUND_RESPONSIBILITY'
+          : denied.length
+            ? 'EXPLICIT_DENY'
+            : context !== 'WORKSPACE'
+              ? 'RESOURCE_SCOPE_REQUIRED'
+              : 'NO_CURRENT_RESPONSIBILITY',
+      resolvedScope: { kind: 'BOUND_SCOPES', actorId: person.id },
+      sources,
+      constraints: [
+        'SUMMARY_ONLY',
+        'SERVER_RESOLVED_ACTIVE_MEMBERSHIP',
+        'MATCHING_SCOPED_DENY',
+        'NO_PRIVATE_DRAFTS_OR_FILES',
+        'NO_CLAIM_REVIEW_AUTHORITY',
+        'RECHECK_BEFORE_DELIVERY',
+      ],
+    };
+  }
   const implemented = Boolean(supported[action]);
   const resolvedScope = {
     kind: context === 'WORKSPACE' ? ('ORGANIZATION' as const) : context,
     actorId: person.id,
   };
-  const candidates = [
+  const candidates: {
+    grant: Assignment;
+    kind: EffectiveDecision['sources'][number]['kind'];
+    id: string;
+    label: string;
+  }[] = [
+    ...(person.business?.personalBaseline &&
+    personalBaselinePermissions.has(action) &&
+    (context === 'OWN' || action === 'skill.view')
+      ? [
+          {
+            grant: {
+              permission: action as Assignment['permission'],
+              scope: (context === 'OWN' ? 'OWN' : 'ORGANIZATION') as Assignment['scope'],
+              effect: 'ALLOW' as const,
+              validUntil: undefined,
+              reason: undefined,
+            },
+            kind: 'POLICY' as const,
+            id: 'personal-baseline',
+            label: 'Personal Workspace baseline',
+          },
+        ]
+      : []),
+    ...(person.business?.adminDenied && systemAdminPermissions.has(action)
+      ? [
+          {
+            grant: {
+              permission: action as Assignment['permission'],
+              scope: 'ORGANIZATION' as const,
+              effect: 'DENY' as const,
+              validUntil: undefined,
+              reason: undefined,
+            },
+            kind: 'RESPONSIBILITY' as const,
+            id: 'system-admin-deny',
+            label: 'Explicit System Admin deny',
+          },
+        ]
+      : []),
+    ...(person.business?.systemAdmin && systemAdminPermissions.has(action)
+      ? [
+          {
+            grant: {
+              permission: action as Assignment['permission'],
+              scope: 'ORGANIZATION' as const,
+              effect: 'ALLOW' as const,
+              validUntil: undefined,
+              reason: undefined,
+            },
+            kind: 'RESPONSIBILITY' as const,
+            id: 'system-admin',
+            label: 'Explicit System Admin responsibility',
+          },
+        ]
+      : []),
     ...state.roles
       .filter(role => person.roleIds.includes(role.id))
       .flatMap(role =>
@@ -281,14 +501,16 @@ export function effectiveAccessSummary(state: LocalAccessState, person: LocalPer
     revision: state.revision,
     summaryOnly: true,
     decisions: actionRegistry.flatMap(action =>
-      ['skill.verify', 'learning.recommend'].includes(action.code)
-        ? [effectiveAccess(state, person, action.code, 'DIRECT_REPORTS')]
-        : (action.scopes.length
-            ? action.scopes.map(scope =>
-                scope === 'OWN' ? ('OWN' as const) : ('WORKSPACE' as const),
-              )
-            : ['OWN' as const]
-          ).map(context => effectiveAccess(state, person, action.code, context)),
+      businessActions.has(action.code)
+        ? [effectiveAccess(state, person, action.code, 'WORKSPACE')]
+        : ['skill.verify', 'learning.recommend'].includes(action.code)
+          ? [effectiveAccess(state, person, action.code, 'DIRECT_REPORTS')]
+          : (action.scopes.length
+              ? action.scopes.map(scope =>
+                  scope === 'OWN' ? ('OWN' as const) : ('WORKSPACE' as const),
+                )
+              : ['OWN' as const]
+            ).map(context => effectiveAccess(state, person, action.code, context)),
     ),
     unsupportedAssignments: [
       ...state.roles

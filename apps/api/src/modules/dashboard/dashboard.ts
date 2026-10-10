@@ -491,3 +491,52 @@ export async function loadDashboardCard(
     items: items.sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id)).slice(0, 6),
   };
 }
+
+// One request-local read supplies both the learning card and overdue attention.
+// Nothing survives this response; API/SQL authority is rechecked as usual.
+export async function loadDashboardOverview(
+  actor: string,
+  state: LocalAccessState,
+  person: LocalPerson,
+  sources: DashboardSources,
+  at = new Date(),
+) {
+  const manifest = dashboardManifest(state, person, sources);
+  let learningRead: ReturnType<NonNullable<DashboardSources['learning']>['read']> | undefined;
+  const shared: DashboardSources = {
+    ...sources,
+    learning: sources.learning
+      ? {
+          ...sources.learning,
+          change: sources.learning.change.bind(sources.learning),
+          read: id => {
+            if (id !== actor) throw new AccessError(403, 'Dashboard actor changed.');
+            return (learningRead ??= Promise.resolve().then(() => sources.learning!.read(id)));
+          },
+        }
+      : undefined,
+  };
+  const results = await Promise.allSettled(
+    manifest.cards.map(card => loadDashboardCard(card.id, actor, state, person, shared, at)),
+  );
+  const cardData = Object.fromEntries(
+    results.map((result, i) => {
+      if (result.status === 'fulfilled') return [manifest.cards[i].id, { data: result.value }];
+      const error = result.reason;
+      if (error instanceof AccessError && [401, 403, 409].includes(error.status)) throw error;
+      return [
+        manifest.cards[i].id,
+        {
+          error: {
+            status: error instanceof AccessError ? error.status : 503,
+            message:
+              error instanceof AccessError
+                ? error.message
+                : 'This dashboard card could not be loaded.',
+          },
+        },
+      ];
+    }),
+  );
+  return { ...manifest, cardData };
+}

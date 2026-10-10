@@ -1,26 +1,28 @@
 import { SidebarNavigation } from './SidebarNavigation';
-import { BookOpen, Compass, ShieldCheck, UserRound } from 'lucide-react';
+import { BarChart3, BookOpen, Compass, ShieldCheck, UserRound } from 'lucide-react';
 
 export const administrationShellFor = (pathname: string, administration: boolean) =>
   pathname === '/access' || administration;
 export const personalPageTitle = (pathname: string | undefined) =>
-  pathname === '/requests'
-    ? 'Requests & incidents'
-    : pathname === '/learning'
-      ? 'Learning & development'
-      : pathname === '/skill-reviews'
-        ? 'Reviews'
-        : pathname === '/my-skills'
-          ? 'Capabilities'
-          : pathname === '/certifications'
+  pathname === '/business'
+    ? 'Business Operations'
+    : pathname === '/requests'
+      ? 'Requests & incidents'
+      : pathname === '/learning'
+        ? 'Learning & development'
+        : pathname === '/skill-reviews'
+          ? 'Reviews'
+          : pathname === '/my-skills'
             ? 'Capabilities'
-            : pathname === '/profile'
-              ? 'My profile'
-              : pathname === '/skills'
-                ? 'Skill catalogue'
-                : pathname === '/workspace'
-                  ? 'My workspace'
-                  : undefined;
+            : pathname === '/certifications'
+              ? 'Capabilities'
+              : pathname === '/profile'
+                ? 'My profile'
+                : pathname === '/skills'
+                  ? 'Skill catalogue'
+                  : pathname === '/workspace'
+                    ? 'My workspace'
+                    : undefined;
 export const catalogueRouteAllowed = (capabilities: { catalogue?: boolean } | undefined) =>
   capabilities?.catalogue === true;
 export const catalogueNavigationVisible = (
@@ -40,6 +42,7 @@ export const isSupportedWorkspacePath = (pathname: string) =>
     '/skill-reviews',
     '/learning',
     '/requests',
+    '/business',
     '/preview',
     '/knowledgetransfer',
   ].includes(pathname);
@@ -51,6 +54,9 @@ export interface PersonalNavigationCapabilities {
   learning?: boolean;
   requests?: boolean;
   certifications?: boolean;
+  businessOperations?: boolean;
+  businessAdministration?: boolean;
+  amendments?: boolean;
 }
 export function personalNavigationItems(
   capabilities?: PersonalNavigationCapabilities,
@@ -58,6 +64,11 @@ export function personalNavigationItems(
 ) {
   if (!capabilities) return [];
   return [
+    ...(capabilities.businessOperations ||
+    capabilities.businessAdministration ||
+    capabilities.amendments
+      ? [{ id: 'business', label: 'Business Operations', href: '/business', icon: BarChart3 }]
+      : []),
     ...(capabilities.learning
       ? [{ id: 'learning', label: 'Learn & Grow', href: '/learning', icon: BookOpen }]
       : []),

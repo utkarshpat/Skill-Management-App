@@ -4,6 +4,7 @@ import {
   can,
   canReviewAssigned,
   effectiveAccess,
+  readActorAccess,
   type AccessStore,
   type LocalAccessState,
   type LocalPerson,
@@ -41,11 +42,13 @@ export function registerCertificationRoutes(
   store?: AccessStore,
   demo?: DevelopmentSessions,
 ) {
-  const context = async (actorId: string | undefined) => {
+  const context = async (actorId: string | undefined, actorOnly = false) => {
     // Exact resource decisions require current owners and reporting edges; the
     // compact actor projection intentionally omits them. Never return this roster.
     const state = actorId
-        ? await (deps?.access ?? store)?.snapshot({ includeAudit: false })
+        ? actorOnly
+          ? await readActorAccess(deps?.access ?? store, actorId)
+          : await (deps?.access ?? store)?.snapshot({ includeAudit: false })
         : undefined,
       actor = state?.people.find(p => p.id === actorId && p.active);
     if (
@@ -75,7 +78,9 @@ export function registerCertificationRoutes(
         }
         actor = await deps.resolveAccess(identity);
       }
-      res.locals.certificationContext = await context(actor);
+      // Initial admission needs only this actor. Exact record/manager decisions
+      // still load fresh reporting context after the resource read below.
+      res.locals.certificationContext = await context(actor, true);
       if (!deps?.certifications)
         throw new AccessError(503, 'Certification storage is not configured.');
       next();
@@ -142,7 +147,11 @@ export function registerCertificationRoutes(
           const record = await deps!.certifications!.get(actor.id, change.id),
             fresh = await context(actor.id);
           const access = certificationAccess(fresh.state, fresh.actor, record);
-          if (change.action === 'SUBMIT' ? !access.canSubmit : !access.canEdit)
+          if (
+            change.action === 'SUBMIT'
+              ? !access.canSubmit
+              : !access.canEdit || (change.action === 'SAVE_SUBMIT' && !access.canSubmit)
+          )
             throw new AccessError(
               403,
               'Own editable certification required. Refresh your records.',
@@ -166,8 +175,8 @@ export function registerCertificationRoutes(
         if (!image.items.length)
           throw new AccessError(400, 'Attach a certificate image before submitting.');
       }
-      await deps!.certifications!.change(actor.id, change);
-      res.json({ saved: true, revision: change.revision + 1 });
+      const revision = await deps!.certifications!.change(actor.id, change);
+      res.json({ saved: true, revision: revision ?? change.revision + 1 });
     } catch (e) {
       if (e instanceof AccessError) res.status(e.status).json({ error: { message: e.message } });
       else next(e);

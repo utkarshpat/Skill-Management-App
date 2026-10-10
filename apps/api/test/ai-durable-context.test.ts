@@ -101,9 +101,15 @@ test('durable transcript is bounded and permission changes reset model context o
     scope: 'ORGANIZATION',
     effect: 'DENY',
   });
+  assert.deepEqual((await make().history(actor, first.conversationId)).messages, []);
+  const currentHistory = await make().history(actor);
+  assert.ok(currentHistory.conversations?.[0]);
+  assert.equal(currentHistory.conversations[0].title, 'Conversation before access changed');
   await make().chat(actor, { message: 'Continue', conversationId: first.conversationId });
   assert.doesNotMatch(seen, /Old sensitive context/);
   const saved = await history.read(actor, first.conversationId!);
+  assert.doesNotMatch(JSON.stringify(saved.messages), /Old sensitive context/);
+  assert.equal(saved.title, 'Continue');
   saved.messages = Array.from({ length: 40 }, (_, i) => ({
     role: i % 2 ? 'assistant' : 'user',
     content: 'x'.repeat(12000),
@@ -119,6 +125,42 @@ test('durable transcript is bounded and permission changes reset model context o
     make().chat(actor, { message: 'Continue', conversationId: saved.id }),
     /not assigned/,
   );
+});
+
+test('AI transcript reads and final delivery reject access changes during storage I/O', async () => {
+  const access = await LocalAccessStore.open(),
+    state = access.snapshot(),
+    actor = state.people[0].id;
+  access.snapshot = () => structuredClone(state);
+  const history = new TestHistory();
+  const service = new AssistantService(
+    access,
+    undefined,
+    { name: 'test', complete: async () => ({ content: 'Authorized answer', calls: [] }) },
+    undefined,
+    undefined,
+    undefined,
+    history,
+  );
+  const first = await service.chat(actor, { message: 'Private goal' });
+  const originalRead = history.read.bind(history);
+  history.read = async (...args) => {
+    const saved = await originalRead(...args);
+    state.people[0].overrides.push({
+      permission: 'permissions.manage',
+      scope: 'ORGANIZATION',
+      effect: 'DENY',
+    });
+    return saved;
+  };
+  await assert.rejects(service.history(actor, first.conversationId), /Access changed/);
+  history.read = originalRead;
+  const originalSave = history.save.bind(history);
+  history.save = async (...args) => {
+    await originalSave(...args);
+    state.people[0].active = false;
+  };
+  await assert.rejects(service.chat(actor, { message: 'Next goal' }), /Access changed/);
 });
 
 test('history HTTP binds verified actor, omits internal context and returns useful errors', async () => {

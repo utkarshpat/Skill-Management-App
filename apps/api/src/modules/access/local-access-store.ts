@@ -1,3 +1,4 @@
+import type { BusinessProjection } from './business-policy.js';
 import { AccessError } from '../../shared/errors.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile, rm } from 'node:fs/promises';
@@ -31,6 +32,7 @@ export interface LocalPerson extends EmploymentDetails, PrimaryCapabilityDetails
   employeeCode: string;
   active: boolean;
   hasDirectReports?: boolean;
+  business?: BusinessProjection;
   entraObjectId?: string;
   roleIds: string[];
   overrides: Assignment[];

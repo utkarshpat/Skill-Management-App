@@ -419,3 +419,142 @@ test('certification migration includes actor-bound transactions, immutable appro
   assert.doesNotMatch(source, /(?:UPDATE|INSERT|DELETE) dbo.SkillClaimDraft/);
   assert.doesNotMatch(source, /active\s*=\s*1/i);
 });
+
+test('SAVE_SUBMIT requires edit and submit authority; manager rerouting uses SUBMIT only', async () => {
+  const f = await fixture();
+  let writes = 0,
+    imageReads = 0;
+  const certifications: CertificationStore = {
+    read: async () => ({ records: [f.record], total: 1 }),
+    get: async () => f.record,
+    change: async () => {
+      writes++;
+    },
+    notifications: async () => [],
+  };
+  const server = createApp({
+    verify: async () => ({ tenantId: 'test', objectId: 'test' }),
+    profile: async () => undefined,
+    resolveAccess: async () => f.owner.id,
+    access: f.store,
+    certifications,
+    certificationImages: {
+      read: async () => {
+        imageReads++;
+        return {
+          revision: 1,
+          canUpload: true,
+          items: [{ id: 'file', blobName: 'private', bytes: 1 }],
+        };
+      },
+      image: async () => Buffer.from('x'),
+      upload: async () => {
+        throw Error('No uploads');
+      },
+    },
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address() as { port: number };
+  const post = (action: string) =>
+    fetch(`http://127.0.0.1:${address.port}/api/certifications`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        id: f.record.id,
+        revision: 1,
+        ...(action === 'SUBMIT' ? {} : { fields }),
+      }),
+    });
+  try {
+    f.record.status = 'DRAFT';
+    f.state.reporting![0].managerId = null;
+    assert.equal((await post('SAVE_SUBMIT')).status, 403);
+    assert.equal(writes, 0);
+    assert.equal(imageReads, 0);
+    assert.equal((await post('SAVE')).status, 200);
+    assert.equal(writes, 1);
+    f.state.reporting![0].managerId = f.manager.id;
+    assert.equal((await post('SAVE_SUBMIT')).status, 200);
+    assert.equal(writes, 2);
+    f.record.status = 'SUBMITTED';
+    f.record.reviewerId = f.unrelated.id;
+    assert.equal((await post('SAVE_SUBMIT')).status, 403);
+    assert.equal(writes, 2);
+    assert.equal((await post('SUBMIT')).status, 200);
+    assert.equal(writes, 3);
+    f.record.status = 'APPROVED';
+    assert.equal((await post('SAVE_SUBMIT')).status, 403);
+    assert.equal((await post('SUBMIT')).status, 403);
+    assert.equal(writes, 3);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+
+test('compact certification admission avoids an initial roster read and retains fresh scope checks', async () => {
+  const f = await fixture();
+  let actor = f.owner.id,
+    compactReads = 0,
+    fullReads = 0,
+    recordReads = 0;
+  let changeDuringRead: (() => void) | undefined;
+  f.store.actorSnapshot = id => {
+    compactReads++;
+    const person = f.state.people.find(p => p.id === id)!;
+    return {
+      revision: f.state.revision,
+      reporting: undefined,
+      roles: f.state.roles,
+      people: [{ ...structuredClone(person), hasDirectReports: id === f.manager.id }],
+      audit: [],
+    };
+  };
+  f.store.snapshot = () => {
+    fullReads++;
+    return structuredClone(f.state);
+  };
+  const server = createApp({
+    verify: async () => ({ tenantId: 'test', objectId: 'test' }),
+    resolveAccess: async () => actor,
+    profile: async () => undefined,
+    access: f.store,
+    certifications: {
+      read: async () => {
+        recordReads++;
+        changeDuringRead?.();
+        return { records: [f.record], total: 1 };
+      },
+      get: async () => f.record,
+      change: async () => {},
+      notifications: async () => [],
+    },
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const root = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/certifications`;
+  try {
+    const own = await fetch(root);
+    assert.equal(own.status, 200);
+    assert.equal(((await own.json()) as any).canSubmitNew, true);
+    assert.equal(compactReads, 1);
+    assert.equal(fullReads, 1);
+    actor = f.manager.id;
+    assert.equal((await fetch(root + '?view=queue')).status, 200);
+    assert.equal(compactReads, 2);
+    assert.equal(fullReads, 2);
+    changeDuringRead = () => {
+      f.state.reporting![0].managerId = f.unrelated.id;
+    };
+    assert.equal((await fetch(root + '?view=queue')).status, 403);
+    actor = f.owner.id;
+    changeDuringRead = () => {
+      f.owner.active = false;
+    };
+    assert.equal((await fetch(root)).status, 403);
+    const beforeDenied = recordReads;
+    assert.equal((await fetch(root)).status, 403);
+    assert.equal(recordReads, beforeDenied);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});

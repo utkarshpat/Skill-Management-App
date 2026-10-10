@@ -119,6 +119,10 @@ test('Explicit feedback shares one typed event contract and covered writes avoid
       '/api/skill-reviews/decision',
       '/api/workflows',
       '/api/recommendations',
+      '/api/certifications',
+      '/api/certifications/123/image',
+      '/api/certification-recommendations/send',
+      '/api/certification-recommendations/respond',
     ])
       await notifyResponse(path, 'POST', new Response('{}'));
     assert.equal(events.length, 0);

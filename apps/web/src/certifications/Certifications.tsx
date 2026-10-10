@@ -138,6 +138,7 @@ export function Certifications({
           id,
           revision,
           fields,
+          // The pre-upload SAVE persists the renewal link; submission keeps it.
           ...(!submit && renewalSource ? { renewedFromId: renewalSource.id } : {}),
         }),
       }),
@@ -180,16 +181,16 @@ export function Certifications({
         <div className="my-skills-actions">{actions}</div>
       )}
       {!recommendationsTab && actionsContainer && createPortal(actions, actionsContainer)}
-      {!personalOnly && (
+      {
         <nav className="cert-nav-tabs" aria-label="Certification views">
           <button
-            className={`cert-nav-tab-btn ${view === 'mine' ? 'active' : ''}`}
-            aria-current={view === 'mine' ? 'page' : undefined}
+            className={`cert-nav-tab-btn ${view === 'mine' && !recommendationsTab ? 'active' : ''}`}
+            aria-current={view === 'mine' && !recommendationsTab ? 'page' : undefined}
             onClick={() => changeView('mine')}
           >
             My certifications
           </button>
-          {(data?.canReview || view === 'queue') && (
+          {!personalOnly && (data?.canReview || view === 'queue') && (
             <button
               className={`cert-nav-tab-btn ${view === 'queue' ? 'active' : ''}`}
               aria-current={view === 'queue' ? 'page' : undefined}
@@ -208,7 +209,7 @@ export function Certifications({
             </button>
           )}
         </nav>
-      )}
+      }
       {error && (
         <section className="profile-panel" role="alert">
           <p>{error}</p>

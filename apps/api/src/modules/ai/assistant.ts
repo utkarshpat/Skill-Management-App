@@ -1,3 +1,4 @@
+import type { BusinessStore } from '../business/index.js';
 import { readActorAccess } from '../access/index.js';
 import { MemoryAiBudget, type AiBudget } from './budget.js';
 import { AccessError } from '../../shared/errors.js';
@@ -11,7 +12,13 @@ import type { OrganizationStore } from '../organization/index.js';
 import { geminiProvider } from './gemini.js';
 import { presentation, presentationTool } from './output.js';
 import { assistantCapabilities, capabilityGreeting } from './capabilities.js';
-import { ConversationMemory, coreInstructions, taskInstructions, taskSettings } from './context.js';
+import {
+  ConversationMemory,
+  coreInstructions,
+  businessInstructions,
+  taskInstructions,
+  taskSettings,
+} from './context.js';
 import { UsageMeter, type TokenUsage } from './usage.js';
 import {
   conversationReference,
@@ -91,8 +98,17 @@ export class AssistantService {
     learning?: LearningStore,
     private workflows?: WorkflowStore,
     private budget: AiBudget = new MemoryAiBudget(),
+    business?: BusinessStore,
   ) {
-    this.registry = new ToolRegistry(store, organization, claims, catalogue, learning, workflows);
+    this.registry = new ToolRegistry(
+      store,
+      organization,
+      claims,
+      catalogue,
+      learning,
+      workflows,
+      business,
+    );
   }
   async reviewAssistance(actor: string, input: unknown, signal: AbortSignal) {
     const b = input as Record<string, unknown>;
@@ -275,6 +291,24 @@ export class AssistantService {
     if (!person || !this.registry.permits(state, person, 'own_profile'))
       throw new AccessError(403, 'Assistant access is not assigned.');
     if (!this.conversations) throw new AccessError(503, 'Durable chat history is not configured.');
+    const policy = JSON.stringify({
+      capabilities: assistantCapabilities(state, person),
+      tools: this.registry.available(state, person),
+    });
+    const recheck = async () => {
+      const fresh = await readActorAccess(this.store, actor),
+        current = fresh.people.find(p => p.id === actor);
+      if (
+        !current ||
+        !this.registry.permits(fresh, current, 'own_profile') ||
+        policy !==
+          JSON.stringify({
+            capabilities: assistantCapabilities(fresh, current),
+            tools: this.registry.available(fresh, current),
+          })
+      )
+        throw new AccessError(403, 'Access changed while loading history. Refresh the assistant.');
+    };
     if (id) {
       conversationReference(id);
       if (remove) {
@@ -284,14 +318,27 @@ export class AssistantService {
         return { deleted: true };
       }
       const saved = await this.conversations.read(actor, id);
+      await recheck();
+      const reset = saved.context.policy !== policy;
       return {
         id: saved.id,
-        title: saved.title,
-        messages: saved.messages,
+        title: reset ? 'Conversation before access changed' : saved.title,
+        messages: reset ? [] : saved.messages,
+        contextReset: reset,
         updatedAt: saved.updatedAt,
       };
     }
-    return { conversations: await this.conversations.list(actor), retained: 2 };
+    const listed = await this.conversations.list(actor);
+    const conversations = await Promise.all(
+      listed.map(async item => {
+        const saved = await this.conversations!.read(actor, item.id);
+        return saved.context.policy === policy
+          ? item
+          : { ...item, title: 'Conversation before access changed' };
+      }),
+    );
+    await recheck();
+    return { conversations, retained: 2 };
   }
   status() {
     return {
@@ -315,6 +362,8 @@ export class AssistantService {
           capabilities.pages.some(page => page.url === '/learning'),
         pages: capabilities.pages,
         canReviewOwnSkill: capabilities.canDraftOwnSkill,
+        canDraftDemand: capabilities.canDraftDemand,
+        canDraftAmendment: capabilities.canDraftAmendment,
         suggestions: [
           {
             label: 'What can I do?',
@@ -480,7 +529,8 @@ export class AssistantService {
       signal.throwIfAborted();
       release = await this.budget.acquire(actorId);
       const result = await this.respond(actorId, request, signal, meter);
-      {
+      const recheckDelivery = async () => {
+        signal.throwIfAborted();
         const fresh = await readActorAccess(this.store, actorId),
           person = fresh.people.find(item => item.id === actorId);
         if (
@@ -496,7 +546,8 @@ export class AssistantService {
             403,
             'Access changed during this reply. Please ask again with your current permissions.',
           );
-      }
+      };
+      await recheckDelivery();
       if (prepared) {
         if (prepared.previous.policy !== initialPolicy)
           throw new AccessError(403, 'Access changed while preparing this reply. Please retry.');
@@ -513,7 +564,7 @@ export class AssistantService {
         this.memory.commit(prepared, remembered);
         if (this.conversations) {
           const messages = [
-            ...(saved?.messages ?? []),
+            ...(saved?.context.policy === initialPolicy ? saved.messages : []),
             { role: 'user' as const, content: prepared.message },
             {
               role: 'assistant' as const,
@@ -526,7 +577,10 @@ export class AssistantService {
             messages.splice(0, 2);
           await this.conversations.save(actorId, {
             id: prepared.id,
-            title: saved?.title ?? prepared.message.replace(/\s+/g, ' ').slice(0, 80),
+            title:
+              saved?.context.policy === initialPolicy
+                ? saved.title
+                : prepared.message.replace(/\s+/g, ' ').slice(0, 80),
             revision: saved?.revision ?? 0,
             updatedAt: new Date().toISOString(),
             messages,
@@ -534,6 +588,7 @@ export class AssistantService {
           });
         }
       }
+      await recheckDelivery();
       return {
         ...result,
         ...(prepared
@@ -575,7 +630,14 @@ export class AssistantService {
     const preceding = history.filter(message => message.role === 'user').at(-2)?.content ?? '';
     const settings = taskSettings(followup ? preceding + '\n' + latestText : latestText);
     const messages: Message[] = [
-      { role: 'system', content: coreInstructions + ' ' + taskInstructions(settings.kind) },
+      {
+        role: 'system',
+        content:
+          coreInstructions +
+          (person.business?.view || person.business?.amend ? businessInstructions : '') +
+          ' ' +
+          taskInstructions(settings.kind),
+      },
       ...history,
     ];
     const sources: { label: string; url: string }[] = [];
@@ -585,6 +647,11 @@ export class AssistantService {
       const current = state.people.find(item => item.id === actorId);
       if (!current || !this.registry.permits(state, current, name))
         throw new AccessError(403, 'Current permission does not allow this assistant action.');
+      if (
+        JSON.stringify(assistantCapabilities(initial, person).businessPolicy) !==
+        JSON.stringify(assistantCapabilities(state, current).businessPolicy)
+      )
+        throw new AccessError(403, 'Business scope changed during this reply. Please ask again.');
       return { state, person: current };
     };
     for (let round = 0; round < 3; round++) {
@@ -657,6 +724,8 @@ export class AssistantService {
         const outputContext = await recheck('own_profile');
         const outputCapabilities = assistantCapabilities(outputContext.state, outputContext.person);
         if (
+          (artifact.kind === 'amendment_draft' && !outputCapabilities.canDraftAmendment) ||
+          (artifact.kind === 'demand_draft' && !outputCapabilities.canDraftDemand) ||
           (artifact.kind === 'request_draft' && !outputCapabilities.canDraftRequest) ||
           (artifact.kind === 'incident_draft' && !outputCapabilities.canDraftIncident)
         )

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const moduleNames = new Set([
+  'business',
   'identity',
   'access',
   'organization',
@@ -15,6 +16,7 @@ const moduleNames = new Set([
   'knowledge-transfer',
 ]);
 const runtimeDependencies = {
+  business: ['access'],
   'knowledge-transfer': ['access'],
   recommendations: ['access', 'learning'],
   dashboard: ['access'],
@@ -24,9 +26,10 @@ const runtimeDependencies = {
   learning: ['access'],
   workflows: ['access'],
   skills: ['access'],
-  ai: ['access', 'organization', 'skills'],
+  ai: ['access', 'organization', 'skills', 'business'],
 };
 const typeDependencies = {
+  business: ['access', 'identity'],
   'knowledge-transfer': ['access', 'identity', 'ai'],
   recommendations: ['access', 'learning', 'identity'],
   dashboard: ['access', 'identity', 'skills', 'learning', 'workflows'],
@@ -36,7 +39,7 @@ const typeDependencies = {
   learning: ['access', 'identity'],
   workflows: ['access', 'identity'],
   skills: ['access', 'identity'],
-  ai: ['access', 'organization', 'skills', 'identity', 'learning', 'workflows'],
+  ai: ['access', 'organization', 'skills', 'identity', 'learning', 'workflows', 'business'],
 };
 const normalize = value => value.replaceAll('\\', '/');
 const owner = file => /^apps\/api\/src\/modules\/([^/]+)\//.exec(file)?.[1];
@@ -187,6 +190,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     process.exitCode = 1;
   } else
     console.log(
-      'Architecture boundaries passed: nine business modules plus temporary KT, shared infrastructure and separate frontend.',
+      'Architecture boundaries passed: ten business modules plus temporary KT, shared infrastructure and separate frontend.',
     );
 }

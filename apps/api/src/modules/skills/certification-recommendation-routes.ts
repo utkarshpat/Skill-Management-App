@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
+import type { LocalPerson } from '../access/index.js';
 import { AccessError } from '../../shared/errors.js';
 import { can, effectiveAccess, readActorAccess, type AccessStore } from '../access/index.js';
 import {
@@ -110,6 +111,9 @@ export function registerCertificationRecommendationRoutes(
         );
       } else if (req.method === 'POST' && path === '/send') {
         const input = certificationRecommendationInput(req.body);
+        state = await (deps?.access ?? store)!.snapshot({ includeAudit: false });
+        actor = state.people.find((person: LocalPerson) => person.id === actor.id && person.active);
+        if (!actor) throw new AccessError(403, 'Recommendation access changed.');
         if (!canRecommendCertification(state, actor, input.personId))
           throw new AccessError(
             403,

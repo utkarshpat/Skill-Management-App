@@ -166,7 +166,63 @@ app.get('/api/certifications', (req, res) => {
     canSubmitNew: true,
     canReview: true,
     canUploadImage: true,
+    canViewRecommendations: true,
   });
+});
+// Exercise recoverable failure and a committed write with a lost response locally.
+// These records and mutations exist only in this synthetic process.
+const recommendationFixtures = [
+  ['Preview response recovery', false],
+  ['Preview uncertain response', true],
+] as const;
+const recommendations = recommendationFixtures.map(([certificationName, commitBeforeError]) => ({
+  id: randomUUID(),
+  revision: 1,
+  personId: actor,
+  personName: 'Preview Employee',
+  employeeCode: 'PREVIEW',
+  senderName: 'Preview Manager',
+  certificationName,
+  provider: 'Preview Issuer',
+  category: 'Cloud',
+  reason: 'Synthetic response recovery check.',
+  credentialUrl: '',
+  status: 'PENDING',
+  response: '',
+  canRespond: true,
+  updatedAt: new Date().toISOString(),
+  commitBeforeError,
+  attempts: 0,
+}));
+app.get('/api/certification-recommendations', (req, res) => {
+  const items = recommendations.filter(item => !req.query.id || item.id === req.query.id);
+  res.json({ items, total: items.length, page: 1, pageSize: 25, canSend: false });
+});
+app.post('/api/certification-recommendations/respond', (req, res) => {
+  const item = recommendations.find(item => item.id === req.body.id);
+  if (!item) {
+    res.sendStatus(404);
+    return;
+  }
+  if (item.revision !== req.body.revision || item.status !== 'PENDING') {
+    res.status(409).json({ error: { message: 'Recommendation changed.' } });
+    return;
+  }
+  item.attempts++;
+  if (item.attempts > 1 || item.commitBeforeError) {
+    item.status =
+      req.body.action === 'ACCEPT'
+        ? 'ACCEPTED'
+        : req.body.action === 'DECLINE'
+          ? 'DECLINED'
+          : 'DISCUSSION';
+    item.response = req.body.message;
+    item.revision++;
+    item.canRespond = false;
+  }
+  if (item.attempts === 1)
+    res.status(503).json({ error: { message: 'Synthetic response failure.' } });
+  else res.json({ saved: true });
 });
 app.post('/api/certifications', (req, res) => {
   if (['SUBMIT', 'SAVE_SUBMIT'].includes(req.body.action) && !images.has(req.body.id)) {

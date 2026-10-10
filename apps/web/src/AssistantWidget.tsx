@@ -1,3 +1,4 @@
+import { businessDraftHandoff, type BusinessDraft } from './business/business-draft-handoff';
 import { learningDraftHandoff } from './learning-draft-handoff';
 import { AssistantSession } from './assistant-session';
 import { assistantContextPrompt } from './assistant-context';
@@ -60,8 +61,45 @@ export function AssistantWidget() {
     pages: AssistantPage[];
     canReviewOwnSkill: boolean;
     canManageLearning?: boolean;
+    canDraftDemand?: boolean;
+    canDraftAmendment?: boolean;
     suggestions?: { label: string; destination: string; prompt: string }[];
   }>({ pages: [], canReviewOwnSkill: false });
+  async function reviewBusiness(draft: BusinessDraft) {
+    if (actionBusy || busy || historyBusy) return;
+    setActionBusy(true);
+    setError('');
+    const pending = new AbortController();
+    actionController.current = pending;
+    try {
+      const response = await authenticatedFetch('/api/assistant/navigation', {
+          signal: pending.signal,
+        }),
+        current = await response.json();
+      if (pending.signal.aborted) return;
+      if (
+        !response.ok ||
+        current.actorId !== navigation.actorId ||
+        !(draft.kind === 'amendment_draft' ? current.canDraftAmendment : current.canDraftDemand)
+      )
+        throw Error('Your current access does not allow this business draft.');
+      const ticket = businessDraftHandoff.offer(current.actorId, draft);
+      collapse();
+      navigate(
+        '/business?tab=' +
+          (draft.kind === 'amendment_draft' ? 'amendments' : 'demand') +
+          '&draftTicket=' +
+          encodeURIComponent(ticket),
+      );
+    } catch (e) {
+      if (!pending.signal.aborted) setError((e as Error).message);
+    } finally {
+      if (actionController.current === pending) {
+        actionController.current = null;
+        setActionBusy(false);
+      }
+    }
+  }
   async function reviewPlan(planDraft: {
     title: string;
     goal: string;
@@ -322,6 +360,11 @@ export function AssistantWidget() {
       if (pending.signal.aborted || !session.current.completion(epoch).current) return;
       conversationId.current = id;
       setMessages(body.messages);
+      setError(
+        body.contextReset
+          ? 'Your access changed. Earlier messages are hidden; continue with your current permissions.'
+          : '',
+      );
       setPendingContext(undefined);
       setText('');
       setDocument(undefined);
@@ -567,6 +610,15 @@ export function AssistantWidget() {
                     onReview={
                       navigation.canReviewOwnSkill
                         ? description => void action('/my-skills', 'review_own_skill', description)
+                        : undefined
+                    }
+                    onReviewBusiness={
+                      (
+                        message.artifact.kind === 'amendment_draft'
+                          ? navigation.canDraftAmendment
+                          : navigation.canDraftDemand
+                      )
+                        ? draft => void reviewBusiness(draft)
                         : undefined
                     }
                     onReviewRequest={draft => void reviewRequest(draft)}

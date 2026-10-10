@@ -1,0 +1,461 @@
+.bo-page {
+  --bo-accent: #11878a;
+  display: grid;
+  gap: 22px;
+  color: var(--ink);
+  min-width: 0;
+}
+.bo-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.bo-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: var(--bo-accent);
+}
+.bo-heading h1 {
+  font-size: 30px;
+  margin: 9px 0;
+}
+.bo-heading p,
+.bo-note {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 8px 0;
+}
+.bo-heading button,
+.bo-export button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.bo-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+  overflow: auto;
+}
+.bo-tabs button {
+  background: none;
+  color: var(--muted);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 14px 18px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.bo-tabs button[aria-current] {
+  color: var(--bo-accent);
+  border-bottom-color: var(--bo-accent);
+}
+.bo-scopebar {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.bo-page label {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 0;
+}
+.bo-page input,
+.bo-page select,
+.bo-page textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 11px 12px;
+  min-width: 0;
+  max-width: 100%;
+  font: inherit;
+}
+.bo-page textarea {
+  min-height: 85px;
+  resize: vertical;
+}
+.bo-scopebar label:first-child {
+  flex: 1;
+  min-width: 220px;
+}
+.bo-scopebar form {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+.bo-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bo-chips:empty {
+  display: none;
+}
+.bo-chips button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 6px 12px;
+  background: var(--raised);
+  color: var(--ink);
+  font-size: 12px;
+}
+.bo-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.bo-metric {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  text-align: left;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  color: var(--ink);
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+}
+.bo-metric:hover:enabled {
+  border-color: var(--bo-accent);
+  transform: translateY(-2px);
+}
+.bo-metric svg {
+  color: var(--bo-accent);
+}
+.bo-metric span {
+  grid-column: 1;
+  font-size: 13px;
+  color: var(--muted);
+}
+.bo-metric strong {
+  grid-column: 2;
+  grid-row: 1/3;
+  align-self: center;
+  font-size: 32px;
+}
+.bo-expired svg,
+.bo-danger {
+  color: #de5b61;
+  font-weight: 600;
+}
+.bo-pending svg,
+.bo-expiring svg {
+  color: #d59b24;
+}
+.bo-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  min-width: 0;
+  box-shadow: 0 4px 18px #00000004;
+}
+.bo-panel h2 {
+  font-size: 18px;
+  margin: 0 0 6px;
+}
+.bo-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.bo-bars {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+  max-height: 330px;
+  overflow: auto;
+}
+.bo-bars button {
+  display: grid;
+  grid-template-columns: minmax(70px, 1fr) 1.4fr 30px;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  padding: 4px;
+  text-align: left;
+  font-size: 12px;
+}
+.bo-bars button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.bo-bars i {
+  height: 12px;
+  border-radius: 4px;
+  background: var(--raised);
+  overflow: hidden;
+}
+.bo-bars b {
+  display: block;
+  height: 100%;
+  background: var(--bo-accent);
+  border-radius: 4px;
+}
+.bo-heatmap {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+  max-height: 330px;
+  overflow: auto;
+}
+.bo-heatmap > div {
+  display: grid;
+  grid-template-columns: minmax(90px, 1.5fr) repeat(5, minmax(34px, 1fr));
+  gap: 5px;
+  align-items: center;
+}
+.bo-heatmap strong {
+  font-size: 12px;
+  padding-right: 8px;
+}
+.bo-heatmap button {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px 4px;
+  color: var(--ink);
+  background: var(--raised);
+}
+.bo-heatmap small {
+  font-size: 10px;
+}
+.bo-trend {
+  display: flex;
+  gap: 10px;
+  height: 170px;
+  overflow: auto;
+  align-items: end;
+  padding-top: 20px;
+}
+.bo-trend > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  gap: 4px;
+  min-width: 46px;
+  font-size: 10px;
+}
+.bo-trend span {
+  grid-column: 1/3;
+  text-align: center;
+  color: var(--muted);
+}
+.bo-trend i {
+  background: var(--bo-accent);
+  border-radius: 3px 3px 0 0;
+}
+.bo-trend b {
+  background: #a88fe5;
+  border-radius: 3px 3px 0 0;
+}
+.bo-trend small {
+  grid-column: 1/3;
+  text-align: center;
+  margin-top: 5px;
+}
+.bo-record-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.bo-export {
+  display: flex;
+  gap: 8px;
+}
+.bo-record-filters {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+.bo-table-wrap {
+  overflow: auto;
+  max-width: 100%;
+}
+.bo-page table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+.bo-page th {
+  color: var(--muted);
+  font-weight: 600;
+  background: var(--raised);
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+.bo-page td,
+.bo-page th {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.bo-page td {
+  max-width: 280px;
+  overflow-wrap: anywhere;
+}
+.bo-pagination {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: end;
+  padding-top: 20px;
+}
+.bo-pagination span {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+.bo-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+}
+.bo-error {
+  padding: 14px;
+  background: color-mix(in srgb, #de5b61 10%, var(--surface));
+  border: 1px solid #de5b6150;
+  border-radius: 10px;
+  color: var(--ink);
+  font-size: 13px;
+}
+.bo-skeleton,
+.bo-loading-number {
+  display: inline-block;
+  background: var(--raised);
+  border-radius: 7px;
+  animation: bo-pulse 1.2s ease-in-out infinite;
+}
+.bo-skeleton {
+  height: 260px;
+  width: 100%;
+}
+.bo-loading-number {
+  width: 42px;
+  height: 34px;
+}
+.bo-admin-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding: 22px 0;
+}
+.bo-full {
+  grid-column: 1/-1;
+}
+.bo-check {
+  display: flex !important;
+  align-items: center;
+  align-self: end;
+  padding: 12px;
+}
+.bo-check input {
+  width: 16px;
+}
+.bo-required {
+  color: #dc454b;
+}
+.bo-page pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--raised);
+  padding: 14px;
+  border-radius: 9px;
+  font-size: 12px;
+}
+.bo-page button:focus-visible {
+  outline: 2px solid var(--bo-accent);
+  outline-offset: 3px;
+}
+.bo-page details {
+  margin-top: 18px;
+  font-size: 13px;
+}
+.bo-page summary {
+  cursor: pointer;
+  color: var(--bo-accent);
+}
+@keyframes bo-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (max-width: 1100px) {
+  .bo-chart-grid {
+    grid-template-columns: 1fr;
+  }
+  .bo-admin-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .bo-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .bo-heading h1 {
+    font-size: 25px;
+  }
+  .bo-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .bo-metric {
+    padding: 15px;
+  }
+  .bo-metric strong {
+    font-size: 26px;
+  }
+  .bo-panel {
+    padding: 17px;
+  }
+  .bo-scopebar form {
+    width: 100%;
+  }
+  .bo-scopebar form label {
+    flex: 1;
+  }
+  .bo-record-heading,
+  .bo-pagination {
+    align-items: start;
+    flex-wrap: wrap;
+  }
+  .bo-admin-form {
+    grid-template-columns: 1fr;
+  }
+  .bo-heatmap > div {
+    grid-template-columns: 90px repeat(5, minmax(30px, 1fr));
+  }
+  .bo-pagination span {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bo-page * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

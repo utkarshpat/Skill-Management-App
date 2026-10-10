@@ -7,6 +7,7 @@ import {
   dashboardManifest,
   dashboardPolicy,
   loadDashboardCard,
+  loadDashboardOverview,
   type DashboardSources,
   type CardId,
 } from './dashboard.js';
@@ -69,6 +70,35 @@ export function registerDashboardRoutes(
   app.get('/api/dashboard', (_req, res) =>
     res.json(dashboardManifest(res.locals.dashboardState, res.locals.dashboardPerson, deps ?? {})),
   );
+  const recheck = async (res: { locals: Record<string, any> }, cards: CardId[]) => {
+    const state = await readActorAccess((deps?.access ?? store)!, res.locals.dashboardPerson.id),
+      person = state.people.find(p => p.id === res.locals.dashboardPerson.id && p.active);
+    if (state.revision !== res.locals.dashboardRevision)
+      throw new AccessError(409, 'Workspace changed. Refresh your dashboard.');
+    if (!person || dashboardPolicy(state, person) !== res.locals.dashboardPolicy)
+      throw new AccessError(403, 'Dashboard access changed. Refresh your dashboard.');
+    const allowed = dashboardManifest(state, person, deps ?? {}).cards;
+    if (cards.some(id => !allowed.some(card => card.id === id)))
+      throw new AccessError(403, 'Dashboard access changed. Refresh your dashboard.');
+  };
+  app.get('/api/dashboard/overview', async (_req, res, next) => {
+    try {
+      const result = await loadDashboardOverview(
+        res.locals.dashboardPerson.id,
+        res.locals.dashboardState,
+        res.locals.dashboardPerson,
+        deps ?? {},
+      );
+      await recheck(
+        res,
+        result.cards.map(card => card.id),
+      );
+      res.json(result);
+    } catch (e) {
+      if (e instanceof AccessError) res.status(e.status).json({ error: { message: e.message } });
+      else next(e);
+    }
+  });
   app.get('/api/dashboard/:card', async (req, res) => {
     try {
       if (!['attention', 'learning', 'capability', 'requests'].includes(req.params.card as string))
@@ -82,17 +112,7 @@ export function registerDashboardRoutes(
         new Date(),
         req.query.status as string | undefined,
       );
-      const state = await readActorAccess((deps?.access ?? store)!, res.locals.dashboardPerson.id),
-        person = state.people.find(p => p.id === res.locals.dashboardPerson.id && p.active);
-      if (state.revision !== res.locals.dashboardRevision)
-        throw new AccessError(409, 'Workspace changed. Refresh your dashboard.');
-      if (person && dashboardPolicy(state, person) !== res.locals.dashboardPolicy)
-        throw new AccessError(403, 'Dashboard access changed. Refresh your dashboard.');
-      if (
-        !person ||
-        !dashboardManifest(state, person, deps ?? {}).cards.some(c => c.id === req.params.card)
-      )
-        throw new AccessError(403, 'Dashboard access changed. Refresh your dashboard.');
+      await recheck(res, [req.params.card as CardId]);
       res.json(data);
     } catch (e) {
       if (e instanceof AccessError) {

@@ -1,3 +1,4 @@
+import { businessQuery, identifier, type BusinessStore } from '../business/index.js';
 import { readActorAccess } from '../access/index.js';
 import { AccessError } from '../../shared/errors.js';
 
@@ -118,7 +119,283 @@ export class ToolRegistry {
     catalogue?: CatalogueStore,
     learning?: LearningStore,
     workflows?: WorkflowStore,
+    business?: BusinessStore,
   ) {
+    if (business) {
+      for (const [name, description, dataset] of [
+        [
+          'business_insights',
+          'Read current authorized Business Operations counts, reviewed skill coverage, credential distribution and submission/review trends. Coverage is an as-of snapshot; activity dates apply only to event trends. Private drafts, notes and files are excluded.',
+          'people',
+        ],
+        [
+          'credential_expiry',
+          'Read the scoped credential renewal queue and expiry buckets. Manager review and calendar validity are independent; expired approved records are not current certification. Never claim issuer validation.',
+          'certifications',
+        ],
+        [
+          'business_people',
+          'Read a bounded page of currently authorized people and reviewed holding counts. Multi-project unions are deduplicated. No private profile fields.',
+          'people',
+        ],
+      ] as const) {
+        this.entries.set(name, {
+          definition: {
+            type: 'function',
+            function: {
+              name,
+              description,
+              parameters: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  scopeId: { type: 'string', format: 'uuid' },
+                  search: { type: 'string', maxLength: 100 },
+                  page: { type: 'integer', minimum: 1, maximum: 10000 },
+                  validity: {
+                    type: 'string',
+                    enum: [
+                      '',
+                      'CURRENT',
+                      'EXPIRED',
+                      '14',
+                      '30',
+                      '60',
+                      '90',
+                      '15_30',
+                      '31_60',
+                      '61_90',
+                      'NO_EXPIRY',
+                      'LATER',
+                    ],
+                  },
+                  issuer: { type: 'string', maxLength: 120 },
+                  category: { type: 'string', maxLength: 80 },
+                  skillId: { type: 'string', format: 'uuid' },
+                  minRank: { type: 'integer', minimum: 1, maximum: 5 },
+                  maxRank: { type: 'integer', minimum: 1, maximum: 5 },
+                  status: {
+                    type: 'string',
+                    enum: ['', 'SUBMITTED', 'APPROVED', 'CHANGES_REQUESTED', 'REJECTED'],
+                  },
+                  from: { type: 'string', format: 'date' },
+                  to: { type: 'string', format: 'date' },
+                },
+              },
+            },
+          },
+          permission: (state, person) => can(state, person, 'reports.view'),
+          source: { label: 'Business Operations · Authorized analytics', url: '/business' },
+          validate: args => {
+            const q = args as Record<string, unknown>;
+            if (
+              Object.keys(q).some(
+                key =>
+                  ![
+                    'scopeId',
+                    'search',
+                    'page',
+                    'validity',
+                    'issuer',
+                    'from',
+                    'to',
+                    'category',
+                    'skillId',
+                    'minRank',
+                    'maxRank',
+                    'status',
+                  ].includes(key),
+              )
+            )
+              throw new AccessError(400, 'Unsupported business filter.');
+            return { ...businessQuery({ ...q, dataset }) };
+          },
+          read: async ({ person, args }) => {
+            const result = await business.dashboard(person.id, businessQuery(args));
+            return {
+              asOf: result.context.asOf,
+              filters: args,
+              summary: result.summary,
+              ...(name === 'business_insights'
+                ? {
+                    coverage: result.coverage,
+                    coverageLimit: 10,
+                    distribution: result.distribution,
+                    categories: result.categories ?? [],
+                    comparisons: result.comparisons?.slice(0, 10) ?? [],
+                    expiry: result.expiry,
+                    activity: result.activity.slice(-12),
+                  }
+                : {
+                    rows: result.rows,
+                    ...(name === 'credential_expiry' ? { expiry: result.expiry } : {}),
+                  }),
+              total: result.total,
+              page: result.page,
+              pageSize: result.pageSize,
+              hasMore: result.page * result.pageSize < result.total,
+              limits: [
+                'Current scope only',
+                'Coverage charts show at most 10 skills; issuer/category charts at most 15 groups. Historical ranks above five use L5+ chart grouping without framework equivalence.',
+                'No private drafts or certificate downloads',
+                'Coverage denominator includes authorized people without reviewed claims',
+                'Business access never grants manager-review authority',
+              ],
+            };
+          },
+        });
+      }
+      for (const [name, operation, permission, description] of [
+        [
+          'business_amendment_options',
+          'MASTERS',
+          'skill.catalogue.propose',
+          'Read current master skill, credential and provider choices before drafting an amendment. Only a current direct manager or authorized Business Operations person may propose; the administrator applies an explicitly reviewed amendment.',
+        ],
+        [
+          'business_demand_options',
+          'MASTERS',
+          'demand.create',
+          'Read published skill and active credential requirements for a scoped demand draft. Human selection of canonical requirements and scope is mandatory; no demand is created.',
+        ],
+        [
+          'business_demands',
+          'DEMANDS',
+          'demand.view',
+          'Read a bounded page of currently authorized demand definitions. No employee private drafts or availability assumptions.',
+        ],
+      ] as const)
+        this.entries.set(name, {
+          definition: {
+            type: 'function',
+            function: {
+              name,
+              description,
+              parameters: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  page: { type: 'integer', minimum: 1, maximum: 10000 },
+                  ...(operation === 'MASTERS'
+                    ? { search: { type: 'string', maxLength: 100 } }
+                    : {}),
+                },
+              },
+            },
+          },
+          permission: (state, person) => can(state, person, permission),
+          validate: args => {
+            const q = args as Record<string, unknown>;
+            if (
+              Object.keys(q).some(
+                k => k !== 'page' && (operation !== 'MASTERS' || k !== 'search'),
+              ) ||
+              (q.search !== undefined && (typeof q.search !== 'string' || q.search.length > 100)) ||
+              (q.page !== undefined &&
+                (!Number.isSafeInteger(q.page) || Number(q.page) < 1 || Number(q.page) > 10000))
+            )
+              throw new AccessError(400, 'Choose a valid page.');
+            return {
+              page: q.page ?? 1,
+              ...(operation === 'MASTERS' ? { search: q.search ?? '' } : {}),
+            };
+          },
+          source: {
+            label: 'Business Operations · Master definitions and demand',
+            url: '/business',
+          },
+          read: async ({ person, args }) => {
+            const result = await business.workflow(person.id, operation, args);
+            if (operation !== 'MASTERS') return result;
+            return {
+              ...result,
+              skills: (result.skills as Record<string, unknown>[]).map(
+                ({ id, name, category }) => ({ id, name, category }),
+              ),
+              certifications: (result.certifications as Record<string, unknown>[]).map(
+                ({ id, name, providerId, provider, category }) => ({
+                  id,
+                  name,
+                  providerId,
+                  provider,
+                  category,
+                }),
+              ),
+            };
+          },
+        });
+      this.entries.set('business_demand_matches', {
+        definition: {
+          type: 'function',
+          function: {
+            name: 'business_demand_matches',
+            description:
+              'Read explainable current matches for a known authorized demand ID. Approved skill proficiency and current manager-reviewed exact-name/provider credentials only. Missing evidence means not established; matching does not assess availability or make a staffing decision.',
+            parameters: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['id'],
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                page: { type: 'integer', minimum: 1, maximum: 10000 },
+              },
+            },
+          },
+        },
+        permission: (state, person) =>
+          can(state, person, 'matching.view') && can(state, person, 'matching.run'),
+        validate: args => {
+          const q = args as Record<string, unknown>;
+          if (
+            Object.keys(q).some(k => !['id', 'page'].includes(k)) ||
+            (q.page !== undefined &&
+              (!Number.isSafeInteger(q.page) || Number(q.page) < 1 || Number(q.page) > 10000))
+          )
+            throw new AccessError(400, 'Choose an authorized demand and page.');
+          return { id: identifier(q.id), page: q.page ?? 1 };
+        },
+        source: { label: 'Business Operations · Demand matching', url: '/business?tab=demand' },
+        read: async ({ person, args }) => {
+          const result = await business.workflow(person.id, 'MATCHES', args);
+          const rows = result.rows as Record<string, unknown>[];
+          return {
+            ...result,
+            criteria: rows[0]?.criteria ?? [],
+            rows: rows.map(row => ({
+              ...row,
+              criteria: (row.criteria as Record<string, unknown>[]).map(c => ({
+                type: c.type,
+                id: c.id,
+                matched: c.matched,
+              })),
+            })),
+          };
+        },
+      });
+      this.entries.set('business_report_options', {
+        definition: definition(
+          'business_report_options',
+          'Read your current report/export scopes and available formats. Exports are explicitly downloaded from Business Operations with a fresh authorization check; this tool never exports or sends employee data.',
+        ),
+        permission: (state, person) => can(state, person, 'reports.export'),
+        source: { label: 'Business Operations · Reports', url: '/business' },
+        read: async ({ person }) => {
+          const context = await business.context(person.id);
+          if (!context.canExport) throw new AccessError(403, 'Export denied.');
+          return {
+            asOf: context.asOf,
+            scopes: context.scopes,
+            formats: ['CSV', 'XLSX'],
+            datasets: ['people', 'skills', 'certifications', 'submissions'],
+            maximumRows: 50000,
+            open: '/business',
+            instruction:
+              'Choose filters and explicitly download the report. Results are authorized again before delivery.',
+          };
+        },
+      });
+    }
+
     this.entries.set('my_permissions', {
       definition: definition(
         'my_permissions',
@@ -786,7 +1063,13 @@ export class ToolRegistry {
 
     const data = await tool!.read(context);
 
-    await check(); // Revocation during retrieval must prevent context reaching the model.
+    const fresh = await check(); // Revocation during retrieval must prevent context reaching the model.
+    if (name.startsWith('business_') || name === 'credential_expiry') {
+      const policy = (value: LocalAccessState, p: LocalPerson) =>
+        JSON.stringify({ revision: value.revision, business: p.business });
+      if (policy(context.state, context.person) !== policy(fresh.state, fresh.person))
+        throw new AccessError(403, 'Business scope changed during retrieval. Ask again.');
+    }
 
     return { data, source: tool!.source };
   }

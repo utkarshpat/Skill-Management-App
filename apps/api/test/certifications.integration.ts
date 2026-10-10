@@ -30,6 +30,7 @@ await withDatabase(async pool => {
     'deny',
     'reassigned',
     'inactive',
+    ...(version >= 57 ? ['renewal-preserved' as const] : []),
   ] as const) {
     const tx = new sql.Transaction(pool);
     await tx.begin();
@@ -135,6 +136,35 @@ await withDatabase(async pool => {
           audit.recordset.map(r => r.action),
           ['certification.saved', 'certification.submitted', 'certification.approved'],
         );
+      } else if (scenario === 'renewal-preserved') {
+        await review();
+        const replacement = randomUUID();
+        await run(owner, 'SAVE', { id: replacement, revision: 0, fields });
+        await new sql.Request(tx)
+          .input('account_id', sql.UniqueIdentifier, account)
+          .input('actor_id', sql.UniqueIdentifier, owner)
+          .input('certification_id', sql.UniqueIdentifier, replacement)
+          .input('renewed_from_id', sql.UniqueIdentifier, id)
+          .execute('dbo.LinkCertificationRenewal');
+        await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('id', sql.UniqueIdentifier, replacement)
+          .query(
+            "INSERT dbo.CertificationImageRecord(account_id,certification_id,evidence_id,blob_name,bytes,width,height) VALUES(@account,@id,NEWID(),'rollback-renewal',100,50,50);",
+          );
+        // Actual wizard protocol: renewal source appears only on the first draft/link.
+        await run(owner, 'SAVE_SUBMIT', { id: replacement, revision: 1, fields });
+        const linked: { source: string; status: string; events: number } = (
+          await new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .input('replacement', sql.UniqueIdentifier, replacement)
+            .query<{ source: string; status: string; events: number }>(
+              "SELECT renewed_from_id AS source,status,(SELECT COUNT(*) FROM dbo.AccessAudit WHERE account_id=@account AND target_id=@replacement AND action='certification.renewal_started') AS events FROM dbo.CertificationRecord WHERE account_id=@account AND id=@replacement",
+            )
+        ).recordset[0];
+        assert.equal(linked.source.toLowerCase(), id.toLowerCase());
+        assert.equal(linked.status, 'SUBMITTED');
+        assert.equal(linked.events, 1);
       } else if (scenario === 'self-review')
         await rejected(run(owner, 'APPROVE', { id, revision: 2, feedback: 'Self review' }), 51003);
       else if (scenario === 'foreign-save')

@@ -10,18 +10,26 @@ export async function loadCertificationPortfolio(
     first.pageSize < 1 ||
     !Number.isInteger(first.pageSize) ||
     first.total < 0 ||
-    !Number.isInteger(first.total)
+    !Number.isInteger(first.total) ||
+    Math.ceil(first.total / first.pageSize) > 1000
   )
     throw Error('Certification portfolio is unavailable. Refresh to retry.');
   const records = [...first.records];
-  for (let page = 2; page <= Math.ceil(first.total / first.pageSize); page++) {
+  const lastPage = Math.ceil(first.total / first.pageSize);
+  // Two reads at a time match the restricted SQL pool, avoiding an unbounded fan-out.
+  for (let page = 2; page <= lastPage; page += 2) {
     signal.throwIfAborted();
-    const next = await read(page);
-    if (next.total !== first.total || next.pageSize !== first.pageSize)
-      throw Error(
-        'Your certification portfolio changed while loading. Refresh to get the latest records.',
-      );
-    records.push(...next.records);
+    const pages = await Promise.all(
+      Array.from({ length: Math.min(2, lastPage - page + 1) }, (_, i) => read(page + i)),
+    );
+    signal.throwIfAborted();
+    for (const next of pages) {
+      if (next.total !== first.total || next.pageSize !== first.pageSize)
+        throw Error(
+          'Your certification portfolio changed while loading. Refresh to get the latest records.',
+        );
+      records.push(...next.records);
+    }
   }
   signal.throwIfAborted();
   if (records.length !== first.total || new Set(records.map(r => r.id)).size !== first.total)

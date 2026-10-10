@@ -15,7 +15,13 @@ import { authenticatedFetch } from './auth';
 import { startActivityRefresh, type RefreshStatus } from './activity-refresh';
 import { RefreshIndicator } from './RefreshIndicator';
 import './dashboard.css';
-import { DashboardQuickActions, type DashboardQuickAction } from './DashboardQuickActions';
+import { DashboardQuickActions } from './DashboardQuickActions';
+import {
+  readDashboardOverview,
+  type DashboardCardDefinition as Card,
+  type DashboardOverview,
+  type DashboardCardResult as CardResult,
+} from './dashboard-overview';
 import {
   DashboardRequests,
   type DashboardRequestsData,
@@ -33,22 +39,7 @@ import {
   type NextLearningTask,
 } from './DashboardLearning';
 import { DashboardAttention, type AttentionGroup } from './DashboardAttention';
-interface Card {
-  id: 'attention' | 'learning' | 'capability' | 'requests';
-  title: string;
-  description: string;
-  endpoint: string;
-  priority: number;
-  size: string;
-  scope: { kind: string; actorId: string };
-}
-interface Manifest {
-  revision: number;
-  actorId: string;
-  cards: Card[];
-  actions: DashboardQuickAction[];
-  ai: boolean;
-}
+type Manifest = DashboardOverview<CardData>;
 interface Item {
   id: string;
   title: string;
@@ -111,8 +102,7 @@ export function openDashboardAssistant(card: Card['id']) {
 export function Dashboard() {
   const [manifest, setManifest] = useState<Manifest>(),
     [error, setError] = useState(''),
-    [attempt, setAttempt] = useState(0),
-    [cardRefresh, setCardRefresh] = useState(0);
+    [attempt, setAttempt] = useState(0);
   const [freshness, setFreshness] = useState<RefreshStatus>();
   useEffect(() => {
     const c = new AbortController();
@@ -122,12 +112,11 @@ export function Dashboard() {
       if (running) return;
       running = true;
       const n = ++generation;
-      return authenticatedFetch('/api/dashboard', { signal: c.signal })
-        .then(read<Manifest>)
+      return authenticatedFetch('/api/dashboard/overview', { signal: c.signal })
+        .then(readDashboardOverview<CardData>)
         .then(value => {
           if (!c.signal.aborted && n === generation) {
             setManifest(value);
-            setCardRefresh(v => v + 1);
             setError('');
           }
         })
@@ -165,7 +154,7 @@ export function Dashboard() {
       key={manifest!.actorId + card.id}
       card={card}
       revision={manifest!.revision}
-      refresh={cardRefresh}
+      snapshot={manifest!.cardData[card.id]!}
       ai={manifest!.ai}
       onAccessChanged={() => setAttempt(n => n + 1)}
     />
@@ -240,23 +229,25 @@ export function Dashboard() {
 function DashboardCard({
   card,
   revision,
-  refresh,
+  snapshot,
   ai,
   onAccessChanged,
 }: {
   card: Card;
   revision: number;
-  refresh: number;
+  snapshot: CardResult<CardData>;
   ai: boolean;
   onAccessChanged: () => void;
 }) {
   const lastRevision = useRef(revision);
   const [refreshing, setRefreshing] = useState(false);
-  const [data, setData] = useState<CardData>(),
-    [error, setError] = useState(''),
-    [attempt, setAttempt] = useState(0),
+  const [data, setData] = useState<CardData | undefined>(snapshot.data),
+    [error, setError] = useState(snapshot.error?.message ?? ''),
+    [retry, setRetry] = useState<{ snapshot: CardResult<CardData>; attempt: number }>(),
     [denied, setDenied] = useState(false),
     [requestStatus, setRequestStatus] = useState('');
+  const attempt = retry?.snapshot === snapshot ? retry.attempt : 0;
+  const retryCard = () => setRetry({ snapshot, attempt: attempt + 1 });
   useEffect(() => {
     const c = new AbortController();
     if (lastRevision.current !== revision) setData(undefined);
@@ -264,6 +255,12 @@ function DashboardCard({
     setRefreshing(true);
     setError('');
     setDenied(false);
+    if (!attempt) {
+      setData(snapshot.data);
+      setError(snapshot.error?.message ?? '');
+      setRefreshing(false);
+      return () => c.abort();
+    }
     authenticatedFetch(card.endpoint, { signal: c.signal })
       .then(read<CardData>)
       .then(value => {
@@ -282,7 +279,7 @@ function DashboardCard({
         if (!c.signal.aborted) setRefreshing(false);
       });
     return () => c.abort();
-  }, [card.endpoint, revision, refresh, attempt]);
+  }, [card.endpoint, revision, snapshot, attempt]);
   const Icon = { attention: Bell, learning: BookOpen, capability: Layers, requests: Inbox }[
     card.id
   ];
@@ -320,7 +317,7 @@ function DashboardCard({
             {error}
             {data ? ' Displayed values may be out of date.' : ''}
           </p>
-          <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
+          <button className="secondary-button" onClick={retryCard}>
             Retry
           </button>
         </div>
@@ -340,7 +337,7 @@ function DashboardCard({
               total={data.total}
               partial={data.partial}
               groups={data.groups}
-              onRetry={() => setAttempt(n => n + 1)}
+              onRetry={retryCard}
             />
           )}
           {card.id === 'learning' && (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, Clock3, ExternalLink, Plus, Trash2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { authenticatedFetch } from './auth';
+import { learningPracticeUrl } from './learning-practice-url';
 import { FormDialog } from './FormDialog';
 import type { Plan, Task } from './Learning';
 import './learning-session.css';
@@ -83,7 +84,7 @@ export function LearningSession({
     [historyPage, setHistoryPage] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
-    authenticatedFetch('/api/learning/practice?planId=' + plan.id + '&taskId=' + task.id, {
+    authenticatedFetch(learningPracticeUrl(plan.id, task.id), {
       signal: controller.signal,
     })
       .then(parse)
@@ -156,9 +157,7 @@ export function LearningSession({
     setBusy(true);
     setError('');
     try {
-      const response = await authenticatedFetch(
-        '/api/learning/practice/review?planId=' + plan.id + '&taskId=' + task.id + '&id=' + id,
-      );
+      const response = await authenticatedFetch(learningPracticeUrl(plan.id, task.id, id));
       const body = await response.json().catch(() => undefined);
       if (!response.ok || !body)
         throw Error(body?.error?.message ?? 'Could not load your attempt.');
