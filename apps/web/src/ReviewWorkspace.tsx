@@ -11,6 +11,7 @@ import {
   Clock3,
   Search,
   ShieldCheck,
+  Sparkles,
   UsersRound,
   BarChart3,
   MessageSquareMore,
@@ -162,15 +163,22 @@ export function ReviewWorkspace({
   return (
     <>
       <nav className="capability-tabs review-type-tabs" aria-label="Review type">
-        <Link to="/skill-reviews?type=skills" aria-current={type === 'skills' ? 'page' : undefined}>
-          Skills
+        <Link
+          to="/skill-reviews?type=skills"
+          className="capability-tab-item"
+          aria-current={type === 'skills' ? 'page' : undefined}
+        >
+          <Sparkles size={18} className="capability-tab-icon" aria-hidden="true" />
+          <span className="capability-tab-label">Skills</span>
         </Link>
         {certificationsAllowed && (
           <Link
             to="/skill-reviews?type=certifications"
+            className="capability-tab-item"
             aria-current={type === 'certifications' ? 'page' : undefined}
           >
-            Certifications
+            <Award size={18} className="capability-tab-icon" aria-hidden="true" />
+            <span className="capability-tab-label">Certifications</span>
           </Link>
         )}
       </nav>

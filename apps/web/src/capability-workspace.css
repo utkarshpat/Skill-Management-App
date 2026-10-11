@@ -226,23 +226,24 @@ html:not([data-theme='dark']) .capability-portfolio-shell.tab-active-certificati
   }
 }
 
-/* Page-Wide Thin Tab Bar for Capability & Review Tabs Fallback */
+/* ═══════════════════════════════════════════════════════════════════
+   Page-Wide Segmented Switcher for Capability & Review Tabs
+   (Half-screen / 50% split per tab, spanning screenwide)
+═══════════════════════════════════════════════════════════════════ */
 .capability-tabs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   width: 100%;
-  margin: 0 0 20px 0;
-  border-bottom: 1px solid var(--line, #cbd3dd);
-  padding: 0;
-  background: transparent;
-  box-shadow: none;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.capability-tabs::-webkit-scrollbar {
-  display: none;
+  box-sizing: border-box;
+  margin: 0 0 24px 0;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  user-select: none;
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .capability-tabs a,
@@ -251,58 +252,96 @@ html:not([data-theme='dark']) .capability-portfolio-shell.tab-active-certificati
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 16px;
-  margin-bottom: -1px;
-  color: var(--muted, #687385);
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 20px;
+  color: var(--muted);
   text-decoration: none;
-  border: none;
-  border-bottom: 2px solid transparent;
+  border: 1px solid transparent;
   background: transparent;
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.3;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
+  border-radius: 10px;
   transition:
-    color 0.16s ease,
-    border-color 0.16s ease,
-    background-color 0.16s ease;
-  user-select: none;
+    color 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-color 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
   white-space: nowrap;
-  border-radius: 6px 6px 0 0;
 }
 
 .capability-tabs a:hover:not([aria-current='page']):not([aria-pressed='true']),
 .capability-tabs button:hover:not([aria-current='page']):not([aria-pressed='true']) {
-  color: var(--ink, #18202a);
-  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--raised) 75%, transparent);
+  transform: translateY(-1px);
+}
+
+.capability-tabs a:active:not([aria-current='page']):not([aria-pressed='true']),
+.capability-tabs button:active:not([aria-current='page']):not([aria-pressed='true']) {
+  transform: translateY(0);
 }
 
 .capability-tabs [aria-current='page'],
 .capability-tabs [aria-pressed='true'] {
-  color: var(--accent-ink, #126b70);
-  font-weight: 600;
-  border-bottom: 2px solid var(--accent-ink, #126b70);
-  background: transparent;
-  box-shadow: none;
+  color: var(--accent-ink);
+  font-weight: 700;
+  background: var(--raised);
+  border-color: color-mix(in srgb, var(--accent-ink) 25%, var(--line));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.capability-tabs [aria-current='page']::after,
+.capability-tabs [aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  bottom: 5px;
+  width: 36px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent-ink);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-ink) 80%, transparent);
+  transition: width 0.2s ease;
 }
 
 .capability-tab-icon {
   flex-shrink: 0;
-  transition: color 0.16s ease;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.18s ease;
   color: currentColor;
 }
 
 .capability-tabs [aria-current='page'] .capability-tab-icon,
 .capability-tabs [aria-pressed='true'] .capability-tab-icon {
-  color: var(--accent-ink, #126b70);
+  color: var(--accent-ink);
+  transform: scale(1.15);
 }
 
 .capability-tabs a:focus-visible,
 .capability-tabs button:focus-visible {
-  outline: 2px solid var(--focus, var(--accent-ink, #126b70));
+  outline: 2px solid var(--focus, var(--accent-ink));
   outline-offset: -2px;
+}
+
+/* Dark mode refinement */
+html[data-theme='dark'] .capability-tabs,
+:root[data-theme='dark'] .capability-tabs {
+  background: color-mix(in srgb, var(--surface) 90%, #000);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme='dark'] .capability-tabs [aria-current='page'],
+html[data-theme='dark'] .capability-tabs [aria-pressed='true'],
+:root[data-theme='dark'] .capability-tabs [aria-current='page'],
+:root[data-theme='dark'] .capability-tabs [aria-pressed='true'] {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-ink) 24%, var(--raised)), var(--raised));
+  border-color: color-mix(in srgb, var(--accent-ink) 40%, transparent);
+  color: color-mix(in srgb, var(--accent-ink) 85%, #fff);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 .assigned-review-workspace {
   color: var(--ink);
