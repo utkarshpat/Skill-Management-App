@@ -206,7 +206,10 @@ export function SkillClaimDialog({
               ))}
             </div>
             <label className="claim-feedback">
-              Feedback <span>Required</span>
+              Feedback{' '}
+              <span className="skill-required" aria-hidden="true">
+                *
+              </span>
               <textarea
                 aria-label="Review feedback"
                 rows={4}

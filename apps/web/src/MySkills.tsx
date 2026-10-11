@@ -153,9 +153,11 @@ export function MySkills({
       else void load();
     };
     window.addEventListener('own-skills-updated', refresh);
+    window.addEventListener('notifications-remote-updated', refresh);
     return () => {
       profileRequests.current.abort();
       window.removeEventListener('own-skills-updated', refresh);
+      window.removeEventListener('notifications-remote-updated', refresh);
     };
   }, []);
   useEffect(() => {

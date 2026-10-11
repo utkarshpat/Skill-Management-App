@@ -219,7 +219,13 @@ export function SkillClaimWizard({
         if (page === 2) onSave(false);
         else change(page + 1);
       }}
-      message={(error || validation) && <p role="alert">{error || validation}</p>}
+      message={
+        error || validation ? (
+          <p role="alert">{error || validation}</p>
+        ) : busy ? (
+          <p role="status">{uploading ? 'Uploading evidence…' : 'Saving your claim…'}</p>
+        ) : undefined
+      }
       pages={[
         {
           label: 'Select skill',
@@ -420,12 +426,16 @@ export function SkillClaimWizard({
                   onChange={value => onDraft({ ...draft, ...value })}
                 />
                 <label>
-                  Describe your experience <span className="skill-required">Required</span>
+                  Describe your experience{' '}
+                  <span className="skill-required" aria-hidden="true">
+                    *
+                  </span>
                   <textarea
                     id="skill-experience-description"
                     name="experienceDescription"
                     autoComplete="off"
                     maxLength={2000}
+                    aria-required="true"
                     rows={3}
                     value={draft.description}
                     onChange={event => onDraft({ ...draft, description: event.target.value })}
@@ -434,7 +444,7 @@ export function SkillClaimWizard({
                 </label>
                 <div className="skill-text-count">{draft.description.length}/2,000</div>
                 <label>
-                  Projects <span className="skill-optional">Optional</span>
+                  Projects
                   <textarea
                     name="projects"
                     autoComplete="off"
@@ -448,7 +458,7 @@ export function SkillClaimWizard({
                 <label>
                   <span className="skill-evidence-label">
                     <Paperclip size={15} aria-hidden="true" />
-                    Evidence references <span className="skill-optional">Optional</span>
+                    Evidence references
                   </span>
                   <textarea
                     name="evidence"
@@ -580,7 +590,7 @@ export function SkillClaimWizard({
               className="secondary-button"
               disabled={busy}
             >
-              {busy ? 'Saving…' : draft.revision ? 'Save changes' : 'Save draft'}
+              {draft.revision ? 'Save changes' : 'Save draft'}
             </button>
           )}
           {page === 2 && (
@@ -591,7 +601,7 @@ export function SkillClaimWizard({
               disabled={busy}
               onClick={() => onSave(true)}
             >
-              {busy ? 'Submitting…' : 'Submit for review'}
+              Submit for review
               <Send size={16} aria-hidden="true" />
             </button>
           )}

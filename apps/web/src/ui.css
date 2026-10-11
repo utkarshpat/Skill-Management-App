@@ -1736,7 +1736,7 @@ input[type='checkbox'] {
   color: var(--ink);
   resize: none;
 }
-.form-dialog .access-form .form-dialog-fields {
+.form-dialog .form-dialog-fields {
   padding: 0;
   margin: 0;
   border: 0;

@@ -38,6 +38,11 @@ export function Certifications({
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    const refresh = () => setAttempt(value => value + 1);
+    window.addEventListener('notifications-remote-updated', refresh);
+    return () => window.removeEventListener('notifications-remote-updated', refresh);
+  }, []);
   const [viewing, setViewing] = useState<CertificationRecord>();
   const [editing, setEditing] = useState<CertificationRecord | null | undefined>(),
     [reviewing, setReviewing] = useState<CertificationRecord>(),

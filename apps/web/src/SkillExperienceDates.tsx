@@ -36,9 +36,7 @@ export function SkillExperienceDates({
           />
         </label>
         <label htmlFor="skill-last-used">
-          <span>
-            Last used <span className="skill-optional">Optional</span>
-          </span>
+          <span>Last used</span>
           <input
             id="skill-last-used"
             name="lastUsedOn"

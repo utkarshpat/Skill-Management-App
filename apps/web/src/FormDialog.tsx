@@ -192,7 +192,9 @@ export function FormDialog({
             </fieldset>
           </form>
         ) : (
-          content
+          <fieldset className="form-dialog-fields" disabled={busy}>
+            {content}
+          </fieldset>
         )}
       </div>
       {footer && <footer className="form-dialog-footer">{footer}</footer>}

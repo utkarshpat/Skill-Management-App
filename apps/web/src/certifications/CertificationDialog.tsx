@@ -408,7 +408,15 @@ export function CertificationDialog({
       stepNavigation
       page={step}
       onPageChange={changeStep}
-      message={error ? <p role="alert">{error}</p> : undefined}
+      message={
+        error ? (
+          <p role="alert">{error}</p>
+        ) : busy ? (
+          <p role="status">
+            {imageBusy ? 'Preparing certificate file…' : 'Saving your certification…'}
+          </p>
+        ) : undefined
+      }
       pages={[
         {
           label: 'Certificate & details',
@@ -652,7 +660,7 @@ export function CertificationDialog({
                     disabled={busy}
                     onClick={() => void save(false)}
                   >
-                    {busy ? 'Saving...' : 'Save draft'}
+                    Save draft
                   </button>
                   <button
                     type="button"
@@ -660,7 +668,7 @@ export function CertificationDialog({
                     disabled={busy || !canSubmit}
                     onClick={() => void save(true)}
                   >
-                    {busy ? 'Saving...' : 'Submit for review'}
+                    Submit for review
                     <Send size={16} aria-hidden="true" />
                   </button>
                 </>

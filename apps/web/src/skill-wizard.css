@@ -475,11 +475,9 @@
 .skill-criteria h3 {
   color: var(--accent-ink);
 }
-.skill-required,
-.skill-optional {
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--muted);
+.skill-required {
+  color: var(--danger, #c62828);
+  font-weight: 600;
 }
 .skill-text-count {
   text-align: right;
