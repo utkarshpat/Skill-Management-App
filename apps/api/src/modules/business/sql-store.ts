@@ -1,5 +1,8 @@
 import { readSqlJson } from '../../shared/sql-json.js';
 import sql from 'mssql';
+import { readBusinessFile } from './files.js';
+import { BlobServiceClient } from '@azure/storage-blob';
+import type { BusinessFiles } from './business.js';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
 import {
@@ -25,8 +28,43 @@ export function assertBusinessScope(
     throw new AccessError(409, 'Scope changed during this read. Refresh before continuing.');
 }
 export class SqlBusinessStore implements BusinessStore {
-  constructor(private accountId: string) {
+  constructor(
+    private accountId: string,
+    private storage?: { connection: string; container: string },
+  ) {
     identifier(accountId);
+  }
+  async recordFiles(actor: string, kind: string, id: string): Promise<BusinessFiles> {
+    if (!['skills', 'certifications'].includes(kind))
+      throw new AccessError(400, 'Choose a skill or certification.');
+    const result = await this.execute<BusinessFiles>(
+      actor,
+      'dbo.BusinessRecordFiles',
+      undefined,
+      request =>
+        request
+          .input('kind', sql.VarChar(20), kind)
+          .input('id', sql.UniqueIdentifier, identifier(id)),
+    );
+    const current = await this.context(actor);
+    if (!current.canView || current.revision !== result.workspaceRevision)
+      throw new AccessError(409, 'File access changed. Reopen the viewer.');
+    return normalizeBusinessCollections(result, ['items']);
+  }
+  async file(actor: string, kind: string, id: string, fileId: string) {
+    if (!this.storage) throw new AccessError(503, 'Private file storage is not configured.');
+    return readBusinessFile(
+      () => this.recordFiles(actor, kind, id),
+      async item => {
+        const container = BlobServiceClient.fromConnectionString(
+          this.storage!.connection,
+        ).getContainerClient(this.storage!.container);
+        if ((await container.getProperties()).blobPublicAccess)
+          throw new AccessError(503, 'File storage must be private.');
+        return container.getBlockBlobClient(item.blobName).downloadToBuffer(0, item.bytes);
+      },
+      fileId,
+    );
   }
   private async execute<T>(
     actor: string,

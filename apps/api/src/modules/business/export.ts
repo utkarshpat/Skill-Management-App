@@ -5,7 +5,9 @@ const safe = (value: unknown) => {
   return /^[\s\uFEFF]*[=+\-@]/.test(text) ? "'" + text : text;
 };
 export function reportCells(data: BusinessDashboard, query: BusinessQuery) {
-  const columns = [...new Set(data.rows.flatMap(row => Object.keys(row)))];
+  const columns = [...new Set(data.rows.flatMap(row => Object.keys(row)))].filter(
+    key => key !== 'canViewFiles',
+  );
   const metadata = [
     ['Dataset', query.dataset],
     ['As of (UTC)', data.context.asOf],

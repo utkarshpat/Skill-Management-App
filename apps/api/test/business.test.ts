@@ -314,6 +314,59 @@ test('demand and amendment commands reject actor selectors, duplicate criteria a
   });
   assert.equal((command.payload.definition as { levels: unknown[] }).levels.length, 5);
 });
+test('HTTP scoped files bind authenticated actor, conceal Blob keys and reject forced records', async t => {
+  const s = state();
+  const item = {
+    id: person,
+    blobName: 'private-storage-key',
+    bytes: 3,
+    mimeType: 'application/pdf',
+    fileName: 'credential.pdf',
+  };
+  const business = {
+    context: async () => context(),
+    recordFiles: async (caller: string, kind: string, id: string) => {
+      assert.equal(caller, actor);
+      assert.equal(kind, 'certifications');
+      if (id !== scope) throw new AccessError(403, 'Outside scope');
+      return { revision: 1, workspaceRevision: 1, references: '', items: [item] };
+    },
+    file: async (caller: string, kind: string, id: string, fileId: string) => {
+      assert.equal(caller, actor);
+      assert.equal(kind, 'certifications');
+      if (id !== scope || fileId !== person) throw new AccessError(403, 'Outside scope');
+      return { item, data: Buffer.from('pdf') };
+    },
+  } as unknown as BusinessStore;
+  const server = createApp({
+    verify: async h => {
+      if (h !== 'Bearer trusted') throw Error();
+      return { tenantId: actor, objectId: actor };
+    },
+    resolveAccess: async () => actor,
+    profile: async () => undefined,
+    access: { snapshot: () => structuredClone(s), person: () => s.people[0], save: async () => s },
+    business,
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const root = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/business/records/certifications/`,
+    headers = { Authorization: 'Bearer trusted' };
+  assert.equal((await fetch(root + scope + '/files')).status, 401);
+  const metadata = await fetch(root + scope + '/files?actorId=' + person, { headers });
+  assert.equal(metadata.headers.get('cache-control'), 'no-store');
+  const publicData = await metadata.json();
+  assert.equal(publicData.items[0].blobName, undefined);
+  assert.equal(publicData.items[0].fileName, 'credential.pdf');
+  assert.equal((await fetch(root + person + '/files', { headers })).status, 403);
+  const file = await fetch(root + scope + '/files/' + person, { headers });
+  assert.equal(file.status, 200);
+  assert.equal(file.headers.get('content-type'), 'application/pdf');
+  assert.equal(file.headers.get('x-content-type-options'), 'nosniff');
+  assert.match(file.headers.get('content-disposition')!, /attachment/);
+  assert.equal(await file.text(), 'pdf');
+  assert.equal((await fetch(root + person + '/files/' + person, { headers })).status, 403);
+});
 test('HTTP preview and execution bind actor and reject forged receipts and changed current access', async t => {
   let current = context(),
     saved = 0;

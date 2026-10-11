@@ -21,6 +21,9 @@ const migrations = await Promise.all(
     '064_business_workflow_recovery.sql',
     '066_amendment_lifecycle.sql',
     '067_access_profile_administration.sql',
+    '068_business_access_audit_subjects.sql',
+    '069_business_record_attribution.sql',
+    '070_business_submitted_files.sql',
   ].map(file => readFile(new URL('../../../database/migrations/' + file, import.meta.url), 'utf8')),
 );
 await withDatabase(async pool => {
@@ -51,10 +54,20 @@ await withDatabase(async pool => {
     'scope-lifecycle',
     'administration-lockout',
     'administration-profile-denied',
+    'files-read',
+    'files-draft',
+    'files-foreign',
+    'files-deny',
+    'files-revoked',
   ] as const;
   const selected = process.env.BUSINESS_SQL_SCENARIO;
-  assert.ok(!selected || scenarios.some(s => s === selected), 'Unknown SQL scenario.');
-  for (const scenario of scenarios.filter(s => !selected || s === selected)) {
+  assert.ok(
+    !selected || selected === 'files' || scenarios.some(s => s === selected),
+    'Unknown SQL scenario.',
+  );
+  for (const scenario of scenarios.filter(
+    s => !selected || s === selected || (selected === 'files' && s.startsWith('files-')),
+  )) {
     const tx = new sql.Transaction(pool);
     await tx.begin();
     let rolledBack = false;
@@ -63,7 +76,7 @@ await withDatabase(async pool => {
     });
     try {
       for (let i = 0; i < migrations.length; i++)
-        if (info.version < [60, 61, 62, 63, 64, 66, 67][i])
+        if (info.version < [60, 61, 62, 63, 64, 66, 67, 68, 69, 70][i])
           for (const batch of migrations[i].split(/^GO\s*$/m))
             if (batch.trim()) await new sql.Request(tx).batch(batch);
       const ids = Object.fromEntries(
@@ -141,7 +154,60 @@ await withDatabase(async pool => {
             )
           ).recordset[0].json,
         );
-      if (scenario === 'access-profiles') {
+      if (scenario.startsWith('files-')) {
+        const evidence = randomUUID();
+        await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('cert', sql.UniqueIdentifier, ids.certA)
+          .input('evidence', sql.UniqueIdentifier, evidence)
+          .query(
+            `INSERT dbo.CertificationImageRecord(account_id,certification_id,evidence_id,blob_name,bytes,width,height,active,mime_type,file_name) VALUES(@account,@cert,@evidence,'rollback-private.pdf',3,NULL,NULL,1,'application/pdf','fixture.pdf')`,
+          );
+        if (scenario === 'files-foreign')
+          await new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .input('cert', sql.UniqueIdentifier, ids.certA)
+            .input('outside', sql.UniqueIdentifier, ids.outside)
+            .query(
+              'UPDATE dbo.CertificationRecord SET person_id=@outside WHERE account_id=@account AND id=@cert',
+            );
+        if (scenario === 'files-deny')
+          await new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .input('lead', sql.UniqueIdentifier, ids.lead)
+            .input('a', sql.UniqueIdentifier, ids.a)
+            .input('b', sql.UniqueIdentifier, ids.b)
+            .query(
+              `INSERT dbo.BusinessResponsibility VALUES(@account,NEWID(),@lead,'BUSINESS_OPERATIONS','PROJECT',@a,'DENY',1,DATEADD(hour,1,SYSUTCDATETIME()),N'Rollback deny'),(@account,NEWID(),@lead,'BUSINESS_OPERATIONS','PROJECT',@b,'DENY',1,DATEADD(hour,1,SYSUTCDATETIME()),N'Rollback deny')`,
+            );
+        if (scenario === 'files-revoked')
+          await new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .input('lead', sql.UniqueIdentifier, ids.lead)
+            .query(
+              'UPDATE dbo.BusinessResponsibility SET active=0 WHERE account_id=@account AND person_id=@lead',
+            );
+        const files = (): Promise<sql.IResult<{ json: string }>> =>
+          new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .input('actor', sql.UniqueIdentifier, ids.lead)
+            .input('id', sql.UniqueIdentifier, scenario === 'files-draft' ? ids.draft : ids.certA)
+            .query(
+              `EXECUTE AS USER=N'skill_management_runtime'; BEGIN TRY EXEC dbo.BusinessRecordFiles @account_id=@account,@actor_id=@actor,@kind='certifications',@id=@id; REVERT;END TRY BEGIN CATCH REVERT;THROW;END CATCH;`,
+            );
+        if (scenario === 'files-read') {
+          const data = JSON.parse((await files()).recordset[0].json);
+          assert.equal(data.items[0].id.toLowerCase(), evidence);
+          assert.equal(data.items[0].mimeType, 'application/pdf');
+          await new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .input('id', sql.UniqueIdentifier, ids.certA)
+            .query(
+              "UPDATE dbo.CertificationRecord SET status='SUBMITTED' WHERE account_id=@account AND id=@id",
+            );
+          assert.equal(JSON.parse((await files()).recordset[0].json).items.length, 1);
+        } else await assert.rejects(files, (error: any) => error.number === 51003);
+      } else if (scenario === 'access-profiles') {
         const administration = async () =>
           JSON.parse((await execute('BusinessAdministration', ids.admin)).recordset[0].json);
         let data = await administration();

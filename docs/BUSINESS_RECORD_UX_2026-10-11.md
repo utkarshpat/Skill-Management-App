@@ -1,0 +1,11 @@
+# Business Analytics record browsing — 11 October 2026
+
+Filter changes keep the charts, filters and results container mounted. Previous charts are labeled while the new query loads; the previous table is hidden while retaining its height. Exports and record actions wait for the current query. Aborted or late replies cannot replace current results; authorization/read failures clear retained data.
+
+Submitted on and Reviewed on use readable dates with the submitter/reviewer name below. Attribution is account-bound and shown only with an actual timestamp. Date-only credential dates are interpreted in UTC; full timestamps include a local-time tooltip.
+
+The user approved Business Analytics access to submitted files within its authorized scope. Migration 070 adds a separate read-only procedure for current SUBMITTED/APPROVED skill and certification records. Current active account/person, explicit analytics responsibility, server-resolved visible people, matching responsibility DENY and Organization evidence.view DENY are enforced. This adds no review, upload or amendment authority. Draft/returned/rejected records remain excluded; skill images must have been audited before the latest submission.
+
+The eye button opens authenticated certificate/evidence metadata without Blob keys. Images and PDFs preview inside the dialog; supported documents retain View/Download options. Evidence references are escaped text. Private Blob bytes are bounded to 5 MB, and access, record revision and item membership are checked again after download before delivery. Object URLs are revoked and requests aborted on dialog cleanup. Reports and AI tools do not receive attachment contents.
+
+Verification: 6 architecture tests, 288 API tests and 175 web tests passed, together with type checking, production builds and generated-document checks. Five restricted-runtime SQL rollback scenarios cover successful submitted/approved reads without a manager relationship, draft denial, foreign-scope denial, matching DENY and revoked responsibility. A runtime attribution integration verified 20 scoped rows. Synthetic SQL data was rolled back; no test grants or records were retained. Migrations 069/070 are installed on the configured development database; scheduler migration 065 remains deferred.

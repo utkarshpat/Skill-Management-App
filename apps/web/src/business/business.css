@@ -172,6 +172,28 @@
   font-size: 18px;
   margin: 0 0 6px;
 }
+.bo-record-results {
+  position: relative;
+  min-height: 120px;
+}
+.bo-record-date {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  white-space: nowrap;
+}
+.bo-record-date small {
+  color: var(--muted);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.bo-record-loading {
+  position: absolute;
+  inset: 24px 0 auto;
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+}
 .bo-chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

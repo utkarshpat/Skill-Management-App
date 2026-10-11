@@ -45,7 +45,7 @@ export interface BusinessDashboard {
   distribution: { label: string; value: number }[];
   expiry: { label: string; value: number }[];
   activity: { label: string; submissions: number; decisions: number }[];
-  rows: Record<string, string | number | null>[];
+  rows: Record<string, string | number | boolean | null>[];
   total: number;
   page: number;
   pageSize: number;

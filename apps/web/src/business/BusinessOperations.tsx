@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Sparkles,
   X,
+  Eye,
 } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
@@ -22,6 +23,8 @@ import {
   type BusinessDashboard,
 } from './business-model';
 import './business.css';
+import { BusinessRecordDate } from './BusinessRecordDate';
+import { BusinessRecordFiles } from './BusinessRecordFiles';
 export function BusinessOperations() {
   const [params, setParams] = useSearchParams(),
     [context, setContext] = useState<BusinessContext>(),
@@ -164,7 +167,12 @@ function Insights({ context }: { context: BusinessContext }) {
     [attempt, setAttempt] = useState(0),
     [exporting, setExporting] = useState(false),
     exportGuard = useRef(false);
-  const data = loaded?.key === key ? loaded.data : undefined;
+  const [fileRecord, setFileRecord] = useState<{ kind: string; id: string; name: string }>();
+  useEffect(() => setFileRecord(undefined), [key]);
+  // Keep the mounted layout while a different filter is loading. Retained results
+  // are explicitly marked as previous; records/exports wait for the current key.
+  const data = loaded?.data;
+  const pending = loaded ? loaded.key !== key : !error;
   const [search, setSearch] = useState(params.get('search') ?? '');
   useEffect(() => setSearch(params.get('search') ?? ''), [params.get('search')]);
   useEffect(() => {
@@ -192,7 +200,7 @@ function Insights({ context }: { context: BusinessContext }) {
     return () => exportAbort.current?.abort();
   }, [key]);
   const download = async (format: string) => {
-    if (exportGuard.current) return;
+    if (exportGuard.current || pending || !data?.context.canExport) return;
     exportGuard.current = true;
     setExporting(true);
     setError('');
@@ -374,13 +382,13 @@ function Insights({ context }: { context: BusinessContext }) {
           {error} <button onClick={() => setAttempt(n => n + 1)}>Retry</button>
         </p>
       )}
-      <div className="bo-metrics" aria-busy={!data && !error}>
+      <div className="bo-metrics" aria-busy={pending}>
         {cards.map(([id, label, Icon, patch]) => (
           <button
             key={id}
             className={'bo-metric bo-' + id}
             onClick={() => change({ ...cleared, ...patch })}
-            disabled={!data}
+            disabled={!data || pending}
           >
             <Icon size={22} />
             <span>{label}</span>
@@ -388,6 +396,12 @@ function Insights({ context }: { context: BusinessContext }) {
           </button>
         ))}
       </div>
+      {data && pending && (
+        <p className="bo-note" role="status">
+          Updating results… Charts show the previous results until the selected filters finish
+          loading.
+        </p>
+      )}
       <p className="bo-note">
         Current coverage as of{' '}
         {data ? new Date(data.context.asOf).toLocaleString() + ' (local time)' : '…'}. Combined
@@ -627,24 +641,27 @@ function Insights({ context }: { context: BusinessContext }) {
               </div>
             </section>
           )}
-          <section className="bo-panel bo-records">
+          <section className="bo-panel bo-records" aria-busy={pending}>
             <div className="bo-record-heading">
               <div>
                 <h2>Explore records</h2>
                 <p className="bo-note">
-                  {data.total.toLocaleString()} matching records · private drafts and files excluded
+                  {pending
+                    ? 'Updating matching records…'
+                    : `${data.total.toLocaleString()} matching records`}{' '}
+                  · private drafts excluded; files open separately
                 </p>
               </div>
               <div className="bo-export">
                 <button
-                  disabled={exporting || !data.context.canExport}
+                  disabled={pending || exporting || !data.context.canExport}
                   className="secondary-button"
                   onClick={() => download('csv')}
                 >
                   <ArrowDownToLine size={16} /> CSV
                 </button>
                 <button
-                  disabled={exporting || !data.context.canExport}
+                  disabled={pending || exporting || !data.context.canExport}
                   className="secondary-button"
                   onClick={() => download('xlsx')}
                 >
@@ -742,54 +759,121 @@ function Insights({ context }: { context: BusinessContext }) {
                 </select>
               </label>
             </div>
-            <div className="bo-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    {Object.keys(data.rows[0] ?? { employee: '', employeeCode: '' })
-                      .filter(k => k !== 'id')
-                      .map(k => (
-                        <th key={k}>{k.replace(/([A-Z])/g, ' $1')}</th>
-                      ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.rows.map((row, index) => (
-                    <tr key={String(row.id ?? index)}>
-                      {Object.entries(row)
-                        .filter(([k]) => k !== 'id')
-                        .map(([k, v]) => (
-                          <td key={k}>
-                            <span className={v === 'EXPIRED' ? 'bo-danger' : undefined}>
-                              {v === null ? '—' : String(v).replaceAll('_', ' ')}
-                            </span>
-                          </td>
-                        ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!data.rows.length && (
-                <p className="bo-empty">
-                  No matching records. Adjust the filters to explore your scope.
+            <div className="bo-record-results">
+              {pending && (
+                <p role="status" className="bo-record-loading">
+                  Loading matching records…
                 </p>
               )}
+              <div
+                className="bo-table-wrap"
+                aria-hidden={pending || undefined}
+                style={{ visibility: pending ? 'hidden' : undefined }}
+              >
+                <table>
+                  <thead>
+                    <tr>
+                      {Object.keys(data.rows[0] ?? { employee: '', employeeCode: '' })
+                        .filter(
+                          k => !['id', 'submittedBy', 'reviewedBy', 'canViewFiles'].includes(k),
+                        )
+                        .map(k => (
+                          <th key={k}>
+                            {k === 'submittedAt'
+                              ? 'Submitted on'
+                              : k === 'reviewedAt'
+                                ? 'Reviewed on'
+                                : k.replace(/([A-Z])/g, ' $1')}
+                          </th>
+                        ))}
+                      {filters.get('dataset') !== 'people' && <th>Files</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.rows.map((row, index) => (
+                      <tr key={String(row.id ?? index)}>
+                        {Object.entries(row)
+                          .filter(
+                            ([k]) =>
+                              !['id', 'submittedBy', 'reviewedBy', 'canViewFiles'].includes(k),
+                          )
+                          .map(([k, v]) => (
+                            <td key={k}>
+                              {['submittedAt', 'reviewedAt', 'issued', 'expiry'].includes(k) ? (
+                                <BusinessRecordDate
+                                  value={v}
+                                  by={
+                                    k === 'submittedAt'
+                                      ? row.submittedBy
+                                      : k === 'reviewedAt'
+                                        ? row.reviewedBy
+                                        : undefined
+                                  }
+                                />
+                              ) : (
+                                <span className={v === 'EXPIRED' ? 'bo-danger' : undefined}>
+                                  {v === null ? '—' : String(v).replaceAll('_', ' ')}
+                                </span>
+                              )}
+                            </td>
+                          ))}
+                        {filters.get('dataset') !== 'people' && (
+                          <td>
+                            {row.canViewFiles === true ? (
+                              <button
+                                type="button"
+                                className="secondary-button"
+                                disabled={pending}
+                                aria-label={`View submitted files for ${row.name}`}
+                                title="View certificate or evidence"
+                                onClick={() =>
+                                  setFileRecord({
+                                    kind:
+                                      filters.get('dataset') === 'submissions'
+                                        ? row.type === 'SKILL'
+                                          ? 'skills'
+                                          : 'certifications'
+                                        : filters.get('dataset')!,
+                                    id: String(row.id).replace(/^(skill|certification)-/, ''),
+                                    name: String(row.name ?? 'record'),
+                                  })
+                                }
+                              >
+                                <Eye size={17} />
+                              </button>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!data.rows.length && (
+                  <p className="bo-empty">
+                    No matching records. Adjust the filters to explore your scope.
+                  </p>
+                )}
+              </div>
             </div>
             <footer className="bo-pagination">
               <span>
-                Page {data.page} of {Math.max(1, Math.ceil(data.total / data.pageSize))} · exports
-                include every matching row, up to 50,000
+                {pending
+                  ? 'Updating page…'
+                  : `Page ${data.page} of ${Math.max(1, Math.ceil(data.total / data.pageSize))}`}{' '}
+                · exports include every matching row, up to 50,000
               </span>
               <button
                 className="secondary-button"
-                disabled={data.page <= 1}
+                disabled={pending || data.page <= 1}
                 onClick={() => change({ page: String(data.page - 1) })}
               >
                 Previous
               </button>
               <button
                 className="secondary-button"
-                disabled={data.page * data.pageSize >= data.total}
+                disabled={pending || data.page * data.pageSize >= data.total}
                 onClick={() => change({ page: String(data.page + 1) })}
               >
                 Next
@@ -797,6 +881,13 @@ function Insights({ context }: { context: BusinessContext }) {
             </footer>
           </section>
         </>
+      )}
+      {fileRecord && (
+        <BusinessRecordFiles
+          key={fileRecord.kind + fileRecord.id}
+          {...fileRecord}
+          onClose={() => setFileRecord(undefined)}
+        />
       )}
     </>
   );

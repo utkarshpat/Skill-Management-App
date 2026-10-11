@@ -4,6 +4,12 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Scoped submitted-file viewing — 11 October 2026
+
+The user explicitly approved Business Analytics read access to uploaded certificates and skill evidence within its currently authorized employee scope. Migration 070 implements a separate read-only `BusinessRecordFiles` path for records currently SUBMITTED or APPROVED. Editable drafts, returned/rejected records and files not captured before the latest skill submission remain private. Current account/person activity, profile prerequisites, explicit Business responsibility, server-resolved visible people and matching scope DENY remain mandatory; an Organization `evidence.view` DENY also blocks this path. Legacy template ALLOW alone cannot enable it. Owner/reviewer endpoints, uploads, amendments and exact assigned-current-manager review authority are unchanged.
+
+Metadata omits private Blob keys; bytes are downloaded server-side and delivered only after fresh record/access rechecks. The dashboard advertises a scoped file-view action for eligible rows. AI aggregate tools and reports do not read or include attachment contents; viewing requires an explicit authenticated user action. Earlier statements excluding all business attachment viewing describe the pre-070 behavior.
+
 ### Access profile consolidation — 11 October 2026
 
 The user approved the labels **Employee**, **Manager**, **Business Analytics** and **Admin**. Employee remains an active-person baseline; Manager remains current reporting-derived access. Business Analytics and Admin use explicit scoped responsibilities, never title or template-name authority. On the configured development account, the nine historical templates were explicitly retired with before/after audit, individual exceptions preserved, and effective-access checks. Utkarsh has organization Admin plus Business Analytics; Anupriya has Business Analytics bound to her current UK Delivery Unit. Migration 067 adds canonical effective profile flags to the authorized administration read. See [the consolidation and validation record](ACCESS_PROFILE_CONSOLIDATION_2026-10-11.md). Other account configurations require their own approved preview and execution; this is not an automatic migration of every account's grants.

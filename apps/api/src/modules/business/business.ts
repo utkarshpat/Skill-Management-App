@@ -95,12 +95,19 @@ export interface BusinessDashboard {
   distribution: { label: string; value: number }[];
   expiry: { label: string; value: number }[];
   activity: { label: string; submissions: number; decisions: number }[];
-  rows: Record<string, string | number | null>[];
+  rows: Record<string, string | number | boolean | null>[];
   total: number;
   page: number;
   pageSize: number;
 }
 export interface BusinessStore {
+  recordFiles?(actor: string, kind: string, id: string): Promise<BusinessFiles>;
+  file?(
+    actor: string,
+    kind: string,
+    id: string,
+    fileId: string,
+  ): Promise<{ item: BusinessFile; data: Buffer }>;
   notifications?(
     actor: string,
   ): Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
@@ -118,6 +125,19 @@ export interface BusinessStore {
     operation: string,
     payload: Record<string, unknown>,
   ): Promise<Record<string, unknown>>;
+}
+export interface BusinessFile {
+  id: string;
+  blobName: string;
+  bytes: number;
+  mimeType: string;
+  fileName: string;
+}
+export interface BusinessFiles {
+  revision: number;
+  workspaceRevision: number;
+  references: string;
+  items: BusinessFile[];
 }
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function identifier(value: unknown): string {
@@ -399,7 +419,7 @@ export function previewBusiness(
     },
     warnings: [
       'Membership is separate from reporting and never grants authority.',
-      'Business analytics excludes private drafts and attachments. Claim approval still requires the exact assigned current manager.',
+      'Private drafts remain excluded. Submitted/approved files support scoped read-only viewing; claim approval still requires the exact assigned current manager.',
       'Existing unsupported role grants are retained for explicit review.',
     ],
   };

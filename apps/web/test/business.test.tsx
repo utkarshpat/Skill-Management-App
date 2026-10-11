@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { BusinessRecordDate } from '../src/business/BusinessRecordDate';
 import { BusinessDraftHandoff } from '../src/business/business-draft-handoff';
 import {
   businessFilters,
@@ -7,6 +9,18 @@ import {
   businessCoverageRows,
 } from '../src/business/business-model';
 import { personalNavigationItems, isSupportedWorkspacePath } from '../src/WorkspaceNavigation';
+test('business record dates show readable dates and escaped attribution only for an existing event', () => {
+  const html = renderToStaticMarkup(<BusinessRecordDate value="2026-10-11" by="Reviewer <QA>" />);
+  assert.match(html, /11 Oct 2026/);
+  assert.match(html, /<small>by Reviewer &lt;QA&gt;<\/small>/);
+  for (const value of [null, 'invalid']) {
+    const pending = renderToStaticMarkup(
+      <BusinessRecordDate value={value} by="Assigned manager" />,
+    );
+    assert.doesNotMatch(pending, /Assigned manager|by /);
+    assert.match(pending, /—/);
+  }
+});
 test('business deep-link filters are bounded to recognized keys and reset pagination on filter changes', () => {
   const params = new URLSearchParams(
     'dataset=certifications&page=3&validity=EXPIRED&actorId=forged&tab=insights',

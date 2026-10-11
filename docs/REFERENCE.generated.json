@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "3b8fa12712ffc7f6",
+  "revision": "44ebfde4fe717942",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -70,7 +70,9 @@
       "064_business_workflow_recovery.sql",
       "066_amendment_lifecycle.sql",
       "067_access_profile_administration.sql",
-      "068_business_access_audit_subjects.sql"
+      "068_business_access_audit_subjects.sql",
+      "069_business_record_attribution.sql",
+      "070_business_submitted_files.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -5797,6 +5799,18 @@
     },
     {
       "method": "GET",
+      "path": "/api/business/records/:kind/:id/files",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/business/records/:kind/:id/files/:fileId",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "GET",
       "path": "/api/business/administration",
       "module": "business",
       "source": "apps/api/src/modules/business/routes.ts"
@@ -6503,7 +6517,7 @@
       "name": "BusinessDashboard",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@payload nvarchar(max),@export bit=0",
-      "source": "database/migrations/062_business_audit_reliability.sql"
+      "source": "database/migrations/070_business_submitted_files.sql"
     },
     {
       "name": "BusinessScopeCovers",
@@ -6546,6 +6560,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
       "source": "database/migrations/066_amendment_lifecycle.sql"
+    },
+    {
+      "name": "BusinessRecordFiles",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@kind varchar(20),@id uniqueidentifier",
+      "source": "database/migrations/070_business_submitted_files.sql"
     }
   ],
   "groups": {

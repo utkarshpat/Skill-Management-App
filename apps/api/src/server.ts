@@ -73,7 +73,15 @@ const workflows = process.env.ACCESS_ACCOUNT_ID
   ? new SqlWorkflowStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
 const business = process.env.ACCESS_ACCOUNT_ID
-  ? new SqlBusinessStore(process.env.ACCESS_ACCOUNT_ID)
+  ? new SqlBusinessStore(
+      process.env.ACCESS_ACCOUNT_ID,
+      process.env.EVIDENCE_STORAGE_CONNECTION_STRING && process.env.EVIDENCE_STORAGE_CONTAINER
+        ? {
+            connection: process.env.EVIDENCE_STORAGE_CONNECTION_STRING,
+            container: process.env.EVIDENCE_STORAGE_CONTAINER,
+          }
+        : undefined,
+    )
   : undefined;
 const provider = configuredProvider(process.env),
   aiBudget = access ? new SqlAiBudget(process.env.ACCESS_ACCOUNT_ID!) : undefined;

@@ -68,6 +68,51 @@ export function registerBusinessRoutes(
       next(error);
     }
   });
+  app.get('/api/business/records/:kind/:id/files', async (req, res, next) => {
+    try {
+      if (!deps?.business?.recordFiles)
+        throw new AccessError(503, 'Scoped file viewing is unavailable.');
+      const data = await deps.business.recordFiles(
+        res.locals.businessActor,
+        req.params.kind,
+        req.params.id,
+      );
+      res.json({
+        references: data.references,
+        items: data.items.map(({ blobName: _private, ...item }) => item),
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.get('/api/business/records/:kind/:id/files/:fileId', async (req, res, next) => {
+    try {
+      if (!deps?.business?.file) throw new AccessError(503, 'Scoped file viewing is unavailable.');
+      const { item, data } = await deps.business.file(
+        res.locals.businessActor,
+        req.params.kind,
+        req.params.id,
+        req.params.fileId,
+      );
+      const safeTypes = [
+        'image/webp',
+        'application/pdf',
+        'text/plain',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ];
+      if (!safeTypes.includes(item.mimeType))
+        throw new AccessError(503, 'Unsupported stored file.');
+      res.setHeader('Content-Type', item.mimeType);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="file"; filename*=UTF-8''${encodeURIComponent(item.fileName)}`,
+      );
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.send(data);
+    } catch (error) {
+      next(error);
+    }
+  });
   app.get('/api/business/administration', async (_req, res, next) => {
     try {
       res.json(await deps!.business!.administration(res.locals.businessActor));
