@@ -1024,10 +1024,12 @@
 
 .certification-review-footer {
   display: flex;
+  width: 100%;
+  gap: 10px;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  padding-top: 1rem;
-  border-top: 1px solid var(--line);
+  padding: 0;
 }
 
 .review-action-buttons {
@@ -1232,6 +1234,21 @@
 .cert-review-details-col {
   padding: 20px 24px;
   min-width: 0;
+}
+.cert-renewal-source {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+.cert-recommendation-entry {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.certificate-preview-actions {
+  flex-wrap: wrap;
 }
 .cert-review-details-col {
   border-left: 1px solid var(--line);

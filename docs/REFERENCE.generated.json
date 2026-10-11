@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "6c3665d42bd0fd5a",
+  "revision": "08c6f6a8fe8e0016",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -6011,6 +6011,12 @@
     {
       "method": "GET",
       "path": "/api/certifications",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/certification-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/certifications/:id",
       "module": "skills",
       "source": "apps/api/src/modules/skills/certification-routes.ts"
     },

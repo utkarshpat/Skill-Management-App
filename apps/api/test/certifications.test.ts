@@ -138,6 +138,56 @@ async function fixture() {
   return { store, state, owner, manager, unrelated, record };
 }
 
+test('exact credential recovery reads require active own scope and recheck revocation without writes', async () => {
+  const f = await fixture();
+  let actor = f.owner.id,
+    revoke = false,
+    writes = 0;
+  const server = createApp({
+    verify: async header => {
+      if (header !== 'Bearer test') throw Error();
+      return { tenantId: 'test', objectId: 'test' };
+    },
+    resolveAccess: async () => actor,
+    profile: async () => undefined,
+    access: f.store,
+    certifications: {
+      read: async () => ({ records: [f.record], total: 1 }),
+      get: async (_actor, id) => {
+        assert.equal(id, f.record.id);
+        if (revoke) f.owner.active = false;
+        return structuredClone(f.record);
+      },
+      change: async () => {
+        writes++;
+      },
+      notifications: async () => [],
+    },
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const url = `http://127.0.0.1:${address.port}/api/certifications/${f.record.id}`;
+  try {
+    assert.equal((await fetch(url)).status, 401);
+    const headers = { Authorization: 'Bearer test' };
+    const own = await fetch(url, { headers });
+    assert.equal(own.status, 200);
+    assert.equal(own.headers.get('cache-control'), 'no-store');
+    assert.equal((await own.json()).record.id, f.record.id);
+    actor = f.manager.id;
+    assert.equal((await fetch(url, { headers })).status, 403);
+    actor = f.unrelated.id;
+    assert.equal((await fetch(url, { headers })).status, 403);
+    actor = f.owner.id;
+    revoke = true;
+    assert.equal((await fetch(url, { headers })).status, 403);
+    assert.equal(writes, 0);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+
 test('certificate images bind owner/reviewer, hide storage keys and reject locked, revoked and invalid uploads', async () => {
   const f = await fixture();
   f.record.status = 'DRAFT';

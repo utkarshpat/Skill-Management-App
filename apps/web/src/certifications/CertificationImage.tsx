@@ -16,6 +16,8 @@ export interface CertificateFileInfo {
 }
 
 export function useCertificationImage(id?: string) {
+  const [attempt, setAttempt] = useState(0);
+  const retry = () => setAttempt(value => value + 1);
   const [state, setState] = useState({
     id,
     url: '',
@@ -60,8 +62,11 @@ export function useCertificationImage(id?: string) {
       controller.abort();
       if (url) URL.revokeObjectURL(url);
     };
-  }, [id]);
-  return state.id === id ? state : { url: '', loading: Boolean(id), error: '', file: undefined };
+  }, [id, attempt]);
+  return {
+    ...(state.id === id ? state : { url: '', loading: Boolean(id), error: '', file: undefined }),
+    retry,
+  };
 }
 
 export function CertificateImageUploader({
@@ -73,6 +78,7 @@ export function CertificateImageUploader({
   available,
   onChange,
   onBusy,
+  onRetry,
 }: {
   url: string;
   file?: CertificateFileInfo;
@@ -82,6 +88,7 @@ export function CertificateImageUploader({
   available: boolean;
   onChange: (file: File) => void;
   onBusy: (busy: boolean) => void;
+  onRetry?: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null),
     locked = useRef(false);
@@ -181,6 +188,16 @@ export function CertificateImageUploader({
       </div>
       {!available && <p className="cert-help">Certificate file storage is not configured.</p>}
       {(error || localError) && <p role="alert">{error || localError}</p>}
+      {error && onRetry && (
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={busy || loading}
+          onClick={onRetry}
+        >
+          Retry loading saved file
+        </button>
+      )}
     </section>
   );
 }
@@ -203,6 +220,16 @@ export function CertificationImage({ id }: { id: string }) {
             ? 'Loading certificate file...'
             : state.error || 'No certificate file attached.'}
         </p>
+      )}
+      {state.error && (
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={state.loading}
+          onClick={state.retry}
+        >
+          Retry loading certificate
+        </button>
       )}
     </section>
   );

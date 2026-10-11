@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Send } from 'lucide-react';
 import '../skill-wizard.css';
 import { FormDialog } from '../FormDialog';
@@ -7,6 +7,7 @@ import {
   certificationFields,
   emptyCertification,
   addCredentialMonths,
+  credentialValidity,
 } from './certification-model';
 import type { CertificationFields, CertificationRecord } from './types';
 import {
@@ -17,6 +18,10 @@ import {
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { toast } from '../toast';
+import {
+  reconcileCertificationSave,
+  uncertainCertificationSave,
+} from './certification-save-recovery';
 
 function RequiredMark() {
   return (
@@ -94,6 +99,8 @@ function ComboBox({
   const [focused, setFocused] = useState(false);
   const [inputVal, setInputVal] = useState(value);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const [active, setActive] = useState(-1);
 
   // keep inputVal in sync when external value changes
   useEffect(() => {
@@ -134,7 +141,14 @@ function ComboBox({
   }
 
   return (
-    <div ref={containerRef} className="cert-combobox" style={{ position: 'relative' }}>
+    <div
+      ref={containerRef}
+      className="cert-combobox"
+      style={{ position: 'relative' }}
+      onBlur={e => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
+      }}
+    >
       <div className={`cert-combobox-field${focused ? ' cert-combobox-focused' : ''}`}>
         <input
           id={id}
@@ -144,9 +158,37 @@ function ComboBox({
           placeholder={isOtherSelected ? 'Type to enter...' : placeholder}
           maxLength={maxLength}
           autoComplete="off"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined}
+          onKeyDown={e => {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              e.preventDefault();
+              setOpen(true);
+              setActive(current =>
+                e.key === 'ArrowDown'
+                  ? (current + 1) % filtered.length
+                  : current <= 0
+                    ? filtered.length - 1
+                    : current - 1,
+              );
+            } else if (e.key === 'Enter' && open && active >= 0 && filtered[active]) {
+              e.preventDefault();
+              select(filtered[active]);
+              setActive(-1);
+            } else if (e.key === 'Escape' && open) {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+              setActive(-1);
+            }
+          }}
           onChange={e => {
             setInputVal(e.target.value);
             onChange(e.target.value);
+            setActive(-1);
             if (!open) setOpen(true);
           }}
           onFocus={() => {
@@ -159,27 +201,33 @@ function ComboBox({
         />
         <button
           type="button"
-          tabIndex={-1}
           className="cert-combobox-toggle"
           disabled={disabled}
           aria-label="Show options"
-          onMouseDown={e => {
-            e.preventDefault(); // prevent input blur before toggling
+          aria-controls={listId}
+          aria-expanded={open}
+          onClick={() => {
             setOpen(o => !o);
             setFocused(true);
+            setActive(-1);
           }}
         >
           ▾
         </button>
       </div>
       {open && (
-        <ul className="cert-combobox-list" role="listbox">
-          {filtered.map(item => (
+        <ul id={listId} className="cert-combobox-list" role="listbox">
+          {filtered.map((item, index) => (
             <li
               key={item}
               role="option"
+              id={`${listId}-${index}`}
               aria-selected={value === item}
-              className={value === item || (item === 'Other' && isOtherSelected) ? 'selected' : ''}
+              className={
+                active === index || value === item || (item === 'Other' && isOtherSelected)
+                  ? 'selected'
+                  : ''
+              }
               onMouseDown={e => {
                 e.preventDefault();
                 select(item);
@@ -200,6 +248,7 @@ export function CertificationDialog({
   initial,
   initialFields,
   renewal = false,
+  renewalSource,
   onClose,
   onSave,
   canSubmit,
@@ -208,6 +257,7 @@ export function CertificationDialog({
   initial?: CertificationRecord | null;
   initialFields?: CertificationFields;
   renewal?: boolean;
+  renewalSource?: CertificationRecord;
   canSubmit: boolean;
   imageAvailable?: boolean;
   onClose: () => void;
@@ -228,6 +278,10 @@ export function CertificationDialog({
   const [imageBusy, setImageBusy] = useState(false),
     [selectedImage, setSelectedImage] = useState<File | undefined>(),
     [localImageUrl, setLocalImageUrl] = useState('');
+  const [needsCheck, setNeedsCheck] = useState(false);
+  const [phase, setPhase] = useState('Saving your certification…');
+  const attemptedFields = useRef<CertificationFields>(fields);
+  const submissionAttempted = useRef(false);
   const imageChanged = useRef(false),
     revision = useRef(initial?.revision ?? 0);
   const storedImage = useCertificationImage(imageAvailable ? initial?.id : undefined);
@@ -258,9 +312,26 @@ export function CertificationDialog({
   );
   const close = () => {
     if (busy) return;
-    if (JSON.stringify(fields) !== baseline.current || imageChanged.current) setDiscard(true);
+    if (needsCheck || JSON.stringify(fields) !== baseline.current || imageChanged.current)
+      setDiscard(true);
     else onClose();
   };
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (
+        saving.current ||
+        needsCheck ||
+        imageBusy ||
+        JSON.stringify(fields) !== baseline.current ||
+        imageChanged.current
+      ) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [fields, imageBusy, needsCheck]);
   function changeStep(next: number) {
     if (busy) return;
     const invalid = next > step ? certificationFieldError(fields, today) || imageError() : '';
@@ -278,7 +349,7 @@ export function CertificationDialog({
     setError('');
   };
   async function save(submit: boolean) {
-    if (saving.current) return;
+    if (saving.current || needsCheck) return;
     if (submit && !canSubmit) {
       setError('Save a draft for now. A current manager with review access is needed to submit.');
       return;
@@ -292,6 +363,9 @@ export function CertificationDialog({
     saving.current = true;
     setBusy(true);
     setError('');
+    attemptedFields.current = { ...fields };
+    submissionAttempted.current = false;
+    setPhase('Saving credential details…');
     try {
       if (imageChanged.current && !selectedImage)
         throw Error('Choose the replacement certificate file before saving.');
@@ -299,6 +373,7 @@ export function CertificationDialog({
         const file = selectedImage!;
         revision.current = await onSave(id.current, revision.current, fields, false);
         baseline.current = JSON.stringify(fields);
+        setPhase('Uploading certificate file…');
         const root = `/api/certifications/${encodeURIComponent(id.current)}/image`;
         const result = await readApiResponse<{ revision: number }>(
           await authenticatedFetch(root, {
@@ -316,8 +391,15 @@ export function CertificationDialog({
           throw Error('File save could not be confirmed. Refresh your records before retrying.');
         revision.current = result.revision;
         imageChanged.current = false;
-        if (submit) revision.current = await onSave(id.current, revision.current, fields, true);
-      } else revision.current = await onSave(id.current, revision.current, fields, submit);
+        if (submit) {
+          setPhase('Submitting to your manager…');
+          submissionAttempted.current = true;
+          revision.current = await onSave(id.current, revision.current, fields, true);
+        }
+      } else {
+        submissionAttempted.current = submit;
+        revision.current = await onSave(id.current, revision.current, fields, submit);
+      }
       toast.success(
         submit
           ? 'Certification submitted to your assigned current manager.'
@@ -326,10 +408,58 @@ export function CertificationDialog({
       window.dispatchEvent(new Event('notifications-updated'));
       onClose();
     } catch (e) {
+      const uncertain = uncertainCertificationSave(e);
+      setNeedsCheck(uncertain);
       setError(
         (revision.current > (initial?.revision ?? 0) ? 'A draft was saved. ' : '') +
-          (e instanceof Error ? e.message : 'Save failed. Your entries are still here.'),
+          (e instanceof Error ? e.message : 'Save failed. Your entries are still here.') +
+          (uncertain
+            ? ' Check the saved draft before retrying. Your entries and selected file are still here.'
+            : ''),
       );
+    } finally {
+      saving.current = false;
+      setBusy(false);
+    }
+  }
+  async function checkSavedDraft() {
+    if (saving.current) return;
+    saving.current = true;
+    setBusy(true);
+    setError('');
+    setPhase('Checking saved credential…');
+    try {
+      const result = await readApiResponse<{ record: CertificationRecord }>(
+        await authenticatedFetch(`/api/certifications/${encodeURIComponent(id.current)}`),
+        'Saved credential could not be checked. Your entries are still here.',
+      );
+      const recovered = reconcileCertificationSave(
+        result.record,
+        id.current,
+        attemptedFields.current,
+        revision.current,
+      );
+      if (recovered.complete && submissionAttempted.current) {
+        toast.success(
+          `Saved credential confirmed: ${result.record.status === 'APPROVED' ? 'Manager reviewed' : 'Pending review'}.`,
+        );
+        window.dispatchEvent(new Event('notifications-updated'));
+        onClose();
+        return;
+      }
+      if (!result.record.canEdit)
+        throw Error('This credential is no longer editable. Your entries are still here.');
+      revision.current = recovered.revision;
+      setNeedsCheck(false);
+      storedImage.retry();
+      setError(
+        'Saved draft checked. Your entries and selected file are still here; review them and retry saving.',
+      );
+    } catch (e) {
+      if ((e as { status?: number }).status === 404 && revision.current === 0) {
+        setNeedsCheck(false);
+        setError('No saved draft was found. Your entries and file are still here; retry saving.');
+      } else setError(e instanceof Error ? e.message : 'Saved credential could not be checked.');
     } finally {
       saving.current = false;
       setBusy(false);
@@ -409,12 +539,25 @@ export function CertificationDialog({
       page={step}
       onPageChange={changeStep}
       message={
-        error ? (
-          <p role="alert">{error}</p>
-        ) : busy ? (
-          <p role="status">
-            {imageBusy ? 'Preparing certificate file…' : 'Saving your certification…'}
-          </p>
+        busy ? (
+          <p role="status">{imageBusy ? 'Preparing certificate file…' : phase}</p>
+        ) : error || needsCheck ? (
+          <div>
+            <p role="alert">
+              {error ||
+                'Check the previous save before retrying. Your current entries are still here.'}
+            </p>
+            {needsCheck && (
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={busy}
+                onClick={() => void checkSavedDraft()}
+              >
+                Check saved draft
+              </button>
+            )}
+          </div>
         ) : undefined
       }
       pages={[
@@ -426,6 +569,14 @@ export function CertificationDialog({
                 <p className="cert-renewal-note">
                   This creates a new credential record. Your current manager-reviewed credential
                   stays unchanged while the renewed certificate is submitted for review.
+                  {renewalSource && (
+                    <span className="cert-renewal-source">
+                      Original: {renewalSource.certificationName} · {renewalSource.provider}.{' '}
+                      Manager reviewed · {credentialValidity(renewalSource.expiryDate, today)}
+                      {renewalSource.expiryDate && ` (expiry: ${renewalSource.expiryDate})`}. Attach
+                      the renewed certificate and enter its new validity dates below.
+                    </span>
+                  )}
                 </p>
               )}
               <section className="certification-image-pane">
@@ -442,7 +593,8 @@ export function CertificationDialog({
                       : storedImage.file
                   }
                   loading={storedImage.loading}
-                  error={storedImage.error}
+                  error={selectedImage ? '' : storedImage.error}
+                  onRetry={storedImage.retry}
                   busy={busy}
                   available={imageAvailable}
                   onBusy={setImageBusy}
@@ -657,7 +809,7 @@ export function CertificationDialog({
                   <button
                     type="button"
                     className="secondary-button"
-                    disabled={busy}
+                    disabled={busy || needsCheck}
                     onClick={() => void save(false)}
                   >
                     Save draft
@@ -665,7 +817,7 @@ export function CertificationDialog({
                   <button
                     type="button"
                     className="admin-primary skill-next"
-                    disabled={busy || !canSubmit}
+                    disabled={busy || needsCheck || !canSubmit}
                     onClick={() => void save(true)}
                   >
                     Submit for review

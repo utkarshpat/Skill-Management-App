@@ -46,6 +46,34 @@ export function CertificationReviewDialog({
       onClose={onClose}
       busy={busy}
       className="certification-review-modal"
+      footer={
+        <div className="certification-review-footer">
+          <button className="secondary-button" disabled={busy} onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="secondary-button"
+            disabled={busy || !certification.canReview}
+            onClick={() => void decide('REJECT')}
+          >
+            Do not approve
+          </button>
+          <button
+            className="secondary-button"
+            disabled={busy || !certification.canReview}
+            onClick={() => void decide('REQUEST_CHANGES')}
+          >
+            Request changes
+          </button>
+          <button
+            className="primary-button"
+            disabled={busy || !certification.canReview}
+            onClick={() => void decide('APPROVE')}
+          >
+            {busy ? 'Saving…' : 'Approve with note'}
+          </button>
+        </div>
+      }
     >
       <CertificationImage id={certification.id} />
       <section className="cert-review-banner">
@@ -91,32 +119,6 @@ export function CertificationReviewDialog({
           onChange={e => setFeedback(e.target.value)}
         />
       </label>
-      <div className="certification-review-footer">
-        <button className="secondary-button" disabled={busy} onClick={onClose}>
-          Cancel
-        </button>
-        <button
-          className="secondary-button"
-          disabled={busy || !certification.canReview}
-          onClick={() => void decide('REJECT')}
-        >
-          Do not approve
-        </button>
-        <button
-          className="secondary-button"
-          disabled={busy || !certification.canReview}
-          onClick={() => void decide('REQUEST_CHANGES')}
-        >
-          Request changes
-        </button>
-        <button
-          className="primary-button"
-          disabled={busy || !certification.canReview}
-          onClick={() => void decide('APPROVE')}
-        >
-          {busy ? 'Saving…' : 'Approve with note'}
-        </button>
-      </div>
     </FormDialog>
   );
 }

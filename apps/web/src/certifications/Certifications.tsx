@@ -205,15 +205,6 @@ export function Certifications({
               Assigned reviews
             </button>
           )}
-          {(data?.canViewRecommendations || data?.canRecommend || recommendationsTab) && (
-            <button
-              className={`cert-nav-tab-btn ${recommendationsTab ? 'active' : ''}`}
-              aria-current={recommendationsTab ? 'page' : undefined}
-              onClick={() => changeView('recommendations')}
-            >
-              Recommendations
-            </button>
-          )}
         </nav>
       }
       {error && (
@@ -225,6 +216,14 @@ export function Certifications({
         </section>
       )}
       {loading && <p role="status">Loading certifications…</p>}
+      {recommendationsTab && (
+        <section className="cert-recommendation-entry">
+          <button type="button" className="secondary-button" onClick={() => changeView('mine')}>
+            Back to my certifications
+          </button>
+          <h2>Recommendations from your manager</h2>
+        </section>
+      )}
       {data && recommendationsTab && (data.canViewRecommendations || data.canRecommend) && (
         <CertificationRecommendations
           sentOnly={Boolean(data.canRecommend && !data.canViewRecommendations)}
@@ -257,10 +256,53 @@ export function Certifications({
           title={viewing.certificationName}
           subtitle={viewing.provider}
           onClose={() => setViewing(undefined)}
+          footer={
+            <>
+              <button className="secondary-button" onClick={() => setViewing(undefined)}>
+                Close
+              </button>
+              {viewing.canEdit && (
+                <button
+                  className="primary-button"
+                  onClick={() => {
+                    setEditing(viewing);
+                    setViewing(undefined);
+                  }}
+                >
+                  Edit details
+                </button>
+              )}
+              {data?.canManage &&
+                data.canUploadImage &&
+                viewing.status === 'APPROVED' &&
+                viewing.expiryDate && (
+                  <button
+                    className="primary-button"
+                    onClick={() => {
+                      setRenewalSource(viewing);
+                      setRenewalFields(certificationRenewalFields(viewing, today));
+                      setEditing(null);
+                      setViewing(undefined);
+                    }}
+                  >
+                    Record renewal
+                  </button>
+                )}
+            </>
+          }
         >
           <section className="cert-review-banner">
+            <p>Category: {viewing.category}</p>
             <p>
-              {viewing.category} · {certificationStatusLabels[viewing.status]}
+              <strong>Review status:</strong> {certificationStatusLabels[viewing.status]}
+            </p>
+            <p
+              className={
+                credentialValidity(viewing.expiryDate, today) === 'Expired' ? 'cert-expired' : ''
+              }
+            >
+              <strong>Validity:</strong> {credentialValidity(viewing.expiryDate, today)}
+              {viewing.expiryDate && ` · Expiry ${viewing.expiryDate}`}
             </p>
             <p>
               Issued {viewing.certificationDate} · {credentialValidity(viewing.expiryDate, today)}
@@ -293,22 +335,6 @@ export function Certifications({
             Manager review is separate from issuer validation, credential expiry and skill
             proficiency.
           </p>
-          <div className="certification-dialog-footer">
-            <button className="secondary-button" onClick={() => setViewing(undefined)}>
-              Close
-            </button>
-            {viewing.canEdit && (
-              <button
-                className="primary-button"
-                onClick={() => {
-                  setEditing(viewing);
-                  setViewing(undefined);
-                }}
-              >
-                Edit details
-              </button>
-            )}
-          </div>
         </FormDialog>
       )}
       {editing !== undefined && (
@@ -316,6 +342,7 @@ export function Certifications({
           initial={editing}
           initialFields={renewalFields}
           renewal={Boolean(renewalSource)}
+          renewalSource={renewalSource}
           canSubmit={Boolean(data?.canSubmitNew)}
           imageAvailable={Boolean(data?.canUploadImage)}
           onClose={() => {

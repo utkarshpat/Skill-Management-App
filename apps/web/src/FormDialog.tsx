@@ -44,6 +44,16 @@ export function FormDialog({
   const dialog = useRef<HTMLDialogElement>(null),
     [localPage, setLocalPage] = useState(0);
   const page = controlledPage ?? localPage;
+  const body = useRef<HTMLDivElement>(null);
+  const previousPage = useRef(page);
+  useEffect(() => {
+    if (previousPage.current === page) return;
+    previousPage.current = page;
+    if (body.current) {
+      body.current.scrollTop = 0;
+      body.current.focus({ preventScroll: true });
+    }
+  }, [page]);
   const changePage = (next: number) => {
     setLocalPage(next);
     onPageChange?.(next);
@@ -176,7 +186,13 @@ export function FormDialog({
           ))}
         </nav>
       )}
-      <div className="form-dialog-body" tabIndex={0} role="region" aria-label={`${title} content`}>
+      <div
+        ref={body}
+        className="form-dialog-body"
+        tabIndex={0}
+        role="region"
+        aria-label={`${title} content`}
+      >
         {formId ? (
           <form
             id={formId}

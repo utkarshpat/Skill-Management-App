@@ -1674,6 +1674,7 @@ input[type='checkbox'] {
 }
 .form-dialog-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
@@ -1690,6 +1691,9 @@ input[type='checkbox'] {
   overflow-wrap: anywhere;
 }
 .form-dialog-message {
+  max-height: 30dvh;
+  overflow: auto;
+  overflow-wrap: anywhere;
   padding: 8px 20px;
   color: var(--accent-ink);
   font-size: 13px;

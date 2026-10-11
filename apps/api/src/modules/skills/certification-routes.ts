@@ -130,6 +130,23 @@ export function registerCertificationRoutes(
       else next(e);
     }
   });
+  // Exact own-record reconciliation for uncertain save/upload responses.
+  app.get('/api/certifications/:id', async (req, res, next) => {
+    try {
+      const actorId = res.locals.certificationContext.actor.id as string;
+      const record = await deps!.certifications!.get(actorId, certificationId(req.params.id));
+      const fresh = await context(actorId);
+      if (record.personId !== fresh.actor.id)
+        throw new AccessError(403, 'Own certification required.');
+      const access = certificationAccess(fresh.state, fresh.actor, record);
+      res.json({
+        record: { ...record, ...access, canSubmit: access.canSubmit && record.hasImage === true },
+      });
+    } catch (e) {
+      if (e instanceof AccessError) res.status(e.status).json({ error: { message: e.message } });
+      else next(e);
+    }
+  });
   app.post('/api/certifications', async (req, res, next) => {
     try {
       const change = certificationChange(req.body);
