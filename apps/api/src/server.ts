@@ -96,6 +96,8 @@ const assistant = access
       workflows,
       aiBudget!,
       business,
+      certifications,
+      organization?.ownOrganization.bind(organization),
     )
   : undefined;
 const learningGenerator: QuizGenerator | undefined = assistant

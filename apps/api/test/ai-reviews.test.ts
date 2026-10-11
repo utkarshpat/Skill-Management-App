@@ -77,6 +77,8 @@ test('review AI restricts context, binds reviewer and never writes or trusts for
         assert.match(messages[0].content, /untrusted/);
         assert.match(messages[0].content, /recency, not proof of proficiency/);
         assert.match(messages[1].content, /"lastUsedOn":"2024-02-29"/);
+        assert.match(messages[1].content, /"asOfUtc":"\d{4}-\d{2}-\d{2}"/);
+        assert.match(messages[1].content, /"lastUsedTiming":"ON_OR_BEFORE_TODAY"/);
         assert.match(messages[1].content, /Build and test services/);
         assert.doesNotMatch(messages[1].content, /history|actorId/);
         if (change) claim.revision++;

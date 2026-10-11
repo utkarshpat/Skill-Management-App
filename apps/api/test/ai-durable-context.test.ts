@@ -37,6 +37,79 @@ class TestHistory implements ConversationsStore {
     this.records.delete(id);
   }
 }
+
+test('personal replies and durable history survive unrelated workspace revisions', async () => {
+  const access = await LocalAccessStore.open(),
+    state = access.snapshot();
+  const person = state.people[0];
+  person.hasDirectReports = false;
+  state.reporting = [];
+  person.roleIds = [];
+  person.overrides = [{ permission: 'profile.view', scope: 'OWN', effect: 'ALLOW' }];
+  person.business = {
+    personalBaseline: true,
+    systemAdmin: false,
+    scopes: [],
+    view: false,
+    export: false,
+    manage: false,
+    amend: false,
+  };
+  access.snapshot = () => structuredClone(state);
+  const history = new TestHistory();
+  const service = new AssistantService(
+    access,
+    undefined,
+    {
+      name: 'test',
+      complete: async () => {
+        state.revision++;
+        return { content: 'Personal answer', calls: [] };
+      },
+    },
+    undefined,
+    undefined,
+    undefined,
+    history,
+  );
+  const first = await service.chat(person.id, { message: 'My personal goal' });
+  state.revision++;
+  assert.equal((await service.history(person.id, first.conversationId)).messages?.length, 2);
+  const resumed = await service.chat(person.id, {
+    message: 'Continue',
+    conversationId: first.conversationId,
+  });
+  assert.equal(resumed.reply, 'Personal answer');
+  person.business.amend = true;
+  assert.deepEqual((await service.history(person.id, first.conversationId)).messages, []);
+});
+
+test('business readers still reject a workspace revision changed during model execution', async () => {
+  const access = await LocalAccessStore.open(),
+    state = access.snapshot();
+  const person = state.people[0];
+  person.business = {
+    personalBaseline: true,
+    systemAdmin: true,
+    scopes: [],
+    view: true,
+    export: true,
+    manage: true,
+    amend: true,
+  };
+  access.snapshot = () => structuredClone(state);
+  const service = new AssistantService(access, undefined, {
+    name: 'test',
+    complete: async () => {
+      state.revision++;
+      return { content: 'Must not be delivered', calls: [] };
+    },
+  });
+  await assert.rejects(
+    service.chat(person.id, { message: 'My workspace' }),
+    /Business scope changed/,
+  );
+});
 test('durable chats resume after service restart, stay actor-bound and retain only two successful conversations', async () => {
   const access = await LocalAccessStore.open(),
     actor = access.snapshot().people[0].id,

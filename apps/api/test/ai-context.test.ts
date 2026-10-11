@@ -71,6 +71,9 @@ test('memory capacity evicts old sessions instead of growing without bounds', ()
 });
 
 test('task prompts and output caps are selective, including quiz follow-ups', () => {
+  assert.equal(taskSettings('Networking ka 3 sawal ka quiz banao').questionCount, 3);
+  assert.equal(taskSettings('नेटवर्किंग के ३ सवालों का क्विज़ बनाओ').questionCount, 3);
+  assert.equal(taskSettings('३ प्रश्न का क्विज़ बनाओ\nisko ५').questionCount, 5);
   assert.equal(taskSettings('Show my profile').maxOutputTokens, 1200);
   assert.equal(taskSettings('Draft a learning plan').maxOutputTokens, 2400);
   assert.ok(

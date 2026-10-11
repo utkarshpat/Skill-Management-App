@@ -15,6 +15,12 @@ import { createApp } from '../src/create-app.js';
 const signal = () => new AbortController().signal;
 const forbidden = (e: unknown) => e instanceof AccessError && e.status === 403;
 
+test('access explanations retrieve approved policy instead of only membership table DDL', () => {
+  const context = projectContext(guideInput({ question: 'Explain the project access model' }));
+  assert.equal(context.sources[0].id, 'approved-access-baseline');
+  assert.match(context.excerpts[0].text, /Person, role and access are distinct/);
+});
+
 test('KT rejects forged authority/history and oversized context before any provider work', () => {
   for (const input of [
     { question: 'Help', actorId: 'other' },

@@ -13,7 +13,7 @@ import {
   type LocalPerson,
 } from '../access/index.js';
 
-import type { OrganizationStore } from '../organization/index.js';
+import type { OrganizationStore, OwnOrganization } from '../organization/index.js';
 
 import type { WorkflowStore } from '../workflows/index.js';
 
@@ -24,6 +24,8 @@ import {
   teamGapReport,
   type ClaimsStore,
   type CatalogueStore,
+  type CertificationStore,
+  certificationAccess,
 } from '../skills/index.js';
 
 import { assistantCapabilities } from './capabilities.js';
@@ -120,7 +122,85 @@ export class ToolRegistry {
     learning?: LearningStore,
     workflows?: WorkflowStore,
     business?: BusinessStore,
+    certifications?: CertificationStore,
+    ownOrganization?: (actor: string) => Promise<OwnOrganization>,
   ) {
+    if (certifications) {
+      for (const view of ['mine', 'queue'] as const) {
+        const name = view === 'mine' ? 'my_certifications' : 'assigned_certification_reviews';
+        this.entries.set(name, {
+          definition: {
+            type: 'function',
+            function: {
+              name,
+              description:
+                view === 'mine'
+                  ? 'Read your actual saved certifications and calendar validity, separately from skill claims. Search and paginate; total is all matching records, validity counts from this page are not portfolio totals. Cannot choose another person or read certificate files.'
+                  : 'Read submitted certifications assigned to you for current direct-manager review. Not all team credentials; does not include other reviewers or private drafts. Read-only.',
+              parameters: searchSchema,
+            },
+          },
+          validate: searchArguments,
+          permission: (state, person) =>
+            can(state, person, 'skill.view', true) &&
+            (view === 'mine' || canReviewAssigned(state, person)),
+          source: {
+            label: view === 'mine' ? 'Your certifications' : 'Assigned certification reviews',
+            url: view === 'mine' ? '/certifications' : '/skill-reviews?type=certifications',
+          },
+          read: async ({ person, args }) => {
+            const page = Number(args.page),
+              today = new Date().toISOString().slice(0, 10);
+            const result = await certifications.read(person.id, {
+              view,
+              page,
+              search: String(args.search),
+            });
+            if (view === 'mine' && result.records.some(record => record.personId !== person.id))
+              throw new AccessError(403, 'Personal certification scope changed.');
+            if (view === 'queue') {
+              const fresh = await this.access.snapshot({ includeAudit: false });
+              const reviewer = fresh.people.find(item => item.id === person.id && item.active);
+              if (
+                !reviewer ||
+                result.records.some(
+                  record => !certificationAccess(fresh, reviewer, record).canReview,
+                )
+              )
+                throw new AccessError(403, 'Review assignments changed. Refresh the queue.');
+            }
+            return {
+              total: result.total,
+              page,
+              pageSize: 25,
+              hasMore: page * 25 < result.total,
+              asOfUtc: today,
+              records: result.records.map(record => ({
+                certification: record.certificationName,
+                provider: record.provider,
+                category: record.category,
+                reviewStatus: record.status,
+                issued: record.certificationDate,
+                expires: record.expiryDate,
+                ...(view === 'queue' ? { person: record.name } : {}),
+                validity: !record.expiryDate
+                  ? 'No expiry'
+                  : record.expiryDate < today
+                    ? 'Expired'
+                    : (Date.parse(record.expiryDate + 'T12:00:00Z') -
+                          Date.parse(today + 'T12:00:00Z')) /
+                          86400000 <=
+                        90
+                      ? 'Expires soon'
+                      : 'Current',
+              })),
+              policy:
+                'Manager reviewed is an internal decision, not issuer verification or proof of current validity. Expiry is independent. Expires soon means within 90 days, including today. Page results are not aggregate validity counts. Reminder milestones are evaluated on notification reads; do not promise background email or scheduled delivery.',
+            };
+          },
+        });
+      }
+    }
     if (business) {
       for (const [name, description, dataset] of [
         [
@@ -646,6 +726,7 @@ export class ToolRegistry {
         primaryCapabilityId: person.primaryCapabilityId,
         primaryCapabilityName: person.primaryCapabilityName,
         primaryCapabilityStatus: person.primaryCapabilityStatus,
+        ...(ownOrganization ? { organization: await ownOrganization(person.id) } : {}),
         roles: state.roles.filter(role => person.roleIds.includes(role.id)).map(role => role.name),
         policy:
           'Work information, capability selection and role labels do not establish proficiency or authority. Missing or archived capability needs administrator review. See My profile for the server-derived completeness checklist.',

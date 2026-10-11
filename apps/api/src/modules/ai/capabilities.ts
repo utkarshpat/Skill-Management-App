@@ -15,9 +15,12 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
     pages.push({ label: 'Business Operations', url: '/business' });
   if (capabilities.ownProfile) pages.push({ label: 'My profile', url: '/profile' });
   if (capabilities.ownSkills) pages.push({ label: 'My skills', url: '/my-skills' });
+  if (capabilities.ownSkills) pages.push({ label: 'My certifications', url: '/certifications' });
   if (capabilities.requests) pages.push({ label: 'Requests', url: '/requests' });
   if (capabilities.learning) pages.push({ label: 'Learn & Grow', url: '/learning' });
   if (capabilities.reviewSkills) pages.push({ label: 'Skill reviews', url: '/skill-reviews' });
+  if (capabilities.reviewSkills)
+    pages.push({ label: 'Certification reviews', url: '/skill-reviews?type=certifications' });
   if (capabilities.catalogue) pages.push({ label: 'Skill catalogue', url: '/skills' });
   if (capabilities.catalogue && (capabilities.amendments || capabilities.approveAmendments))
     pages.push({ label: 'Catalogue amendments', url: '/skills?tab=amendments' });
@@ -36,6 +39,17 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
       pages.push({ label: 'Activity log', url: '/access?view=audit' });
   }
   const guidance: { action: string; url: string; steps: string[] }[] = [];
+  if (capabilities.ownSkills)
+    guidance.push({
+      action: 'View certification validity and manage credential drafts',
+      url: '/certifications',
+      steps: [
+        'Open Capabilities → Certifications. Review status and calendar validity are separate: manager-reviewed credentials can be expired.',
+        'With skill.claim, Add certification uses a mandatory private certificate file (PDF, JPEG/PNG/WebP, DOCX or text; maximum 5 MB), credential details and dates, then Review & save. Images are compressed. Save draft and Submit for review are explicit human actions.',
+        'View certificate and Download certificate open saved attachments. Approved credentials remain locked; Renew starts a separate editable renewal for the same credential and issuer with extended validity.',
+        'Expiry reminders use milestones 14, 10, 7, 5, 3 and 0 days and are evaluated when notifications are read. Background scheduled delivery and email are not implemented.',
+      ],
+    });
   if (capabilities.ownProfile)
     guidance.push({
       action: 'View own profile',
@@ -188,7 +202,16 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
     canDraftDemand: can(state, person, 'demand.create'),
     canDraftAmendment: can(state, person, 'skill.catalogue.propose'),
     businessPolicy: person.business
-      ? { revision: state.revision, scopes: person.business.scopes }
+      ? {
+          // Personal writes also advance the workspace revision. Only actors who
+          // can read other people's data need that broad invalidation boundary.
+          ...(capabilities.businessOperations ||
+          capabilities.businessAdministration ||
+          capabilities.reviewSkills
+            ? { revision: state.revision }
+            : {}),
+          access: person.business,
+        }
       : undefined,
     canDraftOwnSkill: capabilities.claimSkills,
     canManageCatalogue: capabilities.manageCatalogue,
@@ -210,6 +233,7 @@ export function capabilityGreeting(context: ReturnType<typeof assistantCapabilit
   const items = context.pages.map(page => `- ${page.label}`);
   if (context.canDraftOwnSkill)
     items.push('- Draft your own skill description for review and saving in My skills');
-  items.push('- Draft learning tasks or create a practice quiz (choose 1–20 questions)');
+  if (context.canManageLearning)
+    items.push('- Draft learning tasks or create a practice quiz (choose 1–20 questions)');
   return `Hello! Based on your current access, I can help you with:\n\n${items.join('\n')}\n\nI can guide you through permitted pages and prepare drafts. Changes must be reviewed and saved in the app; learning plans are saved in Learn & Grow. Task-linked practice attempts are stored in History; quizzes shown only in chat remain previews.`;
 }
