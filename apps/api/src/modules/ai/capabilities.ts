@@ -217,6 +217,9 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
     canManageCatalogue: capabilities.manageCatalogue,
     canDraftRequest,
     canDraftIncident,
+    personalWorkflowScope: capabilities.requests
+      ? 'Personal workflow access includes records you submitted AND records currently addressed to you; OWN is not creator-only. Start and Resolve remain current-recipient-only, with the matching permission and workflow state. Reassign is available to the requester or current recipient with assign permission; cancel is requester-only. For a specific record use its current can* flags.'
+      : undefined,
     canManageLearning: can(state, person, 'learning.manage', true),
     canManagePeople: capabilities.administration && can(state, person, 'users.manage'),
     canManagePermissions: capabilities.administration,
