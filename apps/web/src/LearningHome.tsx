@@ -89,7 +89,7 @@ export function LearningHome({
     setAiError('');
     setAiMode('Recommendations');
     const prompt =
-      'Use my_learning and my_skills to suggest up to 3 learning recommendations based on my current goals and available skill evidence. Identify the reason and next action for each. Distinguish an actual evidenced gap from a possible development opportunity. Do not invent skills, courses, providers, URLs, deadlines or proficiency improvement. If my goals are unclear, ask a focused question.';
+      'Use my_learning and my_skills to suggest up to 3 learning recommendations based on my current goals and saved skill claims. Identify the reason and next action for each. Missing or unreviewed claims are not measured proficiency gaps; describe possible development opportunities. Respect evidence presence flags and synthetic test context. Do not invent skills, courses, providers, URLs, deadlines or proficiency improvement. If my goals are unclear, ask a focused question.';
     try {
       const response = await authenticatedFetch('/api/assistant', {
         method: 'POST',

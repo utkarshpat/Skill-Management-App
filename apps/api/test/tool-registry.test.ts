@@ -33,6 +33,8 @@ test('typed own-skills tools bind the actor, label unverified drafts and reject 
             levelDescription: 'Criteria',
             experienceMonths: 6,
             description: 'Private narrative',
+            projects: 'Private project',
+            evidence: 'Private reference',
             status: 'DRAFT',
             updatedAt: new Date().toISOString(),
           },
@@ -57,6 +59,9 @@ test('typed own-skills tools bind the actor, label unverified drafts and reject 
   assert.equal(actor, id);
   assert.match(JSON.stringify(result), /UNVERIFIED/);
   assert.doesNotMatch(JSON.stringify(result), /Private narrative/);
+  assert.doesNotMatch(JSON.stringify(result), /Private project|Private reference/);
+  assert.match(JSON.stringify(result), /"hasEvidenceReferences":true/);
+  assert.match(JSON.stringify(result), /"hasProjects":true/);
   await assert.rejects(registry.execute(id, 'my_skills', { personId: 'other' }, signal));
   await assert.rejects(registry.execute(id, 'save_claim', {}, signal));
   let rounds = 0;

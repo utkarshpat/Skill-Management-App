@@ -885,10 +885,14 @@ export class ToolRegistry {
             pageSize: own.pageSize,
             canClaim: own.canClaim,
             hasMore: own.total > own.pageSize,
+            policy:
+              'This preview does not measure proficiency gaps. Missing or unreviewed claims mean proficiency is not established, not low ability. Recommend development opportunities rather than inventing an evidenced gap. Presence flags describe saved fields only, not evidence quality or verification. Narrative and evidence contents are excluded; do not infer that they are absent. Synthetic QA examples must not become professional achievements.',
             skills: own.claims.map(claim => ({
               skill: claim.skillName,
               proficiency: claim.levelName,
               status: claim.status,
+              hasProjects: Boolean(claim.projects?.trim()),
+              hasEvidenceReferences: Boolean(claim.evidence?.trim()),
               verification: claim.status === 'APPROVED' ? 'MANAGER_REVIEWED' : 'UNVERIFIED',
             })),
             source: 'My skill claims',
