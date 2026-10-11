@@ -399,6 +399,39 @@ test('HTTP preview and execution bind actor and reject forged receipts and chang
     200,
   );
   assert.equal(saved, 1);
+  const proposal = {
+    operation: 'PROPOSE',
+    payload: {
+      id: scope,
+      revision: 1,
+      type: 'PROVIDER',
+      name: 'QA provider',
+      reason: 'Regression fixture',
+      active: true,
+    },
+  };
+  const proposedPreviewResponse = await fetch(root + '/workflow/preview', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(proposal),
+  });
+  assert.equal(proposedPreviewResponse.status, 200);
+  const proposedPreview = await proposedPreviewResponse.json();
+  assert.deepEqual(proposedPreview.command, proposal);
+  assert.equal(
+    (
+      await fetch(root + '/workflow', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          ...proposedPreview.command,
+          previewReceipt: proposedPreview.receipt,
+        }),
+      })
+    ).status,
+    200,
+    'The exact preview response must be confirmable without accepting SQL-only caller fields.',
+  );
   for (const command of [
     {
       operation: 'SAVE_DEMAND',

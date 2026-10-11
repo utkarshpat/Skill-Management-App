@@ -178,7 +178,14 @@ export function registerBusinessRoutes(
     const receipt = createHash('sha256')
       .update(JSON.stringify({ actor, current: { ...current, asOf: undefined }, command, details }))
       .digest('hex');
-    return { receipt, command, details, revision: current.revision };
+    // Keep the public form contract for confirmation. SQL-normalized PROPOSE
+    // fields are deliberately not accepted as caller input by businessWorkflow.
+    return {
+      receipt,
+      command: { operation: command.operation, payload: input.payload as Record<string, unknown> },
+      details,
+      revision: current.revision,
+    };
   };
   app.post('/api/business/workflow/preview', async (req, res, next) => {
     try {
@@ -218,8 +225,8 @@ export function registerBusinessRoutes(
       if (req.body.previewReceipt !== preview.receipt)
         throw new AccessError(409, 'Review this current action before confirming.');
       res.json(
-        await deps!.business!.workflow(actor, preview.command.operation, {
-          ...preview.command.payload,
+        await deps!.business!.workflow(actor, command.operation, {
+          ...command.payload,
           accessRevision: preview.revision,
         }),
       );
