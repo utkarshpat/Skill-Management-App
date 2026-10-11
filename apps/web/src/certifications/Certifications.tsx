@@ -187,7 +187,7 @@ export function Certifications({
         <div className="my-skills-actions">{actions}</div>
       )}
       {!recommendationsTab && actionsContainer && createPortal(actions, actionsContainer)}
-      {
+      {!personalOnly && (data?.canReview || view === 'queue') && (
         <nav className="cert-nav-tabs" aria-label="Certification views">
           <button
             className={`cert-nav-tab-btn ${view === 'mine' && !recommendationsTab ? 'active' : ''}`}
@@ -206,7 +206,7 @@ export function Certifications({
             </button>
           )}
         </nav>
-      }
+      )}
       {error && (
         <section className="profile-panel" role="alert">
           <p>{error}</p>
