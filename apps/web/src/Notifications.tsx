@@ -78,7 +78,12 @@ export function Notifications({ id }: { id: string }) {
     };
     const stop = startActivityRefresh(
       load,
-      ['notifications-updated', 'notifications-opened', 'learning-updated'],
+      [
+        'notifications-updated',
+        'notifications-remote-updated',
+        'notifications-opened',
+        'learning-updated',
+      ],
       undefined,
       { pollMs: 90_000, onStatus: setFreshness },
     );

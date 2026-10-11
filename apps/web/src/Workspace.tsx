@@ -11,6 +11,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { authenticatedFetch } from './auth';
+import { subscribeWorkspaceUpdates } from './cross-tab-updates';
 import { Sidebar } from './Sidebar';
 import { NavigationDrawer } from './NavigationDrawer';
 import { NavbarAccount } from './NavbarAccount';
@@ -96,6 +97,9 @@ export function Workspace({
 }) {
   const { pathname, search: routeSearch } = useLocation();
   const [state, setState] = useState<WorkspaceState | undefined>(initialWorkspace);
+  useEffect(() => {
+    if (state?.person.id) return subscribeWorkspaceUpdates(state.person.id);
+  }, [state?.person.id]);
   const [error, setError] = useState(''),
     [attempt, setAttempt] = useState(0);
   const [navigationOpen, setNavigationOpen] = useState(false),
