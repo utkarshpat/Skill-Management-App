@@ -1285,4 +1285,8 @@
 /* cert-no-expire-check label inside cert-meta-grid must NOT span */
 .certification-details-pane .cert-meta-grid label.cert-no-expire-check {
   grid-column: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }

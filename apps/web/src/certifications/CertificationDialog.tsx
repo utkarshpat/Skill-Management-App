@@ -522,7 +522,7 @@ export function CertificationDialog({
                   {/* Expiry date column */}
                   <div className="form-group cert-expiry-col">
                     <label htmlFor="cert-expiry-date">
-                      Expiry date{fields.expiryDate !== null && <RequiredMark />}
+                      <span>Expiry date{fields.expiryDate !== null && <RequiredMark />}</span>
                     </label>
                     {fields.expiryDate !== null && (
                       <>
