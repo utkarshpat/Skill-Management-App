@@ -233,11 +233,10 @@ function ComboBox({
         {inputVal && !disabled && (
           <button
             type="button"
-            tabIndex={-1}
             className="cert-combobox-clear"
             aria-label="Clear selection"
-            onMouseDown={e => {
-              e.preventDefault();
+            onMouseDown={e => e.preventDefault()}
+            onClick={() => {
               onChange('');
               setInputVal('');
               setCustomActive(false);
@@ -250,16 +249,17 @@ function ComboBox({
         )}
         <button
           type="button"
-          tabIndex={-1}
           className={`cert-combobox-toggle${open ? ' cert-combobox-toggle-open' : ''}`}
           disabled={disabled}
           aria-label="Show options"
           aria-controls={listId}
           aria-expanded={open}
-          onMouseDown={e => {
-            e.preventDefault(); // prevent input blur before toggling
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => {
+            const nextOpen = !open;
+            inputRef.current?.focus();
             setShowAllPresets(true);
-            setOpen(o => !o);
+            setOpen(nextOpen);
             setFocused(true);
             setHighlightIndex(-1);
           }}

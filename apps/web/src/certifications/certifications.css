@@ -1456,7 +1456,7 @@
 /* ═══════════════════════════════════════════════════════
    Modern Search Boxes, Inputs & Clear Buttons
 ═══════════════════════════════════════════════════════ */
-.skills-query {
+.certification-profile .skills-query {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1471,15 +1471,15 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
-.skills-query:focus-within {
+.certification-profile .skills-query:focus-within {
   border-color: var(--accent-ink);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-ink) 16%, transparent), 0 2px 4px rgba(0, 0, 0, 0.04);
 }
-.skills-query-search-icon {
+.certification-profile .skills-query-search-icon {
   color: var(--muted);
   flex-shrink: 0;
 }
-.skills-query input {
+.certification-profile .skills-query input {
   flex: 1;
   min-width: 0;
   border: 0;
@@ -1490,10 +1490,10 @@
   outline: none;
   padding: 0;
 }
-.skills-query input::-webkit-search-cancel-button {
+.certification-profile .skills-query input::-webkit-search-cancel-button {
   display: none;
 }
-.skills-query-clear-btn {
+.certification-profile .skills-query-clear-btn {
   display: grid;
   place-items: center;
   width: 22px;
@@ -1507,7 +1507,7 @@
   flex-shrink: 0;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
-.skills-query-clear-btn:hover {
+.certification-profile .skills-query-clear-btn:hover {
   background: color-mix(in srgb, var(--muted) 25%, var(--raised));
   color: var(--ink);
 }
@@ -1572,13 +1572,13 @@
 /* ═══════════════════════════════════════════════════════
    Table Row Action Buttons
 ═══════════════════════════════════════════════════════ */
-.skills-row-actions {
+.certification-profile .skills-row-actions {
   display: flex;
   gap: 6px;
   align-items: center;
   justify-content: flex-end;
 }
-.skills-action-btn {
+.certification-profile .skills-action-btn {
   display: inline-grid;
   place-items: center;
   width: 32px;
@@ -1591,34 +1591,34 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.skills-action-btn:hover:not(:disabled) {
+.certification-profile .skills-action-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
 }
-.skills-action-btn:active:not(:disabled) {
+.certification-profile .skills-action-btn:active:not(:disabled) {
   transform: translateY(0);
 }
-.skills-action-view:hover:not(:disabled) {
+.certification-profile .skills-action-view:hover:not(:disabled) {
   color: #2563eb;
   border-color: rgba(37, 99, 235, 0.35);
   background: color-mix(in srgb, #2563eb 8%, var(--surface));
 }
-.skills-action-edit:hover:not(:disabled) {
+.certification-profile .skills-action-edit:hover:not(:disabled) {
   color: #d97706;
   border-color: rgba(217, 119, 6, 0.35);
   background: color-mix(in srgb, #d97706 8%, var(--surface));
 }
-.skills-action-renew:hover:not(:disabled) {
+.certification-profile .skills-action-renew:hover:not(:disabled) {
   color: #059669;
   border-color: rgba(5, 150, 105, 0.35);
   background: color-mix(in srgb, #059669 8%, var(--surface));
 }
-.skills-action-submit:hover:not(:disabled) {
+.certification-profile .skills-action-submit:hover:not(:disabled) {
   color: #6366f1;
   border-color: rgba(99, 102, 241, 0.35);
   background: color-mix(in srgb, #6366f1 8%, var(--surface));
 }
-.skills-action-review:hover:not(:disabled) {
+.certification-profile .skills-action-review:hover:not(:disabled) {
   color: #0d9488;
   border-color: rgba(13, 148, 136, 0.35);
   background: color-mix(in srgb, #0d9488 8%, var(--surface));
@@ -1627,7 +1627,7 @@
 /* ═══════════════════════════════════════════════════════
    Enhanced Filter Selects & Buttons
 ═══════════════════════════════════════════════════════ */
-.skills-filters select {
+.certification-profile .skills-filters select {
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23626975' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
@@ -1639,16 +1639,16 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.skills-filters select:hover {
+.certification-profile .skills-filters select:hover {
   border-color: color-mix(in srgb, var(--ink) 25%, var(--line));
 }
-.skills-filters select:focus {
+.certification-profile .skills-filters select:focus {
   border-color: var(--accent-ink);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-ink) 16%, transparent);
   outline: none;
 }
 
-.skills-clear {
+.certification-profile .skills-clear {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1665,7 +1665,7 @@
   transition: all 0.15s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
-.skills-clear:hover {
+.certification-profile .skills-clear:hover {
   background: var(--raised);
   color: var(--ink);
   border-color: color-mix(in srgb, var(--ink) 20%, var(--line));
@@ -1675,16 +1675,15 @@
 /* ═══════════════════════════════════════════════════════
    Top Metric Cards — Interactive Depth
 ═══════════════════════════════════════════════════════ */
-.skills-metric {
+.certification-profile .skills-metric {
   border-radius: 14px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
   transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.18s ease;
 }
-.skills-metric:hover {
+.certification-profile .skills-metric:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
-.skills-metric[aria-pressed='true'] {
+.certification-profile .skills-metric[aria-pressed='true'] {
   box-shadow: 0 0 0 2px var(--accent-ink), 0 4px 12px rgba(0, 0, 0, 0.08);
 }
-
