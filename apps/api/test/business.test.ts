@@ -342,7 +342,8 @@ test('HTTP preview and execution bind actor and reject forged receipts and chang
     change: async () => {
       saved++;
     },
-    workflow: async () => ({}),
+    workflow: async (_actor, operation) =>
+      operation === 'AMENDMENT' ? { targetChanged: true, status: 'SUBMITTED' } : {},
   };
   const server = createApp({
     verify: async h => {
@@ -423,6 +424,25 @@ test('HTTP preview and execution bind actor and reject forged receipts and chang
       403,
       'General view/manage access must not advertise an individually denied action',
     );
+  current = { ...current, canApprove: true };
+  for (const [operation, status] of [
+    ['APPROVE_AMENDMENT', 409],
+    ['REJECT_AMENDMENT', 200],
+  ] as const) {
+    assert.equal(
+      (
+        await fetch(root + '/workflow/preview', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            operation,
+            payload: { id: scope, revision: 1, note: 'Catalogue changed; submit a fresh request.' },
+          }),
+        })
+      ).status,
+      status,
+    );
+  }
   current = { ...current, canView: false, canManage: false, canAmend: false };
   assert.equal((await fetch(root + '/dashboard', { headers })).status, 403);
 });

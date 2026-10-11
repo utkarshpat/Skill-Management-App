@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "08c6f6a8fe8e0016",
+  "revision": "63c83e9e5e08d9c0",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -67,7 +67,8 @@
       "061_business_workflows.sql",
       "062_business_audit_reliability.sql",
       "063_credential_renewal_reliability.sql",
-      "064_business_workflow_recovery.sql"
+      "064_business_workflow_recovery.sql",
+      "066_amendment_lifecycle.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -6524,7 +6525,7 @@
       "name": "BusinessWorkflow",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(30),@payload nvarchar(max)",
-      "source": "database/migrations/061_business_workflows.sql"
+      "source": "database/migrations/066_amendment_lifecycle.sql"
     },
     {
       "name": "CertificationRenewalValid",
@@ -6537,6 +6538,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(30),@payload nvarchar(max)",
       "source": "database/migrations/064_business_workflow_recovery.sql"
+    },
+    {
+      "name": "BusinessAmendmentNotifications",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/066_amendment_lifecycle.sql"
     }
   ],
   "groups": {

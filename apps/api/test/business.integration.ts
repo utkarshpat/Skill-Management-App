@@ -19,6 +19,7 @@ const migrations = await Promise.all(
     '062_business_audit_reliability.sql',
     '063_credential_renewal_reliability.sql',
     '064_business_workflow_recovery.sql',
+    '066_amendment_lifecycle.sql',
   ].map(file => readFile(new URL('../../../database/migrations/' + file, import.meta.url), 'utf8')),
 );
 await withDatabase(async pool => {
@@ -36,6 +37,7 @@ await withDatabase(async pool => {
     'renewal-validity',
     'renewal-conflict',
     'workflow-and-matching',
+    'duplicate-amendment',
     'scoped-deny',
     'foreign-scope',
     'stale-preview',
@@ -366,6 +368,39 @@ await withDatabase(async pool => {
             'UPDATE dbo.BusinessProjectMember SET active=0 WHERE account_id=@account AND project_id=@a AND person_id=@alice;UPDATE dbo.AccessWorkspace SET revision=revision+1 WHERE account_id=@account;',
           );
         assert.equal((await read(ids.ga)).summary.employees, 1);
+      } else if (scenario === 'duplicate-amendment') {
+        const revision = (
+          await new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .query('SELECT revision FROM dbo.AccessWorkspace WHERE account_id=@account')
+        ).recordset[0].revision;
+        const proposal = {
+          id: randomUUID(),
+          revision,
+          accessRevision: revision,
+          type: 'PROVIDER',
+          isNew: true,
+          targetId: null,
+          reason: 'Rollback duplicate test',
+          definition: { name: 'BQA Duplicate Provider', active: true },
+        };
+        await execute('BusinessWorkflow', ids.lead, proposal, 'PROPOSE');
+        await execute('BusinessWorkflow', ids.lead, proposal, 'PROPOSE');
+        await assert.rejects(
+          execute(
+            'BusinessWorkflow',
+            ids.lead,
+            {
+              ...proposal,
+              id: randomUUID(),
+              revision: revision + 1,
+              accessRevision: revision + 1,
+              definition: { ...proposal.definition, name: ' bqa duplicate provider ' },
+            },
+            'PROPOSE',
+          ),
+          e => (e as { number: number }).number === 51010,
+        );
       } else if (scenario === 'workflow-and-matching') {
         const revision = async (): Promise<number> =>
           Number(
@@ -388,6 +423,25 @@ await withDatabase(async pool => {
           definition: { name: 'BQA Provider', active: true },
         };
         await execute('BusinessWorkflow', ids.lead, proposeProvider, 'PROPOSE');
+        const notifications = async (actor: string): Promise<any> =>
+          JSON.parse(
+            (
+              await new sql.Request(tx)
+                .input('account_id', sql.UniqueIdentifier, account)
+                .input('actor_id', sql.UniqueIdentifier, actor)
+                .execute('dbo.BusinessAmendmentNotifications')
+            ).recordset[0].json,
+          );
+        assert.ok(
+          (await notifications(ids.admin)).some((item: { href: string }) =>
+            item.href.toLowerCase().endsWith(providerRequest),
+          ),
+        );
+        assert.ok(
+          !(await notifications(ids.outside)).some((item: { href: string }) =>
+            item.href.toLowerCase().endsWith(providerRequest),
+          ),
+        );
         assert.equal((await recover(ids.lead, 'PROPOSE', proposeProvider)).replayed, true);
         await execute('BusinessWorkflow', ids.lead, proposeProvider, 'PROPOSE');
         rev = await revision();
@@ -396,6 +450,12 @@ await withDatabase(async pool => {
           ids.admin,
           { id: providerRequest, revision: 1, accessRevision: rev, note: 'Reviewed' },
           'APPROVE_AMENDMENT',
+        );
+        assert.ok(
+          (await notifications(ids.lead)).some(
+            (item: { href: string; title: string }) =>
+              item.href.toLowerCase().endsWith(providerRequest) && item.title.includes('approved'),
+          ),
         );
         rev = await revision();
         await execute(
@@ -413,6 +473,43 @@ await withDatabase(async pool => {
             })
           ).replayed,
           true,
+        );
+        const rejectedRequest = randomUUID();
+        rev = await revision();
+        await execute(
+          'BusinessWorkflow',
+          ids.lead,
+          {
+            ...proposeProvider,
+            id: rejectedRequest,
+            revision: rev,
+            accessRevision: rev,
+            definition: { name: 'BQA Rejected Provider', active: true },
+          },
+          'PROPOSE',
+        );
+        rev = await revision();
+        const rejection = {
+          id: rejectedRequest,
+          revision: 1,
+          accessRevision: rev,
+          note: 'Not suitable for catalogue; synthetic test.',
+        };
+        await execute('BusinessWorkflow', ids.admin, rejection, 'REJECT_AMENDMENT');
+        assert.equal((await recover(ids.admin, 'REJECT_AMENDMENT', rejection)).replayed, true);
+        const rejected = JSON.parse(
+          (await execute('BusinessWorkflow', ids.lead, { id: rejectedRequest }, 'AMENDMENT'))
+            .recordset[0].json,
+        );
+        assert.equal(rejected.status, 'REJECTED');
+        assert.equal(rejected.decisionNote, rejection.note);
+        assert.equal(rejected.currentDefinition, null);
+        assert.ok(
+          (await notifications(ids.lead)).some(
+            (item: { href: string; title: string }) =>
+              item.href.toLowerCase().endsWith(rejectedRequest) &&
+              item.title.includes('not approved'),
+          ),
         );
         const provider = (
           await new sql.Request(tx)
@@ -788,6 +885,13 @@ await withDatabase(async pool => {
           .query(
             "UPDATE dbo.CredentialProvider SET name=N'BQA Updated Provider',revision=revision+1 WHERE account_id=@account AND id=@provider",
           );
+        const detail = JSON.parse(
+          (await execute('BusinessWorkflow', ids.admin, { id: request }, 'AMENDMENT')).recordset[0]
+            .json,
+        );
+        assert.equal(detail.targetChanged, true);
+        assert.equal(detail.currentDefinition.name, 'BQA Updated Provider');
+        assert.equal(detail.definition.name, 'BQA Proposed Provider');
         await assert.rejects(
           execute(
             'BusinessWorkflow',

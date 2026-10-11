@@ -165,6 +165,11 @@ export function registerBusinessRoutes(
     const details = ['APPROVE_AMENDMENT', 'REJECT_AMENDMENT'].includes(command.operation)
       ? await deps!.business!.workflow(actor, 'AMENDMENT', { id: command.payload.id })
       : command.payload;
+    if (command.operation === 'APPROVE_AMENDMENT' && details.targetChanged === true)
+      throw new AccessError(
+        409,
+        'The catalogue entry changed after this request. Reject it with feedback and ask for a fresh request.',
+      );
     if (
       ['PROPOSE', 'SAVE_DEMAND'].includes(command.operation) &&
       current.revision !== command.payload.revision

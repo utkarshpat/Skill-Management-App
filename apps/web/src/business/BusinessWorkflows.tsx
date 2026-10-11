@@ -16,6 +16,7 @@ import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
 import type { BusinessContext } from './business-model';
 interface Master {
+  catalogueRevision?: number;
   id: string;
   name: string;
   category?: string;
@@ -45,6 +46,11 @@ interface Amendment {
   status: string;
   revision: number;
   decisionNote: string | null;
+  isNew?: boolean;
+  createdAt?: string;
+  decidedAt?: string;
+  currentDefinition?: Record<string, unknown>;
+  targetChanged?: boolean;
 }
 interface Demand {
   id: string;
@@ -98,6 +104,8 @@ export function BusinessWorkflows({
   view: 'amendments' | 'demand';
 }) {
   const [params, setParams] = useSearchParams();
+  const [requestDetail, setRequestDetail] = useState<Amendment>();
+  const [requestError, setRequestError] = useState('');
   const [amendmentStep, setAmendmentStep] = useState(0);
   const [amendmentMode, setAmendmentMode] = useState<'new' | 'edit'>('new');
   const [selectedMaster, setSelectedMaster] = useState<Master>();
@@ -133,6 +141,33 @@ export function BusinessWorkflows({
     [matchAttempt, setMatchAttempt] = useState(0),
     guard = useRef(false),
     intent = useRef('');
+  const requestId =
+    view === 'amendments'
+      ? params.get('request') ||
+        (decision?.operation !== 'SHORTLIST' ? String(decision?.payload.id ?? '') : '')
+      : '';
+  useEffect(() => {
+    setRequestDetail(undefined);
+    setRequestError('');
+    if (!requestId) return;
+    const abort = new AbortController();
+    authenticatedFetch('/api/business/workflow/amendment?id=' + encodeURIComponent(requestId), {
+      signal: abort.signal,
+    })
+      .then(r => readApiResponse<Amendment>(r, 'This request could not be loaded.'))
+      .then(r => {
+        if (!abort.signal.aborted) setRequestDetail(r);
+      })
+      .catch(e => {
+        if (!abort.signal.aborted) setRequestError(e.message);
+      });
+    return () => abort.abort();
+  }, [requestId, attempt]);
+  const closeRequest = () => {
+    const next = new URLSearchParams(params);
+    next.delete('request');
+    setParams(next, { replace: true });
+  };
   useEffect(() => {
     setPage(1);
     setList(undefined);
@@ -160,6 +195,22 @@ export function BusinessWorkflows({
       });
     return () => abort.abort();
   }, [view, page, attempt]);
+  useEffect(() => {
+    const refresh = () => setAttempt(n => n + 1);
+    const visible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('business-changed', refresh);
+    window.addEventListener('notifications-remote-updated', refresh);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', visible);
+    return () => {
+      window.removeEventListener('business-changed', refresh);
+      window.removeEventListener('notifications-remote-updated', refresh);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', visible);
+    };
+  }, []);
   useEffect(() => {
     const abort = new AbortController();
     setMasters(undefined);
@@ -252,7 +303,7 @@ export function BusinessWorkflows({
     setBusy(true);
     setError('');
     try {
-      await readApiResponse(
+      const saved = await readApiResponse<{ id: string }>(
         await authenticatedFetch('/api/business/workflow', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -263,8 +314,15 @@ export function BusinessWorkflows({
       setPreview(undefined);
       setDecision(undefined);
       setComposing(false);
+      setPage(1);
+      if (preview.command.operation === 'PROPOSE' && saved.id) {
+        const next = new URLSearchParams(params);
+        next.set('request', saved.id);
+        setParams(next);
+      }
       setAttempt(n => n + 1);
       window.dispatchEvent(new Event('business-changed'));
+      window.dispatchEvent(new Event('notifications-updated'));
     } catch (e) {
       setError(
         (e as Error).message + ' Refresh records to check whether it saved before retrying.',
@@ -281,7 +339,7 @@ export function BusinessWorkflows({
         operation: 'PROPOSE',
         payload: {
           id: intent.current,
-          revision: masters.revision,
+          revision: selectedMaster?.catalogueRevision ?? masters.revision,
           type,
           targetId: target || null,
           name,
@@ -383,7 +441,7 @@ export function BusinessWorkflows({
   function selectMaster(id: string) {
     const item = choices?.find(c => c.id === id);
     setTarget(id);
-    setSelectedMaster(item);
+    setSelectedMaster(item ? { ...item, catalogueRevision: masters?.revision } : undefined);
     setName(item?.name ?? '');
     setCategory(item?.category ?? '');
     setProvider(item?.providerId ?? '');
@@ -480,6 +538,17 @@ export function BusinessWorkflows({
                         return (
                           <tr key={a.id}>
                             <td>
+                              <button
+                                type="button"
+                                className="secondary-button bo-btn-sm"
+                                onClick={() => {
+                                  const next = new URLSearchParams(params);
+                                  next.set('request', a.id);
+                                  setParams(next);
+                                }}
+                              >
+                                View request
+                              </button>
                               {String(a.definition.name)}
                               <small> · {a.type}</small>
                             </td>
@@ -494,8 +563,25 @@ export function BusinessWorkflows({
                               )[a.status] ?? a.status}
                             </td>
                             <td>
-                              {a.reason}
-                              {a.decisionNote && <p>{a.decisionNote}</p>}
+                              <p>
+                                <strong>Reason:</strong> {a.reason}
+                              </p>
+                              {a.decisionNote && (
+                                <p>
+                                  <strong>Admin feedback:</strong> {a.decisionNote}
+                                </p>
+                              )}
+                              {a.createdAt && (
+                                <small>
+                                  Submitted {new Date(a.createdAt).toLocaleDateString()}
+                                </small>
+                              )}
+                              {a.decidedAt && (
+                                <small>
+                                  {' '}
+                                  · Decided {new Date(a.decidedAt).toLocaleDateString()}
+                                </small>
+                              )}
                               <details>
                                 <summary>Definition details</summary>
                                 <DefinitionPreview
@@ -1180,7 +1266,13 @@ export function BusinessWorkflows({
               type="submit"
               form="business-decision"
               className="primary-button"
-              disabled={busy}
+              disabled={
+                busy ||
+                (decision.operation !== 'SHORTLIST' &&
+                  (!requestDetail ||
+                    (decision.operation === 'APPROVE_AMENDMENT' &&
+                      requestDetail.targetChanged === true)))
+              }
             >
               Preview decision
               <ArrowRight size={14} aria-hidden="true" />
@@ -1203,11 +1295,15 @@ export function BusinessWorkflows({
                   </strong>
                   <p>Requested by {request.employee}</p>
                   <p>Reason: {request.reason}</p>
-                  <DefinitionPreview
-                    details={request.definition}
-                    masters={masters}
-                    context={context}
-                  />
+                  {requestDetail ? (
+                    <AmendmentComparison
+                      request={requestDetail}
+                      masters={masters}
+                      context={context}
+                    />
+                  ) : (
+                    <p>{requestError || 'Loading current catalogue details…'}</p>
+                  )}
                 </section>
               ) : null;
             })()}
@@ -1291,7 +1387,15 @@ export function BusinessWorkflows({
               )}
             </section>
           )}
-          <DefinitionPreview details={preview.details} masters={masters} context={context} />
+          {['APPROVE_AMENDMENT', 'REJECT_AMENDMENT'].includes(preview.command.operation) ? (
+            <AmendmentComparison
+              request={preview.details as unknown as Amendment}
+              masters={masters}
+              context={context}
+            />
+          ) : (
+            <DefinitionPreview details={preview.details} masters={masters} context={context} />
+          )}
           {error && (
             <p role="alert" className="bo-error">
               {error}
@@ -1299,7 +1403,90 @@ export function BusinessWorkflows({
           )}
         </FormDialog>
       )}
+      {view === 'amendments' && params.get('request') && !decision && !preview && !composing && (
+        <FormDialog
+          title="Catalogue request details"
+          onClose={closeRequest}
+          footer={
+            <button type="button" className="secondary-button" onClick={closeRequest}>
+              Close
+            </button>
+          }
+        >
+          {!requestDetail ? (
+            <p role={requestError ? 'alert' : undefined}>{requestError || 'Loading request…'}</p>
+          ) : (
+            <>
+              <p>
+                <strong>
+                  {requestDetail.status === 'SUBMITTED'
+                    ? 'Awaiting admin review'
+                    : requestDetail.status === 'APPROVED'
+                      ? 'Approved — catalogue updated'
+                      : 'Not approved — catalogue unchanged'}
+                </strong>
+              </p>
+              <p>
+                <strong>Reason:</strong> {requestDetail.reason}
+              </p>
+              {requestDetail.decisionNote && (
+                <p>
+                  <strong>Admin feedback:</strong> {requestDetail.decisionNote}
+                </p>
+              )}
+              {requestDetail.createdAt && (
+                <p>Submitted: {new Date(requestDetail.createdAt).toLocaleString()}</p>
+              )}
+              {requestDetail.decidedAt && (
+                <p>Decision: {new Date(requestDetail.decidedAt).toLocaleString()}</p>
+              )}
+              <AmendmentComparison request={requestDetail} masters={masters} context={context} />
+            </>
+          )}
+        </FormDialog>
+      )}
     </section>
+  );
+}
+
+function AmendmentComparison({
+  request,
+  masters,
+  context,
+}: {
+  request: Amendment;
+  masters?: Masters;
+  context: BusinessContext;
+}) {
+  return (
+    <>
+      {request.targetChanged && request.status === 'SUBMITTED' && (
+        <p role="alert" className="bo-error">
+          The catalogue entry changed after this request. Approval is blocked. Reject with feedback
+          and ask for a fresh request.
+        </p>
+      )}
+      <div className="bo-amendment-comparison">
+        {!request.isNew && (
+          <section>
+            <h3>Current catalogue entry</h3>
+            {request.currentDefinition ? (
+              <DefinitionPreview
+                details={request.currentDefinition}
+                masters={masters}
+                context={context}
+              />
+            ) : (
+              <p>This entry is no longer available.</p>
+            )}
+          </section>
+        )}
+        <section>
+          <h3>{request.isNew ? 'Requested new entry' : 'Requested changes'}</h3>
+          <DefinitionPreview details={request.definition} masters={masters} context={context} />
+        </section>
+      </div>
+    </>
   );
 }
 
@@ -1336,8 +1523,11 @@ function DefinitionPreview({
           <>
             <dt>Provider</dt>
             <dd>
-              {masters?.providers.find(p => p.id === d.providerId)?.name ??
-                'Selected provider (rechecked before save)'}
+              {String(
+                d.provider ??
+                  masters?.providers.find(p => p.id === d.providerId)?.name ??
+                  'Selected provider (rechecked before save)',
+              )}
             </dd>
           </>
         )}

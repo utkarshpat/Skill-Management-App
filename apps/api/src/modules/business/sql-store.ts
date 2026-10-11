@@ -58,6 +58,7 @@ export class SqlBusinessStore implements BusinessStore {
     if (number === 51003)
       throw new AccessError(403, 'Current access does not allow this operation.');
     if (number === 51009) throw new AccessError(409, 'Data changed. Reload and preview again.');
+    if (number === 51010) throw new AccessError(409, (error as Error).message);
     if (number === 51004) throw new AccessError(404, 'This record is unavailable.');
     if (number === 51000) throw new AccessError(400, (error as Error).message);
     if ([2601, 2627].includes(number ?? 0))
@@ -132,6 +133,19 @@ export class SqlBusinessStore implements BusinessStore {
       JSON.stringify({ ...after, asOf: undefined })
     )
       throw new AccessError(409, 'Access changed during recovery. Reload before continuing.');
+    return result;
+  }
+  async notifications(actor: string) {
+    const before = await this.context(actor);
+    const result = await this.execute<
+      { id: string; at: string; title: string; body: string; href: string }[]
+    >(actor, 'dbo.BusinessAmendmentNotifications');
+    const after = await this.context(actor);
+    if (
+      JSON.stringify({ ...before, asOf: undefined }) !==
+      JSON.stringify({ ...after, asOf: undefined })
+    )
+      throw new AccessError(409, 'Access changed during notification retrieval.');
     return result;
   }
   async workflow(actor: string, operation: string, payload: Record<string, unknown>) {

@@ -23,6 +23,9 @@ export interface HttpDependencies {
   workflowNotifications?: (
     actorId: string,
   ) => Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
+  amendmentNotifications?: (
+    actorId: string,
+  ) => Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
   skillNotifications?: (
     actorId: string,
   ) => Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
@@ -201,6 +204,10 @@ export function registerRoutes(
           {
             name: 'requests',
             load: () => dependencies?.workflowNotifications?.(person.id) ?? Promise.resolve([]),
+          },
+          {
+            name: 'catalogue-requests',
+            load: () => dependencies?.amendmentNotifications?.(person.id) ?? Promise.resolve([]),
           },
           {
             name: 'recommendations',

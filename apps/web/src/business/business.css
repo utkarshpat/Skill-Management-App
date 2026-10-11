@@ -741,3 +741,18 @@
     flex-basis: 100%;
   }
 }
+
+.bo-amendment-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.bo-amendment-comparison > section {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .bo-amendment-comparison {
+    grid-template-columns: 1fr;
+  }
+}

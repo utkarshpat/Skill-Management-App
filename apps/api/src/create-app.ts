@@ -61,7 +61,8 @@ export type AppDependencies = IdentityDependencies &
   RecommendationDependencies &
   CertificationDependencies &
   CertificationRecommendationDependencies &
-  KnowledgeDependencies & BusinessDependencies;
+  KnowledgeDependencies &
+  BusinessDependencies;
 
 export function createApp(
   dependencies?: AppDependencies,
@@ -117,6 +118,7 @@ export function createApp(
           ...dependencies,
           skillNotifications: dependencies.claims?.notifications?.bind(dependencies.claims),
           workflowNotifications: dependencies.workflows?.notifications.bind(dependencies.workflows),
+          amendmentNotifications: dependencies.business?.notifications?.bind(dependencies.business),
           recommendationNotifications: dependencies.recommendations?.notifications.bind(
             dependencies.recommendations,
           ),

@@ -101,6 +101,9 @@ export interface BusinessDashboard {
   pageSize: number;
 }
 export interface BusinessStore {
+  notifications?(
+    actor: string,
+  ): Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
   recoverWorkflow?(
     actor: string,
     operation: string,
