@@ -349,11 +349,15 @@
   font: inherit;
   font-size: 13.5px !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .bo-search-field-wrap input:focus {
   border-color: var(--bo-accent, #11878a) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bo-accent, #11878a) 16%, transparent), 0 2px 4px rgba(0, 0, 0, 0.04) !important;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--bo-accent, #11878a) 16%, transparent),
+    0 2px 4px rgba(0, 0, 0, 0.04) !important;
   outline: none;
 }
 .bo-search-icon {
@@ -639,5 +643,101 @@
   .bo-page * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+.bo-amendment-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+.bo-amendment-progress span {
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--raised);
+  font-size: 13px;
+}
+.bo-amendment-progress [aria-current] {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  font-weight: 700;
+}
+.bo-amendment-choice h3 {
+  font-size: 16px;
+  margin: 0 0 12px;
+}
+.bo-amendment-choice h3:not(:first-child) {
+  margin-top: 24px;
+}
+.bo-amendment-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.bo-amendment-options button {
+  flex: 1 1 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px;
+  min-height: 52px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+}
+.bo-amendment-options button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1px var(--accent-ink);
+}
+.bo-amendment-options span {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.bo-amendment-summary {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  overflow-wrap: anywhere;
+}
+.bo-amendment-summary p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.bo-choice-search .bo-filter-search-label {
+  flex: 1 1 100%;
+  min-width: 0;
+  width: 100%;
+}
+.bo-choice-search .bo-filter-search-label > label {
+  font-size: 13px;
+  margin: 0;
+}
+.bo-choice-search .bo-search-field-wrap input {
+  box-sizing: border-box;
+  min-width: 0;
+}
+.bo-choice-search .bo-note {
+  flex-basis: 100%;
+  margin: 0;
+}
+.bo-amendment-dialog .bo-admin-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 600px) {
+  .bo-amendment-dialog .bo-admin-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bo-amendment-options button {
+    flex-basis: 100%;
   }
 }

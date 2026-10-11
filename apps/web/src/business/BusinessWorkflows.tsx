@@ -1,7 +1,16 @@
 import { useSearchParams } from 'react-router';
 import { businessDraftHandoff } from './business-draft-handoff';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Check, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, X } from 'lucide-react';
+import {
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  RotateCcw,
+  Search,
+  X,
+} from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
@@ -89,6 +98,10 @@ export function BusinessWorkflows({
   view: 'amendments' | 'demand';
 }) {
   const [params, setParams] = useSearchParams();
+  const [amendmentStep, setAmendmentStep] = useState(0);
+  const [amendmentMode, setAmendmentMode] = useState<'new' | 'edit'>('new');
+  const [selectedMaster, setSelectedMaster] = useState<Master>();
+  const [providerName, setProviderName] = useState('');
   const [masterSearch, setMasterSearch] = useState(''),
     [masterTerm, setMasterTerm] = useState(''),
     [masterPage, setMasterPage] = useState(1);
@@ -187,6 +200,11 @@ export function BusinessWorkflows({
   const start = () => {
     intent.current = crypto.randomUUID();
     setComposing(true);
+    setAmendmentStep(0);
+    setAmendmentMode('new');
+    setSelectedMaster(undefined);
+    setProviderName('');
+    setType('CERTIFICATION');
     setPreview(undefined);
     setDecision(undefined);
     setError('');
@@ -331,14 +349,70 @@ export function BusinessWorkflows({
       : type === 'PROVIDER'
         ? masters?.providers
         : masters?.certifications;
+  const masterTotal =
+    view === 'demand'
+      ? Math.max(
+          masters?.providerTotal ?? 0,
+          masters?.certificationTotal ?? 0,
+          masters?.skillTotal ?? 0,
+        )
+      : amendmentStep === 1 || type === 'PROVIDER'
+        ? (masters?.providerTotal ?? 0)
+        : type === 'SKILL'
+          ? (masters?.skillTotal ?? 0)
+          : (masters?.certificationTotal ?? 0);
+  const typeLabel = type === 'SKILL' ? 'Skill' : type === 'PROVIDER' ? 'Provider' : 'Certification';
+  function resetSelection(nextType: string, nextMode: 'new' | 'edit') {
+    if (nextType === type && nextMode === amendmentMode) return;
+    setType(nextType);
+    setAmendmentMode(nextMode);
+    setTarget('');
+    setSelectedMaster(undefined);
+    setName('');
+    setCategory('');
+    setDescription('');
+    setProvider('');
+    setProviderName('');
+    setCriteria(['', '', '', '', '']);
+    setActive(true);
+    setMasterSearch('');
+    setMasterTerm('');
+    setMasterPage(1);
+    setError('');
+  }
+  function selectMaster(id: string) {
+    const item = choices?.find(c => c.id === id);
+    setTarget(id);
+    setSelectedMaster(item);
+    setName(item?.name ?? '');
+    setCategory(item?.category ?? '');
+    setProvider(item?.providerId ?? '');
+    setProviderName(item?.provider ?? '');
+    setDescription(item?.description ?? '');
+    setActive(item?.active ?? true);
+    setCriteria(
+      [1, 2, 3, 4, 5].map(rank => item?.levels?.find(l => l.rank === rank)?.description ?? ''),
+    );
+  }
+  function nextAmendmentStep() {
+    if (amendmentMode === 'edit' && !target) {
+      setError('Choose the catalogue entry you want to update.');
+      return;
+    }
+    setMasterSearch('');
+    setMasterTerm('');
+    setMasterPage(1);
+    setError('');
+    setAmendmentStep(1);
+  }
   return (
     <section className="bo-panel">
       <div className="bo-record-heading">
         <div>
-          <h2>{view === 'amendments' ? 'Master amendments' : 'Demand & matching'}</h2>
+          <h2>{view === 'amendments' ? 'Catalogue requests' : 'Demand & matching'}</h2>
           <p className="bo-note">
             {view === 'amendments'
-              ? 'Propose skill, certification or provider changes. System Admin reviews and applies an approved definition atomically.'
+              ? 'Request a new skill, certification or provider, or suggest an update to an existing entry. System Admin reviews requests before the catalogue changes.'
               : 'Match explicit requirements against reviewed skills and current reviewed credentials. Missing evidence means “not established”; availability is not assessed.'}
           </p>
         </div>
@@ -353,7 +427,7 @@ export function BusinessWorkflows({
           onClick={start}
         >
           <Plus size={15} aria-hidden="true" />
-          {view === 'amendments' ? 'Propose amendment' : 'New demand'}
+          {view === 'amendments' ? 'New catalogue request' : 'New demand'}
         </button>
       </div>
       {error && (
@@ -410,7 +484,15 @@ export function BusinessWorkflows({
                               <small> · {a.type}</small>
                             </td>
                             <td>{a.employee}</td>
-                            <td>{a.status}</td>
+                            <td>
+                              {(
+                                {
+                                  SUBMITTED: 'Awaiting admin review',
+                                  APPROVED: 'Approved',
+                                  REJECTED: 'Not approved',
+                                } as Record<string, string>
+                              )[a.status] ?? a.status}
+                            </td>
                             <td>
                               {a.reason}
                               {a.decisionNote && <p>{a.decisionNote}</p>}
@@ -502,7 +584,7 @@ export function BusinessWorkflows({
             {!list.rows.length && (
               <p className="bo-empty">
                 {view === 'amendments'
-                  ? 'No amendments yet. Start with a provider or credential definition.'
+                  ? 'No catalogue requests yet. Use New catalogue request to suggest an addition or correction.'
                   : 'Create a demand to explore explainable matches in your scope.'}
               </p>
             )}
@@ -634,13 +716,36 @@ export function BusinessWorkflows({
       )}
       {composing && !preview && (
         <FormDialog
-          title={view === 'amendments' ? 'Propose master amendment' : 'New scoped demand'}
+          title={view === 'amendments' ? 'New catalogue request' : 'New scoped demand'}
+          className={view === 'amendments' ? 'bo-amendment-dialog' : ''}
+          subtitle={
+            view === 'amendments'
+              ? 'Suggest a catalogue change. This does not add a credential to your personal profile.'
+              : undefined
+          }
+          page={view === 'amendments' ? amendmentStep : undefined}
           busy={busy}
           onClose={() => setComposing(false)}
-          onSubmit={draft}
+          onSubmit={view === 'amendments' && amendmentStep === 0 ? nextAmendmentStep : draft}
           formId="business-compose"
           footer={
             <>
+              {view === 'amendments' && amendmentStep === 1 && (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={busy}
+                  onClick={() => {
+                    setMasterSearch('');
+                    setMasterTerm('');
+                    setMasterPage(1);
+                    setError('');
+                    setAmendmentStep(0);
+                  }}
+                >
+                  <ChevronLeft size={14} aria-hidden="true" /> Back
+                </button>
+              )}
               <button
                 type="button"
                 className="secondary-button"
@@ -649,308 +754,404 @@ export function BusinessWorkflows({
               >
                 Cancel
               </button>
-              <button
-                className="primary-button"
-                disabled={busy || !masters}
-                type="submit"
-                form="business-compose"
-              >
-                Review proposal
-                <ArrowRight size={14} aria-hidden="true" />
-              </button>
+              {view === 'amendments' && amendmentStep === 0 ? (
+                <button
+                  type="button"
+                  className="primary-button"
+                  disabled={busy || (amendmentMode === 'edit' && (!target || !masters))}
+                  onClick={nextAmendmentStep}
+                >
+                  Next: request details <ArrowRight size={14} aria-hidden="true" />
+                </button>
+              ) : (
+                <button
+                  className="primary-button"
+                  disabled={busy || !masters}
+                  type="submit"
+                  form="business-compose"
+                >
+                  {view === 'amendments' ? 'Preview request' : 'Review proposal'}{' '}
+                  <ArrowRight size={14} aria-hidden="true" />
+                </button>
+              )}
             </>
           }
         >
+          {view === 'amendments' && (
+            <div className="bo-amendment-progress" aria-label="Request steps">
+              <span aria-current={amendmentStep === 0 ? 'step' : undefined}>1 · Choose change</span>
+              <span aria-current={amendmentStep === 1 ? 'step' : undefined}>
+                2 · Request details
+              </span>
+              <span>3 · Preview & submit</span>
+            </div>
+          )}
           <div className="bo-page bo-admin-form">
-            <div className="bo-full bo-record-filters">
-              <label className="bo-filter-search-label">
-                <span>Search approved definitions</span>
-                <div className="bo-search-field-wrap">
-                  <Search size={15} className="bo-search-icon" aria-hidden="true" />
-                  <input
-                    maxLength={100}
-                    value={masterSearch}
-                    onChange={e => setMasterSearch(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        setMasterTerm(masterSearch);
-                        setMasterPage(1);
-                      }
-                    }}
-                    placeholder="Skill, credential or provider…"
-                  />
-                  {masterSearch && (
+            {view === 'amendments' && amendmentStep === 0 && (
+              <section className="bo-full bo-amendment-choice">
+                <h3>What would you like to change?</h3>
+                <div
+                  className="bo-amendment-options"
+                  role="group"
+                  aria-label="Catalogue entry type"
+                >
+                  {['SKILL', 'CERTIFICATION', 'PROVIDER'].map(value => (
                     <button
                       type="button"
-                      className="bo-search-clear"
-                      aria-label="Clear search"
-                      onClick={() => {
-                        setMasterSearch('');
-                        setMasterTerm('');
-                        setMasterPage(1);
-                      }}
+                      key={value}
+                      aria-pressed={type === value}
+                      onClick={() => resetSelection(value, amendmentMode)}
                     >
-                      <X size={13} aria-hidden="true" />
+                      {value === 'SKILL'
+                        ? 'Skill'
+                        : value === 'PROVIDER'
+                          ? 'Provider'
+                          : 'Certification'}
                     </button>
-                  )}
+                  ))}
                 </div>
-              </label>
-              <button
-                type="button"
-                className="secondary-button bo-filter-action-btn"
-                onClick={() => {
-                  setMasterTerm(masterSearch);
-                  setMasterPage(1);
-                }}
-              >
-                <Search size={14} aria-hidden="true" />
-                Search definitions
-              </button>
-              <button
-                type="button"
-                className="secondary-button bo-filter-action-btn"
-                disabled={masterPage <= 1}
-                onClick={() => setMasterPage(n => n - 1)}
-              >
-                <ChevronLeft size={14} aria-hidden="true" />
-                Previous choices
-              </button>
-              <button
-                type="button"
-                className="secondary-button bo-filter-action-btn"
-                disabled={
-                  !masters ||
-                  masterPage * masters.pageSize >=
-                    Math.max(masters.providerTotal, masters.certificationTotal, masters.skillTotal)
-                }
-                onClick={() => setMasterPage(n => n + 1)}
-              >
-                Next choices
-                <ChevronRight size={14} aria-hidden="true" />
-              </button>
-              <p className="bo-note">
-                {masters
-                  ? `Choices page ${masters.page}. ${view === 'demand' ? `${skills.length} skills and ${certs.length} credentials selected across pages.` : 'Search to find another definition.'}`
-                  : 'Loading choices…'}
-              </p>
-            </div>
-            {view === 'amendments' && (
-              <>
-                <label>
-                  Master type
-                  <select
-                    value={type}
-                    onChange={e => {
-                      setType(e.target.value);
-                      setTarget('');
-                      setName('');
-                      setCategory('');
-                      setDescription('');
-                      setProvider('');
-                      setCriteria(['', '', '', '', '']);
-                      setActive(true);
-                    }}
+                <h3>What needs to happen?</h3>
+                <div className="bo-amendment-options" role="group" aria-label="Request action">
+                  <button
+                    type="button"
+                    aria-pressed={amendmentMode === 'new'}
+                    onClick={() => resetSelection(type, 'new')}
                   >
-                    <option value="SKILL">Skill</option>
-                    <option value="CERTIFICATION">Certification</option>
-                    <option value="PROVIDER">Provider</option>
-                  </select>
-                </label>
-                <label>
-                  Definition
-                  <select
-                    value={target}
-                    onChange={e => {
-                      setTarget(e.target.value);
-                      const item = choices?.find(c => c.id === e.target.value);
-                      setName(item?.name ?? '');
-                      setCategory(item?.category ?? '');
-                      setProvider(item?.providerId ?? '');
-                      setDescription(item?.description ?? '');
-                      setActive(item?.active ?? true);
-                      setCriteria(
-                        [1, 2, 3, 4, 5].map(
-                          rank => item?.levels?.find(l => l.rank === rank)?.description ?? '',
-                        ),
-                      );
-                    }}
+                    <strong>Add a new entry</strong>
+                    <span>Something is missing from the catalogue.</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={amendmentMode === 'edit'}
+                    onClick={() => resetSelection(type, 'edit')}
                   >
-                    <option value="">Create new definition</option>
-                    {target && !choices?.some(c => c.id === target) && (
-                      <option value={target}>Selected: {name}</option>
+                    <strong>Update an existing entry</strong>
+                    <span>Correct details or retire an outdated entry.</span>
+                  </button>
+                </div>
+                {amendmentMode === 'new' && (
+                  <p className="bo-note">
+                    Next, enter the new {typeLabel.toLowerCase()} details and explain why it should
+                    be added.
+                  </p>
+                )}
+              </section>
+            )}
+            {view === 'amendments' && amendmentStep === 1 && (
+              <section className="bo-full bo-amendment-summary">
+                <strong>
+                  {amendmentMode === 'edit'
+                    ? `Update ${typeLabel.toLowerCase()}: ${selectedMaster?.name ?? name}`
+                    : `Add a new ${typeLabel.toLowerCase()}`}
+                </strong>
+                <p>
+                  {amendmentMode === 'edit'
+                    ? 'The existing catalogue entry stays unchanged until an administrator approves your request.'
+                    : 'Your request will be reviewed before this entry appears in the catalogue.'}
+                </p>
+              </section>
+            )}
+            {(view === 'demand' ||
+              (amendmentStep === 0 && amendmentMode === 'edit') ||
+              (amendmentStep === 1 && type === 'CERTIFICATION')) && (
+              <div className="bo-full bo-record-filters bo-choice-search">
+                <div className="bo-filter-search-label">
+                  <label htmlFor="bo-definition-search">
+                    {view === 'demand'
+                      ? 'Search approved definitions'
+                      : amendmentStep === 1
+                        ? 'Find an approved provider'
+                        : `Find an existing ${typeLabel.toLowerCase()}`}
+                  </label>
+                  <div className="bo-search-field-wrap">
+                    <Search size={15} className="bo-search-icon" aria-hidden="true" />
+                    <input
+                      id="bo-definition-search"
+                      maxLength={100}
+                      value={masterSearch}
+                      onChange={e => setMasterSearch(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          setMasterTerm(masterSearch);
+                          setMasterPage(1);
+                        }
+                      }}
+                      placeholder={
+                        view === 'demand'
+                          ? 'Skill, credential or provider…'
+                          : amendmentStep === 1
+                            ? 'Search provider name…'
+                            : `Search ${typeLabel.toLowerCase()} name…`
+                      }
+                    />
+                    {masterSearch && (
+                      <button
+                        type="button"
+                        className="bo-search-clear"
+                        aria-label="Clear search"
+                        onClick={() => {
+                          setMasterSearch('');
+                          setMasterTerm('');
+                          setMasterPage(1);
+                        }}
+                      >
+                        <X size={13} aria-hidden="true" />
+                      </button>
                     )}
-                    {choices?.map(c => (
-                      <option value={c.id} key={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button bo-filter-action-btn"
+                  onClick={() => {
+                    setMasterTerm(masterSearch);
+                    setMasterPage(1);
+                  }}
+                >
+                  <Search size={14} aria-hidden="true" />
+                  Search
+                </button>
+                {(view === 'demand' ||
+                  masterPage > 1 ||
+                  masterTotal > (masters?.pageSize ?? 20)) && (
+                  <>
+                    <button
+                      type="button"
+                      className="secondary-button bo-filter-action-btn"
+                      disabled={masterPage <= 1}
+                      onClick={() => setMasterPage(n => n - 1)}
+                    >
+                      <ChevronLeft size={14} aria-hidden="true" />
+                      Previous results
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-button bo-filter-action-btn"
+                      disabled={!masters || masterPage * masters.pageSize >= masterTotal}
+                      onClick={() => setMasterPage(n => n + 1)}
+                    >
+                      Next results
+                      <ChevronRight size={14} aria-hidden="true" />
+                    </button>
+                  </>
+                )}
+                <p className="bo-note">
+                  {masters
+                    ? `Page ${masters.page} · ${masterTotal} matching entries. ${view === 'demand' ? `${skills.length} skills and ${certs.length} credentials selected across pages.` : ''}`
+                    : 'Loading choices…'}
+                </p>
+              </div>
             )}
-            <label>
-              Name <span className="bo-required">*</span>
-              <input
-                required
-                maxLength={view === 'demand' ? 150 : 100}
-                value={name}
-                onChange={e => setName(e.target.value)}
-              />
-            </label>
-            {view === 'amendments' && type !== 'PROVIDER' && (
-              <label>
-                Category <span className="bo-required">*</span>
-                <input
-                  required
-                  maxLength={80}
-                  value={category}
-                  onChange={e => setCategory(e.target.value)}
-                />
-              </label>
-            )}
-            {view === 'amendments' && type === 'CERTIFICATION' && (
-              <label>
-                Provider <span className="bo-required">*</span>
-                <select required value={provider} onChange={e => setProvider(e.target.value)}>
-                  <option value="">Choose approved provider</option>
-                  {provider && !masters?.providers.some(p => p.id === provider) && (
-                    <option value={provider}>Selected provider</option>
+            {view === 'amendments' && amendmentStep === 0 && amendmentMode === 'edit' && (
+              <label className="bo-full">
+                Existing {typeLabel.toLowerCase()} <span className="bo-required">*</span>
+                <select
+                  value={target}
+                  onChange={e => selectMaster(e.target.value)}
+                  disabled={!masters}
+                >
+                  <option value="">Choose an entry to update</option>
+                  {target && !choices?.some(c => c.id === target) && (
+                    <option value={target}>{selectedMaster?.name ?? name}</option>
                   )}
-                  {masters?.providers
-                    .filter(p => p.active !== false)
-                    .map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
+                  {choices?.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                      {c.active === false ? ' (retired)' : ''}
+                    </option>
+                  ))}
                 </select>
+                {masters && !choices?.length && (
+                  <span className="bo-note">
+                    No matching entries. Try another search or choose Add a new entry.
+                  </span>
+                )}
               </label>
             )}
-            <label className="bo-full">
-              Description{' '}
-              {view === 'amendments' && type === 'SKILL' && <span className="bo-required">*</span>}
-              <textarea
-                required={view === 'amendments' && type === 'SKILL'}
-                maxLength={2000}
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-              />
-            </label>
-            {view === 'amendments' ? (
+            {(view === 'demand' || amendmentStep === 1) && (
               <>
-                <label className="bo-check">
+                <label>
+                  Name <span className="bo-required">*</span>
                   <input
-                    type="checkbox"
-                    checked={active}
-                    onChange={e => setActive(e.target.checked)}
-                  />{' '}
-                  Active published definition
-                </label>
-                {type === 'SKILL' &&
-                  ['Awareness', 'Foundation', 'Practitioner', 'Advanced', 'Expert'].map(
-                    (label, i) => (
-                      <label key={label} className="bo-full">
-                        L{i + 1} · {label} <span className="bo-required">*</span>
-                        <textarea
-                          required
-                          maxLength={1000}
-                          value={criteria[i]}
-                          onChange={e =>
-                            setCriteria(values =>
-                              values.map((v, index) => (index === i ? e.target.value : v)),
-                            )
-                          }
-                        />
-                      </label>
-                    ),
-                  )}
-                <label className="bo-full">
-                  Reason <span className="bo-required">*</span>
-                  <textarea
                     required
-                    maxLength={1000}
-                    value={reason}
-                    onChange={e => setReason(e.target.value)}
+                    maxLength={view === 'demand' ? 150 : 100}
+                    value={name}
+                    onChange={e => setName(e.target.value)}
                   />
                 </label>
-              </>
-            ) : (
-              <>
-                <label>
-                  Demand scope <span className="bo-required">*</span>
-                  <select required value={scope} onChange={e => setScope(e.target.value)}>
-                    <option value="">Choose an allowed scope</option>
-                    {context.scopes
-                      .filter(s => s.effect === 'ALLOW')
-                      .map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.label} · {s.kind}
+                {view === 'amendments' && type !== 'PROVIDER' && (
+                  <label>
+                    Category <span className="bo-required">*</span>
+                    <input
+                      required
+                      maxLength={80}
+                      value={category}
+                      onChange={e => setCategory(e.target.value)}
+                    />
+                  </label>
+                )}
+                {view === 'amendments' && type === 'CERTIFICATION' && (
+                  <label>
+                    Provider <span className="bo-required">*</span>
+                    <select
+                      required
+                      value={provider}
+                      onChange={e => {
+                        setProvider(e.target.value);
+                        setProviderName(
+                          masters?.providers.find(p => p.id === e.target.value)?.name ?? '',
+                        );
+                      }}
+                    >
+                      <option value="">Choose approved provider</option>
+                      {provider && !masters?.providers.some(p => p.id === provider) && (
+                        <option value={provider}>
+                          {providerName || 'Previously selected provider'}
                         </option>
-                      ))}
-                  </select>
-                </label>
-                <fieldset className="bo-full">
-                  <legend>
-                    Requirements <span className="bo-required">*</span> · choose 1–20 skills /
-                    credentials
-                  </legend>
-                  <p>Reviewed skills</p>
-                  {masters?.skills.map(s => (
-                    <div key={s.id} className="bo-check">
-                      <label className="bo-check">
-                        <input
-                          type="checkbox"
-                          checked={skills.some(r => r.id === s.id)}
-                          onChange={e =>
-                            setSkills(rows =>
-                              e.target.checked
-                                ? [...rows, { id: s.id, minRank: 1 }]
-                                : rows.filter(r => r.id !== s.id),
-                            )
-                          }
-                        />
-                        {s.name}
-                      </label>
-                      {skills.some(r => r.id === s.id) && (
-                        <select
-                          aria-label={'Minimum level for ' + s.name}
-                          value={skills.find(r => r.id === s.id)?.minRank}
-                          onChange={e =>
-                            setSkills(rows =>
-                              rows.map(r =>
-                                r.id === s.id ? { ...r, minRank: Number(e.target.value) } : r,
-                              ),
-                            )
-                          }
-                        >
-                          {[1, 2, 3, 4, 5].map(n => (
-                            <option key={n} value={n}>
-                              L{n} or above
-                            </option>
-                          ))}
-                        </select>
                       )}
-                    </div>
-                  ))}
-                </fieldset>
-                <fieldset className="bo-full">
-                  <legend>Current credential requirements</legend>
-                  {masters?.certifications.map(c => (
-                    <label key={c.id} className="bo-check">
+                      {masters?.providers
+                        .filter(p => p.active !== false)
+                        .map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                    </select>
+                    <span className="bo-note">
+                      Use the provider search above if it is not listed. If the provider is missing
+                      from the catalogue, request that provider first.
+                    </span>
+                  </label>
+                )}
+                <label className="bo-full">
+                  Description{' '}
+                  {view === 'amendments' && type === 'SKILL' && (
+                    <span className="bo-required">*</span>
+                  )}
+                  <textarea
+                    required={view === 'amendments' && type === 'SKILL'}
+                    maxLength={2000}
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                  />
+                </label>
+                {view === 'amendments' ? (
+                  <>
+                    <label className="bo-check">
                       <input
                         type="checkbox"
-                        checked={certs.includes(c.id)}
-                        onChange={e =>
-                          setCerts(rows =>
-                            e.target.checked ? [...rows, c.id] : rows.filter(id => id !== c.id),
-                          )
-                        }
-                      />
-                      {c.name} · {c.provider}
+                        checked={active}
+                        onChange={e => setActive(e.target.checked)}
+                      />{' '}
+                      Keep this entry available in the catalogue
                     </label>
-                  ))}
-                </fieldset>
+                    {type === 'SKILL' &&
+                      ['Awareness', 'Foundation', 'Practitioner', 'Advanced', 'Expert'].map(
+                        (label, i) => (
+                          <label key={label} className="bo-full">
+                            L{i + 1} · {label} <span className="bo-required">*</span>
+                            <textarea
+                              required
+                              maxLength={1000}
+                              value={criteria[i]}
+                              onChange={e =>
+                                setCriteria(values =>
+                                  values.map((v, index) => (index === i ? e.target.value : v)),
+                                )
+                              }
+                            />
+                          </label>
+                        ),
+                      )}
+                    <label className="bo-full">
+                      Why is this change needed? <span className="bo-required">*</span>
+                      <textarea
+                        required
+                        maxLength={1000}
+                        value={reason}
+                        onChange={e => setReason(e.target.value)}
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <label>
+                      Demand scope <span className="bo-required">*</span>
+                      <select required value={scope} onChange={e => setScope(e.target.value)}>
+                        <option value="">Choose an allowed scope</option>
+                        {context.scopes
+                          .filter(s => s.effect === 'ALLOW')
+                          .map(s => (
+                            <option key={s.id} value={s.id}>
+                              {s.label} · {s.kind}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <fieldset className="bo-full">
+                      <legend>
+                        Requirements <span className="bo-required">*</span> · choose 1–20 skills /
+                        credentials
+                      </legend>
+                      <p>Reviewed skills</p>
+                      {masters?.skills.map(s => (
+                        <div key={s.id} className="bo-check">
+                          <label className="bo-check">
+                            <input
+                              type="checkbox"
+                              checked={skills.some(r => r.id === s.id)}
+                              onChange={e =>
+                                setSkills(rows =>
+                                  e.target.checked
+                                    ? [...rows, { id: s.id, minRank: 1 }]
+                                    : rows.filter(r => r.id !== s.id),
+                                )
+                              }
+                            />
+                            {s.name}
+                          </label>
+                          {skills.some(r => r.id === s.id) && (
+                            <select
+                              aria-label={'Minimum level for ' + s.name}
+                              value={skills.find(r => r.id === s.id)?.minRank}
+                              onChange={e =>
+                                setSkills(rows =>
+                                  rows.map(r =>
+                                    r.id === s.id ? { ...r, minRank: Number(e.target.value) } : r,
+                                  ),
+                                )
+                              }
+                            >
+                              {[1, 2, 3, 4, 5].map(n => (
+                                <option key={n} value={n}>
+                                  L{n} or above
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      ))}
+                    </fieldset>
+                    <fieldset className="bo-full">
+                      <legend>Current credential requirements</legend>
+                      {masters?.certifications.map(c => (
+                        <label key={c.id} className="bo-check">
+                          <input
+                            type="checkbox"
+                            checked={certs.includes(c.id)}
+                            onChange={e =>
+                              setCerts(rows =>
+                                e.target.checked ? [...rows, c.id] : rows.filter(id => id !== c.id),
+                              )
+                            }
+                          />
+                          {c.name} · {c.provider}
+                        </label>
+                      ))}
+                    </fieldset>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -984,6 +1185,30 @@ export function BusinessWorkflows({
             </button>
           }
         >
+          {decision.operation !== 'SHORTLIST' &&
+            (() => {
+              const request = list?.rows.find(row => row.id === decision.payload.id) as
+                Amendment | undefined;
+              return request ? (
+                <section className="bo-amendment-summary">
+                  <strong>
+                    {request.type === 'SKILL'
+                      ? 'Skill'
+                      : request.type === 'PROVIDER'
+                        ? 'Provider'
+                        : 'Certification'}{' '}
+                    request
+                  </strong>
+                  <p>Requested by {request.employee}</p>
+                  <p>Reason: {request.reason}</p>
+                  <DefinitionPreview
+                    details={request.definition}
+                    masters={masters}
+                    context={context}
+                  />
+                </section>
+              ) : null;
+            })()}
           <label>
             Decision note <span className="bo-required">*</span>
             <textarea
@@ -1039,6 +1264,31 @@ export function BusinessWorkflows({
             Review the details before confirming. The app checks that your access and the record are
             still current, and records the change in history.
           </p>
+          {preview.command.operation === 'PROPOSE' && (
+            <section className="bo-amendment-summary">
+              <strong>
+                {preview.command.payload.targetId
+                  ? 'Request to update an existing entry'
+                  : 'Request to add a new entry'}
+              </strong>
+              <p>
+                Submitting sends this request to System Admin. The catalogue changes only after
+                approval.
+              </p>
+              {type === 'CERTIFICATION' && providerName && <p>Provider: {providerName}</p>}
+              {selectedMaster && (
+                <details>
+                  <summary>Current catalogue details</summary>
+                  <p>
+                    <strong>{selectedMaster.name}</strong>
+                  </p>
+                  {selectedMaster.category && <p>Category: {selectedMaster.category}</p>}
+                  {selectedMaster.description && <p>{selectedMaster.description}</p>}
+                  <p>{selectedMaster.active === false ? 'Retired' : 'Active'}</p>
+                </details>
+              )}
+            </section>
+          )}
           <DefinitionPreview details={preview.details} masters={masters} context={context} />
           {error && (
             <p role="alert" className="bo-error">
