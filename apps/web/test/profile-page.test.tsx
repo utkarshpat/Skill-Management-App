@@ -100,7 +100,7 @@ test('profile distinguishes unassigned, broken, loading, failed and unavailable 
   assert.doesNotMatch(failed, /Loading|Not assigned/);
   assert.match(renderToStaticMarkup(<ProfileOrganization />), /unavailable for this profile/);
 });
-test('organization names are escaped and access template labels remain distinct from job roles', () => {
+test('organization names are escaped and the obsolete access templates card is absent', () => {
   const workspace: WorkspaceState = {
     person: { id: 'own', displayName: 'Person', employeeCode: 'EMP', roles: ['Employee'] },
     authentication: 'microsoft',
@@ -129,8 +129,8 @@ test('organization names are escaped and access template labels remain distinct 
       />
     </MemoryRouter>,
   );
-  assert.match(html, /Access templates/);
-  assert.match(html, /not your job title or grade/);
+  assert.doesNotMatch(html, /Access templates|Access &amp; governance/);
+  assert.doesNotMatch(html, /No access templates assigned/);
   assert.match(html, /&lt;script&gt;/);
   assert.doesNotMatch(html, /<script>|MY PROFILE/);
   const failed = renderToStaticMarkup(
@@ -140,7 +140,7 @@ test('organization names are escaped and access template labels remain distinct 
   );
   assert.doesNotMatch(failed, /Loading workspace|Checking/);
 });
-test('profile displays managed job title and grade separately from access templates', () => {
+test('profile preserves managed job title and grade without displaying legacy templates', () => {
   const workspace: WorkspaceState = {
     person: { id: 'own', displayName: 'Person', employeeCode: 'EMP', roles: ['Admin template'] },
     authentication: 'microsoft',
@@ -173,7 +173,7 @@ test('profile displays managed job title and grade separately from access templa
   assert.match(html, /Business role/);
   assert.match(html, /Business analyst/);
   assert.match(html, /G4/);
-  assert.match(html, /Admin template/);
+  assert.doesNotMatch(html, /Admin template/);
   assert.doesNotMatch(html, /<input|Edit profile/);
 });
 

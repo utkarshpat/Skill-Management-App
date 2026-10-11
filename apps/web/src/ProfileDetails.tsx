@@ -156,42 +156,6 @@ export function ProfileDetails({
             failed={failed}
             canRequest={workspace.capabilities.requestProfileCorrection}
           />
-          <section className="profile-information">
-            <header>
-              <span className="profile-card-icon">
-                <ShieldCheck size={19} />
-              </span>
-              <div>
-                <h3>Access & governance</h3>
-                <p className="profile-card-subtitle">
-                  Assigned access templates and security scope
-                </p>
-              </div>
-            </header>
-            <dl className="profile-info-grid single-col">
-              <div className="profile-info-tile full-width">
-                <dt>Access templates</dt>
-                <dd className="profile-role-tags">
-                  {person.roles.length ? (
-                    person.roles.map(role => (
-                      <span key={role} className="profile-role-pill">
-                        <ShieldCheck size={13} />
-                        {role}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="profile-no-roles">No access templates assigned</span>
-                  )}
-                </dd>
-              </div>
-            </dl>
-            <div className="profile-policy-notice">
-              <p>
-                These templates describe access, not your job title or grade. Available actions
-                follow your effective permissions and scope.
-              </p>
-            </div>
-          </section>
 
           <section className="profile-information profile-destinations">
             <header>
