@@ -15,7 +15,8 @@ test('workflow AI action notes require current record authority and reject stale
   let revision = 2,
     allowed = true,
     after: 'stable' | 'revoke' | 'change' = 'stable',
-    calls = 0;
+    calls = 0,
+    body = 'Completed the user-supplied work.';
   const workflows: WorkflowStore = {
     options: async () => ({ canRequest: true, canIncident: true, recipients: [] }),
     list: async () => ({ items: [], total: 0, page: 1, pageSize: 10 }),
@@ -66,7 +67,7 @@ test('workflow AI action notes require current record authority and reject stale
                 kind: 'task_draft',
                 title: 'Resolution note',
                 summary: 'Review',
-                body: 'Completed the user-supplied work.',
+                body,
                 steps: [],
                 questions: [],
               }),
@@ -106,6 +107,17 @@ test('workflow AI action notes require current record authority and reject stale
       (await service.workflowDraft(actor, { ...input, notes }, AbortSignal.timeout(5000))).body,
       'Completed the user-supplied work.',
     );
+  for (const echo of [
+    '{"reference":"REQ-104","notes":"Source only"}',
+    '```json\n{"notes":"Source only"}\n```',
+  ]) {
+    body = echo;
+    await assert.rejects(
+      service.workflowDraft(actor, input, AbortSignal.timeout(5000)),
+      /valid note/,
+    );
+  }
+  body = 'Completed the user-supplied work.';
   await assert.rejects(
     service.chat(
       actor,
