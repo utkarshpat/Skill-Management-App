@@ -47,16 +47,19 @@ test('DOCX downloads retain filenames; PDF/image previews retain their open acti
     />,
   );
   assert.match(word, /download="Azure credential.docx"/);
-  assert.match(word, /Download file/);
-  assert.doesNotMatch(word, /target="_blank"|Open file/);
+  assert.match(word, /Download this document to view it/);
+  assert.doesNotMatch(word, /target="_blank"|<iframe|View certificate/);
   const pdf = renderToStaticMarkup(
     <CertificateFilePreview url="blob:file" mimeType="application/pdf" fileName="credential.pdf" />,
   );
-  assert.match(pdf, /Open file/);
+  assert.match(pdf, /View certificate/);
+  assert.match(pdf, /<iframe[^>]+title="Certificate preview: credential.pdf"/);
   assert.match(pdf, /download="credential.pdf"/);
   const image = renderToStaticMarkup(
     <CertificateFilePreview url="blob:file" mimeType="image/webp" fileName="credential.webp" />,
   );
   assert.match(image, /Open certificate image/);
   assert.match(image, /alt="Certificate preview"/);
+  assert.match(image, /View certificate/);
+  assert.match(image, /download="credential.webp"/);
 });

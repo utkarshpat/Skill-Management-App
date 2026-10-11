@@ -845,10 +845,27 @@
   color: var(--ink);
   font-weight: 600;
 }
-.certificate-file-preview > a {
+.certificate-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.certificate-preview-actions > a {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+.certificate-file-preview > a {
+  width: 100%;
+}
+.certificate-pdf-preview {
+  width: 100%;
+  height: 360px;
+  max-height: 50vh;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
 }
 .certificate-dropzone {
   border: 2px dashed var(--line);

@@ -1,4 +1,4 @@
-import { Download, FileText } from 'lucide-react';
+import { Download, Eye, FileText } from 'lucide-react';
 
 export function CertificateFilePreview({
   url,
@@ -11,25 +11,55 @@ export function CertificateFilePreview({
   fileName: string;
   className?: string;
 }) {
-  if (mimeType.startsWith('image/'))
-    return (
-      <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Open certificate image">
-        <img className={className || undefined} src={url} alt="Certificate preview" />
-      </a>
-    );
-  const canOpen = mimeType === 'application/pdf' || mimeType === 'text/plain';
+  const image = mimeType.startsWith('image/');
+  const pdf = mimeType === 'application/pdf';
+  const canOpen = image || pdf || mimeType === 'text/plain';
   return (
     <div className="certificate-file-preview">
-      <FileText size={32} aria-hidden="true" />
-      <span title={fileName}>{fileName}</span>
-      {canOpen && (
-        <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${fileName}`}>
-          Open file
+      {image ? (
+        <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Open certificate image">
+          <img className={className || undefined} src={url} alt="Certificate preview" />
         </a>
+      ) : pdf ? (
+        <iframe
+          className="certificate-pdf-preview"
+          src={url}
+          title={`Certificate preview: ${fileName}`}
+          loading="lazy"
+        />
+      ) : (
+        <FileText size={32} aria-hidden="true" />
       )}
-      <a href={url} download={fileName} aria-label={`Download ${fileName}`}>
-        <Download size={16} aria-hidden="true" /> Download file
-      </a>
+      <span title={fileName}>{fileName}</span>
+      <div className="certificate-preview-actions">
+        {canOpen && (
+          <a
+            className="secondary-button"
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`View ${fileName}`}
+          >
+            <Eye size={16} aria-hidden="true" /> View certificate
+          </a>
+        )}
+        <a
+          className="secondary-button"
+          href={url}
+          download={fileName}
+          aria-label={`Download ${fileName}`}
+        >
+          <Download size={16} aria-hidden="true" /> Download
+        </a>
+      </div>
+      {!canOpen && (
+        <p className="cert-help">Download this document to view it in Word or a compatible app.</p>
+      )}
+      {pdf && (
+        <p className="cert-help">
+          If the preview is unavailable, use View certificate or Download.
+        </p>
+      )}
     </div>
   );
 }
