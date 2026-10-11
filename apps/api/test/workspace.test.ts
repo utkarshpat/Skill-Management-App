@@ -78,6 +78,7 @@ test('a manager title or broad review grant cannot create actual direct-report s
 
 test('workspace capabilities use permissions, never role names; every preset gets only supported workflows', () => {
   for (const preset of rolePresets) {
+    if (preset.assignmentMode === 'RESPONSIBILITY') continue;
     const state: LocalAccessState = {
       revision: 1,
       audit: [],

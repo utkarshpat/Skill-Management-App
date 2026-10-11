@@ -747,6 +747,72 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
+.bo-access-profiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.bo-access-profiles article {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--surface);
+}
+.bo-access-profiles h3 {
+  margin: 0 0 8px;
+}
+.bo-access-profiles p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.bo-access-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  margin: 20px 0;
+}
+.bo-access-toolbar label {
+  display: grid;
+  gap: 8px;
+  flex: 1 1 260px;
+}
+.bo-access-code {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+}
+.bo-access-assignment {
+  display: block;
+  margin-top: 8px;
+  text-align: left;
+  white-space: normal;
+}
+.bo-access-summary {
+  display: grid;
+  gap: 12px;
+  overflow-wrap: anywhere;
+}
+.bo-access-summary dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+.bo-access-summary dd {
+  margin: 4px 0 0;
+}
+@media (max-width: 1000px) {
+  .bo-access-profiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .bo-access-profiles {
+    grid-template-columns: 1fr;
+  }
+}
 .bo-amendment-comparison > section {
   min-width: 0;
   overflow-wrap: anywhere;

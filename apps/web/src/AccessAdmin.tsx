@@ -62,6 +62,7 @@ interface Preset {
   description: string;
   permissions: Assignment[];
   pending: { permission: string; scope: string }[];
+  assignmentMode?: 'RESPONSIBILITY';
 }
 interface State {
   presets: Preset[];
@@ -522,6 +523,18 @@ export function AccessAdmin({
           />
         </header>
         <main id="access-main" className="access-main">
+          {!personalTitle && workspaceContext?.capabilities.businessAdministration && (
+            <section className="profile-panel">
+              <h2>Employee · Manager · Business Analytics · Admin</h2>
+              <p>
+                Employee access follows the baseline. Manager access follows current direct reports.
+                Manage scoped Business Analytics and Admin assignments with a reviewed preview.
+              </p>
+              <Link className="secondary-button" to="/business?tab=administration">
+                Manage access profiles
+              </Link>
+            </section>
+          )}
           {error && (
             <div className="access-message" role="alert">
               {error}
@@ -684,6 +697,10 @@ export function AccessAdmin({
                           className="secondary-button"
                           key={preset.key}
                           onClick={() => {
+                            if (preset.assignmentMode === 'RESPONSIBILITY') {
+                              navigate('/business?tab=administration');
+                              return;
+                            }
                             setRole(
                               structuredClone(
                                 state.roles.find(item => item.name === preset.name) ?? {

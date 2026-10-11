@@ -8,6 +8,7 @@ export interface RolePreset {
   description: string;
   permissions: Assignment[];
   pending: { permission: PermissionCode; scope: PlannedScope }[];
+  assignmentMode?: 'RESPONSIBILITY';
 }
 const own: PermissionCode[] = [
   'profile.view',
@@ -45,55 +46,29 @@ export const rolePresets: RolePreset[] = [
     key: 'manager',
     name: 'Manager',
     description:
-      'Employee access plus assigned direct-report skill reviews; team assessments and insights remain planned.',
+      'Employee access plus current direct-report reviews, team insights and recommendations; reporting and assigned-review checks remain mandatory.',
     permissions: [
       ...employee(),
       { permission: 'skill.verify', scope: 'ORGANIZATION', effect: 'ALLOW' },
     ],
-    pending: planned('TEAM', [
-      'profile.view',
-      'assessment.view',
-      'assessment.approve',
-      'evidence.view',
-      'learning.view',
-      'reports.view',
-    ]),
+    pending: [],
   },
   {
-    key: 'department-head',
-    name: 'Department Head',
-    description: 'Employee access plus department insights and skill proposals.',
-    permissions: employee(),
-    pending: [
-      ...planned('DEPARTMENT', ['reports.view']),
-      ...planned('CAPABILITY', ['skill.catalogue.propose']),
-    ],
+    key: 'business-analytics',
+    name: 'Business Analytics',
+    description:
+      'Explicit organization, delivery-unit, department or project responsibility. Manage through People & access profiles.',
+    assignmentMode: 'RESPONSIBILITY',
+    permissions: [],
+    pending: [],
   },
   {
-    key: 'delivery-unit-head',
-    name: 'Delivery Unit Head',
-    description: 'Employee access plus delivery unit insights and skill proposals.',
-    permissions: employee(),
-    pending: [
-      ...planned('DELIVERY_UNIT', ['reports.view']),
-      ...planned('CAPABILITY', ['skill.catalogue.propose']),
-    ],
-  },
-  {
-    key: 'chro',
-    name: 'CHRO',
-    description: 'Employee access plus organization reports and skill proposals.',
-    permissions: employee(),
-    pending: [
-      ...planned('ORGANIZATION', ['reports.view']),
-      ...planned('CAPABILITY', ['skill.catalogue.propose']),
-    ],
-  },
-  {
-    key: 'capability-lead',
-    name: 'Capability Lead',
-    description: 'Employee access plus capability catalogue governance and insights.',
-    permissions: employee(),
-    pending: planned('CAPABILITY', ['skill.catalogue.manage', 'reports.view']),
+    key: 'admin',
+    name: 'Admin',
+    description:
+      'Explicit organization responsibility for catalogue, audit, people/access and Business Analytics. Manage through People & access profiles.',
+    assignmentMode: 'RESPONSIBILITY',
+    permissions: [],
+    pending: [],
   },
 ];

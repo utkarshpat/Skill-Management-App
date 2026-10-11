@@ -8,12 +8,23 @@ import {
   canReviewAssigned,
 } from '../src/modules/access/local-access-store.js';
 
-test('six editable presets never widen pending scopes or grant administrative access', async () => {
+test('four access profiles keep scoped responsibilities out of permission templates', async () => {
   const store = await LocalAccessStore.open();
   const owner = store.snapshot().people[0].id;
-  assert.equal(rolePresets.length, 6);
-  assert.equal(new Set(rolePresets.map(preset => preset.key)).size, 6);
+  assert.deepEqual(
+    rolePresets.map(preset => preset.name),
+    ['Employee', 'Manager', 'Business Analytics', 'Admin'],
+  );
   for (const preset of rolePresets) {
+    if (preset.assignmentMode === 'RESPONSIBILITY') {
+      assert.deepEqual(
+        preset.permissions,
+        [],
+        'Scoped authority must use a responsibility assignment, never a role-name grant.',
+      );
+      assert.deepEqual(preset.pending, []);
+      continue;
+    }
     for (const item of [...preset.permissions, ...preset.pending])
       assert.ok(permissionCatalogue.some(([code]) => code === item.permission));
     assert.ok(

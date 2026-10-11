@@ -15,6 +15,12 @@ try {
   const actor = await store.resolveIdentity({ tenantId, objectId });
   if (!actor) throw new Error('Owner identity is not linked.');
   for (const preset of rolePresets) {
+    if (preset.assignmentMode === 'RESPONSIBILITY') {
+      console.log(
+        `${preset.name}: assign an explicit scope through People & access profiles; no permission template created.`,
+      );
+      continue;
+    }
     const state = await store.snapshot();
     const person = state.people.find(person => person.id === actor);
     if (!person || !can(state, person, 'permissions.manage'))

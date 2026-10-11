@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
+import { Link } from 'react-router';
 import type { BusinessContext } from './business-model';
 interface Administration {
   revision: number;
@@ -20,7 +21,17 @@ interface Administration {
     validUntil: string | null;
     reason: string;
   }[];
-  people: { id: string; name: string; employeeCode: string; active: boolean }[];
+  people: {
+    id: string;
+    name: string;
+    employeeCode: string;
+    active: boolean;
+    employeeAccess?: boolean;
+    hasDirectReports?: boolean;
+    managerAccess?: boolean;
+    analyticsAccess?: boolean;
+    adminAccess?: boolean;
+  }[];
   nodes: { id: string; name: string; kind: string; active: boolean }[];
   historicalGrantsForReview: unknown[];
 }
@@ -28,7 +39,8 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
   const [state, setState] = useState<Administration>(),
     [error, setError] = useState(''),
     [attempt, setAttempt] = useState(0),
-    [kind, setKind] = useState('PROJECT'),
+    [kind, setKind] = useState('RESPONSIBILITY'),
+    [search, setSearch] = useState(''),
     [id, setId] = useState(''),
     [person, setPerson] = useState(''),
     [project, setProject] = useState(''),
@@ -78,6 +90,41 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
     setActive(true);
     setName('');
     setScope('');
+  };
+  const editResponsibility = (r: Administration['responsibilities'][number]) => {
+    setId(r.id);
+    setPerson(r.personId);
+    setBundle(r.bundle);
+    setScopeKind(r.kind);
+    setScope(r.scopeId ?? '');
+    setEffect(r.effect);
+    setActive(r.active);
+    setReason('');
+    setUntil(
+      r.validUntil
+        ? new Date(
+            new Date(r.validUntil).getTime() - new Date(r.validUntil).getTimezoneOffset() * 60000,
+          )
+            .toISOString()
+            .slice(0, 16)
+        : '',
+    );
+    setPreview(undefined);
+    document
+      .getElementById('bo-access-assignment-form')
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  };
+  const selectPerson = (value: string) => {
+    setPerson(value);
+    setId('');
+    setPreview(undefined);
+    setReason('');
+    setEffect('ALLOW');
+    setActive(true);
+    setUntil('');
+    setScope('');
+    setBundle('BUSINESS_OPERATIONS');
+    setScopeKind('DEPARTMENT');
   };
   const payload = () =>
     kind === 'PROJECT'
@@ -163,10 +210,11 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
     nodes = state?.nodes.filter(n => n.active || n.id === scope || n.id === department) ?? [];
   return (
     <section className="bo-panel">
-      <h2>Projects & responsibilities</h2>
+      <h2>People & access profiles</h2>
       <p className="bo-note">
         A person can belong to multiple projects. Membership, reporting and authority are managed
-        separately. Every change requires a reviewed preview and a current transaction.
+        separately. Employee and Manager follow the active baseline and current reporting. Business
+        Analytics and Admin require explicit scoped assignments.
       </p>
       {error && (
         <p role="alert" className="bo-error">
@@ -179,10 +227,10 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
         <>
           <div className="bo-tabs">
             {[
+              ['RESPONSIBILITY', 'People & access'],
               ['PROJECT', 'Projects'],
               ['MEMBERSHIP', 'Memberships'],
-              ['RESPONSIBILITY', 'Responsibilities'],
-              ['PERSONAL_BASELINE', 'Personal baseline'],
+              ['PERSONAL_BASELINE', 'Employee baseline'],
             ].map(([k, label]) => (
               <button
                 key={k}
@@ -193,7 +241,161 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
               </button>
             ))}
           </div>
+          {kind === 'RESPONSIBILITY' && (
+            <>
+              <div className="bo-access-profiles">
+                {[
+                  [
+                    'Employee',
+                    'Personal profile, skills, certifications and learning. Automatic for active employees when the baseline is enabled.',
+                  ],
+                  [
+                    'Manager',
+                    'Reviews, team insights and recommendations for current direct reports. Reporting and review checks apply.',
+                  ],
+                  [
+                    'Business Analytics',
+                    'Analytics, exports, demand and matching within an explicitly assigned scope.',
+                  ],
+                  [
+                    'Admin',
+                    'People/access, catalogue and audit administration, plus organization-wide Business Analytics.',
+                  ],
+                ].map(([label, description]) => (
+                  <article key={label}>
+                    <h3>{label}</h3>
+                    <p>{description}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="bo-access-toolbar">
+                <label>
+                  Find person
+                  <input
+                    type="search"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Name or employee code"
+                  />
+                </label>
+                <Link className="secondary-button" to="/access?tab=organization">
+                  Manage reporting & organization
+                </Link>
+                <Link className="secondary-button" to="/access?tab=people">
+                  People, exceptions & access explanations
+                </Link>
+              </div>
+              <div className="bo-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Person</th>
+                      <th>Automatic access</th>
+                      <th>Business access</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {state.people
+                      .filter(p =>
+                        (p.name + ' ' + p.employeeCode)
+                          .toLowerCase()
+                          .includes(search.trim().toLowerCase()),
+                      )
+                      .map(p => (
+                        <tr key={p.id}>
+                          <td>
+                            {p.name}
+                            <small className="bo-access-code">
+                              {p.employeeCode}
+                              {!p.active ? ' · Inactive' : ''}
+                            </small>
+                          </td>
+                          <td>
+                            {p.employeeAccess === undefined
+                              ? 'Access details unavailable'
+                              : p.employeeAccess
+                                ? 'Employee'
+                                : 'Employee access blocked'}
+                            {p.hasDirectReports && (
+                              <small className="bo-access-code">
+                                {p.managerAccess
+                                  ? 'Manager · current direct reports'
+                                  : 'Manager access blocked'}
+                              </small>
+                            )}
+                          </td>
+                          <td>
+                            {p.analyticsAccess === undefined || p.adminAccess === undefined
+                              ? 'Access details unavailable'
+                              : p.adminAccess
+                                ? p.analyticsAccess
+                                  ? 'Admin + Business Analytics'
+                                  : 'Admin · analytics blocked'
+                                : p.analyticsAccess
+                                  ? 'Business Analytics'
+                                  : 'No business access'}
+                            {state.responsibilities
+                              .filter(r => r.personId === p.id)
+                              .map(r => (
+                                <button
+                                  className="bo-access-assignment"
+                                  key={r.id}
+                                  onClick={() => editResponsibility(r)}
+                                >
+                                  {r.bundle === 'SYSTEM_ADMIN' ? 'Admin' : 'Business Analytics'} ·{' '}
+                                  {state.nodes.find(n => n.id === r.scopeId)?.name ??
+                                    state.projects.find(n => n.id === r.scopeId)?.name ??
+                                    (r.kind === 'ORGANIZATION'
+                                      ? 'Organization'
+                                      : 'Unavailable scope')}{' '}
+                                  · {r.effect === 'DENY' ? 'Denied' : 'Allowed'} ·{' '}
+                                  {!r.active
+                                    ? 'Inactive'
+                                    : r.validUntil && Date.parse(r.validUntil) <= Date.now()
+                                      ? 'Expired'
+                                      : 'Active'}
+                                </button>
+                              ))}
+                          </td>
+                          <td>
+                            <button
+                              className="secondary-button"
+                              disabled={!p.active || busy}
+                              onClick={() => {
+                                selectPerson(p.id);
+                                document
+                                  .getElementById('bo-access-assignment-form')
+                                  ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                              }}
+                            >
+                              Add access
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    {!state.people.some(p =>
+                      (p.name + ' ' + p.employeeCode)
+                        .toLowerCase()
+                        .includes(search.trim().toLowerCase()),
+                    ) && (
+                      <tr>
+                        <td colSpan={4}>No matching people.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <h3>{id ? 'Edit scoped assignment' : 'Add scoped assignment'}</h3>
+              {id && (
+                <button className="secondary-button" onClick={() => selectPerson(person)}>
+                  New assignment for this person
+                </button>
+              )}
+            </>
+          )}
           <form
+            id="bo-access-assignment-form"
             className="bo-admin-form"
             onSubmit={e => {
               e.preventDefault();
@@ -250,7 +452,12 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
             {(kind === 'MEMBERSHIP' || kind === 'RESPONSIBILITY') && (
               <label>
                 Person <span className="bo-required">*</span>
-                <select required value={person} onChange={e => setPerson(e.target.value)}>
+                <select
+                  required
+                  value={person}
+                  onChange={e => selectPerson(e.target.value)}
+                  disabled={busy}
+                >
                   <option value="">Choose employee</option>
                   {people.map(p => (
                     <option key={p.id} value={p.id}>
@@ -287,8 +494,8 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
                       }
                     }}
                   >
-                    <option value="BUSINESS_OPERATIONS">Business Operations</option>
-                    <option value="SYSTEM_ADMIN">System Admin</option>
+                    <option value="BUSINESS_OPERATIONS">Business Analytics</option>
+                    <option value="SYSTEM_ADMIN">Admin</option>
                   </select>
                 </label>
                 <label>
@@ -351,8 +558,9 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
                   />
                 </label>
                 <p className="bo-note">
-                  System Admin provides catalogue, audit and people/access administration plus
-                  account-wide Business Operations. It does not authorize unrelated claim approvals.
+                  Admin provides catalogue, audit and people/access administration plus
+                  organization-wide Business Analytics. Claim reviews still follow the assigned
+                  current manager.
                 </p>
               </>
             )}
@@ -373,7 +581,7 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
                     checked={enabled}
                     onChange={e => setEnabled(e.target.checked)}
                   />{' '}
-                  Default Personal Workspace
+                  Employee baseline
                 </label>
                 <p className="bo-note">
                   Applies to {state.baselineAffectedPeople} active provisioned people and future
@@ -430,62 +638,6 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
               </table>
             </div>
           )}
-          {kind === 'RESPONSIBILITY' && (
-            <div className="bo-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Person</th>
-                    <th>Responsibility / scope</th>
-                    <th>Effect / state</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.responsibilities.map(r => (
-                    <tr key={r.id}>
-                      <td>{state.people.find(p => p.id === r.personId)?.name}</td>
-                      <td>
-                        {r.bundle.replaceAll('_', ' ')} · {r.kind} ·{' '}
-                        {state.projects.find(p => p.id === r.scopeId)?.name ??
-                          state.nodes.find(n => n.id === r.scopeId)?.name ??
-                          'Organization'}
-                      </td>
-                      <td>
-                        {r.effect} · {r.active ? 'Active' : 'Inactive'}
-                      </td>
-                      <td>
-                        <button
-                          onClick={() => {
-                            setId(r.id);
-                            setPerson(r.personId);
-                            setBundle(r.bundle);
-                            setScopeKind(r.kind);
-                            setScope(r.scopeId ?? '');
-                            setEffect(r.effect);
-                            setActive(r.active);
-                            setUntil(
-                              r.validUntil
-                                ? new Date(
-                                    new Date(r.validUntil).getTime() -
-                                      new Date(r.validUntil).getTimezoneOffset() * 60000,
-                                  )
-                                    .toISOString()
-                                    .slice(0, 16)
-                                : '',
-                            );
-                            setReason(r.reason);
-                          }}
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
           <details>
             <summary>
               Historical grants needing explicit review ({state.historicalGrantsForReview.length})
@@ -522,12 +674,22 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
             Access revision {String(preview.change.revision)}. The server will recheck access,
             bindings and this revision before saving.
           </p>
-          <h3>Before</h3>
-          <pre>{JSON.stringify(preview.before, null, 2)}</pre>
-          <h3>After</h3>
-          <pre>{JSON.stringify(preview.after, null, 2)}</pre>
-          <h3>Impact</h3>
-          <pre>{JSON.stringify(preview.impact, null, 2)}</pre>
+          <div className="bo-amendment-comparison">
+            <section>
+              <h3>Current access</h3>
+              <AccessChangeSummary value={preview.before} state={state} />
+            </section>
+            <section>
+              <h3>Proposed access</h3>
+              <AccessChangeSummary value={preview.after} state={state} />
+            </section>
+          </div>
+          <h3>Affected actions</h3>
+          <ul>
+            {((preview.impact as { actions?: string[] }).actions ?? []).map(action => (
+              <li key={action}>{action}</li>
+            ))}
+          </ul>
           {preview.warnings.map(w => (
             <p key={w} className="bo-note">
               {w}
@@ -541,5 +703,62 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
         </FormDialog>
       )}
     </section>
+  );
+}
+
+function AccessChangeSummary({ value, state }: { value: unknown; state?: Administration }) {
+  if (!value || typeof value !== 'object') return <p>No existing assignment.</p>;
+  const labels: Record<string, string> = {
+    personId: 'Person',
+    bundle: 'Access profile',
+    kind: 'Scope',
+    scope_kind: 'Scope',
+    scopeId: 'Binding',
+    scope_id: 'Binding',
+    person_id: 'Person',
+    projectId: 'Project',
+    project_id: 'Project',
+    departmentId: 'Department',
+    department_id: 'Department',
+    name: 'Name',
+    effect: 'Effect',
+    active: 'State',
+    enabled: 'Employee baseline',
+    validUntil: 'Expires',
+    valid_until: 'Expires',
+    reason: 'Reason',
+  };
+  return (
+    <dl className="bo-access-summary">
+      {Object.entries(value)
+        .filter(([key]) => key in labels)
+        .map(([key, raw]) => {
+          const resolved =
+            typeof raw === 'string'
+              ? (state?.people.find(p => p.id.toLowerCase() === raw.toLowerCase())?.name ??
+                state?.nodes.find(n => n.id.toLowerCase() === raw.toLowerCase())?.name ??
+                state?.projects.find(p => p.id.toLowerCase() === raw.toLowerCase())?.name)
+              : undefined;
+          const text =
+            resolved ??
+            (raw === 'BUSINESS_OPERATIONS'
+              ? 'Business Analytics'
+              : raw === 'SYSTEM_ADMIN'
+                ? 'Admin'
+                : typeof raw === 'boolean'
+                  ? raw
+                    ? 'Enabled'
+                    : 'Disabled'
+                  : raw === null
+                    ? 'None'
+                    : String(raw).replaceAll('_', ' '));
+          return (
+            <div key={key}>
+              <dt>{labels[key]}</dt>
+              <dd>{text}</dd>
+            </div>
+          );
+        })}
+    </dl>
   );
 }

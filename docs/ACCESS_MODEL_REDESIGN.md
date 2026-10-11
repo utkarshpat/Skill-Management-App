@@ -4,6 +4,10 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Access profile consolidation — 11 October 2026
+
+The user approved the labels **Employee**, **Manager**, **Business Analytics** and **Admin**. Employee remains an active-person baseline; Manager remains current reporting-derived access. Business Analytics and Admin use explicit scoped responsibilities, never title or template-name authority. On the configured development account, the nine historical templates were explicitly retired with before/after audit, individual exceptions preserved, and effective-access checks. Utkarsh has organization Admin plus Business Analytics; Anupriya has Business Analytics bound to her current UK Delivery Unit. Migration 067 adds canonical effective profile flags to the authorized administration read. See [the consolidation and validation record](ACCESS_PROFILE_CONSOLIDATION_2026-10-11.md). Other account configurations require their own approved preview and execution; this is not an automatic migration of every account's grants.
+
 ### Certification increment — 9 October 2026
 
 The user selected the assigned current direct-manager policy for certification review. The implementation in migration 053 shares the existing `profile.view`/`skill.view` personal-read prerequisites, `skill.claim` personal claim-management prerequisites (including published-catalogue view), and `skill.verify` assigned-review policy. Permission IDs and stored grants are retained; labels identify both skill and certification claims. No organization directory, new grant scope, title-based authority or automatic skill approval is introduced. Certification reads/writes independently enforce owner, active account/people, current reporting chain, exact assigned reviewer, submitted state, no self-review and revision checks. Submitted and approved credential details are immutable. Returned/rejected records may be corrected and explicitly resubmitted. Manager reassignment requires explicit rerouting; it does not silently transfer submitted reviews.

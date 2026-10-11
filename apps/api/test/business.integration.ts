@@ -20,6 +20,7 @@ const migrations = await Promise.all(
     '063_credential_renewal_reliability.sql',
     '064_business_workflow_recovery.sql',
     '066_amendment_lifecycle.sql',
+    '067_access_profile_administration.sql',
   ].map(file => readFile(new URL('../../../database/migrations/' + file, import.meta.url), 'utf8')),
 );
 await withDatabase(async pool => {
@@ -31,6 +32,7 @@ await withDatabase(async pool => {
   assert.match(info.name, /(?:^|-)dev$/i, 'Never run this fixture against a production database.');
   assert.ok(info.version >= 58);
   const scenarios = [
+    'access-profiles',
     'scope-and-personal',
     'organization-boundary',
     'organization-runtime-boundary',
@@ -61,7 +63,7 @@ await withDatabase(async pool => {
     });
     try {
       for (let i = 0; i < migrations.length; i++)
-        if (info.version < 60 + i)
+        if (info.version < [60, 61, 62, 63, 64, 66, 67][i])
           for (const batch of migrations[i].split(/^GO\s*$/m))
             if (batch.trim()) await new sql.Request(tx).batch(batch);
       const ids = Object.fromEntries(
@@ -139,7 +141,47 @@ await withDatabase(async pool => {
             )
           ).recordset[0].json,
         );
-      if (scenario === 'organization-boundary' || scenario === 'organization-runtime-boundary') {
+      if (scenario === 'access-profiles') {
+        const administration = async () =>
+          JSON.parse((await execute('BusinessAdministration', ids.admin)).recordset[0].json);
+        let data = await administration();
+        assert.equal(
+          data.people.find((p: any) => p.id.toLowerCase() === ids.lead).analyticsAccess,
+          true,
+        );
+        assert.equal(
+          data.people.find((p: any) => p.id.toLowerCase() === ids.lead).managerAccess,
+          false,
+        );
+        assert.equal(
+          data.people.find((p: any) => p.id.toLowerCase() === ids.admin).adminAccess,
+          true,
+        );
+        await req.query(
+          'UPDATE dbo.AccessOrgAssignment SET manager_id=@lead WHERE account_id=@account AND person_id=@alice;',
+        );
+        data = await administration();
+        assert.equal(
+          data.people.find((p: any) => p.id.toLowerCase() === ids.lead).managerAccess,
+          true,
+          'Reporting-derived Manager needs no template.',
+        );
+        await req.query(
+          "INSERT dbo.AccessPersonOverride(account_id,person_id,permission_code,scope_kind,effect,valid_until,reason) VALUES(@account,@lead,'profile.view','OWN','DENY',DATEADD(hour,1,SYSUTCDATETIME()),N'Rollback fixture');",
+        );
+        data = await administration();
+        const lead = data.people.find((p: any) => p.id.toLowerCase() === ids.lead);
+        assert.equal(lead.employeeAccess, false);
+        assert.equal(lead.managerAccess, false);
+        assert.equal(
+          lead.analyticsAccess,
+          false,
+          'Discovery respects execution profile prerequisite.',
+        );
+      } else if (
+        scenario === 'organization-boundary' ||
+        scenario === 'organization-runtime-boundary'
+      ) {
         const foreignAccount = randomUUID(),
           foreignPerson = randomUUID(),
           organizationGrant = randomUUID();

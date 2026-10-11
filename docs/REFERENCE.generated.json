@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "63c83e9e5e08d9c0",
+  "revision": "7ed0c490066349b4",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -68,7 +68,8 @@
       "062_business_audit_reliability.sql",
       "063_credential_renewal_reliability.sql",
       "064_business_workflow_recovery.sql",
-      "066_amendment_lifecycle.sql"
+      "066_amendment_lifecycle.sql",
+      "067_access_profile_administration.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -6489,7 +6490,7 @@
       "name": "BusinessAdministration",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/060_business_operations.sql"
+      "source": "database/migrations/067_access_profile_administration.sql"
     },
     {
       "name": "SaveBusinessChange",
