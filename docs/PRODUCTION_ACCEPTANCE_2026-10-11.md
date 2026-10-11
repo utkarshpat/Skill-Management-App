@@ -39,6 +39,8 @@ PNG, PDF and TXT were exercised through hosted file controls. JPEG, WebP and DOC
 
 The manager's hosted catalogue Amendments tab and provider proposal reached the server's Review & confirm preview successfully. Back and Cancel closed it without submitting an amendment or publishing a definition. The fresh manager sidebar included Reviews and Skill catalogue and excluded Business Operations.
 
+Hosted manager skill Team analytics loaded 11 active direct reports, two reviewed claims and two assigned pending reviews. Its Team summary CSV downloaded successfully; the file's scope and counts matched the screen and excluded private drafts. Certification Team analytics showed zero assigned pending credentials after the synthetic approval and explicitly limited its aggregates to current assigned submissions. This extends the coverage table above and supersedes the untested report-export note for the manager Team summary only. Business Operations exports remain separate and unverified.
+
 ## Bugs fixed and deployed
 
 1. Personal skill and certification pages did not consume remote notification update events, leaving manager decisions stale. Both now refresh through their existing request cancellation/race protection.
