@@ -40,5 +40,7 @@ Migration 067 extends the existing authorized administration read with effective
 - Anupriya's runtime dashboard total matched SQL's UK member selector (14); she cannot manage access.
 - New rollback SQL fixture verifies reporting-derived Manager without a template and suppresses Employee/Manager/analytics discovery after a profile DENY.
 - Existing business API tests cover current scope, forged selectors, stale preview receipts, DENY, revocation and administrator constraints.
+- Hosted normal-demo API checks passed for Anupriya, Hemant and Khushi: personal workspace returned 200 for all; only Anupriya could load Business Analytics (14 UK members); Manager discovery remained limited to Hemant among these three; all three were denied access administration (403).
+- Commit `78fb62d` was pushed to main. Hosted asset verification confirmed the four profile labels, administration entry and readable current/proposed access preview in the deployed bundles. This is deployment verification, not an administrator browser interaction test.
 
 Database verification does not substitute for an actual Microsoft SSO administrator browser acceptance run. That real-login verification remains deferred by the user. Migration 065/scheduler activation remains deferred for the future organization host.
