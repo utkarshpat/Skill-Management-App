@@ -83,3 +83,17 @@ The production renewal read does not expose its internal source link. The browse
 - Complete the secondary workflows and file/drag-drop variants listed above in a follow-up acceptance pass.
 
 Raw API artifacts and screenshot evidence are kept in ignored `.local` files. Credentials and session cookies are excluded from this report and committed artifacts.
+
+## Follow-up acceptance and certificate viewing
+
+The user deferred real-access verification and requested clearer certificate viewing after upload. Follow-up implementation `7538b7b` adds explicit View certificate and Download actions to image/PDF/TXT previews. `3469886` renders the PDF's first page with a lazily loaded, locally bundled PDF.js worker rather than relying on a native browser plugin. Canvas dimensions are bounded; replacement/unmount cancels rendering and destroys the document task. DOCX retains its original filename and download action with an explanation that a compatible document app is needed. No file is sent to an external viewer. The renderer follows the [official PDF.js canvas API](https://mozilla.github.io/pdf.js/examples/).
+
+The follow-up supersedes the earlier untested entries as follows:
+
+- Synthetic renewal `b14ec564-0b75-463f-ae3c-5e2250e4dfa9` was submitted and approved through legitimate production employee/manager API sessions: both HTTP 200, final APPROVED revision 4. Original `3b3650dc-b482-4e1c-8f7a-86dbb5f26b9c` remains APPROVED revision 8.
+- New synthetic REQ-103 `30fb08ff-bfe0-4a08-9c8e-2ffded32be8e` passed creation, reassignment to another authorized recipient, cancellation and identical cancellation retry. All responses were HTTP 200; final CANCELLED revision 3 with three events, so retry created no duplicate event. Its cancelled state was also visible in the employee dashboard.
+- New synthetic certificate `f3cdb8ee-794f-4b4d-a16c-287968fffae8` passed JPEG, WebP, DOCX and PDF uploads through normal production attachment APIs. JPEG/WebP were stored as compressed WebP, 2,940 bytes each; DOCX retained its MIME type, 788 bytes. A readable synthetic PDF was subsequently replaced and saved through the hosted file chooser/wizard, then the credential submitted and approved through legitimate API sessions.
+- The new certificate expires on 25 October 2026. Repeated production notification reads on 11 October contained the same `cert-expiry-…-14` notification and renewal URL. The original probe compared a lowercase UUID against SQL's uppercase notification ID; correcting the harness's case comparison confirmed the reminder, rather than identifying a missing app notification.
+- Final root regression suite after the renderer dependency change again passed 453 tests (6 architecture, 278 API, 169 web). The web build passed and npm reported zero dependency vulnerabilities.
+
+Important correction to the earlier scheduler wording: the implemented expiry mechanism calculates in-app notifications on an authenticated notification read at the six exact UTC-day offsets. No independent background cron/job was found. The 14-day hosted read path is verified; 10/7/5/3/last-day hosted boundary delivery and reminders while a user never opens the app are not proven. A durable scheduled notification design remains separate work. Real SSO/access testing remains deferred as requested. Actual pointer drag/drop, quiz scoring and secondary learning recovery paths remain unverified in the hosted browser.

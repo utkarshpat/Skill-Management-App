@@ -17,15 +17,6 @@ export function CertificateFilePreview({
   const canOpen = image || pdf || mimeType === 'text/plain';
   return (
     <div className="certificate-file-preview">
-      {image ? (
-        <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Open certificate image">
-          <img className={className || undefined} src={url} alt="Certificate preview" />
-        </a>
-      ) : pdf ? (
-        <CertificatePdfPreview url={url} fileName={fileName} />
-      ) : (
-        <FileText size={32} aria-hidden="true" />
-      )}
       <span title={fileName}>{fileName}</span>
       <div className="certificate-preview-actions">
         {canOpen && (
@@ -48,6 +39,15 @@ export function CertificateFilePreview({
           <Download size={16} aria-hidden="true" /> Download
         </a>
       </div>
+      {image ? (
+        <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Open certificate image">
+          <img className={className || undefined} src={url} alt="Certificate preview" />
+        </a>
+      ) : pdf ? (
+        <CertificatePdfPreview url={url} fileName={fileName} />
+      ) : (
+        <FileText size={32} aria-hidden="true" />
+      )}
       {!canOpen && (
         <p className="cert-help">Download this document to view it in Word or a compatible app.</p>
       )}
