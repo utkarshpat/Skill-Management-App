@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { CheckCheck, ExternalLink, MessageSquareMore, XCircle } from 'lucide-react';
 import { FormDialog } from '../FormDialog';
 import type { CertificationRecord } from './types';
 import { credentialValidity } from './certification-model';
@@ -52,24 +53,27 @@ export function CertificationReviewDialog({
             Cancel
           </button>
           <button
-            className="secondary-button"
+            className="secondary-button button-tone-rose"
             disabled={busy || !certification.canReview}
             onClick={() => void decide('REJECT')}
           >
+            <XCircle size={15} aria-hidden="true" />
             Do not approve
           </button>
           <button
-            className="secondary-button"
+            className="secondary-button button-tone-blue"
             disabled={busy || !certification.canReview}
             onClick={() => void decide('REQUEST_CHANGES')}
           >
+            <MessageSquareMore size={15} aria-hidden="true" />
             Request changes
           </button>
           <button
-            className="primary-button"
+            className="primary-button button-tone-teal"
             disabled={busy || !certification.canReview}
             onClick={() => void decide('APPROVE')}
           >
+            <CheckCheck size={16} aria-hidden="true" />
             {busy ? 'Saving…' : 'Approve with note'}
           </button>
         </div>
@@ -88,8 +92,14 @@ export function CertificationReviewDialog({
         </p>
         {certification.credentialId && <p>Credential ID: {certification.credentialId}</p>}
         {certification.credentialUrl && (
-          <a href={certification.credentialUrl} target="_blank" rel="noopener noreferrer">
-            Open issuer / badge link
+          <a
+            href={certification.credentialUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cert-review-link"
+          >
+            <span>Open issuer / badge link</span>
+            <ExternalLink size={13} aria-hidden="true" />
           </a>
         )}
         {certification.notes && <p>{certification.notes}</p>}

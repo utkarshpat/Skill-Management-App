@@ -14,6 +14,7 @@ import {
   UsersRound,
   BarChart3,
   MessageSquareMore,
+  X,
 } from 'lucide-react';
 import { CertificationRecommendations } from './certifications/CertificationRecommendations';
 import './capability-workspace.css';
@@ -239,29 +240,31 @@ export function ReviewWorkspace({
                 </article>
               </div>
               <div className="assigned-review-toolbar">
-                <label>
-                  <Search size={18} aria-hidden="true" />
+                <div className="assigned-review-search-wrap">
+                  <Search size={18} aria-hidden="true" className="assigned-review-search-icon" />
                   <input
                     type="search"
                     aria-label="Search employee or certification"
                     value={search}
                     maxLength={100}
                     onChange={e => setSearch(e.target.value)}
-                    placeholder="Search employee or certification"
+                    placeholder="Search employee or certification…"
                   />
-                </label>
-                {query && (
-                  <button
-                    className="secondary-button"
-                    onClick={() => {
-                      setSearch('');
-                      setQuery('');
-                      setPage(1);
-                    }}
-                  >
-                    Clear search
-                  </button>
-                )}
+                  {search && (
+                    <button
+                      type="button"
+                      className="assigned-review-clear-search-btn"
+                      aria-label="Clear search"
+                      onClick={() => {
+                        setSearch('');
+                        setQuery('');
+                        setPage(1);
+                      }}
+                    >
+                      <X size={15} aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
               </div>
               {error && (
                 <div className="assigned-review-error" role="alert">

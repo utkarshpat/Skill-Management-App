@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ExternalLink, Send, ShieldCheck, X } from 'lucide-react';
 import '../skill-wizard.css';
 import { FormDialog } from '../FormDialog';
 import {
@@ -98,14 +98,20 @@ function ComboBox({
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
   const [inputVal, setInputVal] = useState(value);
+  const [customActive, setCustomActive] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [showAllPresets, setShowAllPresets] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const listId = useId();
-  const [active, setActive] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // keep inputVal in sync when external value changes
   useEffect(() => {
     setInputVal(value);
-  }, [value]);
+    if (value && !presets.includes(value)) {
+      setCustomActive(true);
+    }
+  }, [value, presets]);
 
   // close on outside click
   useEffect(() => {
@@ -114,31 +120,75 @@ function ComboBox({
       if (!containerRef.current?.contains(e.target as Node)) {
         setOpen(false);
         setFocused(false);
+        setHighlightIndex(-1);
+        setShowAllPresets(false);
       }
     }
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
   }, [open]);
 
-  const isOtherSelected = value !== '' && !presets.includes(value);
   const typed = inputVal.trim().toLowerCase();
-  // show only matching when user has typed something; otherwise show full list
-  const isFiltering = typed.length > 0;
   const listItems: string[] = ['Other', ...presets];
+  const isFiltering = !showAllPresets && typed.length > 0;
   const filtered = isFiltering
     ? listItems.filter(p => p === 'Other' || p.toLowerCase().includes(typed))
     : listItems;
+  const isOtherSelected = (value !== '' && !presets.includes(value)) || (customActive && !value);
 
   function select(item: string) {
     if (item === 'Other') {
+      setCustomActive(true);
       onChange('');
       setInputVal('');
+      inputRef.current?.focus();
     } else {
+      setCustomActive(false);
       onChange(item);
       setInputVal(item);
     }
     setOpen(false);
+    setHighlightIndex(-1);
+    setShowAllPresets(false);
   }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (disabled) return;
+    if (!open) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setOpen(true);
+        setShowAllPresets(true);
+        setHighlightIndex(0);
+        return;
+      }
+    } else {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!filtered.length) return;
+        setHighlightIndex(prev => (prev + 1) % filtered.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!filtered.length) return;
+        setHighlightIndex(prev => (prev <= 0 ? filtered.length - 1 : prev - 1));
+      } else if (e.key === 'Enter') {
+        if (highlightIndex >= 0 && highlightIndex < filtered.length) {
+          e.preventDefault();
+          select(filtered[highlightIndex]);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setOpen(false);
+        setHighlightIndex(-1);
+        setShowAllPresets(false);
+      }
+    }
+  }
+
+  const effectivePlaceholder = customActive
+    ? 'Type custom name...'
+    : placeholder;
 
   return (
     <div
@@ -151,44 +201,25 @@ function ComboBox({
     >
       <div className={`cert-combobox-field${focused ? ' cert-combobox-focused' : ''}`}>
         <input
+          ref={inputRef}
           id={id}
           type="text"
           value={inputVal}
           disabled={disabled}
-          placeholder={isOtherSelected ? 'Type to enter...' : placeholder}
+          placeholder={effectivePlaceholder}
           maxLength={maxLength}
           autoComplete="off"
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={open}
           aria-controls={listId}
-          aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined}
-          onKeyDown={e => {
-            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-              e.preventDefault();
-              setOpen(true);
-              setActive(current =>
-                e.key === 'ArrowDown'
-                  ? (current + 1) % filtered.length
-                  : current <= 0
-                    ? filtered.length - 1
-                    : current - 1,
-              );
-            } else if (e.key === 'Enter' && open && active >= 0 && filtered[active]) {
-              e.preventDefault();
-              select(filtered[active]);
-              setActive(-1);
-            } else if (e.key === 'Escape' && open) {
-              e.preventDefault();
-              e.stopPropagation();
-              setOpen(false);
-              setActive(-1);
-            }
-          }}
+          aria-activedescendant={open && highlightIndex >= 0 ? `${listId}-${highlightIndex}` : undefined}
+          onKeyDown={handleKeyDown}
           onChange={e => {
             setInputVal(e.target.value);
             onChange(e.target.value);
-            setActive(-1);
+            setShowAllPresets(false);
+            setHighlightIndex(-1);
             if (!open) setOpen(true);
           }}
           onFocus={() => {
@@ -199,17 +230,38 @@ function ComboBox({
             setFocused(false);
           }}
         />
+        {inputVal && !disabled && (
+          <button
+            type="button"
+            tabIndex={-1}
+            className="cert-combobox-clear"
+            aria-label="Clear selection"
+            onMouseDown={e => {
+              e.preventDefault();
+              onChange('');
+              setInputVal('');
+              setCustomActive(false);
+              setHighlightIndex(-1);
+              inputRef.current?.focus();
+            }}
+          >
+            <X size={13} aria-hidden="true" />
+          </button>
+        )}
         <button
           type="button"
-          className="cert-combobox-toggle"
+          tabIndex={-1}
+          className={`cert-combobox-toggle${open ? ' cert-combobox-toggle-open' : ''}`}
           disabled={disabled}
           aria-label="Show options"
           aria-controls={listId}
           aria-expanded={open}
-          onClick={() => {
+          onMouseDown={e => {
+            e.preventDefault(); // prevent input blur before toggling
+            setShowAllPresets(true);
             setOpen(o => !o);
             setFocused(true);
-            setActive(-1);
+            setHighlightIndex(-1);
           }}
         >
           ▾
@@ -217,26 +269,27 @@ function ComboBox({
       </div>
       {open && (
         <ul id={listId} className="cert-combobox-list" role="listbox">
-          {filtered.map((item, index) => (
-            <li
-              key={item}
-              role="option"
-              id={`${listId}-${index}`}
-              aria-selected={value === item}
-              className={
-                active === index || value === item || (item === 'Other' && isOtherSelected)
-                  ? 'selected'
-                  : ''
-              }
-              onMouseDown={e => {
-                e.preventDefault();
-                select(item);
-              }}
-            >
-              {item}
-            </li>
-          ))}
-          {filtered.length === 0 && <li className="cert-combobox-empty">No matches</li>}
+          {filtered.map((item, idx) => {
+            const isSelected = value === item || (item === 'Other' && isOtherSelected);
+            const isHighlighted = idx === highlightIndex;
+            return (
+              <li
+                key={item}
+                id={`${listId}-${idx}`}
+                role="option"
+                aria-selected={isSelected}
+                className={`${isSelected ? 'selected' : ''} ${isHighlighted ? 'highlighted' : ''}`}
+                onMouseEnter={() => setHighlightIndex(idx)}
+                onMouseDown={e => {
+                  e.preventDefault();
+                  select(item);
+                }}
+              >
+                {item === 'Other' ? '✍️ Other (custom...)' : item}
+              </li>
+            );
+          })}
+          {filtered.length === 0 && <li className="cert-combobox-empty">No matches found</li>}
         </ul>
       )}
     </div>
@@ -495,7 +548,7 @@ export function CertificationDialog({
             ['Issue date', fields.certificationDate],
             [
               'Expiry date',
-              fields.expiryDate === null ? 'Does not expire' : fields.expiryDate || '—',
+              fields.expiryDate === null ? 'Does not expire (Lifetime)' : fields.expiryDate || '—',
             ],
             ['Credential ID', fields.credentialId || '—'],
             ['Issuer / badge link', fields.credentialUrl || '—'],
@@ -503,7 +556,19 @@ export function CertificationDialog({
           ].map(([label, value]) => (
             <div className="cert-review-field-row" key={label}>
               <span className="cert-review-field-label">{label}</span>
-              <span className="cert-review-field-value">{value}</span>
+              {label === 'Issuer / badge link' && fields.credentialUrl ? (
+                <a
+                  href={fields.credentialUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="cert-review-link"
+                >
+                  <span>{fields.credentialUrl}</span>
+                  <ExternalLink size={13} aria-hidden="true" />
+                </a>
+              ) : (
+                <span className="cert-review-field-value">{value}</span>
+              )}
             </div>
           ))}
         </div>
@@ -673,42 +738,45 @@ export function CertificationDialog({
 
                   {/* Expiry date column */}
                   <div className="form-group cert-expiry-col">
-                    <label htmlFor="cert-expiry-date">
+                    <label htmlFor={fields.expiryDate !== null ? 'cert-expiry-date' : undefined}>
                       <span>Expiry date{fields.expiryDate !== null && <RequiredMark />}</span>
                     </label>
-                    {fields.expiryDate !== null && (
-                      <>
-                        <div className="cert-expiry-row">
-                          <input
-                            id="cert-expiry-date"
-                            type="date"
-                            min={fields.certificationDate || undefined}
-                            value={fields.expiryDate}
-                            onChange={e => update('expiryDate', e.target.value)}
-                          />
-                          <select
-                            className="cert-expiry-preset"
-                            aria-label="Quick-fill expiry date"
-                            value=""
-                            onChange={e => {
-                              const months = parseInt(e.target.value, 10);
-                              if (months && fields.certificationDate) {
-                                update(
-                                  'expiryDate',
-                                  addCredentialMonths(fields.certificationDate, months),
-                                );
-                              }
-                            }}
-                          >
-                            <option value="">Quick fill…</option>
-                            {EXPIRY_PRESETS.map(p => (
-                              <option key={p.months} value={p.months}>
-                                {p.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </>
+                    {fields.expiryDate !== null ? (
+                      <div className="cert-expiry-row">
+                        <input
+                          id="cert-expiry-date"
+                          type="date"
+                          min={fields.certificationDate || undefined}
+                          value={fields.expiryDate}
+                          onChange={e => update('expiryDate', e.target.value)}
+                        />
+                        <select
+                          className="cert-expiry-preset"
+                          aria-label="Quick-fill expiry date"
+                          value=""
+                          onChange={e => {
+                            const months = parseInt(e.target.value, 10);
+                            if (months && fields.certificationDate) {
+                              update(
+                                'expiryDate',
+                                addCredentialMonths(fields.certificationDate, months),
+                              );
+                            }
+                          }}
+                        >
+                          <option value="">Quick fill…</option>
+                          {EXPIRY_PRESETS.map(p => (
+                            <option key={p.months} value={p.months}>
+                              {p.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="cert-lifetime-badge">
+                        <ShieldCheck size={16} aria-hidden="true" />
+                        <span>Lifetime credential — does not expire</span>
+                      </div>
                     )}
                     <label className="cert-no-expire-check">
                       <input
@@ -716,7 +784,7 @@ export function CertificationDialog({
                         checked={fields.expiryDate === null}
                         onChange={e => update('expiryDate', e.target.checked ? null : '')}
                       />
-                      Does not expire
+                      <span>Does not expire</span>
                     </label>
                   </div>
 

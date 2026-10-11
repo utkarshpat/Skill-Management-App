@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
+  X,
 } from 'lucide-react';
 import type { CertificationRecord } from './types';
 import { certificationStatusLabels, credentialValidity } from './certification-model';
@@ -154,8 +155,8 @@ export function CertificationProfileView({
       <div className="skills-content-grid">
         <section className="skills-list-card" aria-label="Your certifications">
           <div className="skills-card-header">
-            <label className="skills-query">
-              <Search size={17} />
+            <div className="skills-query">
+              <Search size={16} className="skills-query-search-icon" aria-hidden="true" />
               <input
                 type="search"
                 aria-label="Search your certifications"
@@ -167,7 +168,20 @@ export function CertificationProfileView({
                   setPage(1);
                 }}
               />
-            </label>
+              {query && (
+                <button
+                  type="button"
+                  className="skills-query-clear-btn"
+                  aria-label="Clear search query"
+                  onClick={() => {
+                    setQuery('');
+                    setPage(1);
+                  }}
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+              )}
+            </div>
             <div className="skills-list-tabs" role="group" aria-label="Certification views">
               {[
                 { id: 'all', label: 'All certifications' },
@@ -313,21 +327,23 @@ export function CertificationProfileView({
                         <td>
                           <div className="skills-row-actions">
                             <button
+                              className="skills-action-btn skills-action-view"
                               aria-label={`View ${record.certificationName} credential`}
                               title="View credential"
                               disabled={loading}
                               onClick={() => onView(record)}
                             >
-                              <Eye size={16} />
+                              <Eye size={15} />
                             </button>
                             {record.canEdit && (
                               <button
+                                className="skills-action-btn skills-action-edit"
                                 aria-label={`Edit ${record.certificationName} draft`}
                                 title="Edit details"
                                 disabled={loading}
                                 onClick={() => onEdit(record)}
                               >
-                                <Pencil size={15} />
+                                <Pencil size={14} />
                               </button>
                             )}
                             {canRenew &&
@@ -338,16 +354,18 @@ export function CertificationProfileView({
                                 86400000 <=
                                 90 && (
                                 <button
+                                  className="skills-action-btn skills-action-renew"
                                   aria-label={`Record renewal for ${record.certificationName}`}
                                   title="Record renewal"
                                   disabled={loading}
                                   onClick={() => onRenew(record)}
                                 >
-                                  <RotateCcw size={15} />
+                                  <RotateCcw size={14} />
                                 </button>
                               )}
                             {record.canSubmit && (
                               <button
+                                className="skills-action-btn skills-action-submit"
                                 aria-label={`${record.status === 'SUBMITTED' ? 'Reroute' : 'Submit'} ${record.certificationName} for review`}
                                 title={
                                   record.status === 'SUBMITTED'
@@ -357,17 +375,18 @@ export function CertificationProfileView({
                                 disabled={loading}
                                 onClick={() => onSubmit(record)}
                               >
-                                <Send size={15} />
+                                <Send size={14} />
                               </button>
                             )}
                             {record.canReview && (
                               <button
+                                className="skills-action-btn skills-action-review"
                                 aria-label={`Review ${record.certificationName}`}
                                 title="Review credential"
                                 disabled={loading}
                                 onClick={() => onReview(record)}
                               >
-                                <ShieldCheck size={15} />
+                                <ShieldCheck size={14} />
                               </button>
                             )}
                           </div>

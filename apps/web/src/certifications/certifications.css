@@ -1328,3 +1328,363 @@
   align-items: center;
   gap: 8px;
 }
+
+/* ═══════════════════════════════════════════════════════
+   Modern UI Polish: Lifetime Badge, Review Link & Combobox
+═══════════════════════════════════════════════════════ */
+.cert-lifetime-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 13px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent-ink, #008595) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent-ink, #008595) 24%, var(--line));
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+.cert-lifetime-badge svg {
+  color: var(--accent-ink, #008595);
+  flex-shrink: 0;
+}
+
+.cert-review-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent-ink);
+  font-weight: 600;
+  word-break: break-all;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.cert-review-link:hover {
+  text-decoration: underline;
+  color: var(--primary-hover, #087c83);
+}
+.cert-review-link svg {
+  flex-shrink: 0;
+}
+
+.cert-combobox-clear {
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  padding: 0 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.cert-combobox-clear:hover {
+  color: var(--ink);
+  background: var(--raised);
+}
+
+.cert-combobox-toggle-open {
+  transform: rotate(180deg);
+  color: var(--accent-ink) !important;
+}
+
+.cert-combobox-list li.highlighted {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Review Dialog Decision Buttons
+═══════════════════════════════════════════════════════ */
+.certification-review-footer {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.certification-review-footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 9px 16px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.certification-review-footer .button-tone-rose {
+  background: color-mix(in srgb, #ef4444 8%, var(--surface)) !important;
+  color: #dc2626 !important;
+  border: 1px solid color-mix(in srgb, #ef4444 32%, var(--line)) !important;
+}
+.certification-review-footer .button-tone-rose:hover:not(:disabled) {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+  transform: translateY(-1px);
+}
+.certification-review-footer .button-tone-blue {
+  background: color-mix(in srgb, #2563eb 8%, var(--surface)) !important;
+  color: #2563eb !important;
+  border: 1px solid color-mix(in srgb, #2563eb 32%, var(--line)) !important;
+}
+.certification-review-footer .button-tone-blue:hover:not(:disabled) {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transform: translateY(-1px);
+}
+.certification-review-footer .button-tone-teal {
+  background: linear-gradient(135deg, #0d9488, #059669) !important;
+  color: #ffffff !important;
+  border: 1px solid transparent !important;
+  box-shadow: 0 2px 6px rgba(13, 148, 136, 0.25);
+}
+.certification-review-footer .button-tone-teal:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0f766e, #047857) !important;
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);
+  transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Modern Search Boxes, Inputs & Clear Buttons
+═══════════════════════════════════════════════════════ */
+.skills-query {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 0 12px;
+  background: var(--surface);
+  min-width: 0;
+  flex: 1;
+  max-width: 340px;
+  height: 40px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.skills-query:focus-within {
+  border-color: var(--accent-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-ink) 16%, transparent), 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+.skills-query-search-icon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.skills-query input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  outline: none;
+  padding: 0;
+}
+.skills-query input::-webkit-search-cancel-button {
+  display: none;
+}
+.skills-query-clear-btn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 0;
+  background: var(--raised);
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.skills-query-clear-btn:hover {
+  background: color-mix(in srgb, var(--muted) 25%, var(--raised));
+  color: var(--ink);
+}
+
+/* Review search toolbar */
+.assigned-review-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 220px;
+  max-width: 480px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 14px;
+  background: var(--surface);
+  height: 42px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.assigned-review-search-wrap:focus-within {
+  border-color: var(--accent-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-ink) 16%, transparent);
+}
+.assigned-review-search-icon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.assigned-review-search-wrap input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  padding: 0;
+  min-width: 0;
+}
+.assigned-review-search-wrap input::-webkit-search-cancel-button {
+  display: none;
+}
+.assigned-review-clear-search-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 0;
+  background: var(--raised);
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.assigned-review-clear-search-btn:hover {
+  background: color-mix(in srgb, var(--muted) 25%, var(--raised));
+  color: var(--ink);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Table Row Action Buttons
+═══════════════════════════════════════════════════════ */
+.skills-row-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.skills-action-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.skills-action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+.skills-action-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.skills-action-view:hover:not(:disabled) {
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.35);
+  background: color-mix(in srgb, #2563eb 8%, var(--surface));
+}
+.skills-action-edit:hover:not(:disabled) {
+  color: #d97706;
+  border-color: rgba(217, 119, 6, 0.35);
+  background: color-mix(in srgb, #d97706 8%, var(--surface));
+}
+.skills-action-renew:hover:not(:disabled) {
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.35);
+  background: color-mix(in srgb, #059669 8%, var(--surface));
+}
+.skills-action-submit:hover:not(:disabled) {
+  color: #6366f1;
+  border-color: rgba(99, 102, 241, 0.35);
+  background: color-mix(in srgb, #6366f1 8%, var(--surface));
+}
+.skills-action-review:hover:not(:disabled) {
+  color: #0d9488;
+  border-color: rgba(13, 148, 136, 0.35);
+  background: color-mix(in srgb, #0d9488 8%, var(--surface));
+}
+
+/* ═══════════════════════════════════════════════════════
+   Enhanced Filter Selects & Buttons
+═══════════════════════════════════════════════════════ */
+.skills-filters select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23626975' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  padding-right: 32px;
+  border-radius: 9px;
+  height: 38px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.skills-filters select:hover {
+  border-color: color-mix(in srgb, var(--ink) 25%, var(--line));
+}
+.skills-filters select:focus {
+  border-color: var(--accent-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-ink) 16%, transparent);
+  outline: none;
+}
+
+.skills-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+  height: 38px;
+  padding: 0 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.skills-clear:hover {
+  background: var(--raised);
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--ink) 20%, var(--line));
+  transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Top Metric Cards — Interactive Depth
+═══════════════════════════════════════════════════════ */
+.skills-metric {
+  border-radius: 14px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.18s ease;
+}
+.skills-metric:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+.skills-metric[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px var(--accent-ink), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
