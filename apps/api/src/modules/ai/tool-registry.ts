@@ -513,6 +513,8 @@ export class ToolRegistry {
             workspace: can(state, person, code),
           })),
         guide: assistantCapabilities(state, person),
+        workflowPolicy:
+          'OWN workflow permissions are participant-scoped, not permission to perform every action on your own request. Only the current recipient can Start a submitted record or Resolve an in-progress record. The requester can cancel an active record; requester or current recipient can reassign with assign permission. For a specific record read request_detail and use its canComment/canStart/canResolve/canReassign flags. A requester cannot resolve merely because they created the record.',
       }),
     });
 
@@ -886,10 +888,11 @@ export class ToolRegistry {
             canClaim: own.canClaim,
             hasMore: own.total > own.pageSize,
             policy:
-              'This preview does not measure proficiency gaps. Missing or unreviewed claims mean proficiency is not established, not low ability. Recommend development opportunities rather than inventing an evidenced gap. Presence flags describe saved fields only, not evidence quality or verification. Narrative and evidence contents are excluded; do not infer that they are absent. Synthetic QA examples must not become professional achievements.',
+              'This preview does not measure proficiency gaps. Missing or unreviewed claims mean proficiency is not established, not low ability. Recommend development opportunities rather than inventing an evidenced gap. Presence flags describe saved fields only, not evidence quality or verification. Translate metadata into natural language; do not print internal flag names or JSON. Use actual claimedRank, never infer rank from a label or invent a maximum level. Narrative and evidence contents are excluded; do not infer that they are absent. Synthetic QA examples must not become professional achievements.',
             skills: own.claims.map(claim => ({
               skill: claim.skillName,
               proficiency: claim.levelName,
+              claimedRank: claim.rank,
               status: claim.status,
               hasProjects: Boolean(claim.projects?.trim()),
               hasEvidenceReferences: Boolean(claim.evidence?.trim()),
