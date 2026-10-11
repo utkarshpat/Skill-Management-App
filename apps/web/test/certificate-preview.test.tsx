@@ -53,7 +53,7 @@ test('DOCX downloads retain filenames; PDF/image previews retain their open acti
     <CertificateFilePreview url="blob:file" mimeType="application/pdf" fileName="credential.pdf" />,
   );
   assert.match(pdf, /View certificate/);
-  assert.match(pdf, /<iframe[^>]+title="Certificate preview: credential.pdf"/);
+  assert.match(pdf, /First page of credential.pdf/);
   assert.match(pdf, /download="credential.pdf"/);
   const image = renderToStaticMarkup(
     <CertificateFilePreview url="blob:file" mimeType="image/webp" fileName="credential.webp" />,

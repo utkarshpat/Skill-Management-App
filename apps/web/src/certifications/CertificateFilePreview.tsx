@@ -1,4 +1,5 @@
 import { Download, Eye, FileText } from 'lucide-react';
+import { CertificatePdfPreview } from './CertificatePdfPreview';
 
 export function CertificateFilePreview({
   url,
@@ -21,12 +22,7 @@ export function CertificateFilePreview({
           <img className={className || undefined} src={url} alt="Certificate preview" />
         </a>
       ) : pdf ? (
-        <iframe
-          className="certificate-pdf-preview"
-          src={url}
-          title={`Certificate preview: ${fileName}`}
-          loading="lazy"
-        />
+        <CertificatePdfPreview url={url} fileName={fileName} />
       ) : (
         <FileText size={32} aria-hidden="true" />
       )}
