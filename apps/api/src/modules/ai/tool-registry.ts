@@ -195,7 +195,7 @@ export class ToolRegistry {
                       : 'Current',
               })),
               policy:
-                'Manager reviewed is an internal decision, not issuer verification or proof of current validity. Expiry is independent. Expires soon means within 90 days, including today. Page results are not aggregate validity counts. Reminder milestones are evaluated on notification reads; do not promise background email or scheduled delivery.',
+                'Manager reviewed is an internal decision, not issuer verification or proof of current validity. Expiry is independent. Expires soon means within 90 days, including today. Page results are not aggregate validity counts. Scheduled persistent in-app reminders require migration 065 and an enabled daily scheduler; do not assume activation or promise background email.',
             };
           },
         });

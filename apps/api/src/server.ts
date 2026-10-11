@@ -16,6 +16,7 @@ import { AssistantService, configuredProvider } from './modules/ai/index.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
 import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
 import { SqlCertificationStore } from './modules/skills/sql-certification-store.js';
+import { SqlCertificationReminders } from './modules/skills/certification-reminders.js';
 import { SqlCertificationRecommendationStore } from './modules/skills/sql-certification-recommendation-store.js';
 import { configuredEvidence } from './modules/skills/evidence.js';
 import { SqlConversationsStore } from './modules/ai/conversations.js';
@@ -161,6 +162,14 @@ const app = createApp(
   {
     developmentStore,
     hostedDemo,
+    ...(process.env.CERTIFICATION_REMINDER_SECRET && process.env.ACCESS_ACCOUNT_ID
+      ? {
+          certificationReminderJob: {
+            secret: process.env.CERTIFICATION_REMINDER_SECRET,
+            run: () => new SqlCertificationReminders(process.env.ACCESS_ACCOUNT_ID!).run(),
+          },
+        }
+      : {}),
     ...(process.env.HTTP_TIMING_ENABLED === 'true'
       ? {
           onRequestTiming: (metric: object) =>

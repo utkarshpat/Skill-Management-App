@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "6c3665d42bd0fd5a",
+  "revision": "c0797612291e4ab1",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -67,7 +67,8 @@
       "061_business_workflows.sql",
       "062_business_audit_reliability.sql",
       "063_credential_renewal_reliability.sql",
-      "064_business_workflow_recovery.sql"
+      "064_business_workflow_recovery.sql",
+      "065_scheduled_certification_reminders.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -5641,6 +5642,133 @@
         ],
         "indexes": [],
         "domain": "Business Operations"
+      },
+      "CertificationReminderSchedule": {
+        "source": "065_scheduled_certification_reminders.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL PRIMARY KEY REFERENCES dbo.Account(account_id)",
+            "source": "065_scheduled_certification_reminders.sql"
+          },
+          "enabled_date": {
+            "type": "date",
+            "nullable": false,
+            "declaration": "enabled_date date NOT NULL DEFAULT CONVERT(date,SYSUTCDATETIME())",
+            "source": "065_scheduled_certification_reminders.sql"
+          },
+          "last_completed_at": {
+            "type": "datetime2",
+            "nullable": true,
+            "declaration": "last_completed_at datetime2 NULL",
+            "source": "065_scheduled_certification_reminders.sql"
+          }
+        },
+        "pk": [
+          "account_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "Account",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "065_scheduled_certification_reminders.sql"
+          }
+        ],
+        "constraints": [],
+        "indexes": [],
+        "domain": "Skills & claims"
+      },
+      "CertificationExpiryReminder": {
+        "source": "065_scheduled_certification_reminders.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "065_scheduled_certification_reminders.sql"
+          },
+          "certification_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "certification_id uniqueidentifier NOT NULL",
+            "source": "065_scheduled_certification_reminders.sql"
+          },
+          "expiry_date": {
+            "type": "date",
+            "nullable": false,
+            "declaration": "expiry_date date NOT NULL",
+            "source": "065_scheduled_certification_reminders.sql"
+          },
+          "days_before": {
+            "type": "tinyint",
+            "nullable": false,
+            "declaration": "days_before tinyint NOT NULL CHECK(days_before IN(14,10,7,5,3,0))",
+            "source": "065_scheduled_certification_reminders.sql"
+          },
+          "due_date": {
+            "type": "date",
+            "nullable": false,
+            "declaration": "due_date date NOT NULL",
+            "source": "065_scheduled_certification_reminders.sql"
+          },
+          "created_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "created_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "065_scheduled_certification_reminders.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "certification_id",
+          "expiry_date",
+          "days_before"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "certification_id"
+            ],
+            "target": "CertificationRecord",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "065_scheduled_certification_reminders.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "CONSTRAINT PK_CertificationExpiryReminder PRIMARY KEY(account_id,certification_id,expiry_date,days_before)",
+            "source": "065_scheduled_certification_reminders.sql"
+          },
+          {
+            "sql": "CONSTRAINT FK_CertificationExpiryReminder_Record FOREIGN KEY(account_id,certification_id) REFERENCES dbo.CertificationRecord(account_id,id)",
+            "source": "065_scheduled_certification_reminders.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_CertificationExpiryReminder_Due",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "due_date DESC"
+            ],
+            "filter": "INCLUDE(certification_id,expiry_date,days_before)",
+            "source": "065_scheduled_certification_reminders.sql"
+          }
+        ],
+        "domain": "Skills & claims"
       }
     },
     "views": {
@@ -6007,6 +6135,12 @@
       "path": "/api/certification-recommendations/respond",
       "module": "skills",
       "source": "apps/api/src/modules/skills/certification-recommendation-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/jobs/certification-expiry",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/certification-reminder-routes.ts"
     },
     {
       "method": "GET",
@@ -6380,7 +6514,7 @@
       "name": "CertificationExpiryNotifications",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/063_credential_renewal_reliability.sql"
+      "source": "database/migrations/065_scheduled_certification_reminders.sql"
     },
     {
       "name": "CertificationRecommendationCan",
@@ -6531,6 +6665,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(30),@payload nvarchar(max)",
       "source": "database/migrations/064_business_workflow_recovery.sql"
+    },
+    {
+      "name": "GenerateCertificationExpiryReminders",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier",
+      "source": "database/migrations/065_scheduled_certification_reminders.sql"
     }
   ],
   "groups": {
@@ -6573,7 +6713,9 @@
       "SkillClaimNotification",
       "SkillClaimEvidence",
       "CertificationRecord",
-      "CertificationImageRecord"
+      "CertificationImageRecord",
+      "CertificationReminderSchedule",
+      "CertificationExpiryReminder"
     ],
     "Learning & recommendations": [
       "LearningPlan",

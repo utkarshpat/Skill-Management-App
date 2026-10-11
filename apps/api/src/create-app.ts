@@ -1,5 +1,6 @@
 import { registerBusinessRoutes, type BusinessDependencies } from './modules/business/index.js';
 import { startRequestTiming } from './shared/request-timing.js';
+import { registerCertificationReminderJob } from './modules/skills/certification-reminder-routes.js';
 import { randomUUID } from 'node:crypto';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
@@ -61,13 +62,15 @@ export type AppDependencies = IdentityDependencies &
   RecommendationDependencies &
   CertificationDependencies &
   CertificationRecommendationDependencies &
-  KnowledgeDependencies & BusinessDependencies;
+  KnowledgeDependencies &
+  BusinessDependencies;
 
 export function createApp(
   dependencies?: AppDependencies,
   options: {
     developmentStore?: AccessStore;
     hostedDemo?: HostedDemoConfig;
+    certificationReminderJob?: { secret: string; run: () => Promise<{ created: number }> };
     onRequestTiming?: (metric: {
       requestId: string;
       method: string;
@@ -110,6 +113,7 @@ export function createApp(
     timing.run(next);
   });
   app.use(express.json({ limit: '128kb' }));
+  registerCertificationReminderJob(app, options.certificationReminderJob);
   identityRoutes(
     app,
     dependencies

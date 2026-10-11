@@ -42,7 +42,7 @@ test('KT rejects forged authority/history and oversized context before any provi
 });
 
 test('KT inventory preserves actual FK tuples and treats view and quota tables honestly', async () => {
-  assert.equal(Object.keys(content.schema.tables).length, 56);
+  assert.equal(Object.keys(content.schema.tables).length, 58);
   assert.equal(
     content.schema.migrations.length,
     (await readdir(new URL('../../../database/migrations/', import.meta.url))).filter(file =>
@@ -50,6 +50,15 @@ test('KT inventory preserves actual FK tuples and treats view and quota tables h
     ).length,
   );
   assert.ok('CertificationImageRecord' in content.schema.tables);
+  assert.ok('CertificationReminderSchedule' in content.schema.tables);
+  assert.ok('CertificationExpiryReminder' in content.schema.tables);
+  assert.ok(
+    content.sections.some(
+      section =>
+        section.id === 'hosting-decision' &&
+        section.content.includes('Vercel is temporary hosting'),
+    ),
+  );
   assert.equal(content.schema.tables.AccessPerson.columns.job_title.type, 'nvarchar(100)');
   assert.equal(content.schema.tables.AccessPerson.columns.grade.nullable, true);
   assert.ok(

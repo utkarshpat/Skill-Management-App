@@ -47,7 +47,7 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
         'Open Capabilities → Certifications. Review status and calendar validity are separate: manager-reviewed credentials can be expired.',
         'With skill.claim, Add certification uses a mandatory private certificate file (PDF, JPEG/PNG/WebP, DOCX or text; maximum 5 MB), credential details and dates, then Review & save. Images are compressed. Save draft and Submit for review are explicit human actions.',
         'View certificate and Download certificate open saved attachments. Approved credentials remain locked; Renew starts a separate editable renewal for the same credential and issuer with extended validity.',
-        'Expiry reminders use milestones 14, 10, 7, 5, 3 and 0 days and are evaluated when notifications are read. Background scheduled delivery and email are not implemented.',
+        'Expiry reminders use milestones 14, 10, 7, 5, 3 and 0 days. Scheduled persistent in-app reminders require migration 065 and an enabled daily scheduler; do not assume deployment activation. The same-day feed remains available. Email delivery is not implemented.',
       ],
     });
   if (capabilities.ownProfile)
