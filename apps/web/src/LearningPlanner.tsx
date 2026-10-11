@@ -301,7 +301,7 @@ export function LearningPlanner({
                 onClick={() => void generate(true)}
               >
                 <Sparkles size={14} />
-                Refine roadmap
+                {busy && !confirmationStarted ? 'Refining roadmap…' : 'Refine roadmap'}
               </button>
             </div>
           ) : (
@@ -364,7 +364,7 @@ export function LearningPlanner({
                 onClick={() => void handleConfirmSchedule()}
               >
                 {onConfirmSchedule ? <CalendarDays size={15} /> : <ArrowRight size={15} />}
-                {busy
+                {busy && confirmationStarted
                   ? onConfirmSchedule
                     ? 'Adding to calendar…'
                     : 'Using roadmap…'
