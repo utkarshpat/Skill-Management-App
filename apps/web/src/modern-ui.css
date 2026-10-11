@@ -13,6 +13,7 @@
 
 /* --- Buttons: lift on hover, settle on press --- */
 .admin-primary,
+.primary-button,
 .secondary-button,
 .microsoft-button,
 .dashboard-item-action,
@@ -26,6 +27,7 @@
     color 0.15s ease;
 }
 .admin-primary:not(:disabled):hover,
+.primary-button:not(:disabled):hover,
 .microsoft-button:not(:disabled):hover {
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
@@ -37,6 +39,7 @@
   box-shadow: var(--shadow-sm);
 }
 .admin-primary:not(:disabled):active,
+.primary-button:not(:disabled):active,
 .secondary-button:not(:disabled):active,
 .microsoft-button:not(:disabled):active {
   transform: translateY(0) scale(0.98);

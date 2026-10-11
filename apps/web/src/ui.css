@@ -183,29 +183,54 @@ button:not(:disabled):hover {
   margin-bottom: 24px;
 }
 .admin-primary,
+.primary-button,
 .admin-secondary,
 .secondary-button,
 .microsoft-button {
   font-size: 13px;
   font-weight: 600;
-  min-height: 42px;
-  border-radius: 7px;
+  min-height: 38px;
+  border-radius: 8px;
   text-decoration: none;
-}
-.secondary-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
+  padding: 8px 16px;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.secondary-button {
   background: white;
   color: #353b44;
   border: 1px solid #dfe2e7;
-  padding: 10px 14px;
-  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.primary-button {
+  background: var(--primary-button, #11878a);
+  color: #ffffff;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.primary-button:hover:not(:disabled) {
+  background: var(--primary-hover, #0e7275);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+.primary-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+.primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 .admin-primary {
   background: #bd1723;
   border-color: #bd1723;
+  color: #ffffff;
 }
 .admin-text-button {
   font-size: 13px;
@@ -1689,6 +1714,48 @@ input[type='checkbox'] {
   color: var(--muted);
   min-width: 0;
   overflow-wrap: anywhere;
+}
+.form-dialog-footer button {
+  min-height: 38px;
+  padding: 8px 18px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.form-dialog-footer .secondary-button {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.form-dialog-footer .secondary-button:hover:not(:disabled) {
+  background: var(--raised);
+  border-color: color-mix(in srgb, var(--ink) 20%, var(--line));
+  transform: translateY(-1px);
+}
+.form-dialog-footer .primary-button {
+  background: var(--bo-accent, var(--primary-button, #11878a));
+  color: #ffffff;
+  border: 1px solid transparent;
+  box-shadow: 0 2px 6px rgba(17, 135, 138, 0.25);
+}
+.form-dialog-footer .primary-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bo-accent, var(--primary-button, #11878a)) 85%, #000);
+  box-shadow: 0 4px 14px rgba(17, 135, 138, 0.35);
+  transform: translateY(-1px);
+}
+.form-dialog-footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 .form-dialog-message {
   max-height: 30dvh;

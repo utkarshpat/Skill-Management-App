@@ -256,6 +256,7 @@ html[data-theme] .admin-sidebar .admin-account button {
   color: #c8d2e0;
 }
 html[data-theme] .admin-primary,
+html[data-theme] .primary-button,
 html[data-theme] .microsoft-button {
   background: var(--primary-button);
   color: #fff;
@@ -263,6 +264,7 @@ html[data-theme] .microsoft-button {
   box-shadow: none;
 }
 html[data-theme] .admin-primary:not(:disabled):hover,
+html[data-theme] .primary-button:not(:disabled):hover,
 html[data-theme] .microsoft-button:not(:disabled):hover {
   background: var(--primary-hover);
   border-color: var(--primary-hover);

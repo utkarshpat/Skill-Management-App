@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router';
 import { businessDraftHandoff } from './business-draft-handoff';
 import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Plus, RotateCcw, Search, X } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
@@ -342,6 +343,7 @@ export function BusinessWorkflows({
           </p>
         </div>
         <button
+          type="button"
           className="primary-button"
           disabled={
             !masters ||
@@ -350,6 +352,7 @@ export function BusinessWorkflows({
           }
           onClick={start}
         >
+          <Plus size={15} aria-hidden="true" />
           {view === 'amendments' ? 'Propose amendment' : 'New demand'}
         </button>
       </div>
@@ -357,12 +360,15 @@ export function BusinessWorkflows({
         <p className="bo-error" role="alert">
           {error}{' '}
           <button
+            type="button"
+            className="secondary-button bo-btn-sm"
             onClick={() => {
               setPreview(undefined);
               setDecision(undefined);
               setAttempt(n => n + 1);
             }}
           >
+            <RotateCcw size={13} aria-hidden="true" />
             Refresh records
           </button>
         </p>
@@ -423,6 +429,8 @@ export function BusinessWorkflows({
                                 a.status === 'SUBMITTED' && (
                                   <>
                                     <button
+                                      type="button"
+                                      className="secondary-button bo-btn-sm bo-btn-approve"
                                       onClick={() => {
                                         setDecision({
                                           operation: 'APPROVE_AMENDMENT',
@@ -432,9 +440,12 @@ export function BusinessWorkflows({
                                         setError('');
                                       }}
                                     >
+                                      <Check size={13} aria-hidden="true" />
                                       Review & approve
                                     </button>
                                     <button
+                                      type="button"
+                                      className="secondary-button bo-btn-sm bo-btn-reject"
                                       onClick={() => {
                                         setDecision({
                                           operation: 'REJECT_AMENDMENT',
@@ -444,6 +455,7 @@ export function BusinessWorkflows({
                                         setError('');
                                       }}
                                     >
+                                      <X size={13} aria-hidden="true" />
                                       Reject
                                     </button>
                                   </>
@@ -467,7 +479,8 @@ export function BusinessWorkflows({
                             </td>
                             <td>
                               <button
-                                className="secondary-button"
+                                type="button"
+                                className="secondary-button bo-btn-sm"
                                 disabled={!context.canMatch}
                                 onClick={() => {
                                   setMatching(d.id);
@@ -476,6 +489,7 @@ export function BusinessWorkflows({
                                   setMatchAttempt(n => n + 1);
                                 }}
                               >
+                                <Search size={13} aria-hidden="true" />
                                 Find matches
                               </button>
                             </td>
@@ -497,14 +511,23 @@ export function BusinessWorkflows({
             <span>
               {list.total} records · page {page}
             </span>
-            <button disabled={page <= 1} onClick={() => setPage(n => n - 1)}>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={page <= 1}
+              onClick={() => setPage(n => n - 1)}
+            >
+              <ChevronLeft size={14} aria-hidden="true" />
               Previous
             </button>
             <button
+              type="button"
+              className="secondary-button"
               disabled={page * list.pageSize >= list.total}
               onClick={() => setPage(n => n + 1)}
             >
               Next
+              <ChevronRight size={14} aria-hidden="true" />
             </button>
           </footer>
         </>
@@ -555,6 +578,8 @@ export function BusinessWorkflows({
                         </td>
                         <td>
                           <button
+                            type="button"
+                            className="secondary-button bo-btn-sm"
                             disabled={!context.canShortlist || !p.eligible || p.shortlisted}
                             onClick={() => {
                               setDecision({
@@ -568,6 +593,7 @@ export function BusinessWorkflows({
                               setNote('');
                             }}
                           >
+                            <Plus size={13} aria-hidden="true" />
                             {p.shortlisted ? 'Shortlisted' : 'Review shortlist'}
                           </button>
                         </td>
@@ -583,14 +609,23 @@ export function BusinessWorkflows({
                 <span>
                   {matches.total} candidates · page {matchPage}
                 </span>
-                <button disabled={matchPage <= 1} onClick={() => setMatchPage(n => n - 1)}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={matchPage <= 1}
+                  onClick={() => setMatchPage(n => n - 1)}
+                >
+                  <ChevronLeft size={14} aria-hidden="true" />
                   Previous
                 </button>
                 <button
+                  type="button"
+                  className="secondary-button"
                   disabled={matchPage * matches.pageSize >= matches.total}
                   onClick={() => setMatchPage(n => n + 1)}
                 >
                   Next
+                  <ChevronRight size={14} aria-hidden="true" />
                 </button>
               </footer>
             </>
@@ -607,6 +642,7 @@ export function BusinessWorkflows({
           footer={
             <>
               <button
+                type="button"
                 className="secondary-button"
                 disabled={busy}
                 onClick={() => setComposing(false)}
@@ -620,40 +656,69 @@ export function BusinessWorkflows({
                 form="business-compose"
               >
                 Review proposal
+                <ArrowRight size={14} aria-hidden="true" />
               </button>
             </>
           }
         >
           <div className="bo-page bo-admin-form">
             <div className="bo-full bo-record-filters">
-              <label>
-                Search approved definitions
-                <input
-                  maxLength={100}
-                  value={masterSearch}
-                  onChange={e => setMasterSearch(e.target.value)}
-                  placeholder="Skill, credential or provider…"
-                />
+              <label className="bo-filter-search-label">
+                <span>Search approved definitions</span>
+                <div className="bo-search-field-wrap">
+                  <Search size={15} className="bo-search-icon" aria-hidden="true" />
+                  <input
+                    maxLength={100}
+                    value={masterSearch}
+                    onChange={e => setMasterSearch(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        setMasterTerm(masterSearch);
+                        setMasterPage(1);
+                      }
+                    }}
+                    placeholder="Skill, credential or provider…"
+                  />
+                  {masterSearch && (
+                    <button
+                      type="button"
+                      className="bo-search-clear"
+                      aria-label="Clear search"
+                      onClick={() => {
+                        setMasterSearch('');
+                        setMasterTerm('');
+                        setMasterPage(1);
+                      }}
+                    >
+                      <X size={13} aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
               </label>
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button bo-filter-action-btn"
                 onClick={() => {
                   setMasterTerm(masterSearch);
                   setMasterPage(1);
                 }}
               >
+                <Search size={14} aria-hidden="true" />
                 Search definitions
               </button>
               <button
                 type="button"
+                className="secondary-button bo-filter-action-btn"
                 disabled={masterPage <= 1}
                 onClick={() => setMasterPage(n => n - 1)}
               >
+                <ChevronLeft size={14} aria-hidden="true" />
                 Previous choices
               </button>
               <button
                 type="button"
+                className="secondary-button bo-filter-action-btn"
                 disabled={
                   !masters ||
                   masterPage * masters.pageSize >=
@@ -662,6 +727,7 @@ export function BusinessWorkflows({
                 onClick={() => setMasterPage(n => n + 1)}
               >
                 Next choices
+                <ChevronRight size={14} aria-hidden="true" />
               </button>
               <p className="bo-note">
                 {masters
@@ -914,6 +980,7 @@ export function BusinessWorkflows({
               disabled={busy}
             >
               Preview decision
+              <ArrowRight size={14} aria-hidden="true" />
             </button>
           }
         >
@@ -941,13 +1008,20 @@ export function BusinessWorkflows({
           footer={
             <>
               <button
+                type="button"
                 className="secondary-button"
                 disabled={busy}
                 onClick={() => setPreview(undefined)}
               >
                 Back
               </button>
-              <button className="primary-button" disabled={busy} onClick={() => void submit()}>
+              <button
+                type="button"
+                className="primary-button"
+                disabled={busy}
+                onClick={() => void submit()}
+              >
+                <Check size={14} aria-hidden="true" />
                 {(
                   {
                     PROPOSE: 'Submit amendment request',
