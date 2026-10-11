@@ -118,3 +118,39 @@ test('HTTP audit authenticates, bounds pages and does not attach full history to
     server.close();
   }
 });
+
+test('person history includes both subjects of reassigned business access without matching unrelated JSON', async () => {
+  const store = await LocalAccessStore.open(),
+    state = store.snapshot(),
+    actor = state.people[0];
+  const oldPerson = '22222222-2222-4222-8222-222222222222';
+  const newPerson = '33333333-3333-4333-8333-333333333333';
+  state.people.push({ ...actor, id: newPerson, displayName: 'New subject' });
+  state.audit = [
+    {
+      actorId: actor.id,
+      targetId: '44444444-4444-4444-8444-444444444444',
+      action: 'business.responsibility',
+      at: new Date().toISOString(),
+      revision: 2,
+      before: { person_id: oldPerson.toUpperCase() },
+      after: { personId: newPerson },
+    },
+    {
+      actorId: actor.id,
+      targetId: actor.id,
+      action: 'role.updated',
+      at: new Date().toISOString(),
+      revision: 1,
+      after: { personId: newPerson },
+    },
+  ];
+  for (const personId of [oldPerson, newPerson]) {
+    const page = localAuditPage(state, actor.id, auditQuery({ personId }));
+    assert.equal(page.items.length, 1);
+    assert.equal(page.items[0].action, 'business.responsibility');
+    assert.equal(page.items[0].after, undefined);
+    assert.equal(page.items[0].targetName, 'New subject');
+  }
+  assert.equal(localAuditPage(state, actor.id, auditQuery({ q: 'New subject' })).items.length, 1);
+});

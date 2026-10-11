@@ -73,12 +73,15 @@ export function localAuditPage(
     .filter(
       e =>
         (!query.before || e.revision < query.before) &&
-        (!query.personId || e.targetId === query.personId),
+        (!query.personId ||
+          e.targetId === query.personId ||
+          auditSubjects(e).includes(query.personId)),
     )
     .map(e => ({
       ...e,
       actorName: state.people.find(p => p.id === e.actorId)?.displayName,
       targetName:
+        state.people.find(p => p.id === auditSubjects(e)[0])?.displayName ??
         state.people.find(p => p.id === e.targetId)?.displayName ??
         state.roles.find(r => r.id === e.targetId)?.name,
     }))
@@ -100,6 +103,22 @@ export function localAuditPage(
     nextCursor: hasMore ? items.at(-1)!.revision : null,
     revision: state.revision,
   };
+}
+// Business events target the assignment, while their snapshots identify the affected people.
+export function auditSubjects(event: {
+  action: string;
+  before?: unknown;
+  after?: unknown;
+}): string[] {
+  if (!['business.responsibility', 'business.membership'].includes(event.action)) return [];
+  return [event.after, event.before].flatMap(value => {
+    if (!value || typeof value !== 'object') return [];
+    const record = value as Record<string, unknown>;
+    const id = record.personId ?? record.person_id;
+    return typeof id === 'string' && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)
+      ? [id.toLowerCase()]
+      : [];
+  });
 }
 export async function readAuditPage(
   store: AccessStore,

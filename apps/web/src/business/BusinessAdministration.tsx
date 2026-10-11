@@ -38,6 +38,7 @@ interface Administration {
 export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessContext) => void }) {
   const [state, setState] = useState<Administration>(),
     [error, setError] = useState(''),
+    [loadError, setLoadError] = useState(''),
     [attempt, setAttempt] = useState(0),
     [kind, setKind] = useState('RESPONSIBILITY'),
     [search, setSearch] = useState(''),
@@ -63,10 +64,17 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
       impact: unknown;
       warnings: string[];
     }>(),
-    guard = useRef(false);
+    guard = useRef(false),
+    previewRequest = useRef<AbortController | undefined>(undefined),
+    baselineInitialized = useRef(false);
+  const invalidatePreview = () => {
+    previewRequest.current?.abort();
+    setPreview(undefined);
+  };
+  useEffect(() => () => previewRequest.current?.abort(), []);
   useEffect(() => {
     const abort = new AbortController();
-    setError('');
+    setLoadError('');
     authenticatedFetch('/api/business/administration', { signal: abort.signal })
       .then(r =>
         readApiResponse<Administration>(r, 'Project and access configuration is unavailable.'),
@@ -74,15 +82,23 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
       .then(v => {
         if (!abort.signal.aborted) {
           setState(v);
-          setEnabled(v.personalBaseline);
+          if (!baselineInitialized.current) {
+            setEnabled(v.personalBaseline);
+            baselineInitialized.current = true;
+          }
         }
       })
       .catch(e => {
-        if (!abort.signal.aborted) setError(e.message);
+        if (!abort.signal.aborted) {
+          setState(undefined);
+          invalidatePreview();
+          setLoadError(e.message);
+        }
       });
     return () => abort.abort();
   }, [attempt]);
   const changeKind = (value: string) => {
+    invalidatePreview();
     setKind(value);
     setId('');
     setPreview(undefined);
@@ -92,6 +108,7 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
     setScope('');
   };
   const editResponsibility = (r: Administration['responsibilities'][number]) => {
+    invalidatePreview();
     setId(r.id);
     setPerson(r.personId);
     setBundle(r.bundle);
@@ -115,6 +132,7 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
       ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   };
   const selectPerson = (value: string) => {
+    invalidatePreview();
     setPerson(value);
     setId('');
     setPreview(undefined);
@@ -148,6 +166,8 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
     guard.current = true;
     setBusy(true);
     setError('');
+    const abort = new AbortController();
+    previewRequest.current = abort;
     try {
       const change = {
         revision: state.revision,
@@ -155,18 +175,23 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
         id: id || crypto.randomUUID(),
         payload: payload(),
       };
-      setPreview(
-        await readApiResponse(
-          await authenticatedFetch('/api/business/administration/preview', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(change),
-          }),
-          'Preview could not be prepared.',
-        ),
+      const prepared = await readApiResponse<NonNullable<typeof preview>>(
+        await authenticatedFetch('/api/business/administration/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(change),
+          signal: abort.signal,
+        }),
+        'Preview could not be prepared.',
       );
+      if (!abort.signal.aborted) setPreview(prepared);
     } catch (e) {
-      setError((e as Error).message);
+      if (!abort.signal.aborted) {
+        setError((e as Error).message);
+        const status = (e as { status?: number }).status;
+        if (status === 409) setAttempt(n => n + 1);
+        if (status === 401 || status === 403) setState(undefined);
+      }
     } finally {
       guard.current = false;
       setBusy(false);
@@ -190,16 +215,28 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
       setId('');
       setReason('');
       setAttempt(n => n + 1);
-      onSaved(
-        await readApiResponse<BusinessContext>(
-          await authenticatedFetch('/api/business/context'),
-          'Reload your access context.',
-        ),
-      );
       window.dispatchEvent(new Event('business-changed'));
       window.dispatchEvent(new Event('workspace-access-updated'));
+      try {
+        const context = await readApiResponse<BusinessContext>(
+          await authenticatedFetch('/api/business/context'),
+          'Reload your access context.',
+        );
+        if (!context.canManage) setState(undefined);
+        onSaved(context);
+      } catch (e) {
+        setState(undefined);
+        setError(
+          `Change saved. Access refresh failed: ${(e as Error).message} Retry loading configuration.`,
+        );
+      }
     } catch (e) {
       setError((e as Error).message);
+      // A lost response may follow a committed transaction. Keep the assignment ID so
+      // rechecking/retrying edits that same record instead of creating another grant.
+      if (typeof preview.change.id === 'string') setId(preview.change.id);
+      setPreview(undefined);
+      setAttempt(n => n + 1);
     } finally {
       guard.current = false;
       setBusy(false);
@@ -209,7 +246,7 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
     projects = state?.projects.filter(p => p.active || p.id === project || p.id === scope) ?? [],
     nodes = state?.nodes.filter(n => n.active || n.id === scope || n.id === department) ?? [];
   return (
-    <section className="bo-panel">
+    <section className="bo-panel" onChangeCapture={invalidatePreview}>
       <h2>People & access profiles</h2>
       <p className="bo-note">
         A person can belong to multiple projects. Membership, reporting and authority are managed
@@ -221,10 +258,21 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
           {error}
         </p>
       )}
+      {loadError && (
+        <p role="alert" className="bo-error">
+          {loadError}
+        </p>
+      )}
       {!state ? (
-        <p>Loading configuration…</p>
+        error || loadError ? (
+          <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
+            Retry loading configuration
+          </button>
+        ) : (
+          <p>Loading configuration…</p>
+        )
       ) : (
-        <>
+        <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
           <div className="bo-tabs">
             {[
               ['RESPONSIBILITY', 'People & access'],
@@ -278,10 +326,10 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
                     placeholder="Name or employee code"
                   />
                 </label>
-                <Link className="secondary-button" to="/access?tab=organization">
+                <Link className="secondary-button" to="/access?view=organization">
                   Manage reporting & organization
                 </Link>
-                <Link className="secondary-button" to="/access?tab=people">
+                <Link className="secondary-button" to="/access?view=people">
                   People, exceptions & access explanations
                 </Link>
               </div>
@@ -410,6 +458,7 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
                     value={id}
                     onChange={e => {
                       setId(e.target.value);
+                      setReason('');
                       const p = state.projects.find(p => p.id === e.target.value);
                       setName(p?.name ?? '');
                       setDepartment(p?.departmentId ?? '');
@@ -624,6 +673,7 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
                       <td>
                         <button
                           onClick={() => {
+                            selectPerson(m.personId);
                             setPerson(m.personId);
                             setProject(m.projectId);
                             setActive(m.active);
@@ -648,7 +698,7 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
             </p>
             <pre>{JSON.stringify(state.historicalGrantsForReview, null, 2)}</pre>
           </details>
-        </>
+        </fieldset>
       )}
       {preview && (
         <FormDialog

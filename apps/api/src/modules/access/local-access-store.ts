@@ -48,8 +48,8 @@ export interface LocalAccessState {
     targetId: string;
     at: string;
     revision: number;
-    before?: CustomRole | LocalPerson;
-    after?: CustomRole | LocalPerson;
+    before?: CustomRole | LocalPerson | Record<string, unknown>;
+    after?: CustomRole | LocalPerson | Record<string, unknown>;
   }[];
 }
 export { AccessError } from '../../shared/errors.js';

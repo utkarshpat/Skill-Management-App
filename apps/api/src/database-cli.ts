@@ -100,6 +100,7 @@ if (command !== 'check' && command !== 'migrate') {
           [64, '064_business_workflow_recovery.sql'],
           [66, '066_amendment_lifecycle.sql'],
           [67, '067_access_profile_administration.sql'],
+          [68, '068_business_access_audit_subjects.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

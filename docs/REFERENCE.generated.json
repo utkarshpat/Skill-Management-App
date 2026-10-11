@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "7ed0c490066349b4",
+  "revision": "3b8fa12712ffc7f6",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -69,7 +69,8 @@
       "063_credential_renewal_reliability.sql",
       "064_business_workflow_recovery.sql",
       "066_amendment_lifecycle.sql",
-      "067_access_profile_administration.sql"
+      "067_access_profile_administration.sql",
+      "068_business_access_audit_subjects.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -6346,7 +6347,7 @@
       "name": "ReadAccessAuditPage",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@before int=NULL,@person_id uniqueidentifier=NULL,\n @query nvarchar(100)=N'',@page_size int=25,@include_details bit=0",
-      "source": "database/migrations/049_paginated_access_audit.sql"
+      "source": "database/migrations/068_business_access_audit_subjects.sql"
     },
     {
       "name": "SkillEvidence",

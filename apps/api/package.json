@@ -23,6 +23,7 @@
     "test:evidence-snapshot": "node --env-file-if-exists=.env --import tsx test/evidence-snapshot.integration.ts",
     "test:review-access": "node --env-file-if-exists=.env --import tsx test/review-access.integration.ts",
     "test:audit-fixes": "node --env-file-if-exists=.env --import tsx test/audit-fixes.integration.ts",
+    "test:business-audit": "node --env-file-if-exists=.env --import tsx test/business-audit.integration.ts",
     "test:claims": "node --env-file-if-exists=.env --import tsx test/claims.integration.ts",
     "test:certification-idempotency": "node --env-file-if-exists=.env --import tsx test/certification-idempotency.integration.ts",
     "test:certifications": "node --env-file-if-exists=.env --import tsx test/certifications.integration.ts",
