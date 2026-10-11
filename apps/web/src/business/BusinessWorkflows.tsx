@@ -756,6 +756,7 @@ export function BusinessWorkflows({
               </button>
               {view === 'amendments' && amendmentStep === 0 ? (
                 <button
+                  key="next-amendment-step"
                   type="button"
                   className="primary-button"
                   disabled={busy || (amendmentMode === 'edit' && (!target || !masters))}
@@ -765,6 +766,7 @@ export function BusinessWorkflows({
                 </button>
               ) : (
                 <button
+                  key="preview-proposal"
                   className="primary-button"
                   disabled={busy || !masters}
                   type="submit"
