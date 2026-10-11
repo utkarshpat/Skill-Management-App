@@ -86,6 +86,8 @@ Raw API artifacts and screenshot evidence are kept in ignored `.local` files. Cr
 
 ## Follow-up acceptance and certificate viewing
 
+Additional final browser checks: the saved PDF rendered its readable first-page contents and Page 1 of 1 on production. A fresh two-question synthetic networking quiz was answered and checked; the UI showed Practice score 2 / 2 with the expected TCP explanation and correctly stated that chat-only attempts are not saved to learning history. This completes hosted quiz scoring coverage and supersedes the earlier unverified quiz-scoring notes. Commit `1ba2fb9` keeps View/Download above the preview so they remain easy to reach on long documents.
+
 The user deferred real-access verification and requested clearer certificate viewing after upload. Follow-up implementation `7538b7b` adds explicit View certificate and Download actions to image/PDF/TXT previews. `3469886` renders the PDF's first page with a lazily loaded, locally bundled PDF.js worker rather than relying on a native browser plugin. Canvas dimensions are bounded; replacement/unmount cancels rendering and destroys the document task. DOCX retains its original filename and download action with an explanation that a compatible document app is needed. No file is sent to an external viewer. The renderer follows the [official PDF.js canvas API](https://mozilla.github.io/pdf.js/examples/).
 
 The follow-up supersedes the earlier untested entries as follows:
