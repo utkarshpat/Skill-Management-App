@@ -1,4 +1,232 @@
-/* Page-Wide Thin Tab Bar for Capability & Review Tabs */
+/* ==========================================================================
+   Capability Portfolio Shell & Inverted Tab Switcher
+   Reference: Seamless folder-style inverted tabs with active tab page tint
+   ========================================================================== */
+
+.capability-portfolio-shell {
+  --tab-height: 52px;
+  --tab-radius: 16px;
+  --tab-corner-size: 16px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0 0 24px 0;
+  transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Skills Tint (Indigo Theme) */
+.capability-portfolio-shell.tab-active-skills {
+  --stage-bg: #12182c;
+  --deck-bg: #090e1a;
+  --tab-active-bg: #12182c;
+  --tab-inactive-bg: transparent;
+  --tab-inactive-hover: rgba(99, 102, 241, 0.08);
+  --tab-active-color: #ffffff;
+  --tab-inactive-color: #7b88aa;
+  --tab-accent-color: #818cf8;
+  --tab-accent-glow: rgba(129, 140, 248, 0.6);
+  --stage-border: rgba(99, 102, 241, 0.22);
+  --stage-glow: radial-gradient(ellipse 950px 380px at 180px 0px, rgba(99, 102, 241, 0.16), transparent 75%);
+}
+
+/* Certifications Tint (Teal / Cyan Theme) */
+.capability-portfolio-shell.tab-active-certifications {
+  --stage-bg: #0c1a22;
+  --deck-bg: #060e14;
+  --tab-active-bg: #0c1a22;
+  --tab-inactive-bg: transparent;
+  --tab-inactive-hover: rgba(20, 184, 166, 0.08);
+  --tab-active-color: #ffffff;
+  --tab-inactive-color: #6a8894;
+  --tab-accent-color: #2dd4bf;
+  --tab-accent-glow: rgba(45, 212, 191, 0.6);
+  --stage-border: rgba(20, 184, 166, 0.22);
+  --stage-glow: radial-gradient(ellipse 950px 380px at 450px 0px, rgba(20, 184, 166, 0.16), transparent 75%);
+}
+
+/* Light Theme Overrides */
+[data-theme='light'] .capability-portfolio-shell.tab-active-skills,
+html:not([data-theme='dark']) .capability-portfolio-shell.tab-active-skills {
+  --stage-bg: #f4f6fe;
+  --deck-bg: #e4e9f5;
+  --tab-active-bg: #f4f6fe;
+  --tab-inactive-bg: transparent;
+  --tab-inactive-hover: rgba(99, 102, 241, 0.06);
+  --tab-active-color: #1e1b4b;
+  --tab-inactive-color: #64748b;
+  --tab-accent-color: #4f46e5;
+  --tab-accent-glow: rgba(79, 70, 229, 0.25);
+  --stage-border: rgba(99, 102, 241, 0.16);
+  --stage-glow: radial-gradient(ellipse 950px 380px at 180px 0px, rgba(99, 102, 241, 0.08), transparent 75%);
+}
+
+[data-theme='light'] .capability-portfolio-shell.tab-active-certifications,
+html:not([data-theme='dark']) .capability-portfolio-shell.tab-active-certifications {
+  --stage-bg: #effcf8;
+  --deck-bg: #dbeef9;
+  --tab-active-bg: #effcf8;
+  --tab-inactive-bg: transparent;
+  --tab-inactive-hover: rgba(13, 148, 136, 0.06);
+  --tab-active-color: #042f2e;
+  --tab-inactive-color: #475569;
+  --tab-accent-color: #0d9488;
+  --tab-accent-glow: rgba(13, 148, 136, 0.25);
+  --stage-border: rgba(13, 148, 136, 0.16);
+  --stage-glow: radial-gradient(ellipse 950px 380px at 450px 0px, rgba(13, 148, 136, 0.08), transparent 75%);
+}
+
+/* Tab Deck (Top header hosting tabs) */
+.capability-tab-deck {
+  position: relative;
+  background-color: var(--deck-bg);
+  border-radius: 20px 20px 0 0;
+  border: 1px solid var(--stage-border);
+  border-bottom: none;
+  padding: 10px 14px 0 14px;
+  z-index: 1;
+  transition: background-color 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.35s ease;
+}
+
+/* Tab List inside Portfolio Shell */
+.capability-tab-deck .capability-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  border-bottom: none;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* Tab Item */
+.capability-tab-deck .capability-tab-item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: var(--tab-height);
+  padding: 0 34px;
+  margin: 0;
+  color: var(--tab-inactive-color);
+  background: var(--tab-inactive-bg);
+  text-decoration: none;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  border: none;
+  border-radius: var(--tab-radius) var(--tab-radius) 0 0;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  z-index: 1;
+}
+
+.capability-tab-deck .capability-tab-item:hover:not(.is-active):not([aria-current='page']) {
+  color: var(--tab-active-color);
+  background: var(--tab-inactive-hover);
+}
+
+/* Active Tab Item (Flows seamlessly into stage) */
+.capability-tab-deck .capability-tab-item.is-active,
+.capability-tab-deck .capability-tab-item[aria-current='page'] {
+  color: var(--tab-active-color);
+  background-color: var(--tab-active-bg);
+  font-weight: 800;
+  border-bottom: none;
+  box-shadow: none;
+  z-index: 3;
+}
+
+/* Tab Icons */
+.capability-tab-deck .capability-tab-icon {
+  flex-shrink: 0;
+  transition: color 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+  color: currentColor;
+}
+
+.capability-tab-deck .capability-tab-item.is-active .capability-tab-icon,
+.capability-tab-deck .capability-tab-item[aria-current='page'] .capability-tab-icon {
+  color: var(--tab-accent-color);
+  filter: drop-shadow(0 0 6px var(--tab-accent-glow));
+  transform: scale(1.1);
+}
+
+/* Inverted Concave Curves for Active Tab */
+.capability-tab-deck .capability-tab-item.is-active::before,
+.capability-tab-deck .capability-tab-item[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: calc(var(--tab-corner-size) * -1);
+  width: var(--tab-corner-size);
+  height: var(--tab-corner-size);
+  background: radial-gradient(circle at 0% 0%, transparent var(--tab-corner-size), var(--stage-bg) calc(var(--tab-corner-size) + 0.5px));
+  pointer-events: none;
+  z-index: 3;
+}
+
+.capability-tab-deck .capability-tab-item.is-active::after,
+.capability-tab-deck .capability-tab-item[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: calc(var(--tab-corner-size) * -1);
+  width: var(--tab-corner-size);
+  height: var(--tab-corner-size);
+  background: radial-gradient(circle at 100% 0%, transparent var(--tab-corner-size), var(--stage-bg) calc(var(--tab-corner-size) + 0.5px));
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Capability Portfolio Stage (The tinted content panel below) */
+.capability-portfolio-stage {
+  position: relative;
+  background-color: var(--stage-bg);
+  background-image: var(--stage-glow);
+  border: 1px solid var(--stage-border);
+  border-top: none;
+  border-radius: 0 0 22px 22px;
+  padding: 26px 28px 40px 28px;
+  min-height: 600px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.16);
+  transition: background-color 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 0.35s ease,
+              background-image 0.35s ease;
+  z-index: 2;
+  margin-top: -1px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .capability-portfolio-shell {
+    --tab-height: 46px;
+    --tab-radius: 14px;
+    --tab-corner-size: 14px;
+  }
+  .capability-tab-deck {
+    padding: 6px 8px 0 8px;
+    border-radius: 16px 16px 0 0;
+  }
+  .capability-tab-deck .capability-tab-item {
+    padding: 0 20px;
+    font-size: 12.5px;
+  }
+  .capability-portfolio-stage {
+    padding: 18px 14px 28px 14px;
+    border-radius: 0 0 16px 16px;
+  }
+}
+
+/* Page-Wide Thin Tab Bar for Capability & Review Tabs Fallback */
 .capability-tabs {
   display: flex;
   align-items: center;

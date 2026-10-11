@@ -19,36 +19,44 @@ export function CapabilityPortfolio({
   if (certifications && new URLSearchParams(search).get('tab') === 'queue')
     return <Navigate to="/skill-reviews?type=certifications" replace />;
   return (
-    <>
-      <nav className="capability-tabs" aria-label="Skills and certifications">
-        {workspace.capabilities.ownSkills && (
-          <Link
-            to="/my-skills"
-            className="capability-tab-item"
-            aria-current={!certifications ? 'page' : undefined}
-          >
-            <Sparkles size={16} className="capability-tab-icon" aria-hidden="true" />
-            <span>Skills</span>
-          </Link>
-        )}
-        {workspace.capabilities.certifications && (
-          <Link
-            to="/certifications"
-            className="capability-tab-item"
-            aria-current={certifications ? 'page' : undefined}
-          >
-            <Award size={16} className="capability-tab-icon" aria-hidden="true" />
-            <span>Certifications</span>
-          </Link>
-        )}
-      </nav>
-      <Suspense fallback={<p role="status">Loading your portfolio…</p>}>
-        {certifications ? (
-          <Certifications actionsContainer={actionsContainer} personalOnly />
-        ) : (
-          <MySkills actionsContainer={actionsContainer} />
-        )}
-      </Suspense>
-    </>
+    <div
+      className={`capability-portfolio-shell ${
+        certifications ? 'tab-active-certifications' : 'tab-active-skills'
+      }`}
+    >
+      <div className="capability-tab-deck" role="navigation" aria-label="Skills and certifications switch">
+        <nav className="capability-tabs" aria-label="Skills and certifications">
+          {workspace.capabilities.ownSkills && (
+            <Link
+              to="/my-skills"
+              className={`capability-tab-item ${!certifications ? 'is-active' : ''}`}
+              aria-current={!certifications ? 'page' : undefined}
+            >
+              <Sparkles size={16} className="capability-tab-icon" aria-hidden="true" />
+              <span>Skills</span>
+            </Link>
+          )}
+          {workspace.capabilities.certifications && (
+            <Link
+              to="/certifications"
+              className={`capability-tab-item ${certifications ? 'is-active' : ''}`}
+              aria-current={certifications ? 'page' : undefined}
+            >
+              <Award size={16} className="capability-tab-icon" aria-hidden="true" />
+              <span>Certifications</span>
+            </Link>
+          )}
+        </nav>
+      </div>
+      <div className="capability-portfolio-stage">
+        <Suspense fallback={<p role="status">Loading your portfolio…</p>}>
+          {certifications ? (
+            <Certifications actionsContainer={actionsContainer} personalOnly />
+          ) : (
+            <MySkills actionsContainer={actionsContainer} />
+          )}
+        </Suspense>
+      </div>
+    </div>
   );
 }
