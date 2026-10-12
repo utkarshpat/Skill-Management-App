@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
-import { Link, Navigate, useLocation } from 'react-router';
-import { Award, Sparkles } from 'lucide-react';
+import { Navigate, useLocation } from 'react-router';
+import { SkillCertificates } from './capabilities/SkillCertificates';
 import type { WorkspaceState } from './Workspace';
 import './capability-workspace.css';
 const MySkills = lazy(() => import('./MySkills').then(m => ({ default: m.MySkills })));
@@ -20,33 +20,14 @@ export function CapabilityPortfolio({
     return <Navigate to="/skill-reviews?type=certifications" replace />;
   return (
     <>
-      <nav className="capability-tabs" aria-label="Skills and certifications">
-        {workspace.capabilities.ownSkills && (
-          <Link
-            to="/my-skills"
-            className="capability-tab-item"
-            aria-current={!certifications ? 'page' : undefined}
-          >
-            <Sparkles size={18} className="capability-tab-icon" aria-hidden="true" />
-            <span className="capability-tab-label">Skills</span>
-          </Link>
-        )}
-        {workspace.capabilities.certifications && (
-          <Link
-            to="/certifications"
-            className="capability-tab-item"
-            aria-current={certifications ? 'page' : undefined}
-          >
-            <Award size={18} className="capability-tab-icon" aria-hidden="true" />
-            <span className="capability-tab-label">Certifications</span>
-          </Link>
-        )}
-      </nav>
       <Suspense fallback={<p role="status">Loading your portfolio…</p>}>
-        {certifications ? (
+        {!workspace.capabilities.ownSkills ||
+        new URLSearchParams(search).get('tab') === 'recommendations' ? (
           <Certifications actionsContainer={actionsContainer} personalOnly />
         ) : (
-          <MySkills actionsContainer={actionsContainer} />
+          <SkillCertificates enabled={Boolean(workspace.capabilities.certifications)}>
+            <MySkills actionsContainer={actionsContainer} />
+          </SkillCertificates>
         )}
       </Suspense>
     </>

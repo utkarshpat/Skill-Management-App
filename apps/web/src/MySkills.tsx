@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CapabilityComposer } from './capabilities/CapabilityComposer';
 import { CapabilitySubmissions } from './capabilities/CapabilitySubmissions';
+import { useOwnCertificates, CertificateRenewalSummary } from './capabilities/SkillCertificates';
 import { Plus } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
@@ -93,6 +94,7 @@ export function MySkills({
     onSaved: (result: SkillSaveResult) => void;
   };
 }) {
+  const certificateContext = useOwnCertificates();
   const location = useLocation(),
     navigate = useNavigate();
   const [state, setState] = useState<State>(),
@@ -570,6 +572,9 @@ export function MySkills({
                 initialStatus={new URLSearchParams(location.search).get('status') ?? ''}
                 onAdd={() => setCombined(true)}
                 claims={state.claims}
+                certificates={certificateContext?.data?.records}
+                onCertificate={certificateContext?.open}
+                extraInsights={<CertificateRenewalSummary />}
                 canClaim={state.canClaim}
                 loading={loading || busy}
                 onView={claim => {

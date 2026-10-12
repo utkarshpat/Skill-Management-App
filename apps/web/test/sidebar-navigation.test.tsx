@@ -62,7 +62,7 @@ test('portfolio navigation combines both destinations without restoring denied t
       { ownProfile: true, ownSkills: true, certifications: true, reviewSkills: true },
       pathname,
     );
-    assert.equal(items.filter(item => item.label === 'Capabilities').length, 1);
+    assert.equal(items.filter(item => item.label === 'Skills').length, 1);
     assert.equal(
       items.some(item => item.id === 'certifications'),
       false,

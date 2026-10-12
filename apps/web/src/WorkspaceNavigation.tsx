@@ -13,9 +13,9 @@ export const personalPageTitle = (pathname: string | undefined) =>
         : pathname === '/skill-reviews'
           ? 'Reviews'
           : pathname === '/my-skills'
-            ? 'Capabilities'
+            ? 'Skills'
             : pathname === '/certifications'
-              ? 'Capabilities'
+              ? 'Skills'
               : pathname === '/profile'
                 ? 'My profile'
                 : pathname === '/skills'
@@ -90,7 +90,7 @@ export function personalNavigationItems(
       ? [
           {
             id: 'my-skills',
-            label: 'Capabilities',
+            label: 'Skills',
             href: capabilities.ownSkills ? '/my-skills' : '/certifications',
             icon: Compass,
           },

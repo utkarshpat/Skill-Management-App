@@ -166,7 +166,7 @@ export function Workspace({
     },
     {
       id: 'my-skills',
-      label: 'Capabilities',
+      label: 'Skills',
       href: state?.capabilities.ownSkills ? '/my-skills' : '/certifications',
       icon: Compass,
       visible: state?.capabilities.ownSkills || state?.capabilities.certifications,

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { CapabilityComposer } from './CapabilityComposer';
+import { Trash2 } from 'lucide-react';
 import { FormDialog } from '../FormDialog';
 import { toast } from '../toast';
 import { CapabilityReview } from './CapabilityReview';
@@ -100,15 +101,14 @@ export function CapabilitySubmissions({
       setMutating(false);
     }
   }
-  if (!records.length && !error && !removed) return null;
+  const visibleRecords = review ? records : records.filter(r => r.status === 'DRAFT');
+  if (!visibleRecords.length && !error && !removed && !opened) return null;
   return (
-    <section className="cap-submissions">
+    <section className="cap-submissions" hidden={!visibleRecords.length && !error && !removed}>
       <header>
-        <h3>{review ? 'Combined capability reviews' : 'Your drafts & reviews'}</h3>
+        <h3>{review ? 'Combined capability reviews' : 'Drafts'}</h3>
         <small>
-          {review
-            ? 'Skills and credentials in one request'
-            : 'Resume drafts or track reviews. Finish your details before sending them for review.'}
+          {review ? 'Skills and credentials in one request' : 'Continue where you left off.'}
         </small>
       </header>
       {error && (
@@ -119,7 +119,7 @@ export function CapabilitySubmissions({
           </button>
         </p>
       )}
-      {(expanded ? records : records.slice(0, 5)).map(record => (
+      {(expanded ? visibleRecords : visibleRecords.slice(0, 5)).map(record => (
         <div key={record.id} className="cap-submission-row">
           <span>
             <strong>
@@ -138,7 +138,7 @@ export function CapabilitySubmissions({
                 className="secondary-button"
                 onClick={() => setOpened(record.id)}
               >
-                {review ? 'Review request' : 'Continue draft'}
+                {review ? 'Review request' : 'Continue'}
               </button>
             ) : (
               <button
@@ -152,11 +152,13 @@ export function CapabilitySubmissions({
             {!review && record.status === 'DRAFT' && record.canEdit && (
               <button
                 type="button"
-                className="secondary-button"
+                className="secondary-button cap-delete-icon"
+                aria-label={`Delete ${record.label || 'submission'} draft`}
+                title="Delete draft"
                 disabled={mutating}
                 onClick={() => setRemoving(record)}
               >
-                Delete draft
+                <Trash2 size={16} aria-hidden="true" />
               </button>
             )}
           </div>
@@ -208,7 +210,7 @@ export function CapabilitySubmissions({
           </p>
         </FormDialog>
       )}
-      {records.length > 5 && (
+      {visibleRecords.length > 5 && (
         <button type="button" className="secondary-button" onClick={() => setExpanded(v => !v)}>
           {expanded ? 'Show fewer' : 'Show all recent submissions'}
         </button>

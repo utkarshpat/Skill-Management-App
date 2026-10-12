@@ -44,7 +44,7 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
       action: 'View certification validity and manage credential drafts',
       url: '/certifications',
       steps: [
-        'Open Capabilities → Certifications. Review status and calendar validity are separate: manager-reviewed credentials can be expired.',
+        'Open Skills and expand a skill’s supporting certificates, or use the renewal summary. Review status and calendar validity are separate: manager-reviewed credentials can be expired.',
         'With skill.claim, Add certification uses a mandatory private certificate file (PDF, JPEG/PNG/WebP, DOCX or text; maximum 5 MB), credential details and dates, then Review & save. Images are compressed. Save draft and Submit for review are explicit human actions.',
         'View certificate and Download certificate open saved attachments. Approved credentials remain locked; Renew starts a separate editable renewal for the same credential and issuer with extended validity.',
         'Expiry reminders use milestones 14, 10, 7, 5, 3 and 0 days and are evaluated when notifications are read. Background scheduled delivery and email are not implemented.',

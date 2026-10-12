@@ -161,7 +161,7 @@ export function Certifications({
     <div className="cert-header-actions">
       {data?.canManage && (
         <button className="admin-primary" disabled={loading} onClick={() => setCombined(true)}>
-          <Plus size={16} /> Add certification
+          <Plus size={16} /> Add skill
         </button>
       )}
     </div>

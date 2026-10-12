@@ -704,8 +704,8 @@ export function CapabilityComposer({
   return (
     <>
       <FormDialog
-        title="Add capabilities"
-        subtitle="Add your skills and certificates, then send one review request"
+        title="Add skills"
+        subtitle="Skills and supporting certificates"
         className="capability-composer"
         busy={busy || uploadBusy}
         onClose={close}

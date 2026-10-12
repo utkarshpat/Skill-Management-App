@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import {
   Layers,
@@ -23,6 +23,8 @@ import {
   Target,
   AlertCircle,
 } from 'lucide-react';
+import { SupportingCertificates } from './capabilities/SupportingCertificates';
+import type { CertificationRecord } from './certifications/types';
 import type { Claim } from './MySkills';
 
 const statuses: Record<Claim['status'], string> = {
@@ -56,9 +58,15 @@ export function SkillsProfileView({
   onEdit,
   onSubmit,
   onAdd,
+  certificates = [],
+  onCertificate,
+  extraInsights,
   initialStatus = '',
 }: {
   claims: Claim[];
+  certificates?: CertificationRecord[];
+  onCertificate?: (id: string) => void;
+  extraInsights?: ReactNode;
   canClaim: boolean;
   loading: boolean;
   onView: (claim: Claim) => void;
@@ -306,6 +314,14 @@ export function SkillsProfileView({
                               <small>View experience & evidence</small>
                             </span>
                           </button>
+                          {onCertificate && (
+                            <SupportingCertificates
+                              records={certificates}
+                              skillId={claim.skillId}
+                              disabled={loading}
+                              onOpen={onCertificate}
+                            />
+                          )}
                         </td>
                         <td>
                           <span className="skills-category-pill">{claim.category}</span>
@@ -445,6 +461,7 @@ export function SkillsProfileView({
           )}
         </section>
         <aside className="skills-insights" aria-label="Skill profile overview">
+          {extraInsights}
           <section className="skills-insight-card">
             <h3>Profile overview</h3>
             <div className="skills-overview">

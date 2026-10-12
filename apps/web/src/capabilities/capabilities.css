@@ -769,3 +769,109 @@
     top: 45%;
   }
 }
+
+.cap-delete-icon {
+  padding: 10px !important;
+  display: inline-grid;
+  place-items: center;
+}
+.skills-supporting-certificates {
+  margin: 10px 0 0 42px;
+  min-width: 180px;
+}
+.skills-supporting-certificates > summary {
+  color: var(--accent-ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+.skills-supporting-certificates > summary svg {
+  vertical-align: middle;
+  margin-right: 5px;
+}
+.skills-supporting-certificates > div {
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+}
+.skills-supporting-certificates button {
+  display: grid;
+  text-align: left;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.skills-supporting-certificates small {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.cap-renewal-summary h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cap-renewal-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 20px 0;
+}
+.cap-renewal-counts > span {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cap-renewal-counts strong {
+  font-size: 24px;
+  color: var(--ink);
+}
+.cap-renewal-summary summary {
+  cursor: pointer;
+  color: var(--accent-ink);
+  padding: 10px 0;
+  font-size: 14px;
+}
+.cap-renewal-list {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.cap-renewal-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  padding: 10px;
+  cursor: pointer;
+}
+.cap-renewal-list small {
+  display: block;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.cap-certificate-detail {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+.cap-certificate-facts {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 750px) {
+  .cap-certificate-detail {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+}
