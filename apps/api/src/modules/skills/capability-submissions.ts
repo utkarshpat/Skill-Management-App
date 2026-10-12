@@ -302,6 +302,8 @@ export function capabilityResult(operation: string, value: unknown) {
         : operation === 'MINE' || operation === 'QUEUE'
           ? ['records']
           : ['skills', 'certifications', 'stagedFiles'];
+  // SQL FOR JSON omits NULL properties for empty item queries. A private
+  // intake has no materialized claims yet, but its public DTO still uses arrays.
   for (const key of arrays) {
     if (result[key] == null) result[key] = [];
     else if (!Array.isArray(result[key]))
