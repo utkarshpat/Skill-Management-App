@@ -109,10 +109,10 @@ await withDatabase(async pool => {
     INSERT dbo.BusinessProject VALUES(@account,@a,N'BQA A '+CONVERT(varchar(36),@a),NULL,1),(@account,@b,N'BQA B '+CONVERT(varchar(36),@b),NULL,1);
     INSERT dbo.BusinessProjectMember VALUES(@account,@a,@alice,1),(@account,@b,@alice,1),(@account,@b,@bob,1),(@account,@a,@dana,1),(@account,@a,@inactive,1);
     INSERT dbo.BusinessResponsibility VALUES(@account,NEWID(),@admin,'SYSTEM_ADMIN','ORGANIZATION',NULL,'ALLOW',1,NULL,N'Rollback fixture'),(@account,@ga,@lead,'BUSINESS_OPERATIONS','PROJECT',@a,'ALLOW',1,NULL,N'Rollback fixture'),(@account,@gb,@lead,'BUSINESS_OPERATIONS','PROJECT',@b,'ALLOW',1,NULL,N'Rollback fixture');
-    INSERT dbo.CertificationRecord(account_id,id,person_id,revision,certification_name,provider,category,issue_date,expiry_date,credential_id,credential_url,notes,status,submitted_at,reviewed_at)
-    VALUES(@account,@certA,@alice,1,N'BQA Credential',N'BQA Provider',N'Cloud',DATEADD(day,-30,CONVERT(date,SYSUTCDATETIME())),DATEADD(day,10,CONVERT(date,SYSUTCDATETIME())),'','','private notes must not escape','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME()),
-    (@account,@certB,@bob,1,N'BQA Credential',N'BQA Provider',N'Cloud',DATEADD(day,-30,CONVERT(date,SYSUTCDATETIME())),DATEADD(day,-1,CONVERT(date,SYSUTCDATETIME())),'','','private notes must not escape','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME()),
-    (@account,@draft,@alice,1,N'Hidden draft',N'BQA Provider',N'Cloud',CONVERT(date,SYSUTCDATETIME()),NULL,'','','private draft','DRAFT',NULL,NULL);
+    INSERT dbo.CertificationRecord(account_id,id,person_id,revision,certification_name,provider,category,issue_date,expiry_date,credential_id,credential_url,notes,status,submitted_at,reviewed_at,requires_skill_link)
+    VALUES(@account,@certA,@alice,1,N'BQA Credential',N'BQA Provider',N'Cloud',DATEADD(day,-30,CONVERT(date,SYSUTCDATETIME())),DATEADD(day,10,CONVERT(date,SYSUTCDATETIME())),'','','private notes must not escape','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME(),0),
+    (@account,@certB,@bob,1,N'BQA Credential',N'BQA Provider',N'Cloud',DATEADD(day,-30,CONVERT(date,SYSUTCDATETIME())),DATEADD(day,-1,CONVERT(date,SYSUTCDATETIME())),'','','private notes must not escape','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME(),0),
+    (@account,@draft,@alice,1,N'Hidden draft',N'BQA Provider',N'Cloud',CONVERT(date,SYSUTCDATETIME()),NULL,'','','private draft','DRAFT',NULL,NULL,0);
     DECLARE @auditBase int=(SELECT revision FROM dbo.AccessWorkspace WHERE account_id=@account);
     INSERT dbo.AccessAudit(account_id,revision,actor_id,target_id,action,after_json)
     SELECT @account,@auditBase+ROW_NUMBER() OVER(ORDER BY c.id,e.action),c.person_id,c.id,e.action,(SELECT c.person_id FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)
@@ -199,13 +199,8 @@ await withDatabase(async pool => {
           const data = JSON.parse((await files()).recordset[0].json);
           assert.equal(data.items[0].id.toLowerCase(), evidence);
           assert.equal(data.items[0].mimeType, 'application/pdf');
-          await new sql.Request(tx)
-            .input('account', sql.UniqueIdentifier, account)
-            .input('id', sql.UniqueIdentifier, ids.certA)
-            .query(
-              "UPDATE dbo.CertificationRecord SET status='SUBMITTED' WHERE account_id=@account AND id=@id",
-            );
-          assert.equal(JSON.parse((await files()).recordset[0].json).items.length, 1);
+          // Submitted-file access is exercised through a real combined submission
+          // in capability-submissions.integration.ts, rather than a forbidden standalone transition.
         } else await assert.rejects(files, (error: any) => error.number === 51003);
       } else if (scenario === 'access-profiles') {
         const administration = async () =>
@@ -724,7 +719,7 @@ await withDatabase(async pool => {
           .input('alice', sql.UniqueIdentifier, ids.alice)
           .input('bob', sql.UniqueIdentifier, ids.bob)
           .query(
-            "INSERT dbo.SkillClaimDraft(account_id,claim_id,person_id,skill_id,revision,definition_revision,skill_name,category,claimed_rank,level_name,level_description,experience_months,description,status,submitted_at,reviewed_at) VALUES(@account,NEWID(),@alice,@skill,1,@version,N'BQA Cloud skill',N'Cloud',3,N'Practitioner',N'Criteria 3',24,N'private experience','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME()),(@account,NEWID(),@bob,@skill,1,@version,N'BQA Cloud skill',N'Cloud',2,N'Foundation',N'Criteria 2',12,N'private experience','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME())",
+            "INSERT dbo.SkillClaimDraft(account_id,claim_id,person_id,skill_id,revision,definition_revision,skill_name,category,claimed_rank,level_name,level_description,experience_months,description,status,submitted_at,reviewed_at) VALUES(@account,NEWID(),@alice,@skill,1,@version,N'BQA Cloud skill',N'Cloud',3,N'Practitioner',N'Criteria 3',24,N'private experience','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME(),0),(@account,NEWID(),@bob,@skill,1,@version,N'BQA Cloud skill',N'Cloud',2,N'Foundation',N'Criteria 2',12,N'private experience','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME())",
           );
         const skillChoices = JSON.parse(
           (

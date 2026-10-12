@@ -1,22 +1,10 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { CertificationReviewDialog } from './certifications/CertificationReviewDialog';
 import type { CertificationPage, CertificationRecord } from './certifications/types';
 import { toast } from './toast';
-import {
-  ArrowRight,
-  Award,
-  Clock3,
-  Search,
-  ShieldCheck,
-  Sparkles,
-  UsersRound,
-  BarChart3,
-  MessageSquareMore,
-  X,
-} from 'lucide-react';
+import { ArrowRight, Award, Clock3, Search, ShieldCheck, X } from 'lucide-react';
 import { CertificationRecommendations } from './certifications/CertificationRecommendations';
 import './capability-workspace.css';
 import { CapabilitySubmissions } from './capabilities/CapabilitySubmissions';
@@ -29,9 +17,27 @@ export function ReviewWorkspace({
 }: {
   certificationsAllowed?: boolean;
 }) {
-  const [params, setParams] = useSearchParams();
-  const type =
-    certificationsAllowed && params.get('type') === 'certifications' ? 'certifications' : 'skills';
+  return (
+    <Suspense fallback={<p role="status">Loading review workspace…</p>}>
+      <SkillReviews
+        unified
+        queueContent={
+          <>
+            <CapabilitySubmissions review showEmpty />
+            {certificationsAllowed && <CertificationReviewPanel view="queue" />}
+          </>
+        }
+        teamContent={
+          certificationsAllowed ? <CertificationReviewPanel view="analytics" /> : undefined
+        }
+        recommendationContent={
+          certificationsAllowed ? <CertificationReviewPanel view="recommendations" /> : undefined
+        }
+      />
+    </Suspense>
+  );
+}
+function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'recommendations' }) {
   const [data, setData] = useState<CertificationPage>();
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState('');
@@ -43,15 +49,7 @@ export function ReviewWorkspace({
     canRecommend: boolean;
     categories: { category: string; count: number }[];
   }>();
-  const [certificationTab, setCertificationTab] = useState<
-    'queue' | 'analytics' | 'recommendations'
-  >(
-    params.get('tab') === 'recommendations'
-      ? 'recommendations'
-      : params.get('tab') === 'analytics'
-        ? 'analytics'
-        : 'queue',
-  );
+  const certificationTab = view;
   const [page, setPage] = useState(1),
     [attempt, setAttempt] = useState(0);
   const [search, setSearch] = useState(''),
@@ -68,16 +66,6 @@ export function ReviewWorkspace({
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
-  useEffect(() => setPage(1), [type]);
-  useEffect(() => {
-    setCertificationTab(
-      params.get('tab') === 'recommendations'
-        ? 'recommendations'
-        : params.get('tab') === 'analytics'
-          ? 'analytics'
-          : 'queue',
-    );
-  }, [params]);
   useEffect(() => {
     const refresh = () => {
       if (!credential && !opening) setAttempt(n => n + 1);
@@ -86,7 +74,7 @@ export function ReviewWorkspace({
     return () => window.removeEventListener('notifications-remote-updated', refresh);
   }, [credential, opening]);
   useEffect(() => {
-    if (type !== 'certifications') return;
+    if (view !== 'queue') return;
     const controller = new AbortController();
     setError('');
     setLoading(true);
@@ -109,9 +97,9 @@ export function ReviewWorkspace({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [page, query, attempt, type]);
+  }, [page, query, attempt, view]);
   useEffect(() => {
-    if (type !== 'certifications') return;
+    if (view === 'queue') return;
     const controller = new AbortController();
     setAnalyticsLoading(true);
     setAnalyticsError('');
@@ -137,15 +125,7 @@ export function ReviewWorkspace({
         if (!controller.signal.aborted) setAnalyticsLoading(false);
       });
     return () => controller.abort();
-  }, [attempt, type]);
-
-  const changeCertificationTab = (tab: 'queue' | 'analytics' | 'recommendations') => {
-    setCertificationTab(tab);
-    const next = new URLSearchParams(params);
-    next.set('type', 'certifications');
-    next.set('tab', tab);
-    setParams(next, { replace: true });
-  };
+  }, [attempt, view]);
 
   const saved = () => {
     setCredential(undefined);
@@ -159,301 +139,236 @@ export function ReviewWorkspace({
       ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
       : 'Date unavailable';
   };
+  const showLegacyQueue = loading || Boolean(error) || Boolean(data?.records.length);
   const hasNext = Boolean(data && page * data.pageSize < data.total);
+  if (view === 'queue' && !showLegacyQueue) return null;
 
   return (
     <>
-      <nav className="capability-tabs review-type-tabs" aria-label="Review type">
-        <Link
-          to="/skill-reviews?type=skills"
-          className="capability-tab-item"
-          aria-current={type === 'skills' ? 'page' : undefined}
-        >
-          <Sparkles size={18} className="capability-tab-icon" aria-hidden="true" />
-          <span className="capability-tab-label">Skills</span>
-        </Link>
-        {certificationsAllowed && (
-          <Link
-            to="/skill-reviews?type=certifications"
-            className="capability-tab-item"
-            aria-current={type === 'certifications' ? 'page' : undefined}
-          >
-            <Award size={18} className="capability-tab-icon" aria-hidden="true" />
-            <span className="capability-tab-label">Certifications</span>
-          </Link>
+      <section className="assigned-review-workspace review-shell" aria-busy={loading}>
+        {analyticsError && certificationTab !== 'queue' && (
+          <div className="assigned-review-error" role="alert">
+            <span>{analyticsError}</span>
+            <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
+              Retry
+            </button>
+          </div>
         )}
-      </nav>
-      <CapabilitySubmissions review onUpdated={() => setAttempt(v => v + 1)} />
-      {type === 'skills' ? (
-        <Suspense fallback={<p role="status">Loading skill review workspace…</p>}>
-          <SkillReviews />
-        </Suspense>
-      ) : (
-        <section className="assigned-review-workspace review-shell" aria-busy={loading}>
-          <header className="assigned-review-heading">
-            <div>
-              <span className="assigned-review-eyebrow">Manager workspace</span>
-              <h2>Certification reviews</h2>
-              <p>Review credentials submitted by your current direct reports.</p>
+        {certificationTab === 'queue' && showLegacyQueue && (
+          <>
+            <div className="assigned-review-summary" aria-label="Certification review summary">
+              <article className="assigned-review-total">
+                <span>
+                  <Award size={17} /> Earlier individual credential reviews
+                </span>
+                <strong>{data?.total ?? '—'}</strong>
+                <small>Ready for your review</small>
+              </article>
             </div>
-            <span className="assigned-review-scope">
-              <UsersRound size={16} /> Current direct reports
-            </span>
-          </header>
-          <nav
-            className="review-workspace-tabs certification-review-tabs"
-            aria-label="Certification review workspace"
-          >
-            <button
-              aria-pressed={certificationTab === 'queue'}
-              onClick={() => changeCertificationTab('queue')}
-            >
-              <Clock3 size={18} /> Review queue
-            </button>
-            <button
-              aria-pressed={certificationTab === 'analytics'}
-              onClick={() => changeCertificationTab('analytics')}
-            >
-              <BarChart3 size={18} /> Team analytics
-            </button>
-            {analytics?.canRecommend && (
-              <button
-                aria-pressed={certificationTab === 'recommendations'}
-                onClick={() => changeCertificationTab('recommendations')}
-              >
-                <MessageSquareMore size={18} /> Recommendations
-              </button>
-            )}
-            {!analytics && analyticsLoading && (
-              <span className="review-access-placeholder" aria-hidden="true">
-                <span />
-              </span>
-            )}
-          </nav>
-          {analyticsError && certificationTab !== 'queue' && (
-            <div className="assigned-review-error" role="alert">
-              <span>{analyticsError}</span>
-              <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
-                Retry
-              </button>
-            </div>
-          )}
-          {certificationTab === 'queue' && (
-            <>
-              <div className="assigned-review-summary" aria-label="Certification review summary">
-                <article className="assigned-review-total">
-                  <span>
-                    <Award size={17} /> Pending certifications
-                  </span>
-                  <strong>{data?.total ?? '—'}</strong>
-                  <small>Ready for your review</small>
-                </article>
-              </div>
-              <div className="assigned-review-toolbar">
-                <div className="assigned-review-search-wrap">
-                  <Search size={18} aria-hidden="true" className="assigned-review-search-icon" />
-                  <input
-                    type="search"
-                    aria-label="Search employee or certification"
-                    value={search}
-                    maxLength={100}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="Search employee or certification…"
-                  />
-                  {search && (
-                    <button
-                      type="button"
-                      className="assigned-review-clear-search-btn"
-                      aria-label="Clear search"
-                      onClick={() => {
-                        setSearch('');
-                        setQuery('');
-                        setPage(1);
-                      }}
-                    >
-                      <X size={15} aria-hidden="true" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              {error && (
-                <div className="assigned-review-error" role="alert">
-                  <span>{error}</span>
-                  <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
-                    Retry
+            <div className="assigned-review-toolbar">
+              <div className="assigned-review-search-wrap">
+                <Search size={18} aria-hidden="true" className="assigned-review-search-icon" />
+                <input
+                  type="search"
+                  aria-label="Search employee or certification"
+                  value={search}
+                  maxLength={100}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search employee or certification…"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    className="assigned-review-clear-search-btn"
+                    aria-label="Clear search"
+                    onClick={() => {
+                      setSearch('');
+                      setQuery('');
+                      setPage(1);
+                    }}
+                  >
+                    <X size={15} aria-hidden="true" />
                   </button>
-                </div>
-              )}
-              {loading && (
-                <div className="assigned-review-skeleton" role="status">
-                  <span className="sr-only">Loading certification review queue…</span>
-                  <div aria-hidden="true" />
-                  <div aria-hidden="true" />
-                </div>
-              )}
-              {data && !loading && (
-                <>
-                  <div className="combined-review-list">
-                    {data.records.map(record => (
-                      <article className="combined-review-item" key={record.id}>
-                        <div className="assigned-review-card-main">
-                          <div className="assigned-review-card-topline">
-                            <span className="combined-review-type">Certification</span>
-                            <span className="assigned-review-pending">
-                              <Clock3 size={13} /> Pending
-                            </span>
-                          </div>
-                          <h3>{record.certificationName}</h3>
-                          <p className="assigned-review-person">
-                            {record.name}
-                            <span aria-hidden="true"> · </span>
-                            {record.provider}
-                          </p>
-                          <p className="assigned-review-date">
-                            Submitted {reviewDate(record.submittedAt ?? '')}
-                          </p>
-                        </div>
-                        <button
-                          className="primary-button assigned-review-open"
-                          disabled={opening}
-                          onClick={() => setCredential(record)}
-                        >
-                          Review certification <ArrowRight size={16} />
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-                  {!data.records.length && (
-                    <div className="assigned-review-empty">
-                      <ShieldCheck size={27} />
-                      <h3>{query ? 'No matching certifications' : 'You’re all caught up'}</h3>
-                      <p>
-                        {query
-                          ? 'Try another employee name or certification.'
-                          : 'New certification submissions from your current direct reports will appear here.'}
-                      </p>
-                    </div>
-                  )}
-                  <div className="assigned-review-pagination">
-                    <span>
-                      {data.records.length} shown · {data.total} pending
-                      {query ? ' matching your search' : ''}
-                    </span>
-                    <span className="assigned-review-page-number">Page {page}</span>
-                    <button
-                      className="secondary-button"
-                      disabled={page === 1}
-                      onClick={() => setPage(n => n - 1)}
-                    >
-                      Previous
-                    </button>
-                    <button
-                      className="secondary-button"
-                      disabled={!hasNext}
-                      onClick={() => setPage(n => n + 1)}
-                    >
-                      Next page
-                    </button>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-          {certificationTab === 'analytics' && (
-            <section
-              className="cert-review-analytics"
-              aria-label="Assigned certification review analytics"
-              aria-busy={analyticsLoading}
-            >
-              <header>
-                <div>
-                  <h3>Assigned certification analytics</h3>
-                  <p>
-                    Current direct-report submissions awaiting your review. Approved and unrelated
-                    credentials are not included.
-                  </p>
-                </div>
-              </header>
-              <div className="assigned-review-summary">
-                <article className="assigned-review-total">
-                  <span>
-                    <Clock3 size={17} /> Pending review
-                  </span>
-                  <strong>{analytics?.pending ?? '—'}</strong>
-                  <small>Assigned to you</small>
-                </article>
-                <article>
-                  <span>Expired</span>
-                  <strong>{analytics?.expired ?? '—'}</strong>
-                  <small>Submitted credentials</small>
-                </article>
-                <article>
-                  <span>Expires within 90 days</span>
-                  <strong>{analytics?.expiresSoon ?? '—'}</strong>
-                  <small>Submitted credentials</small>
-                </article>
-                <article>
-                  <span>No expiry date</span>
-                  <strong>{analytics?.noExpiry ?? '—'}</strong>
-                  <small>Submitted credentials</small>
-                </article>
-              </div>
-              <div className="cert-review-category-list">
-                <h3>Pending by category</h3>
-                {analytics?.categories.length ? (
-                  analytics.categories.map(item => (
-                    <div key={item.category}>
-                      <span>{item.category}</span>
-                      <strong>{item.count}</strong>
-                    </div>
-                  ))
-                ) : (
-                  <p>
-                    {analytics
-                      ? 'No assigned certification categories to summarize.'
-                      : analyticsLoading
-                        ? 'Loading authorized analytics…'
-                        : 'Analytics unavailable.'}
-                  </p>
                 )}
               </div>
-            </section>
-          )}
-          {certificationTab === 'recommendations' && analytics?.canRecommend && (
-            <CertificationRecommendations sentOnly />
-          )}
-          {certificationTab === 'recommendations' && !analytics && analyticsLoading && (
-            <p role="status">Checking recommendation access…</p>
-          )}
-          {certificationTab === 'recommendations' && analytics && !analytics.canRecommend && (
-            <p role="status">
-              Certification recommendations are not available with your current access.
-            </p>
-          )}
-          {credential && (
-            <CertificationReviewDialog
-              certification={credential}
-              onClose={() => setCredential(undefined)}
-              onDecision={async (record, action, feedback) => {
-                await readApiResponse(
-                  await authenticatedFetch('/api/certifications', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      id: record.id,
-                      revision: record.revision,
-                      action,
-                      feedback,
-                    }),
+            </div>
+            {error && (
+              <div className="assigned-review-error" role="alert">
+                <span>{error}</span>
+                <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
+                  Retry
+                </button>
+              </div>
+            )}
+            {loading && (
+              <div className="assigned-review-skeleton" role="status">
+                <span className="sr-only">Loading certification review queue…</span>
+                <div aria-hidden="true" />
+                <div aria-hidden="true" />
+              </div>
+            )}
+            {data && !loading && (
+              <>
+                <div className="combined-review-list">
+                  {data.records.map(record => (
+                    <article className="combined-review-item" key={record.id}>
+                      <div className="assigned-review-card-main">
+                        <div className="assigned-review-card-topline">
+                          <span className="combined-review-type">Certification</span>
+                          <span className="assigned-review-pending">
+                            <Clock3 size={13} /> Pending
+                          </span>
+                        </div>
+                        <h3>{record.certificationName}</h3>
+                        <p className="assigned-review-person">
+                          {record.name}
+                          <span aria-hidden="true"> · </span>
+                          {record.provider}
+                        </p>
+                        <p className="assigned-review-date">
+                          Submitted {reviewDate(record.submittedAt ?? '')}
+                        </p>
+                      </div>
+                      <button
+                        className="primary-button assigned-review-open"
+                        disabled={opening}
+                        onClick={() => setCredential(record)}
+                      >
+                        Review certification <ArrowRight size={16} />
+                      </button>
+                    </article>
+                  ))}
+                </div>
+                {!data.records.length && (
+                  <div className="assigned-review-empty">
+                    <ShieldCheck size={27} />
+                    <h3>{query ? 'No matching certifications' : 'You’re all caught up'}</h3>
+                    <p>
+                      {query
+                        ? 'Try another employee name or certification.'
+                        : 'New certification submissions from your current direct reports will appear here.'}
+                    </p>
+                  </div>
+                )}
+                <div className="assigned-review-pagination">
+                  <span>
+                    {data.records.length} shown · {data.total} pending
+                    {query ? ' matching your search' : ''}
+                  </span>
+                  <span className="assigned-review-page-number">Page {page}</span>
+                  <button
+                    className="secondary-button"
+                    disabled={page === 1}
+                    onClick={() => setPage(n => n - 1)}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={!hasNext}
+                    onClick={() => setPage(n => n + 1)}
+                  >
+                    Next page
+                  </button>
+                </div>
+              </>
+            )}
+          </>
+        )}
+        {certificationTab === 'analytics' && (
+          <section
+            className="cert-review-analytics"
+            aria-label="Assigned certification review analytics"
+            aria-busy={analyticsLoading}
+          >
+            <header>
+              <div>
+                <h3>Assigned certification analytics</h3>
+                <p>
+                  Current direct-report submissions awaiting your review. Approved and unrelated
+                  credentials are not included.
+                </p>
+              </div>
+            </header>
+            <div className="assigned-review-summary">
+              <article className="assigned-review-total">
+                <span>
+                  <Clock3 size={17} /> Pending review
+                </span>
+                <strong>{analytics?.pending ?? '—'}</strong>
+                <small>Assigned to you</small>
+              </article>
+              <article>
+                <span>Expired</span>
+                <strong>{analytics?.expired ?? '—'}</strong>
+                <small>Submitted credentials</small>
+              </article>
+              <article>
+                <span>Expires within 90 days</span>
+                <strong>{analytics?.expiresSoon ?? '—'}</strong>
+                <small>Submitted credentials</small>
+              </article>
+              <article>
+                <span>No expiry date</span>
+                <strong>{analytics?.noExpiry ?? '—'}</strong>
+                <small>Submitted credentials</small>
+              </article>
+            </div>
+            <div className="cert-review-category-list">
+              <h3>Pending by category</h3>
+              {analytics?.categories.length ? (
+                analytics.categories.map(item => (
+                  <div key={item.category}>
+                    <span>{item.category}</span>
+                    <strong>{item.count}</strong>
+                  </div>
+                ))
+              ) : (
+                <p>
+                  {analytics
+                    ? 'No assigned certification categories to summarize.'
+                    : analyticsLoading
+                      ? 'Loading authorized analytics…'
+                      : 'Analytics unavailable.'}
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+        {certificationTab === 'recommendations' && analytics?.canRecommend && (
+          <CertificationRecommendations sentOnly />
+        )}
+        {certificationTab === 'recommendations' && !analytics && analyticsLoading && (
+          <p role="status">Checking recommendation access…</p>
+        )}
+        {certificationTab === 'recommendations' && analytics && !analytics.canRecommend && (
+          <p role="status">
+            Certification recommendations are not available with your current access.
+          </p>
+        )}
+        {credential && (
+          <CertificationReviewDialog
+            certification={credential}
+            onClose={() => setCredential(undefined)}
+            onDecision={async (record, action, feedback) => {
+              await readApiResponse(
+                await authenticatedFetch('/api/certifications', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    id: record.id,
+                    revision: record.revision,
+                    action,
+                    feedback,
                   }),
-                  'Review failed. Your note is still here.',
-                );
-                saved();
-              }}
-            />
-          )}
-        </section>
-      )}
+                }),
+                'Review failed. Your note is still here.',
+              );
+              saved();
+            }}
+          />
+        )}
+      </section>
     </>
   );
 }

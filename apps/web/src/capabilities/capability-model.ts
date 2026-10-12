@@ -1,5 +1,20 @@
 import type { SkillChoice } from '../SkillClaimWizard';
 import type { CertificationFields } from '../certifications/types';
+export interface CertificateSkillSuggestion {
+  skill: SkillChoice;
+  reason: string;
+  certificateId: string;
+}
+export function mergeCertificateSuggestions(
+  previous: CertificateSkillSuggestion[],
+  certificateId: string,
+  incoming: { skill: SkillChoice; reason: string }[],
+): CertificateSkillSuggestion[] {
+  return [
+    ...previous.filter(suggestion => suggestion.certificateId !== certificateId),
+    ...incoming.map(suggestion => ({ ...suggestion, certificateId })),
+  ];
+}
 export interface SelectedSkill {
   id: string;
   revision: number;

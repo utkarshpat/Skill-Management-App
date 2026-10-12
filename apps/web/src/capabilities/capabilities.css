@@ -278,6 +278,23 @@
   padding: 0 6px;
   font-weight: 600;
 }
+.cap-skill-certificates {
+  margin: 20px 0 0;
+  padding: 16px 0 0;
+}
+.cap-skill-certificates p {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.cap-skill-certificates label {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.cap-skill-certificates input {
+  flex-shrink: 0;
+}
 .cap-related label {
   display: inline-flex;
   align-items: center;

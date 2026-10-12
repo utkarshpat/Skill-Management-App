@@ -4,7 +4,6 @@ import {
   ArrowRight,
   Award,
   Check,
-  ChevronRight,
   Info,
   Plus,
   Search,
@@ -35,6 +34,8 @@ import {
 import { skillDateError } from '../skill-dates';
 import {
   relatedSkillIds,
+  mergeCertificateSuggestions,
+  type CertificateSkillSuggestion,
   submissionPayload,
   type SelectedSkill,
   type SelectedCertificate,
@@ -133,6 +134,7 @@ export function CapabilityComposer({
     revision: number;
     fields: CertificationFields;
     hasImage?: boolean;
+    renewedFromId?: string;
     relatedSkills?: { skillId?: string; id?: string }[];
   };
   onClose: () => void;
@@ -170,6 +172,9 @@ export function CapabilityComposer({
                     ?.map(s => s.skillId ?? s.id)
                     .filter((v): v is string => Boolean(v)) ?? [],
                 uploaded: Boolean(initialCredential.hasImage),
+                ...(initialCredential.renewedFromId
+                  ? { renewedFromId: initialCredential.renewedFromId }
+                  : {}),
               },
             ]
           : [
@@ -205,7 +210,7 @@ export function CapabilityComposer({
     [ownCertificates, setOwnCertificates] = useState<any[]>([]),
     [aiAvailable, setAiAvailable] = useState(false),
     [fileAvailable, setFileAvailable] = useState(false),
-    [suggestions, setSuggestions] = useState<{ skill: SkillChoice; reason: string }[]>([]),
+    [suggestions, setSuggestions] = useState<CertificateSkillSuggestion[]>([]),
     [suggestionCertificate, setSuggestionCertificate] = useState<string>(),
     [credentialSuggestion, setCredentialSuggestion] = useState<any>(),
     [catalogueError, setCatalogueError] = useState('');
@@ -222,6 +227,9 @@ export function CapabilityComposer({
     [personalReady, setPersonalReady] = useState(false),
     [bootstrapAttempt, setBootstrapAttempt] = useState(0),
     [definitions, setDefinitions] = useState<any[]>([]);
+  const activeSuggestions = suggestions.filter(suggestion =>
+    certs.some(c => c.id === suggestion.certificateId),
+  );
   const hasUploadedCertificate = certs.some(c => Boolean(c.file || c.uploaded || c.reuse));
   const working = busy || uploadBusy || initializing || !personalReady || recovery;
   const patchCertificate = (certId: string, patch: Partial<SelectedCertificate>) => {
@@ -274,7 +282,7 @@ export function CapabilityComposer({
         revision: 0,
         reuse: false,
         fields: { ...emptyCertification(), expiryDate: '' },
-        skillIds: skills.map(s => s.choice.id),
+        skillIds: [],
         uploaded: false,
       },
     ]);
@@ -310,11 +318,7 @@ export function CapabilityComposer({
               name: s.name,
               category: s.category,
               definitionRevision: s.definitionRevision,
-              levels: [1, 2, 3, 4, 5].map(rank => ({
-                rank,
-                name: `Level ${rank}`,
-                description: '',
-              })),
+              levels: s.levels ?? [],
             },
             reuse: !s.needsReview,
             rank: s.rank,
@@ -338,6 +342,7 @@ export function CapabilityComposer({
             fields: certificationFields(c),
             skillIds: (c.relatedSkills ?? []).map((s: any) => s.skillId),
             uploaded: Boolean(c.hasImage),
+            ...(c.renewedFromId ? { renewedFromId: c.renewedFromId } : {}),
           }))
         : old.map(c => ({
             ...c,
@@ -471,7 +476,7 @@ export function CapabilityComposer({
           ),
         },
       });
-      setSuggestions(data.suggestions ?? []);
+      setSuggestions(old => mergeCertificateSuggestions(old, cert.id, data.suggestions ?? []));
       setSuggestionCertificate(cert.id);
       setCredentialSuggestion(data.catalogueSuggestion);
       toast.info(data.warning);
@@ -505,7 +510,7 @@ export function CapabilityComposer({
     for (const s of skills) {
       if (
         !s.reuse &&
-        (!s.rank ||
+        (!s.choice.levels.some(level => level.rank === s.rank) ||
           !Number.isInteger(s.experienceMonths) ||
           s.experienceMonths < 0 ||
           s.experienceMonths > 600)
@@ -527,7 +532,7 @@ export function CapabilityComposer({
           skills.map(s => s.choice.id),
         ).length
       )
-        return `Choose related skills for ${c.fields.certificationName || 'each certification'}.`;
+        return `Open a selected skill and choose ${c.fields.certificationName || 'the certificate'} under Supporting certificates.`;
     }
     return '';
   }
@@ -1008,7 +1013,9 @@ export function CapabilityComposer({
                                 AI unavailable. You can fill the details yourself.
                               </p>
                             )}
-                            {suggestionCertificate === c.id && suggestions.length > 0 && (
+                            {activeSuggestions.some(
+                              suggestion => suggestion.certificateId === c.id,
+                            ) && (
                               <p className="cap-upload-result" role="status">
                                 Details and skill suggestions ready.
                               </p>
@@ -1051,8 +1058,9 @@ export function CapabilityComposer({
                                 revision: own.revision,
                                 reuse: own.status === 'APPROVED',
                                 fields: certificationFields(own),
-                                skillIds: skills.map(s => s.choice.id),
+                                skillIds: [],
                                 uploaded: Boolean(own.hasImage),
+                                ...(own.renewedFromId ? { renewedFromId: own.renewedFromId } : {}),
                               },
                             ]);
                           }}
@@ -1103,8 +1111,8 @@ export function CapabilityComposer({
                         <span className="cert-required-mark">*</span>
                       </h3>
                       <p>
-                        Choose published catalogue skills. Each skill has its own proficiency and
-                        experience.
+                        Select skills below. Click a selected skill to edit its details and
+                        supporting certificates.
                       </p>
                     </div>
                     <span className="cap-count">{skills.length}/10</span>
@@ -1167,22 +1175,24 @@ export function CapabilityComposer({
                     <details className="cap-show-all">
                       <summary>Show all</summary>{' '}
                       <div className="cap-skill-grid" aria-busy={searching}>
-                        {options.map(option => (
-                          <button
-                            key={option.id}
-                            type="button"
-                            disabled={
-                              working ||
-                              skills.some(s => s.choice.id === option.id) ||
-                              skills.length >= 10
-                            }
-                            onClick={() => addSkill(option)}
-                          >
-                            <Plus size={15} />
-                            {option.name}
-                            <small>{option.category}</small>
-                          </button>
-                        ))}
+                        {options
+                          .filter(option => !skills.some(s => s.choice.id === option.id))
+                          .map(option => (
+                            <button
+                              key={option.id}
+                              type="button"
+                              disabled={
+                                working ||
+                                skills.some(s => s.choice.id === option.id) ||
+                                skills.length >= 10
+                              }
+                              onClick={() => addSkill(option)}
+                            >
+                              <Plus size={15} />
+                              {option.name}
+                              <small>{option.category}</small>
+                            </button>
+                          ))}
                         {searching && <span role="status">Searching catalogue…</span>}
                         {options.length < catalogueTotal && (
                           <button
@@ -1204,21 +1214,21 @@ export function CapabilityComposer({
                   <div className="cap-suggestion-bar">
                     <div className="cap-skill-results" aria-busy={searching}>
                       {[
-                        ...suggestions.map(v => v.skill),
-                        ...options.filter(
-                          option => !suggestions.some(v => v.skill.id === option.id),
-                        ),
+                        ...new Map(activeSuggestions.map(v => [v.skill.id, v.skill])).values(),
+                        ...options
+                          .slice(0, 12)
+                          .filter(option => !activeSuggestions.some(v => v.skill.id === option.id)),
                       ]
                         .filter(
                           option =>
-                            !query.trim() ||
-                            `${option.name} ${option.category}`
-                              .toLowerCase()
-                              .includes(query.trim().toLowerCase()),
+                            !skills.some(s => s.choice.id === option.id) &&
+                            (!query.trim() ||
+                              `${option.name} ${option.category}`
+                                .toLowerCase()
+                                .includes(query.trim().toLowerCase())),
                         )
-                        .slice(0, 12)
                         .map(option => {
-                          const suggested = suggestions.find(v => v.skill.id === option.id);
+                          const suggested = activeSuggestions.find(v => v.skill.id === option.id);
                           return (
                             <button
                               key={option.id}
@@ -1232,16 +1242,17 @@ export function CapabilityComposer({
                               }
                               onClick={() => {
                                 addSkill(option);
-                                if (suggested && suggestionCertificate)
-                                  patchCertificate(suggestionCertificate, {
-                                    skillIds: [
-                                      ...new Set([
-                                        ...(certs.find(c => c.id === suggestionCertificate)
-                                          ?.skillIds ?? []),
-                                        option.id,
-                                      ]),
-                                    ],
-                                  });
+                                for (const suggestion of activeSuggestions.filter(
+                                  v => v.skill.id === option.id,
+                                )) {
+                                  const certificate = certs.find(
+                                    c => c.id === suggestion.certificateId,
+                                  );
+                                  if (certificate)
+                                    patchCertificate(certificate.id, {
+                                      skillIds: [...new Set([...certificate.skillIds, option.id])],
+                                    });
+                                }
                               }}
                             >
                               {suggested ? <Sparkles size={15} /> : <Plus size={15} />}
@@ -1280,65 +1291,6 @@ export function CapabilityComposer({
                       </button>
                     </section>
                   )}
-
-                  {certs.map(c => (
-                    <div key={c.id}>
-                      <fieldset disabled={working} className="cap-related">
-                        <legend>
-                          Skills supported by {c.fields.certificationName || 'this certificate'}{' '}
-                          <span className="cert-required-mark">*</span>
-                        </legend>
-                        {!skills.length && (
-                          <p>
-                            Choose skills in the next section, then tick which ones this certificate
-                            supports.
-                          </p>
-                        )}
-                        {skills.map(s => (
-                          <label key={s.id}>
-                            <input
-                              type="checkbox"
-                              checked={c.skillIds.includes(s.choice.id)}
-                              onChange={e =>
-                                patchCertificate(c.id, {
-                                  skillIds: e.target.checked
-                                    ? [...c.skillIds, s.choice.id]
-                                    : c.skillIds.filter(id => id !== s.choice.id),
-                                })
-                              }
-                            />
-                            {s.choice.name}
-                          </label>
-                        ))}
-                      </fieldset>
-                    </div>
-                  ))}
-                </section>
-                <section className="cap-skills">
-                  <h3>Skill details</h3>
-                  <p>Select a skill to fill its details. Click a selected skill to edit it.</p>
-                  {skills.map(s => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className="cap-skill-summary"
-                      disabled={working}
-                      onClick={() => {
-                        setSkillDialogError('');
-                        setEditingSkill(s.choice.id);
-                      }}
-                    >
-                      <strong>{s.choice.name}</strong>
-                      <span>
-                        {s.reuse
-                          ? 'Manager reviewed'
-                          : s.rank
-                            ? `L${s.rank} · ${s.experienceMonths} months`
-                            : 'Complete skill details'}
-                      </span>
-                      <ChevronRight size={16} />
-                    </button>
-                  ))}
                 </section>
               </div>
             ),
@@ -1706,6 +1658,28 @@ export function CapabilityComposer({
                     ))}
                   </details>
                 </div>
+              )}
+              {certs.length > 0 && (
+                <fieldset disabled={working} className="cap-related cap-skill-certificates">
+                  <legend>Supporting certificates</legend>
+                  <p>Choose which certificates support this skill.</p>
+                  {certs.map((certificate, index) => (
+                    <label key={certificate.id}>
+                      <input
+                        type="checkbox"
+                        checked={certificate.skillIds.includes(s.choice.id)}
+                        onChange={event =>
+                          patchCertificate(certificate.id, {
+                            skillIds: event.target.checked
+                              ? [...new Set([...certificate.skillIds, s.choice.id])]
+                              : certificate.skillIds.filter(skillId => skillId !== s.choice.id),
+                          })
+                        }
+                      />
+                      {certificate.fields.certificationName || `Certificate ${index + 1}`}
+                    </label>
+                  ))}
+                </fieldset>
               )}
             </FormDialog>
           ))}

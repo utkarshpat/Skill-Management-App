@@ -22,6 +22,7 @@ await withDatabase(async pool => {
     'discard-foreign',
     'discard-stale',
     'happy',
+    'analytics-many-to-many',
     'foreign',
     'stale',
     'missing-file',
@@ -68,6 +69,15 @@ await withDatabase(async pool => {
         for (const batch of removal.split(/^GO\s*$/m))
           if (batch.trim()) await new sql.Request(tx).batch(batch);
       }
+      const recoveryMetadata = await readFile(
+        new URL(
+          '../../../database/migrations/077_capability_draft_recovery_metadata.sql',
+          import.meta.url,
+        ),
+        'utf8',
+      );
+      for (const batch of recoveryMetadata.split(/^GO\s*$/m))
+        if (batch.trim()) await new sql.Request(tx).batch(batch);
       const owner = randomUUID(),
         manager = randomUUID(),
         outside = randomUUID(),
@@ -83,11 +93,18 @@ await withDatabase(async pool => {
         .query(`UPDATE dbo.AccessWorkspace SET personal_baseline_enabled=1 WHERE account_id=@a;
    INSERT dbo.AccessPerson(account_id,person_id,display_name,employee_code,active) SELECT @a,id,name,CONVERT(varchar(36),id),1 FROM(VALUES(@owner,N'Linked QA owner'),(@manager,N'Linked QA manager'),(@outside,N'Linked QA outsider'))p(id,name);
    INSERT dbo.AccessOrgAssignment(account_id,person_id,manager_id) VALUES(@a,@owner,@manager),(@a,@manager,NULL),(@a,@outside,NULL);`);
+      if (scenario === 'analytics-many-to-many')
+        await new sql.Request(tx)
+          .input('a', sql.UniqueIdentifier, account)
+          .input('m', sql.UniqueIdentifier, manager)
+          .query(
+            "INSERT dbo.BusinessResponsibility VALUES(@a,NEWID(),@m,'BUSINESS_OPERATIONS','ORGANIZATION',NULL,'ALLOW',1,NULL,N'Rollback analytics fixture');",
+          );
       const choices = (
         await new sql.Request(tx)
           .input('a', sql.UniqueIdentifier, account)
           .query(
-            "SELECT TOP(2) skill_id,definition_revision FROM dbo.SkillCatalogue WHERE account_id=@a AND status='PUBLISHED' AND definition_revision IS NOT NULL ORDER BY skill_id",
+            "SELECT TOP(2) c.skill_id,c.definition_revision FROM dbo.SkillCatalogue c JOIN dbo.SkillDefinitionVersion v ON v.account_id=c.account_id AND v.skill_id=c.skill_id AND v.definition_revision=c.definition_revision WHERE c.account_id=@a AND c.status='PUBLISHED' AND v.framework_id='00000000-0000-4000-8000-000000000003' ORDER BY c.skill_id",
           )
       ).recordset;
       assert.equal(choices.length, 2);
@@ -219,9 +236,27 @@ await withDatabase(async pool => {
         console.log('PASS rollback linked capabilities: ' + scenario);
         continue;
       }
+      if (scenario === 'analytics-many-to-many')
+        command.certifications.push({
+          id: randomUUID(),
+          revision: 0,
+          fields: {
+            ...fields,
+            certificationName: 'Rollback second credential',
+            credentialId: 'QA-ID-2',
+          },
+          skillIds: skills.map(s => s.skillId),
+        });
       const saved = await run(owner, 'SAVE', command);
       assert.equal(saved.skills.length, 2);
-      assert.equal(saved.certifications.length, 1);
+      assert.equal(saved.certifications.length, command.certifications.length);
+      const reopened = await run(owner, 'GET', { id });
+      assert.equal(reopened.skills[0].levels.length, 4);
+      assert.deepEqual(
+        reopened.skills[0].levels.map((v: any) => v.name),
+        ['Foundation', 'Autonomous', 'Experienced', 'Expert'],
+      );
+      assert.ok(reopened.skills[0].levels.every((v: any) => v.description.length > 0));
       if (scenario === 'legacy-returned') {
         await new sql.Request(tx)
           .input('a', sql.UniqueIdentifier, account)
@@ -272,13 +307,14 @@ await withDatabase(async pool => {
         );
       } else {
         if (scenario !== 'missing-file')
-          await new sql.Request(tx)
-            .input('a', sql.UniqueIdentifier, account)
-            .input('c', sql.UniqueIdentifier, cert)
-            .input('e', sql.UniqueIdentifier, randomUUID())
-            .query(
-              "INSERT dbo.CertificationImageRecord(account_id,certification_id,evidence_id,blob_name,bytes,width,height,active,mime_type,file_name) VALUES(@a,@c,@e,'rollback.pdf',3,NULL,NULL,1,'application/pdf','rollback.pdf');UPDATE dbo.CertificationRecord SET revision=revision+1 WHERE account_id=@a AND id=@c",
-            );
+          for (const certificate of command.certifications)
+            await new sql.Request(tx)
+              .input('a', sql.UniqueIdentifier, account)
+              .input('c', sql.UniqueIdentifier, certificate.id)
+              .input('e', sql.UniqueIdentifier, randomUUID())
+              .query(
+                "INSERT dbo.CertificationImageRecord(account_id,certification_id,evidence_id,blob_name,bytes,width,height,active,mime_type,file_name) VALUES(@a,@c,@e,'rollback.pdf',3,NULL,NULL,1,'application/pdf','rollback.pdf');UPDATE dbo.CertificationRecord SET revision=revision+1 WHERE account_id=@a AND id=@c",
+              );
         const submit = {
           id,
           revision: saved.revision,
@@ -297,6 +333,26 @@ await withDatabase(async pool => {
           const submitted = await run(owner, 'SUBMIT', submit);
           assert.equal(submitted.status, 'SUBMITTED');
           assert.ok(submitted.skills.every((s: any) => s.status === 'SUBMITTED'));
+          if (scenario === 'analytics-many-to-many')
+            for (const certificate of command.certifications) {
+              const files = await new sql.Request(tx)
+                .input('a', sql.UniqueIdentifier, account)
+                .input('m', sql.UniqueIdentifier, manager)
+                .input('c', sql.UniqueIdentifier, certificate.id)
+                .query("EXEC dbo.BusinessRecordFiles @a,@m,'certifications',@c;");
+              assert.equal(JSON.parse(files.recordset[0].json).items.length, 1);
+            }
+
+          const notifications = await new sql.Request(tx)
+            .input('a', sql.UniqueIdentifier, account)
+            .input('m', sql.UniqueIdentifier, manager)
+            .query('EXEC dbo.ReadCapabilitySubmissionNotifications @a,@m;');
+          assert.equal(
+            notifications.recordset.filter((row: any) => row.href.toLowerCase().endsWith(id))
+              .length,
+            1,
+          );
+
           if (scenario === 'reroute') {
             await new sql.Request(tx)
               .input('a', sql.UniqueIdentifier, account)
@@ -359,7 +415,9 @@ await withDatabase(async pool => {
                 id: c.id,
                 kind: 'CERTIFICATION',
                 revision: c.revision,
-                action: scenario === 'publish-links' ? 'APPROVE' : 'REQUEST_CHANGES',
+                action: ['publish-links', 'analytics-many-to-many'].includes(scenario)
+                  ? 'APPROVE'
+                  : 'REQUEST_CHANGES',
                 feedback: 'Clarify issuer verification',
               })),
             ];
@@ -372,8 +430,51 @@ await withDatabase(async pool => {
             assert.ok(reviewed.skills.every((s: any) => s.status === 'APPROVED'));
             assert.equal(
               reviewed.certifications[0].status,
-              scenario === 'publish-links' ? 'APPROVED' : 'CHANGES_REQUESTED',
+              ['publish-links', 'analytics-many-to-many'].includes(scenario)
+                ? 'APPROVED'
+                : 'CHANGES_REQUESTED',
             );
+            if (scenario === 'analytics-many-to-many') {
+              const counts = await new sql.Request(tx)
+                .input('a', sql.UniqueIdentifier, account)
+                .input('o', sql.UniqueIdentifier, owner)
+                .query(`SELECT COUNT(*) AS links FROM dbo.SkillCertificationLink l JOIN dbo.SkillClaimDraft c ON c.account_id=l.account_id AND c.claim_id=l.claim_id WHERE l.account_id=@a AND c.person_id=@o;
+                SELECT COUNT(*) AS skills FROM dbo.SkillClaimDraft WHERE account_id=@a AND person_id=@o AND status='APPROVED';
+                SELECT COUNT(*) AS certificates FROM dbo.CertificationRecord WHERE account_id=@a AND person_id=@o AND status='APPROVED';`);
+              assert.equal((counts.recordsets as any)[0][0].links, 4);
+              assert.equal((counts.recordsets as any)[1][0].skills, 2);
+              assert.equal((counts.recordsets as any)[2][0].certificates, 2);
+              await new sql.Request(tx)
+                .input('a', sql.UniqueIdentifier, account)
+                .input('m', sql.UniqueIdentifier, manager)
+                .query(
+                  "INSERT dbo.BusinessResponsibility VALUES(@a,NEWID(),@m,'BUSINESS_OPERATIONS','ORGANIZATION',NULL,'ALLOW',1,NULL,N'Rollback analytics fixture');",
+                );
+              const analytics = await new sql.Request(tx)
+                .input('a', sql.UniqueIdentifier, account)
+                .input('m', sql.UniqueIdentifier, manager)
+                .input(
+                  'p',
+                  sql.NVarChar(sql.MAX),
+                  JSON.stringify({
+                    dataset: 'certifications',
+                    status: 'APPROVED',
+                    search: owner,
+                    minRank: 1,
+                    maxRank: 4,
+                    page: 1,
+                    sort: 'updated_desc',
+                  }),
+                )
+                .query('EXEC dbo.BusinessDashboard @a,@m,@p,0;');
+              const facts = JSON.parse(analytics.recordset[0].json);
+              assert.equal(facts.summary.employees, 1);
+              assert.equal(facts.summary.certified, 1);
+              assert.equal(facts.summary.skilled, 1);
+              assert.equal(facts.total, 2);
+              assert.equal(facts.rows.length, 2);
+              assert.equal(facts.distribution.find((v: any) => v.label === 'QA').value, 2);
+            }
             if (scenario === 'snapshot') {
               const corrected = {
                 ...command,
@@ -392,7 +493,7 @@ await withDatabase(async pool => {
                   },
                 ],
               };
-              await run(owner, 'SAVE', corrected);
+              const resaved = await run(owner, 'SAVE', corrected);
               const historical = await run(owner, 'GET', { id });
               assert.equal(
                 historical.certifications[0].certificationName,
@@ -400,6 +501,36 @@ await withDatabase(async pool => {
               );
               assert.equal(historical.certifications[0].status, 'CHANGES_REQUESTED');
               assert.equal(historical.certifications[0].relatedSkills.length, 2);
+              const resubmitted = await run(owner, 'SUBMIT', {
+                id: corrected.id,
+                revision: resaved.revision,
+                skills: resaved.skills.map((row: any) => ({ id: row.id, revision: row.revision })),
+                certifications: resaved.certifications.map((row: any) => ({
+                  id: row.id,
+                  revision: row.revision,
+                })),
+              });
+              assert.ok(
+                resubmitted.skills.every(
+                  (row: any) => row.status === 'APPROVED' && !row.needsReview,
+                ),
+              );
+              const complete = await run(manager, 'DECIDE', {
+                id: corrected.id,
+                revision: resubmitted.revision,
+                decisions: resubmitted.certifications.map((row: any) => ({
+                  id: row.id,
+                  kind: 'CERTIFICATION',
+                  revision: row.revision,
+                  action: 'APPROVE',
+                  feedback: 'Corrected credential reviewed',
+                })),
+              });
+              assert.equal(complete.certifications[0].status, 'APPROVED');
+              assert.equal(
+                (await run(owner, 'GET', { id })).certifications[0].status,
+                'CHANGES_REQUESTED',
+              );
             }
             if (scenario === 'publish-links') {
               const reused = {

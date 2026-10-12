@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "e757efa31344aded",
+  "revision": "c5b2a4ce2e1927fc",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -78,7 +78,8 @@
       "073_capability_draft_removal.sql",
       "074_four_level_proficiency.sql",
       "075_certification_duplicate_identity.sql",
-      "076_optional_skill_description.sql"
+      "076_optional_skill_description.sql",
+      "077_capability_draft_recovery_metadata.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -7129,7 +7130,7 @@
       "name": "CapabilitySubmissionWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/075_certification_duplicate_identity.sql"
+      "source": "database/migrations/077_capability_draft_recovery_metadata.sql"
     },
     {
       "name": "CapabilitySubmissionFiles",

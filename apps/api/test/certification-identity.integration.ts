@@ -32,6 +32,15 @@ await withDatabase(async pool => {
       id = randomUUID();
     try {
       for (const b of source.split(/^GO\s*$/m)) if (b.trim()) await new sql.Request(tx).batch(b);
+      const recovery = await readFile(
+        new URL(
+          '../../../database/migrations/077_capability_draft_recovery_metadata.sql',
+          import.meta.url,
+        ),
+        'utf8',
+      );
+      for (const batch of recovery.split(/^GO\s*$/m))
+        if (batch.trim()) await new sql.Request(tx).batch(batch);
       await new sql.Request(tx)
         .input('a', sql.UniqueIdentifier, account)
         .input('o', sql.UniqueIdentifier, owner)
@@ -205,6 +214,37 @@ await withDatabase(async pool => {
               )
           ).recordset[0];
           assert.equal(linked.source.toLowerCase(), id);
+          const reopened = await new sql.Request(tx)
+            .input('account_id', sql.UniqueIdentifier, account)
+            .input('actor_id', sql.UniqueIdentifier, owner)
+            .input('operation', sql.VarChar(20), 'GET')
+            .input('payload', sql.NVarChar(sql.MAX), JSON.stringify({ id: group }))
+            .execute('dbo.CapabilitySubmissionWorkspace');
+          const record = JSON.parse((reopened.recordsets as any[][]).flat().at(-1)?.json ?? '{}');
+          assert.equal(record.certifications[0].renewedFromId.toLowerCase(), id);
+          const options = await new sql.Request(tx)
+            .input('account_id', sql.UniqueIdentifier, account)
+            .input('actor_id', sql.UniqueIdentifier, owner)
+            .input('operation', sql.VarChar(20), 'OPTIONS')
+            .input('payload', sql.NVarChar(sql.MAX), '{}')
+            .execute('dbo.CapabilitySubmissionWorkspace');
+          const personal = JSON.parse((options.recordsets as any[][]).flat().at(-1)?.json ?? '{}');
+          assert.equal(
+            personal.certifications
+              .find((row: any) => row.id.toLowerCase() === renewal)
+              .renewedFromId.toLowerCase(),
+            id,
+          );
+
+          payload.revision = record.revision;
+          payload.skills[0].revision = record.skills[0].revision;
+          payload.certifications[0].revision = record.certifications[0].revision;
+          await new sql.Request(tx)
+            .input('account_id', sql.UniqueIdentifier, account)
+            .input('actor_id', sql.UniqueIdentifier, owner)
+            .input('operation', sql.VarChar(20), 'SAVE')
+            .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload))
+            .execute('dbo.CapabilitySubmissionWorkspace');
         }
       }
       console.log('Credential identity SQL passed: ' + scenario);

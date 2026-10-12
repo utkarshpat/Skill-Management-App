@@ -52,7 +52,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
   const responseOperation = useRef<AbortController | undefined>(undefined);
   const [responseError, setResponseError] = useState('');
   const [responseRecheck, setResponseRecheck] = useState(false);
-  const focused = params.get('recommendation') ?? '';
+  const focused = params.get('type') === 'skills' ? '' : (params.get('recommendation') ?? '');
   const view = sentOnly || params.get('direction') === 'sent' ? 'sent' : 'received';
   const [loadedFeed, setFeed] = useState<{ key: string; value: Feed }>();
   const [recipientLoading, setRecipientLoading] = useState(true);

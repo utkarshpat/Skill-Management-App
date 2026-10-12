@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { relatedSkillIds, submissionPayload } from '../src/capabilities/capability-model';
+import {
+  relatedSkillIds,
+  submissionPayload,
+  mergeCertificateSuggestions,
+} from '../src/capabilities/capability-model';
 import { CertificateFilePreview } from '../src/certifications/CertificateFilePreview';
 test('one credential can support several canonical skills without duplicating a file or credential', () => {
   const skills = ['azure', 'api'].map(id => ({
@@ -52,4 +56,36 @@ test('supporting file previews identify evidence without calling it a certificat
   assert.match(html, /View evidence/);
   assert.match(html, /Evidence preview/);
   assert.doesNotMatch(html, /View certificate/);
+});
+
+test('AI suggestions retain independent certificate sources and refreshing one does not erase the other', () => {
+  const choice = (id: string) => ({
+    id,
+    name: id,
+    category: 'Cloud',
+    definitionRevision: 1,
+    levels: [],
+  });
+  const first = mergeCertificateSuggestions([], 'certificate-a', [
+    { skill: choice('azure'), reason: 'Azure topic' },
+    { skill: choice('api'), reason: 'API topic' },
+  ]);
+  const both = mergeCertificateSuggestions(first, 'certificate-b', [
+    { skill: choice('azure'), reason: 'Second Azure evidence' },
+  ]);
+  assert.equal(both.length, 3);
+  assert.deepEqual(
+    both.filter(v => v.skill.id === 'azure').map(v => v.certificateId),
+    ['certificate-a', 'certificate-b'],
+  );
+  const refreshed = mergeCertificateSuggestions(both, 'certificate-a', [
+    { skill: choice('security'), reason: 'Corrected extraction' },
+  ]);
+  assert.deepEqual(
+    refreshed.map(v => [v.certificateId, v.skill.id]),
+    [
+      ['certificate-b', 'azure'],
+      ['certificate-a', 'security'],
+    ],
+  );
 });

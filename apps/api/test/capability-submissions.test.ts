@@ -299,3 +299,55 @@ test('private incomplete draft DTOs retain empty record arrays without inventing
   assert.throws(() => capabilityResult('GET', null));
   assert.throws(() => capabilityResult('GET', { skills: 'corrupt' }));
 });
+
+test('certificate AI can return several canonical skills, bounded to six without inventing proficiency', async () => {
+  const current = state();
+  const access = {
+    snapshot: () => structuredClone(current),
+    person: () => current.people[0],
+    save: async () => current,
+  } as AccessStore;
+  const choices = Array.from({ length: 7 }, (_, index) => ({
+    id: `00000000-0000-4000-8000-${String(index + 10).padStart(12, '0')}`,
+    name: `Networking ${index}`,
+    category: 'Networking',
+    definitionRevision: 1,
+    levels: [],
+  }));
+  const claims = { options: async () => ({ skills: choices }) } as unknown as ClaimsStore;
+  let phase = 0;
+  const provider = {
+    name: 'gemini',
+    complete: async () => ({
+      calls: [],
+      content: JSON.stringify(
+        ++phase === 1
+          ? { fields, searchTerms: ['Networking'] }
+          : {
+              skills: [
+                { id: 'invented', reason: 'Invalid' },
+                ...choices.map(choice => ({ id: choice.id, reason: 'Credential topic' })),
+              ],
+              rank: 4,
+            },
+      ),
+    }),
+  } as Provider;
+  const result = await new CertificateAutofillService(
+    access,
+    claims,
+    new MemoryAiBudget(),
+    provider,
+  ).extract(
+    actor,
+    { data: Buffer.from('networking credential'), mimeType: 'text/plain', fileName: 'fixture.txt' },
+    new AbortController().signal,
+  );
+  assert.equal(result.suggestions.length, 6);
+  assert.ok(
+    result.suggestions.every((suggestion: any) =>
+      choices.some(choice => choice.id === suggestion.skill.id),
+    ),
+  );
+  assert.equal(result.fields.rank, undefined);
+});

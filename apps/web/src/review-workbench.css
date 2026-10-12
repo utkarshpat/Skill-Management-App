@@ -772,3 +772,20 @@
     transition: none;
   }
 }
+
+.review-legacy-history > summary {
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.review-legacy-history[open] > summary {
+  margin-bottom: 16px;
+}
+.review-history-note {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 20px 0 10px;
+}

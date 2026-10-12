@@ -10,9 +10,11 @@ import { useSearchParams } from 'react-router';
 import './capabilities.css';
 export function CapabilitySubmissions({
   review = false,
+  showEmpty = false,
   onUpdated,
 }: {
   review?: boolean;
+  showEmpty?: boolean;
   onUpdated?: () => void;
 }) {
   const [params] = useSearchParams();
@@ -22,12 +24,14 @@ export function CapabilitySubmissions({
   const [mutating, setMutating] = useState(false);
   const mutationLock = useRef(false);
   const [expanded, setExpanded] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<any[]>([]),
     [error, setError] = useState(''),
     [attempt, setAttempt] = useState(0),
     [opened, setOpened] = useState<string>();
   useEffect(() => {
     const abort = new AbortController();
+    setLoading(true);
     authenticatedFetch('/api/capability-submissions?view=' + (review ? 'queue' : 'mine'), {
       signal: abort.signal,
     })
@@ -43,6 +47,9 @@ export function CapabilitySubmissions({
           setRecords([]);
           setError(e.message);
         }
+      })
+      .finally(() => {
+        if (!abort.signal.aborted) setLoading(false);
       });
     return () => abort.abort();
   }, [review, attempt]);
@@ -102,15 +109,24 @@ export function CapabilitySubmissions({
     }
   }
   const visibleRecords = review ? records : records.filter(r => r.status === 'DRAFT');
-  if (!visibleRecords.length && !error && !removed && !opened) return null;
+  if (!showEmpty && !visibleRecords.length && !error && !removed && !opened) return null;
   return (
-    <section className="cap-submissions" hidden={!visibleRecords.length && !error && !removed}>
+    <section
+      className="cap-submissions"
+      hidden={!showEmpty && !visibleRecords.length && !error && !removed}
+    >
       <header>
-        <h3>{review ? 'Combined capability reviews' : 'Drafts'}</h3>
+        <h3>{review ? 'Review requests' : 'Drafts'}</h3>
         <small>
-          {review ? 'Skills and credentials in one request' : 'Continue where you left off.'}
+          {review
+            ? 'Skills and supporting certificates in one request'
+            : 'Continue where you left off.'}
         </small>
       </header>
+      {showEmpty && loading && <p role="status">Loading review requests…</p>}
+      {showEmpty && !loading && !visibleRecords.length && !error && (
+        <p role="status">No new skill submissions are awaiting your review.</p>
+      )}
       {error && (
         <p role="alert">
           {error}

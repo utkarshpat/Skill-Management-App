@@ -77,7 +77,8 @@ export function Recommendations({
     [attempt, setAttempt] = useState(0),
     [sending, setSending] = useState(false),
     [detail, setDetail] = useState<Recommendation>();
-  const focused = params.get('recommendation') ?? '';
+  const focused =
+    params.get('type') === 'certifications' ? '' : (params.get('recommendation') ?? '');
   const direction = params.get('direction');
   useEffect(() => {
     if (focused) setPage(1);
