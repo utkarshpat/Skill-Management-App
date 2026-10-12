@@ -42,9 +42,11 @@ function Preview({ root, item }: { root: string; item: any }) {
 export function CapabilityEvidence({
   submissionId,
   recordId,
+  hideIfEmpty = false,
 }: {
   submissionId: string;
   recordId: string;
+  hideIfEmpty?: boolean;
 }) {
   const root = `/api/capability-submissions/${submissionId}/files/${recordId}`;
   const [items, setItems] = useState<any[]>(),
@@ -61,17 +63,24 @@ export function CapabilityEvidence({
       });
     return () => abort.abort();
   }, [root]);
+  if (hideIfEmpty && items && items.length === 0) {
+    return null;
+  }
   return (
-    <section>
+    <div className="cap-evidence-wrapper">
       {error ? (
         <p role="alert">{error}</p>
       ) : !items ? (
         <p role="status">Loading evidence snapshot…</p>
       ) : items.length ? (
-        items.map(item => <Preview key={item.id} root={root} item={item} />)
+        <div className="cap-evidence-items">
+          {items.map(item => (
+            <Preview key={item.id} root={root} item={item} />
+          ))}
+        </div>
       ) : (
-        <p className="cap-help">No uploaded supporting files in this submitted snapshot.</p>
+        <p className="cap-evidence-none">No uploaded supporting files in this submitted snapshot.</p>
       )}
-    </section>
+    </div>
   );
 }

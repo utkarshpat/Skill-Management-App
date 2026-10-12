@@ -2,12 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { CapabilityComposer } from './CapabilityComposer';
-import { Trash2 } from 'lucide-react';
+import { ArrowRight, Award, CheckCircle2, Clock3, Code2, Trash2 } from 'lucide-react';
 import { FormDialog } from '../FormDialog';
 import { toast } from '../toast';
 import { CapabilityReview } from './CapabilityReview';
 import { useSearchParams } from 'react-router';
 import './capabilities.css';
+
+function getInitials(name?: string) {
+  if (!name) return 'UP';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
 export function CapabilitySubmissions({
   review = false,
   showEmpty = false,
@@ -115,17 +122,32 @@ export function CapabilitySubmissions({
       className="cap-submissions"
       hidden={!showEmpty && !visibleRecords.length && !error && !removed}
     >
-      <header>
-        <h3>{review ? 'Review requests' : 'Drafts'}</h3>
-        <small>
-          {review
-            ? 'Skills and supporting certificates in one request'
-            : 'Continue where you left off.'}
-        </small>
+      <header className="cap-submissions-header">
+        <div className="cap-submissions-title-group">
+          <div className="cap-title-with-badge">
+            <h3>{review ? 'Review requests' : 'Drafts'}</h3>
+            {visibleRecords.length > 0 && (
+              <span className="cap-count-badge">
+                {visibleRecords.length} {visibleRecords.length === 1 ? 'request' : 'requests'}
+              </span>
+            )}
+          </div>
+          <p className="cap-submissions-sub">
+            {review
+              ? 'Skills and supporting certificates in one request.'
+              : 'Continue where you left off.'}
+          </p>
+        </div>
       </header>
       {showEmpty && loading && <p role="status">Loading review requests…</p>}
       {showEmpty && !loading && !visibleRecords.length && !error && (
-        <p role="status">No new skill submissions are awaiting your review.</p>
+        <div className="cap-empty-box" role="status">
+          <CheckCircle2 size={22} className="cap-empty-check" aria-hidden="true" />
+          <div>
+            <strong>All caught up!</strong>
+            <p>No new skill submissions are awaiting your review.</p>
+          </div>
+        </div>
       )}
       {error && (
         <p role="alert">
@@ -136,25 +158,51 @@ export function CapabilitySubmissions({
         </p>
       )}
       {(expanded ? visibleRecords : visibleRecords.slice(0, 5)).map(record => (
-        <div key={record.id} className="cap-submission-row">
-          <span>
-            <strong>
-              {review ? record.name + ' - ' : ''}
-              {record.label || 'Capability submission'}
-            </strong>
-            <small>
-              {record.skills} skills · {record.certifications} certificates ·{' '}
-              {record.status.toLowerCase()}
-            </small>
-          </span>
+        <div key={record.id} className="cap-submission-card">
+          <div className="cap-card-left">
+            {review && (
+              <div className="cap-avatar-badge" aria-hidden="true">
+                {getInitials(record.name)}
+              </div>
+            )}
+            <div className="cap-card-info">
+              <div className="cap-card-title-row">
+                {review && <strong className="cap-employee-name">{record.name}</strong>}
+                {review && record.label && <span className="cap-title-sep">·</span>}
+                <span className="cap-request-label">
+                  {record.label || 'Capability submission'}
+                </span>
+              </div>
+              <div className="cap-metadata-pills">
+                <span className="cap-meta-pill">
+                  <Code2 size={12} aria-hidden="true" />
+                  {record.skills} {record.skills === 1 ? 'skill' : 'skills'}
+                </span>
+                <span className="cap-meta-pill">
+                  <Award size={12} aria-hidden="true" />
+                  {record.certifications} {record.certifications === 1 ? 'certificate' : 'certificates'}
+                </span>
+                <span className={`cap-status-pill ${record.status.toLowerCase()}`}>
+                  <Clock3 size={11} aria-hidden="true" />
+                  {record.status === 'SUBMITTED' ? 'Awaiting review' : record.status.toLowerCase()}
+                </span>
+              </div>
+            </div>
+          </div>
           <div className="cap-submission-actions">
             {review || (record.status === 'DRAFT' && record.canEdit) ? (
               <button
                 type="button"
-                className="secondary-button"
+                className={review ? 'admin-primary cap-review-btn' : 'secondary-button'}
                 onClick={() => setOpened(record.id)}
               >
-                {review ? 'Review request' : 'Continue'}
+                {review ? (
+                  <>
+                    Review request <ArrowRight size={14} aria-hidden="true" />
+                  </>
+                ) : (
+                  'Continue'
+                )}
               </button>
             ) : (
               <button
@@ -174,7 +222,7 @@ export function CapabilitySubmissions({
                 disabled={mutating}
                 onClick={() => setRemoving(record)}
               >
-                <Trash2 size={16} aria-hidden="true" />
+                <Trash2 size={15} aria-hidden="true" />
               </button>
             )}
           </div>
@@ -235,6 +283,8 @@ export function CapabilitySubmissions({
         (review || !records.find(r => r.id === opened)?.canEdit ? (
           <CapabilityReview
             id={opened}
+            employeeName={records.find(r => r.id === opened)?.name}
+            submissionLabel={records.find(r => r.id === opened)?.label}
             readOnly={!review}
             onClose={() => setOpened(undefined)}
             onSaved={done}
