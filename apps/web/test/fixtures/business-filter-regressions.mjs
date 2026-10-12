@@ -57,17 +57,24 @@ const dashboard = employee => ({
 });
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
-const icons = Object.fromEntries(
-  [
-    'ArrowDownToLine',
-    'BarChart3',
-    'Users',
-    'ShieldCheck',
-    'Clock3',
-    'AlertCircle',
-    'Sparkles',
-    'X',
-  ].map(name => [name, () => null]),
+const icons = new Proxy(
+  Object.fromEntries(
+    [
+      'ArrowDownToLine',
+      'BarChart3',
+      'Users',
+      'ShieldCheck',
+      'Clock3',
+      'AlertCircle',
+      'Sparkles',
+      'X',
+      'Eye',
+    ].map(name => [name, () => null]),
+  ),
+  {
+    get: (target, prop) =>
+      typeof prop === 'string' && prop in target ? target[prop] : () => null,
+  },
 );
 globalThis.__probe = {
   react,

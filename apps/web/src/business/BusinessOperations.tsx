@@ -10,6 +10,22 @@ import {
   Sparkles,
   X,
   Eye,
+  Award,
+  TrendingUp,
+  Layers,
+  Search,
+  RotateCcw,
+  Info,
+  Calendar,
+  Building2,
+  ChevronRight,
+  Home,
+  CheckCircle2,
+  ArrowRight,
+  PieChart,
+  UserCheck,
+  UserX,
+  Trophy,
 } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
@@ -25,11 +41,13 @@ import {
 import './business.css';
 import { BusinessRecordDate } from './BusinessRecordDate';
 import { BusinessRecordFiles } from './BusinessRecordFiles';
+
 export function BusinessOperations() {
   const [params, setParams] = useSearchParams(),
     [context, setContext] = useState<BusinessContext>(),
     [error, setError] = useState('');
   const tab = params.get('tab') ?? 'insights';
+
   useEffect(() => {
     const abort = new AbortController();
     authenticatedFetch('/api/business/context', { signal: abort.signal })
@@ -42,6 +60,7 @@ export function BusinessOperations() {
       });
     return () => abort.abort();
   }, []);
+
   const tabs = context
     ? [
         ...(context.canView
@@ -54,52 +73,75 @@ export function BusinessOperations() {
       ]
     : [];
   const selected = tabs.some(([id]) => id === tab) ? tab : tabs[0]?.[0];
+
   if (context && tab === 'amendments' && (context.canAmend || context.canApprove)) {
     const next = new URLSearchParams({ tab: 'amendments' });
     const ticket = params.get('draftTicket');
     if (ticket) next.set('draftTicket', ticket);
     return <Navigate replace to={'/skills?' + next} />;
   }
+
   return (
     <div className="bo-page">
+      {/* Navigation Breadcrumb / Home */}
+      <nav className="bo-breadcrumbs" aria-label="Breadcrumb navigation">
+        <Link to="/workspace" className="bo-breadcrumb-item">
+          <Home size={14} aria-hidden="true" />
+          <span>Home</span>
+        </Link>
+        <ChevronRight size={13} className="bo-breadcrumb-sep" aria-hidden="true" />
+        <span className="bo-breadcrumb-current">Business Operations</span>
+        {selected === 'insights' && (
+          <>
+            <ChevronRight size={13} className="bo-breadcrumb-sep" aria-hidden="true" />
+            <span className="bo-breadcrumb-sub">Workforce Intelligence</span>
+          </>
+        )}
+      </nav>
+
       <header className="bo-heading">
         <div>
-          <span className="bo-eyebrow">BUSINESS OPERATIONS</span>
+          <span className="bo-eyebrow">WORKFORCE INTELLIGENCE & ANALYTICS</span>
           <h1>
             {context && !context.canView ? 'Business administration' : 'Workforce intelligence'}
           </h1>
           <p>
             {context && !context.canView
-              ? 'Propose and review changes using your current permissions.'
-              : 'Skills, credentials and renewal priorities across your authorized scope.'}
+              ? 'Propose and review organizational changes using your current permissions.'
+              : 'End-to-end analytical reporting on skill coverage, credential certification health, community benchmarks, and compliance renewal priorities across your authorized scope.'}
           </p>
         </div>
-        {context && (context.canAmend || context.canApprove) && (
-          <Link className="secondary-button" to="/skills?tab=amendments">
-            Catalogue amendments
-          </Link>
-        )}
-        <button
-          className="secondary-button"
-          onClick={() =>
-            window.dispatchEvent(
-              new CustomEvent('assistant-context-request', {
-                detail: {
-                  prompt:
-                    'Use my current authorized Business Operations tools to summarize skill coverage, credential expiry and the most urgent actions. State scope, as-of time and any missing data.',
-                },
-              }),
-            )
-          }
-        >
-          <Sparkles size={17} /> Ask AI
-        </button>
+        <div className="bo-heading-actions">
+          {context && (context.canAmend || context.canApprove) && (
+            <Link className="secondary-button" to="/skills?tab=amendments">
+              Catalogue amendments
+            </Link>
+          )}
+          <button
+            className="secondary-button bo-ai-btn"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent('assistant-context-request', {
+                  detail: {
+                    prompt:
+                      'Use my current authorized Business Operations tools to summarize skill coverage, credential expiry, top certified resources, and renewal priorities. State scope, as-of time, and any key capability gaps.',
+                  },
+                }),
+              )
+            }
+          >
+            <Sparkles size={16} /> Ask AI Insights
+          </button>
+        </div>
       </header>
+
       {error && (
         <p className="bo-error" role="alert">
           {error}
         </p>
       )}
+
+      {/* Main Section Navigation Tabs */}
       <nav className="bo-tabs" aria-label="Business Operations sections">
         {tabs.map(([id, label]) => (
           <button
@@ -111,9 +153,11 @@ export function BusinessOperations() {
           </button>
         ))}
       </nav>
+
       {!context && !error && (
         <div className="bo-skeleton" aria-label="Loading authorized workspace" />
       )}
+
       {context && selected === 'insights' && <Insights context={context} />}
       {context && selected === 'administration' && <BusinessAdministration onSaved={setContext} />}
       {context && selected === 'demand' && (
@@ -122,42 +166,78 @@ export function BusinessOperations() {
     </div>
   );
 }
+
+function MetricTooltip({ text }: { text: string }) {
+  return (
+    <span className="bo-info-tooltip" title={text} aria-label={text} tabIndex={0}>
+      <Info size={13} aria-hidden="true" />
+    </span>
+  );
+}
+
 function Bars({
   title,
   items,
   onFilter,
   description,
+  icon: Icon = BarChart3,
+  tooltip,
 }: {
   title: string;
   items: { label: string; value: number }[];
   onFilter?: (label: string) => void;
   description: string;
+  icon?: any;
+  tooltip?: string;
 }) {
   const max = Math.max(1, ...items.map(i => i.value));
+  const total = items.reduce((acc, curr) => acc + curr.value, 0);
+
   return (
-    <section className="bo-panel">
-      <h2>{title}</h2>
-      <p className="bo-note">{description}</p>
+    <section className="bo-panel bo-card-elevated">
+      <div className="bo-panel-header">
+        <div className="bo-panel-title-group">
+          <div className="bo-panel-icon-badge">
+            <Icon size={18} aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="bo-panel-title">
+              {title}
+              {tooltip && <MetricTooltip text={tooltip} />}
+            </h2>
+            <p className="bo-note">{description}</p>
+          </div>
+        </div>
+        {total > 0 && <span className="bo-count-pill">{total.toLocaleString()} total</span>}
+      </div>
+
       <div className="bo-bars">
-        {items.map(item => (
-          <button
-            key={item.label}
-            disabled={!onFilter}
-            onClick={() => onFilter?.(item.label)}
-            aria-label={`${item.label}: ${item.value}${onFilter ? ', filter records' : ''}`}
-          >
-            <span>{item.label}</span>
-            <i>
-              <b style={{ width: (100 * item.value) / max + '%' }} />
-            </i>
-            <strong>{item.value}</strong>
-          </button>
-        ))}
-        {!items.length && <p>No matching records.</p>}
+        {items.map(item => {
+          const pct = Math.round((item.value / max) * 100);
+          return (
+            <button
+              key={item.label}
+              disabled={!onFilter}
+              onClick={() => onFilter?.(item.label)}
+              className="bo-bar-row"
+              aria-label={`${item.label}: ${item.value}${onFilter ? ', filter records' : ''}`}
+            >
+              <span className="bo-bar-label" title={item.label}>
+                {item.label}
+              </span>
+              <div className="bo-bar-track">
+                <b className="bo-bar-fill" style={{ width: `${pct}%` }} />
+              </div>
+              <strong className="bo-bar-val">{item.value.toLocaleString()}</strong>
+            </button>
+          );
+        })}
+        {!items.length && <p className="bo-empty-chart">No matching records found.</p>}
       </div>
     </section>
   );
 }
+
 function Insights({ context }: { context: BusinessContext }) {
   const [params, setParams] = useSearchParams(),
     filters = businessFilters(params),
@@ -167,14 +247,20 @@ function Insights({ context }: { context: BusinessContext }) {
     [attempt, setAttempt] = useState(0),
     [exporting, setExporting] = useState(false),
     exportGuard = useRef(false);
+
   const [fileRecord, setFileRecord] = useState<{ kind: string; id: string; name: string }>();
+  const [analyticalView, setAnalyticalView] = useState<
+    'all' | 'skills' | 'certifications' | 'community' | 'records'
+  >('all');
+
   useEffect(() => setFileRecord(undefined), [key]);
-  // Keep the mounted layout while a different filter is loading. Retained results
-  // are explicitly marked as previous; records/exports wait for the current key.
+
   const data = loaded?.data;
   const pending = loaded ? loaded.key !== key : !error;
   const [search, setSearch] = useState(params.get('search') ?? '');
+
   useEffect(() => setSearch(params.get('search') ?? ''), [params.get('search')]);
+
   useEffect(() => {
     const abort = new AbortController();
     setError('');
@@ -191,7 +277,9 @@ function Insights({ context }: { context: BusinessContext }) {
       });
     return () => abort.abort();
   }, [key, attempt]);
+
   const change = (patch: Record<string, string>) => setParams(updateBusinessFilters(params, patch));
+
   const exportAbort = useRef<AbortController | undefined>(undefined);
   useEffect(() => {
     exportAbort.current?.abort();
@@ -199,6 +287,7 @@ function Insights({ context }: { context: BusinessContext }) {
     setExporting(false);
     return () => exportAbort.current?.abort();
   }, [key]);
+
   const download = async (format: string) => {
     if (exportGuard.current || pending || !data?.context.canExport) return;
     exportGuard.current = true;
@@ -230,7 +319,9 @@ function Insights({ context }: { context: BusinessContext }) {
       }
     }
   };
+
   const scopes = (data?.context ?? context).scopes.filter(s => s.effect === 'ALLOW');
+
   const cleared = {
     category: '',
     issuer: '',
@@ -241,6 +332,27 @@ function Insights({ context }: { context: BusinessContext }) {
     validity: '',
     sort: '',
   };
+
+  // Quick period helper
+  const setQuickPeriod = (preset: 'all' | '30' | '90' | 'ytd') => {
+    const today = new Date();
+    const toStr = today.toISOString().slice(0, 10);
+    if (preset === 'all') {
+      change({ from: '', to: '' });
+    } else if (preset === '30') {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      change({ from: d.toISOString().slice(0, 10), to: toStr });
+    } else if (preset === '90') {
+      const d = new Date();
+      d.setDate(d.getDate() - 90);
+      change({ from: d.toISOString().slice(0, 10), to: toStr });
+    } else if (preset === 'ytd') {
+      const yearStart = new Date(today.getFullYear(), 0, 1);
+      change({ from: yearStart.toISOString().slice(0, 10), to: toStr });
+    }
+  };
+
   const cards = [
     [
       'employees',
@@ -255,398 +367,915 @@ function Insights({ context }: { context: BusinessContext }) {
         maxRank: '',
         status: '',
       },
+      'Total active employees across all authorized organizational scopes.',
     ],
     [
       'certified',
       'Currently certified',
       ShieldCheck,
       { dataset: 'certifications', validity: 'CURRENT', status: 'APPROVED' },
+      'Employees holding at least one manager-approved, currently active certification.',
     ],
     [
       'skilled',
       'Reviewed skill holders',
       BarChart3,
       { dataset: 'skills', status: 'APPROVED', validity: '', issuer: '' },
+      'Employees with at least one manager-reviewed skill aligned to the four-level model.',
     ],
     [
       'pending',
       'Awaiting review',
       Clock3,
       { dataset: 'submissions', status: 'SUBMITTED', validity: '' },
+      'Submissions pending manager review and decision.',
     ],
     [
       'expired',
       'Expired credentials',
       AlertCircle,
       { dataset: 'certifications', validity: 'EXPIRED', status: '' },
+      'Credentials that have passed their expiration date.',
     ],
     [
       'expiring',
       'Expiring in 30 days',
       Clock3,
       { dataset: 'certifications', validity: '30', status: '' },
+      'Credentials requiring renewal attention within the next 30 days.',
     ],
   ] as const;
+
+  // Compute Population Metrics
+  const totalEmployees = data ? data.summary.employees : 0;
+  const certifiedCount = data ? data.summary.certified : 0;
+  const nonCertifiedCount = Math.max(0, totalEmployees - certifiedCount);
+  const certifiedPct =
+    totalEmployees > 0 ? Math.round((certifiedCount / totalEmployees) * 100) : 0;
+  const nonCertifiedPct = 100 - certifiedPct;
+
+  // Active filter count (excluding dataset and page)
+  const activeFilterList = [...filters].filter(
+    ([k, v]) => !['dataset', 'page', 'minRank'].includes(k) && v,
+  );
+
+  // Compute Leaderboard / Top Certified Resources when available from data.rows or general view
+  const topCertifiedResources =
+    data && filters.get('dataset') === 'people'
+      ? [...data.rows]
+          .sort((a, b) => {
+            const certA = Number(a.currentCertifications) || 0;
+            const certB = Number(b.currentCertifications) || 0;
+            if (certB !== certA) return certB - certA;
+            return (Number(b.reviewedSkills) || 0) - (Number(a.reviewedSkills) || 0);
+          })
+          .slice(0, 8)
+      : [];
+
   return (
     <>
-      <section className="bo-scopebar" aria-label="Analytics filters">
-        <label>
-          Scope
-          <select
-            value={params.get('scopeId') ?? ''}
-            onChange={e => change({ scopeId: e.target.value })}
-          >
-            <option value="">All authorized scopes</option>
-            {scopes.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.kind.replaceAll('_', ' ')} · {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <form
-          onSubmit={e => {
-            e.preventDefault();
-            change({ search });
-          }}
-        >
-          <label>
-            Employee or code
-            <input
-              value={search}
-              maxLength={100}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search employee…"
-            />
-          </label>
-          <button className="secondary-button">Search</button>
-        </form>
-        <label>
-          Activity from
-          <input
-            type="date"
-            value={params.get('from') ?? ''}
-            onChange={e => change({ from: e.target.value })}
-          />
-        </label>
-        <label>
-          To
-          <input
-            type="date"
-            value={params.get('to') ?? ''}
-            onChange={e => change({ to: e.target.value })}
-          />
-        </label>
-        <button className="secondary-button" onClick={() => setParams(new URLSearchParams())}>
-          Reset
-        </button>
-      </section>
-      <div className="bo-chips">
-        {[...filters]
-          .filter(([k, v]) => !['dataset', 'page', 'minRank'].includes(k) && v)
-          .map(([k, v]) => (
+      {/* Synchronized Analytics Command Filter Center */}
+      <section className="bo-filter-center" aria-label="Workforce Analytics Filters">
+        <div className="bo-filter-header">
+          <div className="bo-filter-header-left">
+            <Layers size={17} aria-hidden="true" />
+            <h3 className="bo-filter-heading">Synchronized Filters & Scope Controls</h3>
+            {activeFilterList.length > 0 && (
+              <span className="bo-active-count-badge">
+                {activeFilterList.length} active {activeFilterList.length === 1 ? 'filter' : 'filters'}
+              </span>
+            )}
+          </div>
+          <div className="bo-filter-header-right">
             <button
-              key={k}
-              onClick={() => change(k === 'maxRank' ? { minRank: '', maxRank: '' } : { [k]: '' })}
+              type="button"
+              className="bo-reset-btn"
+              onClick={() => setParams(new URLSearchParams())}
+              title="Reset all filters to default"
             >
-              {(
-                {
-                  scopeId: 'Scope',
-                  skillId: 'Skill',
-                  maxRank: 'Proficiency',
-                  status: 'Review status',
-                  validity: 'Validity',
-                  from: 'Activity from',
-                  to: 'Activity to',
-                  sort: 'Sort',
-                  search: 'Employee search',
-                  issuer: 'Issuer',
-                  category: 'Category',
-                } as Record<string, string>
-              )[k] ?? k}
-              :{' '}
-              {k === 'scopeId'
-                ? (scopes.find(s => s.id === v)?.label ?? 'Selected scope')
-                : k === 'skillId'
-                  ? (loaded?.data.coverage.find(c => c.id === v)?.label ?? 'Selected skill')
-                  : k === 'maxRank'
-                    ? `L${params.get('minRank') ?? '1'}–L${v}`
-                    : v.replaceAll('_', ' ')}
-              <X size={13} />
-              <span className="sr-only">Remove filter</span>
+              <RotateCcw size={13} aria-hidden="true" /> Reset to default
             </button>
-          ))}
-      </div>
+          </div>
+        </div>
+
+        <div className="bo-filter-grid">
+          {/* Scope Filter */}
+          <label className="bo-field-label">
+            <span className="bo-field-title">
+              Scope / Practice / BU
+              <MetricTooltip text="Filter metrics to a specific Delivery Unit, Department, or Account/Project." />
+            </span>
+            <select
+              value={params.get('scopeId') ?? ''}
+              onChange={e => change({ scopeId: e.target.value })}
+              className="bo-select"
+            >
+              <option value="">All authorized scopes</option>
+              {scopes.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.kind.replaceAll('_', ' ')} · {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* Employee Search */}
+          <form
+            className="bo-search-form"
+            onSubmit={e => {
+              e.preventDefault();
+              change({ search });
+            }}
+          >
+            <label className="bo-field-label bo-full-width">
+              <span className="bo-field-title">Employee or code</span>
+              <div className="bo-search-input-wrap">
+                <Search size={15} className="bo-search-icon" aria-hidden="true" />
+                <input
+                  value={search}
+                  maxLength={100}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search employee or code…"
+                  className="bo-input bo-search-input"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch('');
+                      change({ search: '' });
+                    }}
+                    className="bo-search-clear-btn"
+                    aria-label="Clear search"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            </label>
+          </form>
+
+          {/* Quick Period & Date Range */}
+          <div className="bo-period-group">
+            <span className="bo-field-title">
+              Reporting Period
+              <MetricTooltip text="Filter activity trends by date presets or custom range." />
+            </span>
+            <div className="bo-period-quick-bar">
+              <button
+                type="button"
+                className={`bo-period-pill ${!params.get('from') && !params.get('to') ? 'active' : ''}`}
+                onClick={() => setQuickPeriod('all')}
+              >
+                All time
+              </button>
+              <button
+                type="button"
+                className="bo-period-pill"
+                onClick={() => setQuickPeriod('30')}
+              >
+                Last 30d
+              </button>
+              <button
+                type="button"
+                className="bo-period-pill"
+                onClick={() => setQuickPeriod('90')}
+              >
+                Last 90d
+              </button>
+              <button
+                type="button"
+                className="bo-period-pill"
+                onClick={() => setQuickPeriod('ytd')}
+              >
+                YTD
+              </button>
+            </div>
+            <div className="bo-date-inputs-row">
+              <input
+                type="date"
+                value={params.get('from') ?? ''}
+                onChange={e => change({ from: e.target.value })}
+                aria-label="Activity from date"
+                className="bo-input bo-date-input"
+              />
+              <span className="bo-date-sep">to</span>
+              <input
+                type="date"
+                value={params.get('to') ?? ''}
+                onChange={e => change({ to: e.target.value })}
+                aria-label="Activity to date"
+                className="bo-input bo-date-input"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Secondary Filters: Category, Status, Validity, Level */}
+        <div className="bo-filter-secondary-row">
+          {/* Associated Skill */}
+          {!!data?.coverage.length && (
+            <label className="bo-field-label">
+              <span className="bo-field-title">Associated skill</span>
+              <select
+                value={params.get('skillId') ?? ''}
+                onChange={e => change({ skillId: e.target.value })}
+                className="bo-select"
+              >
+                <option value="">All skills</option>
+                {Array.from(new Set(data.coverage.map(c => JSON.stringify({ id: c.id, label: c.label }))))
+                  .map(jsonStr => JSON.parse(jsonStr))
+                  .map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
+
+          {/* Proficiency Level */}
+          <label className="bo-field-label">
+            <span className="bo-field-title">Proficiency level</span>
+            <select
+              value={params.get('minRank') ? `${params.get('minRank')}_${params.get('maxRank')}` : ''}
+              onChange={e => {
+                const val = e.target.value;
+                if (!val) change({ minRank: '', maxRank: '' });
+                else {
+                  const [min, max] = val.split('_');
+                  change({ minRank: min, maxRank: max });
+                }
+              }}
+              className="bo-select"
+            >
+              <option value="">All levels (L1–L4)</option>
+              <option value="1_1">L1 · Foundational</option>
+              <option value="2_2">L2 · Working</option>
+              <option value="3_3">L3 · Autonomous</option>
+              <option value="4_4">L4 · Expert</option>
+            </select>
+          </label>
+
+          {/* Pillar / Category */}
+          {!!data?.categories?.length && (
+            <label className="bo-field-label">
+              <span className="bo-field-title">Pillar / Category</span>
+              <select
+                value={params.get('category') ?? ''}
+                onChange={e => change({ category: e.target.value })}
+                className="bo-select"
+              >
+                <option value="">All pillars & categories</option>
+                {data.categories.map(c => (
+                  <option key={c.label} value={c.label}>
+                    {c.label} ({c.value})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {/* Certification Issuer */}
+          {!!data?.distribution?.length && (
+            <label className="bo-field-label">
+              <span className="bo-field-title">Issuer / Provider</span>
+              <select
+                value={params.get('issuer') ?? ''}
+                onChange={e => change({ issuer: e.target.value })}
+                className="bo-select"
+              >
+                <option value="">All issuers</option>
+                {data.distribution.map(d => (
+                  <option key={d.label} value={d.label}>
+                    {d.label} ({d.value})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {/* Review Status */}
+          <label className="bo-field-label">
+            <span className="bo-field-title">Certification status</span>
+            <select
+              value={params.get('status') ?? ''}
+              onChange={e => change({ status: e.target.value })}
+              className="bo-select"
+            >
+              <option value="">All review statuses</option>
+              <option value="SUBMITTED">Awaiting review</option>
+              <option value="APPROVED">Manager reviewed</option>
+              <option value="CHANGES_REQUESTED">Changes requested</option>
+              <option value="REJECTED">Not approved</option>
+            </select>
+          </label>
+
+          {/* Validity Filter */}
+          <label className="bo-field-label">
+            <span className="bo-field-title">Validity window</span>
+            <select
+              value={params.get('validity') ?? ''}
+              onChange={e => change({ validity: e.target.value })}
+              className="bo-select"
+            >
+              <option value="">All validity states</option>
+              <option value="CURRENT">Current & active</option>
+              <option value="EXPIRED">Expired</option>
+              <option value="14">Expires in 14 days</option>
+              <option value="30">Expires in 30 days</option>
+              <option value="60">Expires in 60 days</option>
+              <option value="90">Expires in 90 days</option>
+              <option value="NO_EXPIRY">No expiration</option>
+              <option value="LATER">Beyond 90 days</option>
+            </select>
+          </label>
+        </div>
+
+        {/* Active Selections Chips Row */}
+        {activeFilterList.length > 0 && (
+          <div className="bo-chips-bar">
+            <span className="bo-chips-label">Active filters:</span>
+            <div className="bo-chips">
+              {activeFilterList.map(([k, v]) => (
+                <button
+                  key={k}
+                  className="bo-chip-btn"
+                  onClick={() =>
+                    change(k === 'maxRank' ? { minRank: '', maxRank: '' } : { [k]: '' })
+                  }
+                  title={`Remove ${k} filter`}
+                >
+                  <span className="bo-chip-key">
+                    {(
+                      {
+                        scopeId: 'Scope',
+                        skillId: 'Skill',
+                        maxRank: 'Proficiency',
+                        status: 'Status',
+                        validity: 'Validity',
+                        from: 'From',
+                        to: 'To',
+                        sort: 'Sort',
+                        search: 'Search',
+                        issuer: 'Issuer',
+                        category: 'Pillar',
+                      } as Record<string, string>
+                    )[k] ?? k}
+                    :
+                  </span>
+                  <span className="bo-chip-val">
+                    {k === 'scopeId'
+                      ? (scopes.find(s => s.id === v)?.label ?? 'Selected scope')
+                      : k === 'skillId'
+                        ? (loaded?.data.coverage.find(c => c.id === v)?.label ?? 'Selected skill')
+                        : k === 'maxRank'
+                          ? `L${params.get('minRank') ?? '1'}–L${v}`
+                          : v.replaceAll('_', ' ')}
+                  </span>
+                  <X size={12} aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="bo-clear-all-text-btn"
+              onClick={() => setParams(new URLSearchParams())}
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+      </section>
+
       {error && (
         <p className="bo-error" role="alert">
-          {error} <button onClick={() => setAttempt(n => n + 1)}>Retry</button>
+          {error} <button onClick={() => setAttempt(n => n + 1)}>Retry query</button>
         </p>
       )}
+
+      {/* Analytical Sub-Tab Views for Drill-through & Organization */}
+      <div className="bo-perspective-bar">
+        <span className="bo-perspective-label">View mode:</span>
+        <div className="bo-perspective-tabs">
+          <button
+            className={`bo-perspective-btn ${analyticalView === 'all' ? 'active' : ''}`}
+            onClick={() => setAnalyticalView('all')}
+          >
+            <BarChart3 size={15} /> All Reports
+          </button>
+          <button
+            className={`bo-perspective-btn ${analyticalView === 'skills' ? 'active' : ''}`}
+            onClick={() => setAnalyticalView('skills')}
+          >
+            <Award size={15} /> Skills & Matrix
+          </button>
+          <button
+            className={`bo-perspective-btn ${analyticalView === 'certifications' ? 'active' : ''}`}
+            onClick={() => setAnalyticalView('certifications')}
+          >
+            <ShieldCheck size={15} /> Certifications & Pillars
+          </button>
+          <button
+            className={`bo-perspective-btn ${analyticalView === 'community' ? 'active' : ''}`}
+            onClick={() => setAnalyticalView('community')}
+          >
+            <Building2 size={15} /> Community & Leaders
+          </button>
+          <button
+            className={`bo-perspective-btn ${analyticalView === 'records' ? 'active' : ''}`}
+            onClick={() => {
+              setAnalyticalView('records');
+              const el = document.getElementById('explore-records-section');
+              el?.scrollIntoView({ behavior: 'smooth' });
+            }}
+          >
+            <Layers size={15} /> Records Explorer
+          </button>
+        </div>
+      </div>
+
+      {/* Executive KPI Ribbon */}
       <div className="bo-metrics" aria-busy={pending}>
-        {cards.map(([id, label, Icon, patch]) => (
+        {cards.map(([id, label, Icon, patch, tooltip]) => (
           <button
             key={id}
             className={'bo-metric bo-' + id}
             onClick={() => change({ ...cleared, ...patch })}
             disabled={!data || pending}
           >
-            <Icon size={22} />
+            <div className="bo-metric-top">
+              <Icon size={20} aria-hidden="true" />
+              <MetricTooltip text={tooltip} />
+            </div>
             <span>{label}</span>
-            <strong>{data ? data.summary[id] : <span className="bo-loading-number" />}</strong>
+            <strong>{data ? data.summary[id].toLocaleString() : <span className="bo-loading-number" />}</strong>
           </button>
         ))}
+
+        {/* Certified vs Non-Certified Population Gauge Card (Requirement H: Certified vs Non-Certified population) */}
+        <div className="bo-metric bo-population-metric">
+          <div className="bo-metric-top">
+            <PieChart size={20} aria-hidden="true" />
+            <MetricTooltip text="Proportion of total authorized workforce currently verified with active certifications vs non-certified population." />
+          </div>
+          <div className="bo-population-info">
+            <span>Certified vs Non-Certified</span>
+            <div className="bo-population-stat-row">
+              <strong className="bo-pop-certified-text">{certifiedPct}%</strong>
+              <small className="bo-pop-subtext">certified ({certifiedCount}/{totalEmployees})</small>
+            </div>
+          </div>
+          <div className="bo-population-bar-track">
+            <div
+              className="bo-pop-bar-fill certified"
+              style={{ width: `${certifiedPct}%` }}
+              title={`Certified: ${certifiedCount} (${certifiedPct}%)`}
+            />
+            <div
+              className="bo-pop-bar-fill non-certified"
+              style={{ width: `${nonCertifiedPct}%` }}
+              title={`Non-Certified: ${nonCertifiedCount} (${nonCertifiedPct}%)`}
+            />
+          </div>
+          <button
+            type="button"
+            className="bo-pop-drill-btn"
+            disabled={!data || pending}
+            onClick={() =>
+              change({
+                dataset: 'people',
+                status: '',
+                validity: '',
+              })
+            }
+          >
+            Explore population <ArrowRight size={12} />
+          </button>
+        </div>
       </div>
+
       {data && pending && (
-        <p className="bo-note" role="status">
-          Updating results… Charts show the previous results until the selected filters finish
-          loading.
+        <p className="bo-note bo-updating-notice" role="status">
+          Updating results… Charts show the previous snapshot until selected filters finish loading.
         </p>
       )}
-      <p className="bo-note">
-        Current coverage as of{' '}
+
+      <p className="bo-note bo-context-asof">
+        Current workforce coverage as of{' '}
         {data ? new Date(data.context.asOf).toLocaleString() + ' (local time)' : '…'}. Combined
-        scopes count each person once. Activity dates affect the trend only. Review status filters
-        the record table; snapshots retain separate reviewed and pending totals.
+        scopes count each employee once. Review status filters the record drill-through table;
+        historical snapshots retain separate reviewed and pending totals.
       </p>
+
       {!data && !error && (
-        <>
-          <div className="bo-chart-grid" aria-label="Loading analytics panels">
-            {['Skill coverage', 'Issuers', 'Categories', 'Renewal priorities', 'Activity'].map(
-              label => (
-                <section className="bo-panel" key={label}>
-                  <h2>{label}</h2>
-                  <div className="bo-skeleton" />
-                </section>
-              ),
-            )}
-          </div>
-          <section className="bo-panel">
-            <h2>Compare authorized scopes</h2>
-            <div className="bo-skeleton" />
-          </section>
-          <section className="bo-panel">
-            <h2>Explore records</h2>
-            <div className="bo-skeleton" />
-          </section>
-        </>
+        <div className="bo-chart-grid" aria-label="Loading analytics panels">
+          {['Skill-wise headcount', 'Issuers', 'Pillars', 'Renewal priorities', 'Activity'].map(
+            label => (
+              <section className="bo-panel bo-card-elevated" key={label}>
+                <h2>{label}</h2>
+                <div className="bo-skeleton" />
+              </section>
+            ),
+          )}
+        </div>
       )}
+
       {data && (
         <>
-          <div className="bo-chart-grid">
-            <section className="bo-panel bo-coverage">
-              <h2>Reviewed skill coverage</h2>
-              <p className="bo-note">
-                Top 10 skills. Holders by proficiency, out of {data.summary.employees} authorized
-                employees. Only current four-level definitions contribute to this chart; historical
-                claim snapshots remain unchanged. Select a cell to inspect claims.
-              </p>
+          {/* SECTION 1: SKILL-WISE HEADCOUNT & 4-LEVEL MATRIX */}
+          {(analyticalView === 'all' || analyticalView === 'skills') && (
+            <section className="bo-panel bo-coverage bo-card-elevated">
+              <div className="bo-panel-header">
+                <div className="bo-panel-title-group">
+                  <div className="bo-panel-icon-badge">
+                    <Award size={18} aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="bo-panel-title">
+                      Skill-wise Headcount & Proficiency Matrix (Top 10)
+                      <MetricTooltip text="Distribution of skill holders across current four-level definitions (L1 Foundational to L4 Expert). Select any level cell to filter matching employee records." />
+                    </h2>
+                    <p className="bo-note">
+                      Holders by proficiency rank, evaluated against {data.summary.employees} authorized
+                      workforce members. Historical snapshots remain intact. Click any cell to inspect employee claims.
+                    </p>
+                  </div>
+                </div>
+                <div className="bo-level-legend">
+                  <span><i className="bo-l-dot l1" /> L1 Foundational</span>
+                  <span><i className="bo-l-dot l2" /> L2 Working</span>
+                  <span><i className="bo-l-dot l3" /> L3 Autonomous</span>
+                  <span><i className="bo-l-dot l4" /> L4 Expert</span>
+                </div>
+              </div>
+
               <div className="bo-heatmap">
-                {businessCoverageRows(data.coverage).map(({ id, label, cells }) => (
-                  <div key={id}>
-                    <strong>{label}</strong>
-                    {[1, 2, 3, 4].map(rank => {
-                      const cell = cells.get(rank);
-                      return (
-                        <button
-                          key={rank}
-                          disabled={!cell}
-                          style={{
-                            background: cell
-                              ? 'color-mix(in srgb, var(--bo-accent) ' +
-                                Math.max(
-                                  12,
-                                  Math.min(
-                                    80,
-                                    (100 * cell.holders) / Math.max(1, data.summary.employees),
-                                  ),
-                                ) +
-                                '%, var(--surface))'
-                              : undefined,
-                          }}
-                          onClick={() =>
-                            change({
-                              dataset: 'skills',
-                              skillId: cell!.id,
-                              minRank: String(rank),
-                              maxRank: String(rank),
-                              status: 'APPROVED',
-                              validity: '',
-                              issuer: '',
-                            })
-                          }
-                          aria-label={`${label}, level ${rank}: ${cell?.holders ?? 0} reviewed holders; show level ${rank}`}
-                        >
-                          <small>L{rank}</small>
-                          {cell?.holders ?? 0}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
+                {businessCoverageRows(data.coverage).map(({ id, label, cells }) => {
+                  const rowTotal = [1, 2, 3, 4].reduce((sum, r) => sum + (cells.get(r)?.holders ?? 0), 0);
+                  const coveragePct = totalEmployees > 0 ? Math.min(100, Math.round((rowTotal / totalEmployees) * 100)) : 0;
+                  return (
+                    <div key={id} className="bo-heatmap-row">
+                      <div className="bo-heatmap-skill-label">
+                        <strong title={label}>{label}</strong>
+                        <small className="bo-skill-coverage-meta">{rowTotal} holders ({coveragePct}%)</small>
+                      </div>
+                      <div className="bo-heatmap-cells">
+                        {[1, 2, 3, 4].map(rank => {
+                          const cell = cells.get(rank);
+                          const holders = cell?.holders ?? 0;
+                          return (
+                            <button
+                              key={rank}
+                              disabled={!cell || holders === 0}
+                              className={`bo-heatmap-cell rank-${rank} ${holders > 0 ? 'has-holders' : 'empty'}`}
+                              style={{
+                                background: holders > 0
+                                  ? 'color-mix(in srgb, var(--bo-accent) ' +
+                                    Math.max(
+                                      15,
+                                      Math.min(
+                                        85,
+                                        (100 * holders) / Math.max(1, data.summary.employees),
+                                      ),
+                                    ) +
+                                    '%, var(--surface))'
+                                  : undefined,
+                              }}
+                              onClick={() =>
+                                change({
+                                  dataset: 'skills',
+                                  skillId: cell!.id,
+                                  minRank: String(rank),
+                                  maxRank: String(rank),
+                                  status: 'APPROVED',
+                                  validity: '',
+                                  issuer: '',
+                                })
+                              }
+                              aria-label={`${label}, level ${rank}: ${holders} reviewed holders; drill-through level ${rank}`}
+                            >
+                              <span className="bo-cell-rank-tag">L{rank}</span>
+                              <strong className="bo-cell-val">{holders}</strong>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              {!data.coverage.length && <p>No reviewed skills in this scope.</p>}
-            </section>
-            <Bars
-              title="Certification issuers (top 15)"
-              items={data.distribution}
-              description="Manager-reviewed credential records; validity is tracked independently."
-              onFilter={issuer => change({ dataset: 'certifications', issuer, status: 'APPROVED' })}
-            />
-            <Bars
-              title="Credential categories (top 15)"
-              items={data.categories ?? []}
-              description="Reviewed credential records, grouped by declared category."
-              onFilter={category =>
-                change({
-                  dataset: 'certifications',
-                  category,
-                  status: 'APPROVED',
-                  skillId: '',
-                  minRank: '',
-                  maxRank: '',
-                })
-              }
-            />
-            <Bars
-              title="Renewal priorities"
-              items={data.expiry}
-              description="Credential counts by expiry date, including reviewed and unresolved submissions."
-              onFilter={label =>
-                change({
-                  dataset: 'certifications',
-                  validity: (
-                    {
-                      Expired: 'EXPIRED',
-                      'No expiry': 'NO_EXPIRY',
-                      '14 days': '14',
-                      '30 days': '15_30',
-                      '60 days': '31_60',
-                      '90 days': '61_90',
-                      Later: 'LATER',
-                    } as Record<string, string>
-                  )[label],
-                  status: '',
-                })
-              }
-            />
-            <section className="bo-panel">
-              <h2>Submission and review activity</h2>
-              <p className="bo-note">
-                Current authorized people. Submission and manager-decision timestamps.
-              </p>
-              <div className="bo-trend">
-                {data.activity.slice(-12).map(item => (
-                  <div key={item.label}>
-                    <span>{item.label}</span>
-                    <i
-                      aria-label={`${item.submissions} submissions`}
-                      style={{
-                        height:
-                          Math.max(
-                            3,
-                            (100 * item.submissions) /
-                              Math.max(
-                                1,
-                                ...data.activity.map(i => Math.max(i.submissions, i.decisions)),
-                              ),
-                          ) + 'px',
-                      }}
-                    />
-                    <b
-                      aria-label={`${item.decisions} decisions`}
-                      style={{
-                        height:
-                          Math.max(
-                            3,
-                            (100 * item.decisions) /
-                              Math.max(
-                                1,
-                                ...data.activity.map(i => Math.max(i.submissions, i.decisions)),
-                              ),
-                          ) + 'px',
-                      }}
-                    />
-                    <small>
-                      {item.submissions} / {item.decisions}
-                    </small>
-                  </div>
-                ))}
-              </div>
-              <details>
-                <summary>View activity table</summary>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Month</th>
-                      <th>Submissions</th>
-                      <th>Decisions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.activity.map(i => (
-                      <tr key={i.label}>
-                        <td>{i.label}</td>
-                        <td>{i.submissions}</td>
-                        <td>{i.decisions}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </details>
-            </section>
-          </div>
-          {!!data.comparisons?.length && (
-            <section className="bo-panel">
-              <h2>Compare authorized scopes</h2>
-              <p className="bo-note">
-                Current filtered holdings within each allowed binding (up to 30). Project
-                memberships can overlap; these totals must not be added together.
-              </p>
-              <div className="bo-table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Scope</th>
-                      <th>Employees</th>
-                      <th>Currently certified</th>
-                      <th>Reviewed skill holders</th>
-                      <th>Explore</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.comparisons.map(c => (
-                      <tr key={c.id}>
-                        <td>
-                          {c.label}
-                          <small> · {c.kind.replaceAll('_', ' ')}</small>
-                        </td>
-                        <td>{c.employees}</td>
-                        <td>{c.certified}</td>
-                        <td>{c.skilled}</td>
-                        <td>
-                          <button
-                            className="secondary-button"
-                            onClick={() => change({ scopeId: c.id, dataset: 'people' })}
-                          >
-                            View scope
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {!data.coverage.length && (
+                <p className="bo-empty-chart">No reviewed skill claims recorded in this scope.</p>
+              )}
             </section>
           )}
-          <section className="bo-panel bo-records" aria-busy={pending}>
+
+          {/* SECTION 2: CERTIFICATIONS, PILLARS & ISSUERS */}
+          {(analyticalView === 'all' || analyticalView === 'certifications') && (
+            <div className="bo-chart-grid">
+              {/* Certification-wise headcount / Top Issuers (Requirement H: Certification-wise headcount) */}
+              <Bars
+                title="Certification-wise Headcount & Issuers (Top 15)"
+                items={data.distribution}
+                description="Manager-reviewed credential records by issuing body (e.g., Microsoft, AWS, Cisco)."
+                icon={ShieldCheck}
+                tooltip="Headcount of approved credentials grouped by certified vendor/issuer."
+                onFilter={issuer => change({ dataset: 'certifications', issuer, status: 'APPROVED' })}
+              />
+
+              {/* Pillar-wise certification summary (Requirement H: Pillar-wise certification summary) */}
+              <Bars
+                title="Pillar-wise Certification Summary (Top 15)"
+                items={data.categories ?? []}
+                description="Reviewed credentials categorized by architectural & practice domain."
+                icon={Layers}
+                tooltip="Aggregated credentials classified across functional technical pillars (e.g., Cloud, AI, Security)."
+                onFilter={category =>
+                  change({
+                    dataset: 'certifications',
+                    category,
+                    status: 'APPROVED',
+                    skillId: '',
+                    minRank: '',
+                    maxRank: '',
+                  })
+                }
+              />
+
+              {/* Renewal Priorities & Validity Status */}
+              <Bars
+                title="Renewal & Expiry Priorities"
+                items={data.expiry}
+                description="Credential counts categorized by upcoming expiry windows and compliance status."
+                icon={Clock3}
+                tooltip="Proactive compliance monitoring for expiring and expired certifications."
+                onFilter={label =>
+                  change({
+                    dataset: 'certifications',
+                    validity: (
+                      {
+                        Expired: 'EXPIRED',
+                        'No expiry': 'NO_EXPIRY',
+                        '14 days': '14',
+                        '30 days': '15_30',
+                        '60 days': '31_60',
+                        '90 days': '61_90',
+                        Later: 'LATER',
+                      } as Record<string, string>
+                    )[label],
+                    status: '',
+                  })
+                }
+              />
+
+              {/* Month-wise certification growth (Requirement H: Month-wise certification growth) */}
+              <section className="bo-panel bo-card-elevated">
+                <div className="bo-panel-header">
+                  <div className="bo-panel-title-group">
+                    <div className="bo-panel-icon-badge">
+                      <TrendingUp size={18} aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h2 className="bo-panel-title">
+                        Month-wise Certification & Submission Growth
+                        <MetricTooltip text="Monthly trend comparing employee submissions against manager review decisions." />
+                      </h2>
+                      <p className="bo-note">
+                        Audited volume of submissions and manager approvals over the last 12 active months.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bo-trend-legend">
+                  <span><i className="bo-trend-dot sub" /> Submissions</span>
+                  <span><i className="bo-trend-dot dec" /> Manager Decisions</span>
+                </div>
+
+                <div className="bo-trend">
+                  {data.activity.slice(-12).map(item => {
+                    const maxVal = Math.max(1, ...data.activity.map(i => Math.max(i.submissions, i.decisions)));
+                    const subHeight = Math.max(4, (120 * item.submissions) / maxVal);
+                    const decHeight = Math.max(4, (120 * item.decisions) / maxVal);
+                    return (
+                      <div key={item.label} className="bo-trend-col">
+                        <span className="bo-trend-label">{item.label}</span>
+                        <div className="bo-trend-bars-pair">
+                          <i
+                            className="bo-trend-bar sub"
+                            title={`${item.label}: ${item.submissions} submissions`}
+                            aria-label={`${item.submissions} submissions`}
+                            style={{ height: `${subHeight}px` }}
+                          />
+                          <b
+                            className="bo-trend-bar dec"
+                            title={`${item.label}: ${item.decisions} decisions`}
+                            aria-label={`${item.decisions} decisions`}
+                            style={{ height: `${decHeight}px` }}
+                          />
+                        </div>
+                        <small className="bo-trend-counts">
+                          {item.submissions} / {item.decisions}
+                        </small>
+                      </div>
+                    );
+                  })}
+                  {!data.activity.length && <p className="bo-empty-chart">No activity recorded.</p>}
+                </div>
+
+                <details className="bo-details-table">
+                  <summary>View monthly growth audit table</summary>
+                  <table className="bo-sub-table">
+                    <thead>
+                      <tr>
+                        <th>Month</th>
+                        <th>Submissions</th>
+                        <th>Manager Decisions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.activity.map(i => (
+                        <tr key={i.label}>
+                          <td>{i.label}</td>
+                          <td><strong>{i.submissions}</strong></td>
+                          <td><strong>{i.decisions}</strong></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              </section>
+            </div>
+          )}
+
+          {/* SECTION 3: COMMUNITY DASHBOARD & CERTIFICATION LEADERBOARD */}
+          {(analyticalView === 'all' || analyticalView === 'community') && (
+            <div className="bo-community-leaderboard-grid">
+              {/* Community Capability Dashboard (Requirement H: Community capability dashboard) */}
+              {!!data.comparisons?.length && (
+                <section className="bo-panel bo-card-elevated">
+                  <div className="bo-panel-header">
+                    <div className="bo-panel-title-group">
+                      <div className="bo-panel-icon-badge">
+                        <Building2 size={18} aria-hidden="true" />
+                      </div>
+                      <div>
+                        <h2 className="bo-panel-title">
+                          Community Capability Dashboard
+                          <MetricTooltip text="Capability benchmark across organizational scopes (Delivery Units, Departments, Projects)." />
+                        </h2>
+                        <p className="bo-note">
+                          Comparison across allowed bindings (up to 30). Project memberships can overlap.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bo-table-wrap">
+                    <table className="bo-comparison-table">
+                      <thead>
+                        <tr>
+                          <th>Scope / Community</th>
+                          <th>Headcount</th>
+                          <th>Currently Certified</th>
+                          <th>Reviewed Skills</th>
+                          <th>Drill-through</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.comparisons.map(c => {
+                          const certPct = c.employees > 0 ? Math.round((c.certified / c.employees) * 100) : 0;
+                          return (
+                            <tr key={c.id}>
+                              <td>
+                                <strong>{c.label}</strong>
+                                <small className="bo-scope-kind-pill"> · {c.kind.replaceAll('_', ' ')}</small>
+                              </td>
+                              <td>{c.employees}</td>
+                              <td>
+                                <div className="bo-table-progress-cell">
+                                  <span>{c.certified} ({certPct}%)</span>
+                                  <div className="bo-mini-track">
+                                    <div className="bo-mini-fill" style={{ width: `${certPct}%` }} />
+                                  </div>
+                                </div>
+                              </td>
+                              <td>{c.skilled}</td>
+                              <td>
+                                <button
+                                  className="secondary-button bo-btn-sm"
+                                  onClick={() => change({ scopeId: c.id, dataset: 'people' })}
+                                >
+                                  View scope
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+
+              {/* Certification Leaderboard & Top Certified Resources (Requirement H: Certification leaderboard & Top Certified Resources) */}
+              <section className="bo-panel bo-card-elevated">
+                <div className="bo-panel-header">
+                  <div className="bo-panel-title-group">
+                    <div className="bo-panel-icon-badge">
+                      <Trophy size={18} aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h2 className="bo-panel-title">
+                        Top Certified Resources & Leaderboard
+                        <MetricTooltip text="Top talent holding the highest verified certifications and reviewed skills." />
+                      </h2>
+                      <p className="bo-note">
+                        Leading capability champions across your authorized population.
+                      </p>
+                    </div>
+                  </div>
+                  {filters.get('dataset') !== 'people' && (
+                    <button
+                      type="button"
+                      className="secondary-button bo-btn-sm"
+                      onClick={() => change({ dataset: 'people' })}
+                    >
+                      Load talent list
+                    </button>
+                  )}
+                </div>
+
+                {topCertifiedResources.length > 0 ? (
+                  <div className="bo-leaderboard-list">
+                    {topCertifiedResources.map((res, idx) => (
+                      <div key={String(res.id ?? idx)} className="bo-leader-card">
+                        <div className="bo-leader-rank">
+                          {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
+                        </div>
+                        <div className="bo-leader-avatar">
+                          {String(res.employee ?? 'E')
+                            .split(' ')
+                            .map(n => n[0])
+                            .slice(0, 2)
+                            .join('')
+                            .toUpperCase()}
+                        </div>
+                        <div className="bo-leader-details">
+                          <strong className="bo-leader-name">{String(res.employee)}</strong>
+                          <span className="bo-leader-code">{String(res.employeeCode ?? '—')}</span>
+                        </div>
+                        <div className="bo-leader-badges">
+                          <span className="bo-badge-pill cert" title="Active Certifications">
+                            <ShieldCheck size={12} /> {String(res.currentCertifications ?? 0)} certs
+                          </span>
+                          <span className="bo-badge-pill skill" title="Reviewed Skills">
+                            <Award size={12} /> {String(res.reviewedSkills ?? 0)} skills
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondary-button bo-btn-sm bo-inspect-btn"
+                          onClick={() => change({ search: String(res.employee), dataset: 'people' })}
+                          title={`Drill into ${res.employee}`}
+                        >
+                          Inspect
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bo-leaderboard-placeholder">
+                    <p>
+                      Switch to the <strong>People</strong> dataset in the records explorer below to view the top certified resources leaderboard.
+                    </p>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => change({ dataset: 'people' })}
+                    >
+                      View People Leaderboard
+                    </button>
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+
+          {/* SECTION 4: RECORDS EXPLORER (Full Drill-through, CSV/Excel Export & Attachment View) */}
+          <section id="explore-records-section" className="bo-panel bo-records" aria-busy={pending}>
             <div className="bo-record-heading">
               <div>
-                <h2>Explore records</h2>
+                <h2 className="bo-panel-title">
+                  Explore Records & Detailed Drill-Through
+                  <MetricTooltip text="Browse matching employees, skills, credentials, and full submission history with direct audit files." />
+                </h2>
                 <p className="bo-note">
                   {pending
                     ? 'Updating matching records…'
                     : `${data.total.toLocaleString()} matching records`}{' '}
-                  · private drafts excluded; files open separately
+                  · private drafts excluded; evidence files open separately
                 </p>
               </div>
               <div className="bo-export">
@@ -654,6 +1283,7 @@ function Insights({ context }: { context: BusinessContext }) {
                   disabled={pending || exporting || !data.context.canExport}
                   className="secondary-button"
                   onClick={() => download('csv')}
+                  title="Export full filtered report to CSV"
                 >
                   <ArrowDownToLine size={16} /> CSV
                 </button>
@@ -661,11 +1291,13 @@ function Insights({ context }: { context: BusinessContext }) {
                   disabled={pending || exporting || !data.context.canExport}
                   className="secondary-button"
                   onClick={() => download('xlsx')}
+                  title="Export full filtered report to Excel"
                 >
                   <ArrowDownToLine size={16} /> Excel
                 </button>
               </div>
             </div>
+
             <div className="bo-record-filters">
               <label>
                 Sort
@@ -675,6 +1307,7 @@ function Insights({ context }: { context: BusinessContext }) {
                     (filters.get('dataset') === 'people' ? 'employee_asc' : 'updated_desc')
                   }
                   onChange={e => change({ sort: e.target.value })}
+                  className="bo-select"
                 >
                   <option value="employee_asc">Employee A–Z</option>
                   <option value="employee_desc">Employee Z–A</option>
@@ -689,6 +1322,7 @@ function Insights({ context }: { context: BusinessContext }) {
                   )}
                 </select>
               </label>
+
               <label>
                 Dataset
                 <select
@@ -706,6 +1340,7 @@ function Insights({ context }: { context: BusinessContext }) {
                       status: '',
                     })
                   }
+                  className="bo-select"
                 >
                   <option value="people">People</option>
                   <option value="skills">Skills</option>
@@ -713,12 +1348,14 @@ function Insights({ context }: { context: BusinessContext }) {
                   <option value="submissions">All submissions</option>
                 </select>
               </label>
+
               <label>
                 Review status
                 <select
                   disabled={filters.get('dataset') === 'people'}
                   value={filters.get('status') ?? ''}
                   onChange={e => change({ status: e.target.value })}
+                  className="bo-select"
                 >
                   <option value="">All submitted states</option>
                   <option value="SUBMITTED">Awaiting review</option>
@@ -727,12 +1364,14 @@ function Insights({ context }: { context: BusinessContext }) {
                   <option value="REJECTED">Not approved</option>
                 </select>
               </label>
+
               <label>
                 Validity
                 <select
                   disabled={filters.get('dataset') === 'skills'}
                   value={filters.get('validity') ?? ''}
                   onChange={e => change({ validity: e.target.value })}
+                  className="bo-select"
                 >
                   <option value="">All validity states</option>
                   <option value="CURRENT">Current</option>
@@ -756,6 +1395,7 @@ function Insights({ context }: { context: BusinessContext }) {
                 </select>
               </label>
             </div>
+
             <div className="bo-record-results">
               {pending && (
                 <p role="status" className="bo-record-loading">
@@ -780,7 +1420,11 @@ function Insights({ context }: { context: BusinessContext }) {
                               ? 'Submitted on'
                               : k === 'reviewedAt'
                                 ? 'Reviewed on'
-                                : k.replace(/([A-Z])/g, ' $1')}
+                                : k === 'currentCertifications'
+                                  ? 'Current Certifications'
+                                  : k === 'reviewedSkills'
+                                    ? 'Reviewed Skills'
+                                    : k.replace(/([A-Z])/g, ' $1')}
                           </th>
                         ))}
                       {filters.get('dataset') !== 'people' && <th>Files</th>}
@@ -807,6 +1451,10 @@ function Insights({ context }: { context: BusinessContext }) {
                                         : undefined
                                   }
                                 />
+                              ) : k === 'status' ? (
+                                <span className={`cap-status-pill ${String(v).toLowerCase()}`}>
+                                  {String(v).replaceAll('_', ' ')}
+                                </span>
                               ) : (
                                 <span className={v === 'EXPIRED' ? 'bo-danger' : undefined}>
                                   {v === null ? '—' : String(v).replaceAll('_', ' ')}
@@ -819,7 +1467,7 @@ function Insights({ context }: { context: BusinessContext }) {
                             {row.canViewFiles === true ? (
                               <button
                                 type="button"
-                                className="secondary-button"
+                                className="secondary-button bo-btn-sm"
                                 disabled={pending}
                                 aria-label={`View submitted files for ${row.name}`}
                                 title="View certificate or evidence"
@@ -836,7 +1484,7 @@ function Insights({ context }: { context: BusinessContext }) {
                                   })
                                 }
                               >
-                                <Eye size={17} />
+                                <Eye size={15} />
                               </button>
                             ) : (
                               '—'
@@ -849,11 +1497,12 @@ function Insights({ context }: { context: BusinessContext }) {
                 </table>
                 {!data.rows.length && (
                   <p className="bo-empty">
-                    No matching records. Adjust the filters to explore your scope.
+                    No matching records found. Adjust your active filters to explore your authorized scope.
                   </p>
                 )}
               </div>
             </div>
+
             <footer className="bo-pagination">
               <span>
                 {pending
@@ -879,6 +1528,7 @@ function Insights({ context }: { context: BusinessContext }) {
           </section>
         </>
       )}
+
       {fileRecord && (
         <BusinessRecordFiles
           key={fileRecord.kind + fileRecord.id}

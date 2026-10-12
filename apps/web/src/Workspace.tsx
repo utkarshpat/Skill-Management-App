@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Compass,
   LayoutDashboard,
+  LineChart,
   Menu,
   ShieldCheck,
   UserRound,
@@ -140,7 +141,7 @@ export function Workspace({
       id: 'business',
       label: 'Business Operations',
       href: '/business',
-      icon: LayoutDashboard,
+      icon: LineChart,
       visible: state?.capabilities.businessOperations || state?.capabilities.businessAdministration,
     },
     {
