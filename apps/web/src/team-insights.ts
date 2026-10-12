@@ -1,7 +1,7 @@
 import type { TeamReportAnalytics } from './team-reports';
 import { indexCoverage, type CoverageIndex } from './team-coverage';
 
-export const LEVELS = [1, 2, 3, 4, 5] as const;
+export const LEVELS = [1, 2, 3, 4] as const;
 export interface SkillProfile {
   skill: string;
   holders: number;
@@ -55,11 +55,10 @@ export function membersWithoutReviewedSkills(analytics: TeamReportAnalytics) {
 }
 
 export function teamAverageLevel(analytics: TeamReportAnalytics) {
-  const total = analytics.levels.reduce((sum, l) => sum + l.count, 0);
+  const levels = analytics.levels.filter(l => l.rank >= 1 && l.rank <= 4);
+  const total = levels.reduce((sum, l) => sum + l.count, 0);
   return total
-    ? Math.round(
-        (analytics.levels.reduce((sum, l) => sum + Math.min(5, l.rank) * l.count, 0) / total) * 10,
-      ) / 10
+    ? Math.round((levels.reduce((sum, l) => sum + l.rank * l.count, 0) / total) * 10) / 10
     : 0;
 }
 

@@ -11,18 +11,18 @@ import { proficiencyNames } from '../src/modules/skills/proficiency.js';
 import type { CatalogueSkill } from '../src/modules/skills/skill-catalogue.js';
 const source = JSON.parse(
   await readFile(
-    new URL('../../../database/seeds/enterprise-catalogue-v1.json', import.meta.url),
+    new URL('../../../database/seeds/enterprise-catalogue-v2.json', import.meta.url),
     'utf8',
   ),
 );
-test('enterprise seed has 70 definitions, ten categories and five skill-specific criteria', () => {
+test('enterprise seed has 70 definitions, ten categories and four skill-specific criteria', () => {
   const seed = validateEnterpriseSeed(source);
   assert.equal(
     seed.skills[0].description,
     'Development of applications and services using the Java programming language and JVM ecosystem.',
   );
   assert.equal(seed.skills[69].code, 'SKL-070');
-  assert.equal(seed.framework.levels[2].name, 'Intermediate');
+  assert.equal(seed.framework.levels[2].name, 'Experienced');
   assert.deepEqual(
     seedPayload(seed, seed.skills[0]).levels.map(level => level.name),
     proficiencyNames,
@@ -48,7 +48,7 @@ test('enterprise seed has 70 definitions, ten categories and five skill-specific
     Object.assign(source, backup);
   }
 });
-test('alignment maps all five ranks, retains metadata/criteria, leaves sources immutable and is idempotent', () => {
+test('alignment maps all four ranks, retains metadata/criteria, leaves sources immutable and is idempotent', () => {
   const seed = validateEnterpriseSeed(source),
     skill: CatalogueSkill = {
       ...seedPayload(seed, seed.skills[0]),
@@ -56,7 +56,7 @@ test('alignment maps all five ranks, retains metadata/criteria, leaves sources i
       status: 'ARCHIVED',
       levels: seed.skills[0].criteria.map((criterion, index) => ({
         ...criterion,
-        name: seed.framework.levels[index].name,
+        name: 'Previous ' + seed.framework.levels[index].name,
       })),
     };
   const before = structuredClone(skill),
@@ -82,7 +82,7 @@ test('alignment maps all five ranks, retains metadata/criteria, leaves sources i
   assert.throws(
     () =>
       alignmentPlan([
-        { ...skill, levels: skill.levels.map(level => ({ ...level, rank: 6 - level.rank })) },
+        { ...skill, levels: skill.levels.map(level => ({ ...level, rank: 5 - level.rank })) },
       ]),
     /manual/,
   );

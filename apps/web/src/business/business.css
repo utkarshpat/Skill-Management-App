@@ -243,7 +243,7 @@
 }
 .bo-heatmap > div {
   display: grid;
-  grid-template-columns: minmax(90px, 1.5fr) repeat(5, minmax(34px, 1fr));
+  grid-template-columns: minmax(90px, 1.5fr) repeat(4, minmax(34px, 1fr));
   gap: 5px;
   align-items: center;
 }
@@ -655,7 +655,7 @@
     grid-template-columns: 1fr;
   }
   .bo-heatmap > div {
-    grid-template-columns: 90px repeat(5, minmax(30px, 1fr));
+    grid-template-columns: 90px repeat(4, minmax(30px, 1fr));
   }
   .bo-pagination span {
     width: 100%;

@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "8a3cd26bc3852156",
+  "revision": "06be411a058803b8",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -75,7 +75,9 @@
       "070_business_submitted_files.sql",
       "071_linked_capability_submissions.sql",
       "072_legacy_certification_resubmission.sql",
-      "073_capability_draft_removal.sql"
+      "073_capability_draft_removal.sql",
+      "074_four_level_proficiency.sql",
+      "075_certification_duplicate_identity.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -2687,6 +2689,10 @@
           {
             "sql": "CONSTRAINT CK_ProficiencyFramework_Common CHECK(account_id IS NOT NULL OR framework_key IN ('enterprise-v1','enterprise-v2'))",
             "source": "044_standard_proficiency.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_ProficiencyFramework_Common CHECK(account_id IS NOT NULL OR framework_key IN ('enterprise-v1','enterprise-v2','enterprise-v3'))",
+            "source": "074_four_level_proficiency.sql"
           }
         ],
         "indexes": [
@@ -6750,7 +6756,7 @@
       "name": "SaveSkillCatalogue",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,\n @target_id uniqueidentifier,@is_new bit,@payload nvarchar(max)",
-      "source": "database/migrations/044_standard_proficiency.sql"
+      "source": "database/migrations/074_four_level_proficiency.sql"
     },
     {
       "name": "ReadOwnSkillClaims",
@@ -6762,7 +6768,7 @@
       "name": "ReadClaimSkills",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@query nvarchar(100)=N'',@page int=1,@category nvarchar(80)=N'',@page_size int=25",
-      "source": "database/migrations/013_claim_catalogue_discovery.sql"
+      "source": "database/migrations/074_four_level_proficiency.sql"
     },
     {
       "name": "SaveOwnSkillClaim",
@@ -6852,7 +6858,7 @@
       "name": "ReadDirectReportCapability",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@query nvarchar(100)=N'',@page int=1,@person_id uniqueidentifier=NULL",
-      "source": "database/migrations/035_team_capability_analytics.sql"
+      "source": "database/migrations/074_four_level_proficiency.sql"
     },
     {
       "name": "ReadSkillReviewWorkbench",
@@ -6936,7 +6942,7 @@
       "name": "CertificationWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/071_linked_capability_submissions.sql"
+      "source": "database/migrations/075_certification_duplicate_identity.sql"
     },
     {
       "name": "CertificationImage",
@@ -7068,7 +7074,7 @@
       "name": "BusinessDashboard",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@payload nvarchar(max),@export bit=0",
-      "source": "database/migrations/071_linked_capability_submissions.sql"
+      "source": "database/migrations/074_four_level_proficiency.sql"
     },
     {
       "name": "BusinessScopeCovers",
@@ -7086,7 +7092,7 @@
       "name": "BusinessMatchRequirements",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@person uniqueidentifier,@requirements nvarchar(max)) RETURNS TABLE",
-      "source": "database/migrations/062_business_audit_reliability.sql"
+      "source": "database/migrations/074_four_level_proficiency.sql"
     },
     {
       "name": "BusinessWorkflow",
@@ -7122,7 +7128,7 @@
       "name": "CapabilitySubmissionWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/073_capability_draft_removal.sql"
+      "source": "database/migrations/075_certification_duplicate_identity.sql"
     },
     {
       "name": "CapabilitySubmissionFiles",
@@ -7141,6 +7147,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@id uniqueidentifier,@certification_id uniqueidentifier,@operation varchar(8)='READ',@payload nvarchar(max)=N'{}'",
       "source": "database/migrations/071_linked_capability_submissions.sql"
+    },
+    {
+      "name": "CertificationIdentityText",
+      "kind": "FUNCTION",
+      "signature": "(@value nvarchar(4000)) RETURNS nvarchar(4000)\nWITH SCHEMABINDING",
+      "source": "database/migrations/075_certification_duplicate_identity.sql"
     }
   ],
   "groups": {

@@ -35,8 +35,8 @@ const analytics: TeamReportAnalytics = {
 
 test('skill profiles derive level buckets, capped averages and coverage from cumulative thresholds', () => {
   assert.deepEqual(skillProfiles(analytics), [
-    { skill: 'Azure', holders: 3, percent: 75, average: 2, atLevel: [1, 1, 1, 0, 0] },
-    { skill: 'SQL <script>', holders: 2, percent: 50, average: 2, atLevel: [0, 2, 0, 0, 0] },
+    { skill: 'Azure', holders: 3, percent: 75, average: 2, atLevel: [1, 1, 1, 0] },
+    { skill: 'SQL <script>', holders: 2, percent: 50, average: 2, atLevel: [0, 2, 0, 0] },
   ]);
   assert.equal(memberLevel(analytics, 'Azure', 'a'), 3);
   assert.equal(memberLevel(analytics, 'Azure', 'c'), 1);
@@ -68,40 +68,19 @@ test('chart shows a full gap when a reviewed skill has no holders at the selecte
   ]);
 });
 
-test('historical L8 claims use capped team metrics and heatmap discloses L5+', () => {
+test('legacy ranks do not become Expert in the four-level average or exported level chart', () => {
   const fixture = {
     ...analytics,
     members: 1,
     reviewed: 1,
-    coverage: [1, 2, 3, 4, 5].map(rank => ({
-      skillName: 'Legacy',
-      rank,
-      people: 1,
-      memberIds: ['a'],
-    })),
+    coverage: [],
     levels: [{ rank: 8, count: 1, memberIds: ['a'] }],
   };
-  assert.equal(teamAverageLevel(fixture), 5);
-  assert.equal(skillProfiles(fixture)[0].average, 5);
-  const html = renderToStaticMarkup(
-    <TeamInsightCharts
-      analytics={fixture}
-      people={[{ id: 'a', name: 'Asha', employeeCode: 'A', reviewed: 1, pending: 0 }]}
-      minimumRank={3}
-      skillFilter=""
-      onSkill={() => {}}
-      onPerson={() => {}}
-    />,
-  );
-  assert.match(html, /aria-label="Asha, Legacy: reviewed L5\+"/);
-  assert.match(html, />L5<\/strong>/);
-  assert.match(html, /Holder averages capped at L5/);
-  assert.match(html, /not exact L5/);
+  assert.equal(teamAverageLevel(fixture), 0);
+  assert.deepEqual(skillProfiles(fixture), []);
   const report = teamReportHtml(fixture, '', new Date('2026-10-05T09:00:00Z'));
-  assert.match(report, /capped at L5/);
-  assert.match(report, /not exact L5/);
-  assert.match(report, />L5<\/b>/);
-  assert.match(report, /L5\+/);
+  assert.match(report, /Historical frameworks are excluded/);
+  assert.doesNotMatch(report, /L5/);
 });
 
 test('large coverage profiles and report rows reuse a linear index without repeated row scans', () => {
@@ -122,9 +101,9 @@ test('large coverage profiles and report rows reuse a linear index without repea
     index = indexCoverage(fixture),
     profiles = skillProfiles(fixture, index);
   assert.equal(profiles.length, 5000);
-  assert.ok(profiles.every(p => p.average === 5 && p.atLevel[4] === 1));
+  assert.ok(profiles.every(p => p.average === 4 && p.atLevel[3] === 1));
   assert.equal(coverageRows(fixture, 3, index).length, 5000);
-  assert.equal(memberLevel(fixture, 'Skill 4999', 'a', index), 5);
+  assert.equal(memberLevel(fixture, 'Skill 4999', 'a', index), 4);
   assert.ok(reads <= rows.length * 2, `Expected linear row reads, got ${reads}`);
 });
 
@@ -152,23 +131,18 @@ test('interactive report is self-contained, escaped and aggregate-only', () => {
   assert.equal(escapeHtml(`<&"'>`), '&lt;&amp;&quot;&#39;&gt;');
 });
 
-test('historical ranks use an explicit capped scale consistently and identifying searches stay out of exports', () => {
-  const legacy = {
+test('current four-level profiles retain the scale and identifying searches stay out of exports', () => {
+  const current = {
     ...analytics,
-    levels: [{ rank: 8, count: 1, memberIds: ['a'] }],
-    coverage: [1, 2, 3, 4, 5].map(rank => ({
-      skillName: 'Azure',
-      rank,
-      people: 1,
-      memberIds: ['a'],
-    })),
+    levels: [{ rank: 4, count: 1, memberIds: ['a'] }],
+    coverage: [1, 2, 3, 4].map(rank => ({ skillName: 'Azure', rank, people: 1, memberIds: ['a'] })),
   };
-  assert.equal(teamAverageLevel(legacy), 5);
-  assert.equal(skillProfiles(legacy)[0].average, 5);
-  const html = teamReportHtml(legacy, 'Private Employee Name', new Date());
+  assert.equal(teamAverageLevel(current), 4);
+  assert.equal(skillProfiles(current)[0].average, 4);
+  const html = teamReportHtml(current, 'Private Employee Name', new Date());
   assert.doesNotMatch(html, /Private Employee Name/);
-  assert.match(html, /capped at L5/);
-  assert.match(html, /identifying/);
+  assert.match(html, /four-level/);
+  assert.doesNotMatch(html, /L5/);
 });
 
 test('manager AI demand actions appear only when the server advertises availability', () => {

@@ -109,7 +109,7 @@ const state = (): LocalAccessState => ({
   audit: [],
 });
 test('business filters are bounded, reject forged authority, invalid dates and impossible rank windows', () => {
-  assert.equal(businessQuery({}).maxRank, 5);
+  assert.equal(businessQuery({}).maxRank, 4);
   for (const q of [
     { actorId: person },
     { scopeId: 'ORGANIZATION' },
@@ -310,9 +310,9 @@ test('demand and amendment commands reject actor selectors, duplicate criteria a
     category: 'Cloud',
     description: 'QA',
     reason: 'QA',
-    criteria: ['1', '2', '3', '4', '5'],
+    criteria: ['1', '2', '3', '4'],
   });
-  assert.equal((command.payload.definition as { levels: unknown[] }).levels.length, 5);
+  assert.equal((command.payload.definition as { levels: unknown[] }).levels.length, 4);
 });
 test('HTTP scoped files bind authenticated actor, conceal Blob keys and reject forced records', async t => {
   const s = state();

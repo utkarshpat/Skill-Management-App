@@ -178,6 +178,11 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
       });
     } catch (error) {
       const number = (error as { number?: number }).number;
+      if (number === 51014)
+        throw new AccessError(
+          409,
+          'This certification already exists. Link the existing certificate, continue its draft, or use Renew.',
+        );
       if (number === 51003)
         throw new AccessError(403, 'Current access does not allow this submission.');
       if (number === 51004) throw new AccessError(404, 'Submission unavailable.');

@@ -125,7 +125,7 @@ export function BusinessWorkflows({
     [category, setCategory] = useState(''),
     [description, setDescription] = useState(''),
     [provider, setProvider] = useState(''),
-    [criteria, setCriteria] = useState(['', '', '', '', '']),
+    [criteria, setCriteria] = useState(['', '', '', '']),
     [reason, setReason] = useState(''),
     [active, setActive] = useState(true),
     [scope, setScope] = useState(''),
@@ -449,7 +449,11 @@ export function BusinessWorkflows({
     setDescription(item?.description ?? '');
     setActive(item?.active ?? true);
     setCriteria(
-      [1, 2, 3, 4, 5].map(rank => item?.levels?.find(l => l.rank === rank)?.description ?? ''),
+      [1, 2, 3, 4].map(rank =>
+        item?.levels?.length === 4
+          ? (item.levels.find(l => l.rank === rank)?.description ?? '')
+          : '',
+      ),
     );
   }
   function nextAmendmentStep() {
@@ -1135,23 +1139,21 @@ export function BusinessWorkflows({
                       Keep this entry available in the catalogue
                     </label>
                     {type === 'SKILL' &&
-                      ['Awareness', 'Foundation', 'Practitioner', 'Advanced', 'Expert'].map(
-                        (label, i) => (
-                          <label key={label} className="bo-full">
-                            L{i + 1} · {label} <span className="bo-required">*</span>
-                            <textarea
-                              required
-                              maxLength={1000}
-                              value={criteria[i]}
-                              onChange={e =>
-                                setCriteria(values =>
-                                  values.map((v, index) => (index === i ? e.target.value : v)),
-                                )
-                              }
-                            />
-                          </label>
-                        ),
-                      )}
+                      ['Foundation', 'Autonomous', 'Experienced', 'Expert'].map((label, i) => (
+                        <label key={label} className="bo-full">
+                          L{i + 1} · {label} <span className="bo-required">*</span>
+                          <textarea
+                            required
+                            maxLength={1000}
+                            value={criteria[i]}
+                            onChange={e =>
+                              setCriteria(values =>
+                                values.map((v, index) => (index === i ? e.target.value : v)),
+                              )
+                            }
+                          />
+                        </label>
+                      ))}
                     <label className="bo-full">
                       Why is this change needed? <span className="bo-required">*</span>
                       <textarea
@@ -1211,7 +1213,7 @@ export function BusinessWorkflows({
                                 )
                               }
                             >
-                              {[1, 2, 3, 4, 5].map(n => (
+                              {[1, 2, 3, 4].map(n => (
                                 <option key={n} value={n}>
                                   L{n} or above
                                 </option>

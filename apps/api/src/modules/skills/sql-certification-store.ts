@@ -39,6 +39,11 @@ export class SqlCertificationStore implements CertificationStore {
           503,
           'Certification storage is unavailable. Apply migration 053 before enabling this feature.',
         );
+      if (number === 51014)
+        throw new AccessError(
+          409,
+          'This certification already exists. Link the existing certificate, continue its draft, or use Renew.',
+        );
       if (number === 51003)
         throw new AccessError(403, 'Certification access is no longer available.');
       if (number === 51004) throw new AccessError(404, 'Certification unavailable.');

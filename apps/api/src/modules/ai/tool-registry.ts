@@ -291,8 +291,8 @@ export class ToolRegistry {
                   issuer: { type: 'string', maxLength: 120 },
                   category: { type: 'string', maxLength: 80 },
                   skillId: { type: 'string', format: 'uuid' },
-                  minRank: { type: 'integer', minimum: 1, maximum: 5 },
-                  maxRank: { type: 'integer', minimum: 1, maximum: 5 },
+                  minRank: { type: 'integer', minimum: 1, maximum: 4 },
+                  maxRank: { type: 'integer', minimum: 1, maximum: 4 },
                   status: {
                     type: 'string',
                     enum: ['', 'SUBMITTED', 'APPROVED', 'CHANGES_REQUESTED', 'REJECTED'],
@@ -355,7 +355,7 @@ export class ToolRegistry {
               hasMore: result.page * result.pageSize < result.total,
               limits: [
                 'Current scope only',
-                'Coverage charts show at most 10 skills; issuer/category charts at most 15 groups. Historical ranks above five use L5+ chart grouping without framework equivalence.',
+                'Coverage charts show at most 10 skills; issuer/category charts at most 15 groups. Proficiency charts and matching use the four-level framework; legacy claim snapshots are not treated as equivalent.',
                 'No private drafts or certificate downloads',
                 'Coverage denominator includes authorized people without reviewed claims',
                 'Business access never grants manager-review authority',
@@ -976,7 +976,7 @@ export class ToolRegistry {
           function: {
             name: 'team_skill_gaps',
             description:
-              'Analyse your current active direct reports’ manager-reviewed skill coverage. Pass the manager’s stated demand as requirements (skill name, minimum level 1-5, headcount) to get who qualifies, shortfall and people one level below. Without requirements, returns team skill strengths, level mix and thinnest coverage. Requirements are not saved. Cannot choose another manager, person or workspace.',
+              'Analyse your current active direct reports’ manager-reviewed skill coverage. Pass the manager’s stated demand as requirements (skill name, minimum level 1-4, headcount) to get who qualifies, shortfall and people one level below. Without requirements, returns team skill strengths, level mix and thinnest coverage. Requirements are not saved. Cannot choose another manager, person or workspace.',
             parameters: {
               type: 'object',
               additionalProperties: false,
@@ -995,7 +995,7 @@ export class ToolRegistry {
                     required: ['skill', 'level'],
                     properties: {
                       skill: { type: 'string', maxLength: 80 },
-                      level: { type: 'integer', minimum: 1, maximum: 5 },
+                      level: { type: 'integer', minimum: 1, maximum: 4 },
                       headcount: { type: 'integer', minimum: 1, maximum: 500 },
                     },
                   },

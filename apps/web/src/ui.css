@@ -1663,6 +1663,40 @@ input[type='checkbox'] {
 .form-dialog-header button {
   color: var(--muted);
 }
+.form-dialog-header .wizard-steps.in-header {
+  border-bottom: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.form-dialog-header .wizard-steps.in-header button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  padding: 5px 12px;
+  border-radius: 99px;
+  font: inherit;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.form-dialog-header .wizard-steps.in-header button[aria-current='step'] {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: var(--line);
+  font-weight: 600;
+}
+.form-dialog-header .wizard-steps.in-header .wizard-step-number {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
 .form-page-tabs {
   display: flex;
   gap: 8px;

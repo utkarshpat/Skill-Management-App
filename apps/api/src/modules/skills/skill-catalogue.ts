@@ -69,10 +69,10 @@ export function catalogueChange(input: unknown) {
   if (body.id !== undefined && (typeof body.id !== 'string' || !uuid.test(body.id)))
     throw new AccessError(400, 'Choose a valid skill.');
   const published = body.status === 'PUBLISHED';
-  if (!Array.isArray(body.levels) || body.levels.length !== 5)
+  if (!Array.isArray(body.levels) || body.levels.length !== 4)
     throw new AccessError(
       400,
-      'Use exactly five levels: Awareness, Foundation, Practitioner, Advanced and Expert.',
+      'Use exactly four levels: Foundation, Autonomous, Experienced and Expert.',
     );
   const names = new Set<string>();
   const levels: SkillLevel[] = body.levels.map((item, index) => {
@@ -88,7 +88,7 @@ export function catalogueChange(input: unknown) {
   if (!hasStandardProficiency(levels))
     throw new AccessError(
       400,
-      'Use exactly five levels: Awareness, Foundation, Practitioner, Advanced and Expert.',
+      'Use exactly four levels: Foundation, Autonomous, Experienced and Expert.',
     );
   return {
     revision: Number(body.revision),

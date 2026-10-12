@@ -210,7 +210,7 @@ function SkillDefinitions({
     if (!draft || !state?.canManage || busy) return;
     if (!isStandardFramework(draft.levels)) {
       setEditorPage(1);
-      setError('Align this definition to the five-level proficiency model before saving.');
+      setError('Align this definition to the four-level proficiency model before saving.');
       return;
     }
     const invalid = draft.levels.findIndex(

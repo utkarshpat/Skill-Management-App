@@ -24,7 +24,7 @@ try {
     process.argv.slice(2).some(arg => arg !== '--apply' && arg !== '--align-existing')
   )
     throw Error(
-      'Use a configured development workspace and linked Microsoft owner; --align-existing previews current five-level mappings and optional --apply commits.',
+      'Use a configured development workspace and linked Microsoft owner; --align-existing previews current four-level mappings and optional --apply commits.',
     );
   const align = process.argv.includes('--align-existing');
   const actor = await new SqlAccessStore(account).resolveIdentity({ tenantId, objectId });
@@ -32,7 +32,7 @@ try {
   const seed = validateEnterpriseSeed(
     JSON.parse(
       await readFile(
-        new URL('../../../database/seeds/enterprise-catalogue-v1.json', import.meta.url),
+        new URL('../../../database/seeds/enterprise-catalogue-v2.json', import.meta.url),
         'utf8',
       ),
     ),
@@ -76,10 +76,10 @@ try {
         );
       if (process.argv.includes('--apply')) {
         const installed = await new sql.Request(tx).query(
-          'SELECT version FROM dbo.SchemaMigration WHERE version=44;',
+          'SELECT version FROM dbo.SchemaMigration WHERE version=74;',
         );
         if (!installed.recordset.length)
-          throw Error('Deploy migration 044 before applying catalogue changes.');
+          throw Error('Deploy migration 074 before applying catalogue changes.');
         let revision = setup[0][0].revision;
         for (const skill of plan.create)
           await new sql.Request(tx)

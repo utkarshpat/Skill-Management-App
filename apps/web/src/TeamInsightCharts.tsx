@@ -80,21 +80,21 @@ function Radar({ profiles }: { profiles: SkillProfile[] }) {
     );
   const point = (i: number, value: number, r = 78) => {
     const a = (i * 2 * Math.PI) / skills.length - Math.PI / 2;
-    return [130 + (Math.cos(a) * r * value) / 5, 112 + (Math.sin(a) * r * value) / 5];
+    return [130 + (Math.cos(a) * r * value) / 4, 112 + (Math.sin(a) * r * value) / 4];
   };
   const ring = (v: number) => skills.map((_, i) => point(i, v).join(',')).join(' ');
   return (
     <svg className="team-radar" viewBox="0 0 260 230" role="img" aria-labelledby={titleId}>
       <title id={titleId}>
-        {'Holder averages capped at L5 (historical levels above 5 grouped as L5+): ' +
+        {'Four-level framework holder averages: ' +
           skills.map(s => `${s.skill} ${s.average}`).join(', ')}
       </title>
       {LEVELS.map(v => (
         <polygon key={v} points={ring(v)} className="team-radar-ring" />
       ))}
       {skills.map((s, i) => {
-        const [x, y] = point(i, 5),
-          [lx, ly] = point(i, 5, 98);
+        const [x, y] = point(i, 4),
+          [lx, ly] = point(i, 4, 98);
         return (
           <g key={s.skill}>
             <line x1="130" y1="112" x2={x} y2={y} className="team-radar-ring" />
@@ -112,7 +112,7 @@ function Radar({ profiles }: { profiles: SkillProfile[] }) {
         const [x, y] = point(i, s.average);
         return (
           <circle key={s.skill} cx={x} cy={y} r="3.5" className="team-radar-point">
-            <title>{`${s.skill}: capped holder average ${s.average} across ${s.holders} holders (L5+)`}</title>
+            <title>{`${s.skill}: holder average ${s.average} across ${s.holders} holders (L4)`}</title>
           </circle>
         );
       })}
@@ -159,7 +159,7 @@ export function TeamInsightCharts({
         <div>
           <strong>{average ? 'L' + average : '—'}</strong>
           <span>Average reviewed level</span>
-          <small>Recorded ranks capped at L5</small>
+          <small>Current four-level framework</small>
         </div>
         <div>
           <strong>{without}</strong>
@@ -174,7 +174,7 @@ export function TeamInsightCharts({
           <span>Most covered skill</span>
           <small>
             {profiles[0]
-              ? `${profiles[0].holders} holders · capped avg ${profiles[0].average} (L5+)`
+              ? `${profiles[0].holders} holders · avg ${profiles[0].average} (L4)`
               : 'No reviewed skills yet'}
           </small>
         </div>
@@ -185,12 +185,12 @@ export function TeamInsightCharts({
           <header>
             <div>
               <h3>Team skill radar</h3>
-              <p>Holder averages capped at L5 for the most covered skills.</p>
+              <p>Holder averages on L1–L4 for the most covered skills.</p>
             </div>
           </header>
           <Radar profiles={profiles} />
           <p className="team-chart-caption">
-            Scale L1–L5+. Historical ranks above 5 are grouped as L5+, not exact L5. These capped
+            Scale L1–L4. Historical frameworks are excluded from proficiency comparisons. These
             averages include holders only, not the whole team.
           </p>
         </section>
@@ -256,14 +256,14 @@ export function TeamInsightCharts({
                   <span
                     className="team-mix-track"
                     role="img"
-                    aria-label={`${p.skill}: ${p.atLevel.map((n, i) => `L${i + 1}${i === 4 ? '+' : ''} ${n}`).join(', ')}`}
+                    aria-label={`${p.skill}: ${p.atLevel.map((n, i) => `L${i + 1} ${n}`).join(', ')}`}
                   >
                     {p.atLevel.map((n, i) =>
                       n ? (
                         <span
                           key={i}
                           style={{ flex: n, background: LEVEL_COLORS[i] }}
-                          title={`L${i + 1}${i === 4 ? '+' : ''}: ${n}`}
+                          title={`L${i + 1}: ${n}`}
                         />
                       ) : null,
                     )}
@@ -279,7 +279,6 @@ export function TeamInsightCharts({
             {LEVELS.map((l, i) => (
               <span key={l}>
                 <i style={{ background: LEVEL_COLORS[i] }} />L{l}
-                {l === 5 ? '+' : ''}
               </span>
             ))}
           </p>
@@ -294,7 +293,7 @@ export function TeamInsightCharts({
                 </span>
               </div>
               <p>
-                Reviewed level per member for the top skills. L5+ includes historical ranks above 5.
+                Reviewed level per member for the top skills. Historical frameworks are excluded.
                 Members on this page only; select a cell or member to open their profile.
               </p>
             </div>
@@ -318,10 +317,6 @@ export function TeamInsightCharts({
               <span className="heatmap-legend-item">
                 <i className="heat-legend-swatch heat-4" />
                 <span>L4</span>
-              </span>
-              <span className="heatmap-legend-item">
-                <i className="heat-legend-swatch heat-5" />
-                <span>L5+</span>
               </span>
             </div>
           </header>
@@ -373,9 +368,7 @@ export function TeamInsightCharts({
                       </th>
                       {heatSkills.map(s => {
                         const level = memberLevel(analytics, s, p.id, index),
-                          label = level
-                            ? 'L' + level + (level === 5 ? '+' : '')
-                            : 'no reviewed record';
+                          label = level ? 'L' + level : 'no reviewed record';
                         return (
                           <td key={s} className="heatmap-cell">
                             <button

@@ -185,7 +185,7 @@ export function businessQuery(value: unknown): BusinessQuery {
     throw new AccessError(400, 'Choose a supported sort.');
   const page = Number(q.page ?? 1),
     minRank = Number(q.minRank ?? 1),
-    maxRank = Number(q.maxRank ?? 5);
+    maxRank = Number(q.maxRank ?? 4);
   if (
     !['people', 'skills', 'certifications', 'submissions'].includes(String(dataset)) ||
     ![
@@ -208,10 +208,10 @@ export function businessQuery(value: unknown): BusinessQuery {
     page > 10000 ||
     !Number.isInteger(minRank) ||
     minRank < 1 ||
-    minRank > 5 ||
+    minRank > 4 ||
     !Number.isInteger(maxRank) ||
     maxRank < minRank ||
-    maxRank > 5
+    maxRank > 4
   )
     throw new AccessError(400, 'Choose valid filters.');
   const from = string(q.from, 10),

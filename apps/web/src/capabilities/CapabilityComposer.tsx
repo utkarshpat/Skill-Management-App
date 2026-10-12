@@ -555,7 +555,7 @@ export function CapabilityComposer({
     try {
       const saved = await json<Submission>(
         root,
-        submissionPayload(id.current, version.current, skills, certs),
+        submissionPayload(id.current, version.current, skills, certs, ownCertificates),
         abort.signal,
       );
       if (!mounted.current) return;
@@ -953,29 +953,28 @@ export function CapabilityComposer({
                             )}
                           </div>
                           <div className="cap-upload-guide">
-                            {c.reuse ? (
-                              <p>Already reviewed</p>
-                            ) : (
-                              <>
+                            <div className="cap-guide-header">
+                              <span className="cap-guide-title">Certificate details</span>
+                              {!c.reuse && (
                                 <button
                                   type="button"
-                                  className="admin-primary"
+                                  className="admin-primary cap-autofill-btn"
                                   disabled={working || !c.file || !aiAvailable}
                                   onClick={() => void autofill(c)}
+                                  title={!c.file ? 'Upload a certificate to autofill' : undefined}
                                 >
-                                  <Sparkles size={16} />{' '}
+                                  <Sparkles size={14} />{' '}
                                   {autofillingCertificate === c.id
                                     ? 'Reading certificate…'
                                     : 'Autofill with AI'}
                                 </button>
-                                <p className="cap-help">
-                                  {initializing
-                                    ? 'Getting your form ready…'
-                                    : aiAvailable
-                                      ? 'Shares this file with AI. Review the filled details.'
-                                      : 'AI unavailable. You can fill the details yourself.'}
-                                </p>
-                              </>
+                              )}
+                            </div>
+                            {c.reuse && <p>Already reviewed</p>}
+                            {!aiAvailable && !initializing && !c.reuse && (
+                              <p className="cap-help">
+                                AI unavailable. You can fill the details yourself.
+                              </p>
                             )}
                             {suggestionCertificate === c.id && suggestions.length > 0 && (
                               <p className="cap-upload-result" role="status">

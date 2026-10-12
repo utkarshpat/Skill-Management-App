@@ -7,7 +7,7 @@ export interface SkillRequirement {
   level: number;
   headcount: number;
 }
-const levels = [1, 2, 3, 4, 5] as const;
+const levels = [1, 2, 3, 4] as const;
 const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, ' ').trim();
 
 // Requirements ("demand") are supplied by the manager in the conversation and never stored.
@@ -42,7 +42,7 @@ export function teamGapArguments(value: unknown): {
       r.skill.length > 80 ||
       !Number.isSafeInteger(r.level) ||
       Number(r.level) < 1 ||
-      Number(r.level) > 5 ||
+      Number(r.level) > 4 ||
       (r.headcount !== undefined &&
         (!Number.isSafeInteger(r.headcount) ||
           Number(r.headcount) < 1 ||
@@ -50,7 +50,7 @@ export function teamGapArguments(value: unknown): {
     )
       throw new AccessError(
         400,
-        'Each requirement needs a skill name, level 1-5 and an optional headcount of 1-500.',
+        'Each requirement needs a skill name, level 1-4 and an optional headcount of 1-500.',
       );
     return {
       skill: r.skill.trim().replace(/\s+/g, ' '),
@@ -93,9 +93,9 @@ export function skillProfiles(analytics: Analytics, index = indexCoverage(analyt
           ? Math.round((counts.reduce((sum, count) => sum + count, 0) / total) * 10) / 10
           : 0,
         averageLevelBasis:
-          'Holder average capped at L5; historical ranks above 5 are grouped as L5+, not exact L5.',
+          'Four-level framework holder average; historical frameworks are excluded from proficiency comparisons.',
         atLevel: levels.map((rank, index) => ({
-          level: 'L' + rank + (rank === 5 ? '+' : ''),
+          level: 'L' + rank,
           people: counts[index] - (counts[index + 1] ?? 0),
         })),
       };
@@ -201,6 +201,6 @@ export function teamGapReport(
       })),
     categories: analytics.categories.slice(0, 8),
     basis:
-      'Scope: current active direct reports only. Coverage counts manager-reviewed (APPROVED) claims; pending reviews and private drafts are not proficiency. Requirements come only from this conversation and are not saved. Only exact skill-name matches evaluate demand; partial matches require confirmation. Missing records are not proven deficiencies. Per-skill holder averages are capped at L5; historical levels above 5 are grouped as L5+, not exact L5.',
+      'Scope: current active direct reports only. Coverage counts manager-reviewed (APPROVED) claims; pending reviews and private drafts are not proficiency. Requirements come only from this conversation and are not saved. Only exact skill-name matches evaluate demand; partial matches require confirmation. Missing records are not proven deficiencies. Per-skill holder averages use the current four-level framework. Historical frameworks are excluded from proficiency comparisons.',
   };
 }

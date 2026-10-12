@@ -42,12 +42,51 @@ export interface Submission {
 export function relatedSkillIds(selected: string[], available: string[]) {
   return [...new Set(selected)].filter(id => available.includes(id));
 }
+export interface CertificateIdentity {
+  certificationName: string;
+  provider: string;
+  credentialId: string;
+}
+/** Advisory form check. SQL rechecks identity under its transaction for races. */
+export function sameCertificate(left: CertificateIdentity, right: CertificateIdentity): boolean {
+  const normalize = (value: string) =>
+    value
+      .replace(/[\t\n\r\u00a0]/g, ' ')
+      .trim()
+      .replace(/ +/g, ' ')
+      .toLowerCase();
+  const issuer = normalize(left.provider);
+  if (!issuer || issuer !== normalize(right.provider)) return false;
+  const name = normalize(left.certificationName),
+    printedId = normalize(left.credentialId);
+  return Boolean(
+    (name && name === normalize(right.certificationName)) ||
+    (printedId && printedId === normalize(right.credentialId)),
+  );
+}
+
 export function submissionPayload(
   id: string,
   revision: number,
   skills: SelectedSkill[],
   certifications: SelectedCertificate[],
+  existingCertificates: (CertificateIdentity & { id: string })[] = [],
 ) {
+  for (const c of certifications) {
+    if (c.reuse || c.renewedFromId) continue;
+    const duplicate =
+      certifications.some(
+        other =>
+          other.id !== c.id && !other.renewedFromId && sameCertificate(c.fields, other.fields),
+      ) ||
+      existingCertificates.some(
+        other => other.id.toLowerCase() !== c.id.toLowerCase() && sameCertificate(c.fields, other),
+      );
+    if (duplicate)
+      throw Error(
+        'This certification already exists. Link the existing certificate, continue its draft, or use Renew.',
+      );
+  }
   return {
     id,
     revision,

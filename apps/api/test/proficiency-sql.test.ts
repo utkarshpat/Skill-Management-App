@@ -39,8 +39,8 @@ test('operator alignment is opt-in, permission checked, migration gated and tran
   const cli = await readFile(new URL('../src/catalogue-seed-cli.ts', import.meta.url), 'utf8');
   assert.match(cli, /process\.argv\.includes\('--align-existing'\)/);
   assert.match(cli, /process\.argv\.includes\('--apply'\)/);
-  assert.match(cli, /version=44/);
+  assert.match(cli, /version=74/);
   assert.match(cli, /alignmentPlan\(existing\)/);
   assert.match(cli, /execute\('dbo.SaveSkillCatalogue'\)/);
-  assert.ok(cli.indexOf('version=44') < cli.indexOf("execute('dbo.SaveSkillCatalogue')"));
+  assert.ok(cli.indexOf('version=74') < cli.indexOf("execute('dbo.SaveSkillCatalogue')"));
 });

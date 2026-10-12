@@ -154,7 +154,7 @@ export function TeamReports({
           <label className="team-report-level">
             CSV minimum level
             <select value={rank} disabled={!!busy} onChange={e => setRank(Number(e.target.value))}>
-              {[1, 2, 3, 4, 5].map(n => (
+              {[1, 2, 3, 4].map(n => (
                 <option key={n} value={n}>
                   L{n} and above
                 </option>

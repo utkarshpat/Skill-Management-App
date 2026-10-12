@@ -10,26 +10,26 @@ export interface SeedSkill {
   criteria: { rank: number; description: string }[];
 }
 export interface EnterpriseSeed {
-  version: 1;
+  version: 2;
   framework: {
-    key: 'enterprise-v1';
+    key: 'enterprise-v3';
     levels: { rank: number; name: string; description: string }[];
   };
   skills: SeedSkill[];
 }
-const labels = ['Awareness', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
+const labels = proficiencyNames;
 export function validateEnterpriseSeed(input: unknown): EnterpriseSeed {
   const seed = input as EnterpriseSeed;
   if (
     !seed ||
-    seed.version !== 1 ||
-    seed.framework?.key !== 'enterprise-v1' ||
+    seed.version !== 2 ||
+    seed.framework?.key !== 'enterprise-v3' ||
     !Array.isArray(seed.framework.levels) ||
-    seed.framework.levels.length !== 5 ||
+    seed.framework.levels.length !== 4 ||
     !Array.isArray(seed.skills) ||
     seed.skills.length !== 70
   )
-    throw Error('Expected the reviewed 70-skill enterprise-v1 catalogue.');
+    throw Error('Expected the reviewed 70-skill enterprise-v3 catalogue.');
   for (const [index, level] of seed.framework.levels.entries())
     if (
       level.rank !== index + 1 ||
@@ -44,9 +44,9 @@ export function validateEnterpriseSeed(input: unknown): EnterpriseSeed {
     if (
       skill.code !== `SKL-${String(index + 1).padStart(3, '0')}` ||
       !Array.isArray(skill.criteria) ||
-      skill.criteria.length !== 5
+      skill.criteria.length !== 4
     )
-      throw Error('Seed codes must run from SKL-001 through SKL-070 with five criteria.');
+      throw Error('Seed codes must run from SKL-001 through SKL-070 with four criteria.');
     catalogueChange({ revision: 1, ...seedPayload(seed, skill) });
     const name = skill.name.trim().toLowerCase();
     if (names.has(name)) throw Error('Seed skill names must be unique.');
@@ -73,12 +73,13 @@ export function alignmentPlan(existing: CatalogueSkill[]) {
   const changes = existing
     .filter(skill => !hasStandardProficiency(skill.levels))
     .map(skill => {
+      // A change of scale is not a relabel: require an explicit rubric for all four levels.
       if (
-        skill.levels.length !== 5 ||
+        skill.levels.length !== 4 ||
         skill.levels.some((level, index) => level.rank !== index + 1)
       )
         throw Error(
-          `${skill.name} needs manual five-level criteria mapping. No bulk alignment will be applied.`,
+          `${skill.name} needs manual four-level criteria mapping. No bulk alignment will be applied.`,
         );
       const levels = skill.levels.map((level, index) => ({
         ...level,

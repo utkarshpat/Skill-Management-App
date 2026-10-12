@@ -126,15 +126,12 @@ export function CertificateImageUploader({
   const displayedFile = file;
   return (
     <section className="certificate-image-uploader" aria-label="Certificate file">
-      <h3>
-        Certificate file{' '}
-        <span className="cert-required-mark" aria-hidden="true">
-          *
-        </span>
+      <div className="certificate-upload-label">
+        Certificate <span className="cert-required-mark" aria-hidden="true">*</span>
         <span className="sr-only"> required</span>
-      </h3>
+      </div>
       <div
-        className={`certificate-dropzone${dragging ? ' dragging' : ''}`}
+        className={`certificate-dropzone${dragging ? ' dragging' : ''}${url && displayedFile ? ' has-file' : ''}`}
         onDragOver={e => {
           e.preventDefault();
           if (!disabled) setDragging(true);
@@ -151,12 +148,27 @@ export function CertificateImageUploader({
             url={url}
             mimeType={displayedFile.mimeType}
             fileName={displayedFile.fileName}
+            onReplace={() => input.current?.click()}
+            disabled={disabled}
           />
         ) : (
           <>
             <ImagePlus size={32} aria-hidden="true" />
             <p>
               {loading ? 'Loading certificate file...' : 'Drag and drop your certificate file here'}
+            </p>
+            <div className="certificate-image-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                disabled={disabled}
+                onClick={() => input.current?.click()}
+              >
+                <Upload size={16} aria-hidden="true" /> Browse files
+              </button>
+            </div>
+            <p className="cert-help">
+              PDF, JPEG, PNG, WebP, DOCX or TXT · up to 5 MB. Images are compressed automatically.
             </p>
           </>
         )}
@@ -171,20 +183,6 @@ export function CertificateImageUploader({
           tabIndex={-1}
           onChange={e => void choose(e.target.files)}
         />
-        <div className="certificate-image-actions">
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={disabled}
-            onClick={() => input.current?.click()}
-          >
-            <Upload size={16} aria-hidden="true" />
-            {url ? 'Replace file' : 'Browse files'}
-          </button>
-        </div>
-        <p className="cert-help">
-          PDF, JPEG, PNG, WebP, DOCX or TXT · up to 5 MB. Images are compressed automatically.
-        </p>
       </div>
       {!available && (
         <p className="cert-help">
@@ -210,7 +208,7 @@ export function CertificationImage({ id }: { id: string }) {
   const state = useCertificationImage(id);
   return (
     <section className="certificate-image-uploader">
-      <h3>Certificate file</h3>
+      <div className="certificate-upload-label">Certificate</div>
       {state.url && state.file ? (
         <CertificateFilePreview
           url={state.url}

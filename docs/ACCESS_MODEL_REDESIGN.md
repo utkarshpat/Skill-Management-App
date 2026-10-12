@@ -4,6 +4,10 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Four-level proficiency and credential identity — approved increment, 12 October 2026
+
+The user approved Foundation, Autonomous, Experienced and Expert, with Oracle content managed through the existing catalogue. Migration 074 creates a new framework; previous claim/definition snapshots remain unchanged and do not establish equivalence with its four ranks. Migration 075 prevents a second employee credential with the same normalized issuer/name or nonempty printed Credential ID, while preserving explicit validated renewal ancestry and existing current-manager checks. No access grant or wider scope is introduced. Rollback SQL and source checks establish implementation, not permanent installation or hosted acceptance. See [the implementation and rollout record](FOUR_LEVEL_AND_CERTIFICATION_IDENTITY_2026-10-12.md).
+
 ### Linked capabilities — approved increment, 12 October 2026
 
 The user approved a common skill/certificate submission workflow with canonical related-skill links and independent per-item decisions. Migration 071 preserves the exact current assigned-manager policy and introduces no permission grants or broader scopes. Draft links and staged files are owner-private; submitted links are published only within existing resource read policies. A combined decision is atomic, and linking previously approved records never creates a new approval. See [the implementation and release record](LINKED_CAPABILITIES_2026-10-12.md) for deployment status and constraints.

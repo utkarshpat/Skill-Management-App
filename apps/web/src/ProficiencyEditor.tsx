@@ -22,9 +22,9 @@ export function ProficiencyEditor({
   return (
     <>
       <p className="access-help">
-        Every skill uses the same five levels. Define what each level looks like for this skill.
+        Every skill uses the same four levels. Define what each level looks like for this skill.
       </p>
-      <ol aria-label="Five-level proficiency model" className="proficiency-scale">
+      <ol aria-label="Four-level proficiency model" className="proficiency-scale">
         {standardLevels().map(item => {
           const previous = stored.find(entry => entry.rank === item.rank);
           return (
@@ -39,9 +39,9 @@ export function ProficiencyEditor({
       {needsAlignment ? (
         <div className="access-message" role="status">
           <p>
-            This definition uses a previous framework. Align it before saving. Criteria at ranks 1–5
-            are retained; missing criteria must be completed before publishing. Levels above 5 are
-            removed from the new version only.
+            This definition uses a previous framework. Choose the four-level framework and write its
+            criteria before publishing. Previous definition versions and claim snapshots stay
+            unchanged; old ranks are not converted into new proficiency levels.
           </p>
           <button
             type="button"
@@ -51,14 +51,14 @@ export function ProficiencyEditor({
               onSelect(0);
             }}
           >
-            Align to five levels
+            Align to four levels
           </button>
         </div>
       ) : (
         original &&
         !isStandardFramework(original) && (
           <p className="access-help" role="status">
-            Alignment is ready to save. Review the retained criteria below. Previous definitions and
+            Alignment is ready to save. Review the new criteria below. Previous definitions and
             claim snapshots remain unchanged.
           </p>
         )
@@ -97,7 +97,7 @@ export function ProficiencyEditor({
         </div>
       )}
       <p className="access-help">
-        Criteria are required for all five levels before publishing. Saving creates a new definition
+        Criteria are required for all four levels before publishing. Saving creates a new definition
         version, not a proficiency verification.
       </p>
     </>

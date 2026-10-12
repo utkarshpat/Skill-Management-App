@@ -83,15 +83,13 @@ export function businessWorkflow(
     };
     if (q.type === 'CERTIFICATION') payload.providerId = identifier(q.providerId);
     if (q.type === 'SKILL') {
-      if (!Array.isArray(q.criteria) || q.criteria.length !== 5)
-        throw new AccessError(400, 'Describe all five skill proficiency levels.');
-      payload.levels = ['Awareness', 'Foundation', 'Practitioner', 'Advanced', 'Expert'].map(
-        (name, index) => ({
-          rank: index + 1,
-          name,
-          description: text((q.criteria as unknown[])[index], 1000, true),
-        }),
-      );
+      if (!Array.isArray(q.criteria) || q.criteria.length !== 4)
+        throw new AccessError(400, 'Describe all four skill proficiency levels.');
+      payload.levels = ['Foundation', 'Autonomous', 'Experienced', 'Expert'].map((name, index) => ({
+        rank: index + 1,
+        name,
+        description: text((q.criteria as unknown[])[index], 1000, true),
+      }));
       payload.status = q.active === false ? 'ARCHIVED' : 'PUBLISHED';
     }
     return {
@@ -127,8 +125,8 @@ export function businessWorkflow(
       if (!value || typeof value !== 'object')
         throw new AccessError(400, 'Invalid skill requirement.');
       const s = value as Record<string, unknown>;
-      if (!Number.isInteger(s.minRank) || Number(s.minRank) < 1 || Number(s.minRank) > 5)
-        throw new AccessError(400, 'Choose proficiency L1–L5.');
+      if (!Number.isInteger(s.minRank) || Number(s.minRank) < 1 || Number(s.minRank) > 4)
+        throw new AccessError(400, 'Choose proficiency L1–L4.');
       return { id: identifier(s.id), minRank: Number(s.minRank) };
     });
     const certifications = r.certifications.map(identifier);

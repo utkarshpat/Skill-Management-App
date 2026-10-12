@@ -71,12 +71,12 @@ test('single partial matches cannot infer qualification, and exact names preserv
   assert.ok(!('matchedSkill' in c));
 });
 
-test('historical ranks are explicitly capped in AI per-skill metrics and grouped as L5+', () => {
+test('AI per-skill metrics use the four-level scale and explain historical exclusion', () => {
   const fixture = {
     ...analytics,
     members: 1,
     reviewed: 1,
-    coverage: [1, 2, 3, 4, 5].map(rank => ({
+    coverage: [1, 2, 3, 4].map(rank => ({
       skillName: 'Legacy',
       rank,
       people: 1,
@@ -85,11 +85,14 @@ test('historical ranks are explicitly capped in AI per-skill metrics and grouped
     levels: [{ rank: 8, count: 1, memberIds: ['a'] }],
   };
   const report = teamGapReport(fixture, [], id => names[id]);
-  assert.equal(report.teamSkills[0].averageLevel, 5);
-  assert.match(report.teamSkills[0].averageLevelBasis, /capped at L5.*not exact L5/);
-  assert.deepEqual(report.teamSkills[0].atLevel[4], { level: 'L5+', people: 1 });
-  assert.match(report.thinnestCoverage[0].averageLevelBasis, /capped/);
-  assert.match(report.basis, /Per-skill holder averages are capped/);
+  assert.equal(report.teamSkills[0].averageLevel, 4);
+  assert.match(
+    report.teamSkills[0].averageLevelBasis,
+    /Four-level.*historical frameworks are excluded/,
+  );
+  assert.deepEqual(report.teamSkills[0].atLevel[3], { level: 'L4', people: 1 });
+  assert.match(report.thinnestCoverage[0].averageLevelBasis, /Four-level/);
+  assert.match(report.basis, /Per-skill holder averages use the current four-level/);
 });
 
 test('API profiles index coverage once instead of rescanning for each skill and rank', () => {
@@ -108,7 +111,7 @@ test('API profiles index coverage once instead of rescanning for each skill and 
   });
   const profiles = skillProfiles({ ...analytics, coverage });
   assert.equal(profiles.length, 200);
-  assert.ok(profiles.every(p => p.averageLevel === 5));
+  assert.ok(profiles.every(p => p.averageLevel === 4));
   assert.ok(reads <= rows.length * 2, `Expected linear row reads, got ${reads}`);
 });
 
@@ -157,7 +160,7 @@ test('requirement gaps report qualified people, shortfall, near-miss and unknown
   assert.equal(profile.averageLevel, 3);
   assert.deepEqual(
     profile.atLevel.map(l => l.people),
-    [0, 1, 1, 1, 0],
+    [0, 1, 1, 1],
   );
   assert.match(report.basis, /not saved/);
 });

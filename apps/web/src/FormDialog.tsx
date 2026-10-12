@@ -151,10 +151,31 @@ export function FormDialog({
       onSubmitCapture={validate}
     >
       <header className="form-dialog-header">
-        <div>
+        <div className="form-dialog-title-group">
           <h2>{title}</h2>
           {subtitle && <p className="form-dialog-subtitle">{subtitle}</p>}
         </div>
+        {pages && pages.length > 1 && stepNavigation && (
+          <nav
+            className="form-page-tabs wizard-steps in-header"
+            aria-label="Form sections"
+          >
+            {pages.map((item, index) => (
+              <button
+                type="button"
+                key={index}
+                disabled={busy}
+                aria-current={page === index ? 'step' : undefined}
+                onClick={() => changePage(index)}
+              >
+                <span className="wizard-step-number" aria-hidden="true">
+                  {index < page ? '✓' : index + 1}
+                </span>
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        )}
         <button
           type="button"
           className="catalogue-close"
@@ -166,9 +187,9 @@ export function FormDialog({
         </button>
       </header>
       {message && <div className="form-dialog-message">{message}</div>}
-      {pages && pages.length > 1 && (
+      {pages && pages.length > 1 && !stepNavigation && (
         <nav
-          className={'form-page-tabs' + (stepNavigation ? ' wizard-steps' : '')}
+          className="form-page-tabs"
           aria-label="Form sections"
         >
           {pages.map((item, index) => (
@@ -179,11 +200,6 @@ export function FormDialog({
               aria-current={page === index ? 'step' : undefined}
               onClick={() => changePage(index)}
             >
-              {stepNavigation && (
-                <span className="wizard-step-number" aria-hidden="true">
-                  {index < page ? '✓' : index + 1}
-                </span>
-              )}
               {item.label}
             </button>
           ))}

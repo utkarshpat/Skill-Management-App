@@ -437,14 +437,14 @@ function Insights({ context }: { context: BusinessContext }) {
               <h2>Reviewed skill coverage</h2>
               <p className="bo-note">
                 Top 10 skills. Holders by proficiency, out of {data.summary.employees} authorized
-                employees. Historical ranks above five are grouped as L5+; this does not establish
-                framework equivalence. Select a cell to inspect claims.
+                employees. Only current four-level definitions contribute to this chart; historical
+                claim snapshots remain unchanged. Select a cell to inspect claims.
               </p>
               <div className="bo-heatmap">
                 {businessCoverageRows(data.coverage).map(({ id, label, cells }) => (
                   <div key={id}>
                     <strong>{label}</strong>
-                    {[1, 2, 3, 4, 5].map(rank => {
+                    {[1, 2, 3, 4].map(rank => {
                       const cell = cells.get(rank);
                       return (
                         <button
@@ -476,10 +476,7 @@ function Insights({ context }: { context: BusinessContext }) {
                           }
                           aria-label={`${label}, level ${rank}: ${cell?.holders ?? 0} reviewed holders; show level ${rank}`}
                         >
-                          <small>
-                            L{rank}
-                            {rank === 5 ? '+' : ''}
-                          </small>
+                          <small>L{rank}</small>
                           {cell?.holders ?? 0}
                         </button>
                       );
