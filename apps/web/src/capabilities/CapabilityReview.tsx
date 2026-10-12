@@ -179,7 +179,16 @@ export function CapabilityReview({
                   </>
                 ) : (
                   <>
+                    <p>
+                      Issued: {row.certificationDate?.slice(0, 10) || 'Not recorded'} ·{' '}
+                      {row.category}
+                    </p>
                     <p>Credential ID: {row.credentialId || 'Not provided'}</p>
+                    {row.credentialUrl && /^https?:\/\//i.test(row.credentialUrl) && (
+                      <a href={row.credentialUrl} target="_blank" rel="noopener noreferrer">
+                        Open verification link
+                      </a>
+                    )}
                     <p>{row.notes}</p>
                     <CapabilityEvidence submissionId={id} recordId={row.id} />
                   </>
@@ -221,7 +230,9 @@ export function CapabilityReview({
                       </select>
                     </label>
                     <label>
-                      Feedback <span className="cert-required-mark">*</span>
+                      <span>
+                        Feedback <span className="cert-required-mark">*</span>
+                      </span>
                       <textarea
                         maxLength={2000}
                         disabled={busy}

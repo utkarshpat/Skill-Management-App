@@ -130,7 +130,7 @@ export function CapabilityComposer({
     revision: number;
     fields: CertificationFields;
     hasImage?: boolean;
-    relatedSkills?: { skillId: string }[];
+    relatedSkills?: { skillId?: string; id?: string }[];
   };
   onClose: () => void;
   onSaved: () => void;
@@ -162,7 +162,10 @@ export function CapabilityComposer({
                 revision: initialCredential.revision,
                 reuse: false,
                 fields: initialCredential.fields,
-                skillIds: initialCredential.relatedSkills?.map(s => s.skillId) ?? [],
+                skillIds:
+                  initialCredential.relatedSkills
+                    ?.map(s => s.skillId ?? s.id)
+                    .filter((v): v is string => Boolean(v)) ?? [],
                 uploaded: Boolean(initialCredential.hasImage),
               },
             ]
@@ -1014,16 +1017,18 @@ export function CapabilityComposer({
                           ['credentialUrl', 'Verification URL', 1000],
                         ].map(([key, label, max]) => (
                           <label key={String(key)}>
-                            {label}
-                            {[
-                              'certificationName',
-                              'provider',
-                              'category',
-                              'certificationDate',
-                            ].includes(String(key)) ||
-                            (key === 'expiryDate' && c.fields.expiryDate !== null) ? (
-                              <span className="cert-required-mark"> *</span>
-                            ) : null}
+                            <span>
+                              {label}
+                              {[
+                                'certificationName',
+                                'provider',
+                                'category',
+                                'certificationDate',
+                              ].includes(String(key)) ||
+                              (key === 'expiryDate' && c.fields.expiryDate !== null) ? (
+                                <span className="cert-required-mark"> *</span>
+                              ) : null}
+                            </span>
                             <input
                               type={
                                 String(key).includes('Date')
@@ -1135,7 +1140,9 @@ export function CapabilityComposer({
                     ) : (
                       <div className="cap-skill-fields">
                         <label>
-                          Proficiency <span className="cert-required-mark">*</span>
+                          <span>
+                            Proficiency <span className="cert-required-mark">*</span>
+                          </span>
                           <select
                             value={s.rank}
                             disabled={working}
@@ -1155,7 +1162,9 @@ export function CapabilityComposer({
                           </p>
                         )}
                         <label>
-                          Experience in months <span className="cert-required-mark">*</span>
+                          <span>
+                            Experience in months <span className="cert-required-mark">*</span>
+                          </span>
                           <input
                             type="number"
                             min={0}
@@ -1178,7 +1187,9 @@ export function CapabilityComposer({
                           />
                         </label>
                         <label className="cap-wide">
-                          Describe your experience <span className="cert-required-mark">*</span>
+                          <span>
+                            Describe your experience <span className="cert-required-mark">*</span>
+                          </span>
                           <textarea
                             maxLength={2000}
                             value={s.description}

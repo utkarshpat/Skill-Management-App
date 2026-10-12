@@ -64,8 +64,12 @@ export function CapabilitySubmissions({
   return (
     <section className="cap-submissions">
       <header>
-        <h3>{review ? 'Combined capability reviews' : 'Linked capability submissions'}</h3>
-        <small>Skills and credentials in one request</small>
+        <h3>{review ? 'Combined capability reviews' : 'Capability submissions'}</h3>
+        <small>
+          {review
+            ? 'Skills and credentials in one request'
+            : 'Resume drafts or track reviews. Incomplete drafts enter your profile when required details are complete.'}
+        </small>
       </header>
       {error && (
         <p role="alert">

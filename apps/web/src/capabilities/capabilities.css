@@ -207,6 +207,7 @@
   font-size: 14px;
 }
 .cap-fields input,
+.cap-fields select,
 .cap-fields textarea,
 .cap-skill-fields input,
 .cap-skill-fields select,

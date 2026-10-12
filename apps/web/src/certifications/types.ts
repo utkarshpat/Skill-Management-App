@@ -11,7 +11,8 @@ export interface CertificationFields {
   notes: string;
 }
 export interface CertificationRecord extends CertificationFields {
-  activeSubmissionId?:string;
+  activeSubmissionId?: string;
+  relatedSkills?: { id: string; name: string }[];
   hasImage?: boolean;
   id: string;
   revision: number;
