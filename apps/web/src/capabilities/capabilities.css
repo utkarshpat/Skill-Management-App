@@ -1023,7 +1023,7 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: var(--accent);
+  color: var(--accent-ink);
   font-weight: 600;
   list-style: none;
 }
@@ -1067,10 +1067,97 @@
   overflow-wrap: anywhere;
 }
 .cap-ai-suggested-skill {
-  border-color: var(--accent) !important;
+  border-color: var(--accent-ink) !important;
   background: var(--accent-soft);
 }
 .cap-extra-field summary:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-ink);
   outline-offset: 4px;
+}
+
+.cap-proficiency h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.cap-proficiency > p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.cap-skill-fields .cap-proficiency-choices {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+}
+.cap-skill-fields .cap-proficiency-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: center;
+}
+.cap-skill-fields .cap-proficiency-card input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent-ink);
+}
+.cap-proficiency-card > span {
+  font-size: 19px;
+  font-weight: 700;
+}
+.cap-proficiency-card strong {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.cap-skill-fields .cap-proficiency-card.selected {
+  border-color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+.cap-proficiency-card.selected strong {
+  color: var(--accent-ink);
+}
+.cap-proficiency-card:focus-within {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 3px;
+}
+.cap-proficiency-choices:disabled .cap-proficiency-card {
+  cursor: default;
+  opacity: 0.65;
+}
+.cap-proficiency-criterion {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  margin-top: 14px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+}
+.cap-proficiency-criterion > svg {
+  flex-shrink: 0;
+  color: var(--accent-ink);
+}
+.cap-proficiency-criterion p {
+  margin: 8px 0 0;
+  color: var(--accent-ink);
+  line-height: 1.6;
+  font-size: 13px;
+}
+@media (max-width: 480px) {
+  .cap-skill-fields .cap-proficiency-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

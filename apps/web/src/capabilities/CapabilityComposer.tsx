@@ -5,6 +5,7 @@ import {
   Award,
   Check,
   ChevronRight,
+  Info,
   Plus,
   Search,
   Send,
@@ -1545,28 +1546,51 @@ export function CapabilityComposer({
                 </p>
               ) : (
                 <div className="cap-skill-fields">
-                  <label>
-                    <span>
-                      Proficiency <span className="cert-required-mark">*</span>
-                    </span>
-                    <select
-                      value={s.rank}
-                      disabled={working}
-                      onChange={e => patchSkill(s.id, { rank: Number(e.target.value) })}
-                    >
-                      <option value={0}>Choose level…</option>
-                      {s.choice.levels.map(l => (
-                        <option key={l.rank} value={l.rank}>
-                          L{l.rank} · {l.name}
-                        </option>
+                  <section className="cap-proficiency cap-wide">
+                    <h3>
+                      Proficiency level <span className="cert-required-mark">*</span>
+                    </h3>
+                    <p>Select the level that best describes your current proficiency.</p>
+                    <fieldset className="cap-proficiency-choices" disabled={working}>
+                      <legend className="sr-only">Proficiency level</legend>
+                      {s.choice.levels.map(level => (
+                        <label
+                          key={level.rank}
+                          className={
+                            'cap-proficiency-card' + (s.rank === level.rank ? ' selected' : '')
+                          }
+                        >
+                          <input
+                            type="radio"
+                            name={`proficiency-${s.id}`}
+                            value={level.rank}
+                            checked={s.rank === level.rank}
+                            required
+                            onChange={() => patchSkill(s.id, { rank: level.rank })}
+                          />
+                          <span>L{level.rank}</span>
+                          <strong>{level.name}</strong>
+                        </label>
                       ))}
-                    </select>
-                  </label>
-                  {s.choice.levels.find(l => l.rank === s.rank)?.description && (
-                    <p className="cap-help cap-wide">
-                      {s.choice.levels.find(l => l.rank === s.rank)?.description}
-                    </p>
-                  )}
+                    </fieldset>
+                    {s.choice.levels
+                      .filter(level => level.rank === s.rank)
+                      .map(level => (
+                        <div
+                          className="cap-proficiency-criterion"
+                          key={level.rank}
+                          aria-live="polite"
+                        >
+                          <Info size={20} aria-hidden="true" />
+                          <div>
+                            <strong>
+                              Level {level.rank} · {level.name}
+                            </strong>
+                            <p>{level.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                  </section>
                   <label>
                     <span>
                       Experience in months <span className="cert-required-mark">*</span>
