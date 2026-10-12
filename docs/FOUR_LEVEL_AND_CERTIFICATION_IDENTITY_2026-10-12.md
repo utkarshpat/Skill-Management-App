@@ -26,4 +26,12 @@ The four-level SQL rollback fixture verifies immutable old claim facts, new four
 
 Permanent installation and catalogue rollout must be coordinated with the matching API/web deployment because this database also backs the hosted demo. Migration 065 scheduler activation stays deferred. Preview, current administrator/permission/revision rechecks, transaction and per-definition audit are required for the catalogue rollout. New versions preserve each existing skill's ID, code, name/category/status and previous history; Oracle skills are added through the existing governed catalogue/amendment flow.
 
-Parallel local certificate-layout edits were observed during this work and are not part of this release's committed scope. Release checks should run against a clean snapshot containing only the proficiency/identity changes.
+## Applied release evidence — 12 October 2026
+
+The user confirmed production redeployment of the pushed release. Hosted catalogue/business JavaScript contains the new four-level labels. Migrations 074 and 075 were then installed on `skill-management-dev`, which also backs the production demo. Migration 065 remains uninstalled.
+
+The rollout preview and execution receipt matched (`74fb94f1936fc22fa6af7242df7b960aefefdd2d76c368c28f47c541fe54bba0`). Under current catalogue permission and revision checks, a single transaction versioned 70 unchanged seed definitions with individual audits. Post-install inventory: schema version 75, 70 current enterprise-v3 definitions, one preserved custom definition, 0 employee claims, 0 credentials and 0 demands. Previous definition versions remain available. The custom QA rubric still requires explicit manual alignment; it is excluded from new-claim discovery until aligned.
+
+The installed-database four-level rollback fixture passed, as did all six credential identity fixtures (normalized identity, printed ID, blank ID, valid renewal, foreign renewal and grouped renewal). Synthetic records were rolled back. The hosted employee form was opened through demo login: API Design offers L1 Foundation, L2 Autonomous, L3 Experienced and L4 Expert, and selecting Expert shows the new skill-specific criterion. The unsaved form was discarded; no production test claim was submitted.
+
+Source validation passed 181 frontend tests, 293 API tests, workspace typechecks, architecture checks and production builds. The release commit also includes the concurrent compact certificate-layout changes. The proficiency/identity source checks ran against an isolated snapshot; installed SQL and hosted form checks used the deployed combined release. Complete hosted submission/review/renewal acceptance and an explicit simultaneous-request race fixture are not claimed by these checks.
