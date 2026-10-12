@@ -1,5 +1,7 @@
 .capability-composer {
   width: min(1180px, calc(100vw - 32px));
+  height: min(820px, calc(100dvh - 32px));
+  overflow: clip;
   max-height: calc(100dvh - 32px);
 }
 .capability-composer .form-dialog-body {
@@ -436,4 +438,9 @@
       border-color 0.15s,
       background-color 0.15s;
   }
+}
+
+.capability-composer .app-toast-stack {
+  position: absolute;
+  bottom: 80px;
 }
