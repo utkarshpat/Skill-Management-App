@@ -1011,3 +1011,66 @@
 .cap-discard-dialog .form-dialog-body {
   flex: 0 1 auto;
 }
+
+.cap-extra-field {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.cap-extra-field summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+  list-style: none;
+}
+.cap-extra-field summary::-webkit-details-marker {
+  display: none;
+}
+.cap-extra-field[open] summary {
+  margin-bottom: 12px;
+}
+.cap-extra-field label {
+  display: grid;
+  gap: 8px;
+}
+.cap-extra-field small {
+  display: block;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.cap-extra-field .cap-evidence-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  margin-top: 12px;
+}
+.cap-evidence-upload input {
+  max-width: 230px;
+}
+.cap-pending-evidence {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+.cap-pending-evidence span {
+  overflow-wrap: anywhere;
+}
+.cap-ai-suggested-skill {
+  border-color: var(--accent) !important;
+  background: var(--accent-soft);
+}
+.cap-extra-field summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}

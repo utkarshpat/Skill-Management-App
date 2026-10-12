@@ -11,6 +11,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
+import { compressEvidenceImage } from '../evidence-image';
 import { ClaimEvidence } from '../ClaimEvidence';
 import type { Claim } from '../MySkills';
 import { FormDialog } from '../FormDialog';
@@ -191,6 +192,7 @@ export function CapabilityComposer({
   const [autofillingCertificate, setAutofillingCertificate] = useState<string>();
   const [editingSkill, setEditingSkill] = useState<string>();
   const [skillDialogError, setSkillDialogError] = useState('');
+  const [pendingEvidence, setPendingEvidence] = useState<Record<string, File[]>>({});
   const loadedCataloguePage = useRef(0);
   const [catalogueAttempt, setCatalogueAttempt] = useState(0);
   const [cataloguePage, setCataloguePage] = useState(1);
@@ -503,7 +505,6 @@ export function CapabilityComposer({
       if (
         !s.reuse &&
         (!s.rank ||
-          !s.description.trim() ||
           !Number.isInteger(s.experienceMonths) ||
           s.experienceMonths < 0 ||
           s.experienceMonths > 600)
@@ -534,6 +535,12 @@ export function CapabilityComposer({
     const invalid = validate();
     if (invalid) {
       if (!submit) {
+        if (Object.values(pendingEvidence).some(files => files.length)) {
+          setError(
+            'Complete proficiency and certificate details before saving your evidence images.',
+          );
+          return;
+        }
         await saveIncomplete();
         return;
       }
@@ -562,6 +569,29 @@ export function CapabilityComposer({
       sync(saved);
       const skillRevisions = saved.skills.map(s => ({ id: s.id, revision: s.revision }));
       const certRevisions = saved.certifications.map(c => ({ id: c.id, revision: c.revision }));
+      for (const skill of skills) {
+        const current = skillRevisions.find(v => v.id === skill.id)!;
+        for (const file of pendingEvidence[skill.id] ?? []) {
+          setPhase(`Uploading evidence for ${skill.choice.name}-`);
+          const image = await compressEvidenceImage(file);
+          const uploaded = await readApiResponse<{ revision: number }>(
+            await authenticatedFetch(`/api/my-skills/${skill.id}/evidence`, {
+              method: 'POST',
+              signal: abort.signal,
+              headers: { 'Content-Type': image.type, 'X-Claim-Revision': String(current.revision) },
+              body: image,
+            }),
+            'Draft saved, but evidence upload could not be confirmed.',
+          );
+          current.revision = uploaded.revision;
+          if (!mounted.current) return;
+          patchSkill(skill.id, { revision: uploaded.revision });
+          setPendingEvidence(old => ({
+            ...old,
+            [skill.id]: (old[skill.id] ?? []).filter(v => v !== file),
+          }));
+        }
+      }
       for (const certificate of certs) {
         if (!certificate.file || certificate.uploaded) continue;
         setPhase(`Uploading ${certificate.file.name}…`);
@@ -702,6 +732,7 @@ export function CapabilityComposer({
         return;
       }
       sync(saved, true);
+      setPendingEvidence({});
       setRecovery(false);
       setError(
         'Saved draft loaded. Review your details and reselect any file whose upload was not completed.',
@@ -1098,6 +1129,11 @@ export function CapabilityComposer({
                             onClick={() => {
                               dirty.current = true;
                               setSkills(old => old.filter(v => v.id !== s.id));
+                              setPendingEvidence(old => {
+                                const next = { ...old };
+                                delete next[s.id];
+                                return next;
+                              });
                               setCerts(old =>
                                 old.map(c => ({
                                   ...c,
@@ -1166,22 +1202,53 @@ export function CapabilityComposer({
                   {catalogueError && <p role="alert">{catalogueError}</p>}
                   <div className="cap-suggestion-bar">
                     <div className="cap-skill-results" aria-busy={searching}>
-                      {options.slice(0, 12).map(option => (
-                        <button
-                          key={option.id}
-                          type="button"
-                          disabled={
-                            working ||
-                            skills.some(s => s.choice.id === option.id) ||
-                            skills.length >= 10
-                          }
-                          onClick={() => addSkill(option)}
-                        >
-                          <Plus size={15} />
-                          {option.name}
-                          <small>{option.category}</small>
-                        </button>
-                      ))}
+                      {[
+                        ...suggestions.map(v => v.skill),
+                        ...options.filter(
+                          option => !suggestions.some(v => v.skill.id === option.id),
+                        ),
+                      ]
+                        .filter(
+                          option =>
+                            !query.trim() ||
+                            `${option.name} ${option.category}`
+                              .toLowerCase()
+                              .includes(query.trim().toLowerCase()),
+                        )
+                        .slice(0, 12)
+                        .map(option => {
+                          const suggested = suggestions.find(v => v.skill.id === option.id);
+                          return (
+                            <button
+                              key={option.id}
+                              type="button"
+                              className={suggested ? 'cap-ai-suggested-skill' : undefined}
+                              title={suggested?.reason}
+                              disabled={
+                                working ||
+                                skills.some(s => s.choice.id === option.id) ||
+                                skills.length >= 10
+                              }
+                              onClick={() => {
+                                addSkill(option);
+                                if (suggested && suggestionCertificate)
+                                  patchCertificate(suggestionCertificate, {
+                                    skillIds: [
+                                      ...new Set([
+                                        ...(certs.find(c => c.id === suggestionCertificate)
+                                          ?.skillIds ?? []),
+                                        option.id,
+                                      ]),
+                                    ],
+                                  });
+                              }}
+                            >
+                              {suggested ? <Sparkles size={15} /> : <Plus size={15} />}
+                              {option.name}
+                              <small>{suggested ? 'AI suggested' : option.category}</small>
+                            </button>
+                          );
+                        })}
                       {searching && <span role="status">Searching catalogue…</span>}
                     </div>
                   </div>
@@ -1210,41 +1277,6 @@ export function CapabilityComposer({
                       >
                         Use these catalogue details
                       </button>
-                    </section>
-                  )}
-                  {suggestions.length > 0 && (
-                    <section className="cap-ai-suggestions">
-                      <h4>
-                        <Sparkles size={16} /> Suggested related skills
-                      </h4>
-                      <p>Select the relevant suggestions; no skill has been added automatically.</p>
-                      <div className="cap-ai-suggestion-strip">
-                        {suggestions.map(({ skill, reason }) => (
-                          <button
-                            type="button"
-                            key={skill.id}
-                            title={reason}
-                            disabled={working || skills.some(s => s.choice.id === skill.id)}
-                            onClick={() => {
-                              addSkill(skill);
-                              if (suggestionCertificate)
-                                patchCertificate(suggestionCertificate, {
-                                  skillIds: [
-                                    ...new Set([
-                                      ...(certs.find(c => c.id === suggestionCertificate)
-                                        ?.skillIds ?? []),
-                                      skill.id,
-                                    ]),
-                                  ],
-                                });
-                            }}
-                          >
-                            <Plus size={14} />
-                            {skill.name}
-                            <small>{reason}</small>
-                          </button>
-                        ))}
-                      </div>
                     </section>
                   )}
 
@@ -1299,7 +1331,7 @@ export function CapabilityComposer({
                       <span>
                         {s.reuse
                           ? 'Manager reviewed'
-                          : s.rank && s.description.trim()
+                          : s.rank
                             ? `L${s.rank} · ${s.experienceMonths} months`
                             : 'Complete skill details'}
                       </span>
@@ -1495,10 +1527,8 @@ export function CapabilityComposer({
                   disabled={working}
                   onClick={() => {
                     const dateError = skillDateError(s.lastUsedOn);
-                    if (!s.reuse && (!s.rank || !s.description.trim() || dateError)) {
-                      setSkillDialogError(
-                        dateError || 'Choose proficiency and describe your experience.',
-                      );
+                    if (!s.reuse && (!s.rank || dateError)) {
+                      setSkillDialogError(dateError || 'Choose your proficiency.');
                       return;
                     }
                     setEditingSkill(undefined);
@@ -1561,9 +1591,7 @@ export function CapabilityComposer({
                     />
                   </label>
                   <label className="cap-wide">
-                    <span>
-                      Describe your experience <span className="cert-required-mark">*</span>
-                    </span>
+                    <span>Describe your experience</span>
                     <textarea
                       maxLength={2000}
                       value={s.description}
@@ -1571,35 +1599,89 @@ export function CapabilityComposer({
                       onChange={e => patchSkill(s.id, { description: e.target.value })}
                     />
                   </label>
-                  <label className="cap-wide">
-                    Projects
-                    <textarea
-                      maxLength={2000}
-                      value={s.projects}
-                      disabled={working}
-                      onChange={e => patchSkill(s.id, { projects: e.target.value })}
-                    />
-                  </label>
-                  <label className="cap-wide">
-                    Other evidence references
-                    <textarea
-                      maxLength={2000}
-                      value={s.evidence}
-                      disabled={working}
-                      onChange={e => patchSkill(s.id, { evidence: e.target.value })}
-                    />
-                  </label>
+                  <details className="cap-extra-field cap-wide">
+                    <summary>
+                      <Plus size={15} /> Projects
+                    </summary>
+                    <label>
+                      Projects
+                      <textarea
+                        maxLength={2000}
+                        value={s.projects}
+                        disabled={working}
+                        onChange={e => patchSkill(s.id, { projects: e.target.value })}
+                      />
+                    </label>
+                  </details>
+                  <details className="cap-extra-field cap-wide">
+                    <summary>
+                      <Plus size={15} /> Evidence
+                    </summary>
+                    <label>
+                      Evidence references
+                      <textarea
+                        maxLength={2000}
+                        value={s.evidence}
+                        disabled={working}
+                        onChange={e => patchSkill(s.id, { evidence: e.target.value })}
+                      />
+                    </label>
+                    {s.revision > 0 ? (
+                      <ClaimEvidence
+                        claim={{ id: s.id, revision: s.revision, evidence: s.evidence } as Claim}
+                        onRevision={revision => patchSkill(s.id, { revision })}
+                        onBusy={setUploadBusy}
+                      />
+                    ) : (
+                      <>
+                        <label className="cap-evidence-upload">
+                          <Plus size={15} /> Add evidence image
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            disabled={working || (pendingEvidence[s.id]?.length ?? 0) >= 6}
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              e.target.value = '';
+                              if (!file) return;
+                              if (
+                                !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
+                                file.size > 10 * 1024 * 1024
+                              ) {
+                                setSkillDialogError('Choose JPEG, PNG or WebP, up to 10 MB.');
+                                return;
+                              }
+                              dirty.current = true;
+                              setPendingEvidence(old => ({
+                                ...old,
+                                [s.id]: [...(old[s.id] ?? []), file].slice(0, 6),
+                              }));
+                            }}
+                          />
+                        </label>
+                        <small>JPEG, PNG or WebP - up to 10 MB - compressed when saved</small>
+                      </>
+                    )}
+                    {(pendingEvidence[s.id] ?? []).map((file, index) => (
+                      <div className="cap-pending-evidence" key={index}>
+                        <span>{file.name}</span>
+                        <button
+                          type="button"
+                          disabled={working}
+                          aria-label={`Remove ${file.name}`}
+                          onClick={() =>
+                            setPendingEvidence(old => ({
+                              ...old,
+                              [s.id]: old[s.id].filter((_, i) => i !== index),
+                            }))
+                          }
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                    ))}
+                  </details>
                 </div>
-              )}
-              {s.revision > 0 && !s.reuse && (
-                <fieldset disabled={working} className="cap-composer-body">
-                  <legend>Supporting evidence images</legend>
-                  <ClaimEvidence
-                    claim={{ id: s.id, revision: s.revision, evidence: s.evidence } as Claim}
-                    onRevision={revision => patchSkill(s.id, { revision })}
-                    onBusy={setUploadBusy}
-                  />
-                </fieldset>
               )}
             </FormDialog>
           ))}

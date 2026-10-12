@@ -1,8 +1,8 @@
 import { AccessError } from '../../shared/errors.js';
 
 export interface SkillClaim {
-  activeSubmissionId?:string;
-  linkedCertifications?:number;
+  activeSubmissionId?: string;
+  linkedCertifications?: number;
   id: string;
   revision: number;
   skillId: string;
@@ -222,12 +222,8 @@ export function claimChange(input: unknown, at = new Date()) {
     if (!Number.isSafeInteger(body[key]) || Number(body[key]) < min || Number(body[key]) > max)
       throw new AccessError(400, 'Check proficiency, experience and draft version.');
   }
-  if (
-    typeof body.description !== 'string' ||
-    !body.description.trim() ||
-    body.description.trim().length > 2000
-  )
-    throw new AccessError(400, 'Describe your experience using up to 2,000 characters.');
+  if (typeof body.description !== 'string' || body.description.trim().length > 2000)
+    throw new AccessError(400, 'Keep your experience description within 2,000 characters.');
   const projects = claimText(body.projects, 2000),
     evidence = claimText(body.evidence, 2000);
   let lastUsedOn: string | null | undefined;

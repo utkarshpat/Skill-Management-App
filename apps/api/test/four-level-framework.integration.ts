@@ -80,7 +80,13 @@ await withDatabase(async pool => {
         .execute('dbo.SaveSkillCatalogue');
       return rev + 1;
     };
-    const saveClaim = (owner: string, id: string, definition: number, rank: number) =>
+    const saveClaim = (
+      owner: string,
+      id: string,
+      definition: number,
+      rank: number,
+      description = 'Rollback-only claim',
+    ) =>
       new sql.Request(tx)
         .input('account_id', sql.UniqueIdentifier, account)
         .input('actor_id', sql.UniqueIdentifier, owner)
@@ -94,7 +100,7 @@ await withDatabase(async pool => {
             definitionRevision: definition,
             rank,
             experienceMonths: 12,
-            description: 'Rollback-only claim',
+            description,
             projects: '',
             evidence: '',
             lastUsedOn: null,
@@ -137,7 +143,28 @@ await withDatabase(async pool => {
       })),
       false,
     );
-    await saveClaim(newOwner, newClaim, version, 4);
+    const optionalDescription = await readFile(
+      'database/migrations/076_optional_skill_description.sql',
+      'utf8',
+    );
+    for (const batch of optionalDescription.split(/^GO\s*$/m))
+      if (batch.trim()) await new sql.Request(tx).batch(batch);
+    await saveClaim(newOwner, newClaim, version, 4, '');
+    assert.equal(
+      (
+        await req()
+          .input('claim', sql.UniqueIdentifier, newClaim)
+          .query(
+            'SELECT description FROM dbo.SkillClaimDraft WHERE account_id=@a AND claim_id=@claim',
+          )
+      ).recordset[0].description,
+      '',
+    );
+    assert.equal(
+      await snapshot(),
+      before,
+      'Optional descriptions must preserve existing claim history',
+    );
     await req()
       .input('id', sql.UniqueIdentifier, newClaim)
       .input('m', sql.UniqueIdentifier, manager)

@@ -1,0 +1,12 @@
+# Compact skill details
+
+User-approved refinement on 12 October 2026:
+
+- AI-extracted canonical related skills appear first in the existing horizontal recommendation bar, marked AI suggested. Selection stays explicit and links the selected suggestion to its source certificate. Search filters the combined bar; the separate AI skill section is removed.
+- Experience description is optional in both the common composer and the existing skill editor. Proficiency, numeric experience bounds, dates, field lengths, ownership and review authorization remain enforced.
+- Projects and Evidence open through compact plus disclosures. Evidence references remain editable; saved claims use the existing private image uploader. New skills can queue up to six JPEG/PNG/WebP images, each up to 10 MB, for compression and upload after the claim draft is persisted.
+- Queued uploads run sequentially using each returned claim revision. Review submission waits for uploads and passes updated revisions. Failed or uncertain writes keep the form in recovery; recovery reloads saved facts and requires reselecting unconfirmed local files rather than automatically replaying an uncertain upload. Incomplete drafts with queued evidence require complete record details before saving those images; no file is silently discarded by that path.
+
+Migration 076 removes only the legacy nonempty experience-description constraint and changes SaveOwnSkillClaim to accept empty strings. The API still requires a string and limits it to 2,000 characters. Existing descriptions are not rewritten, and no permission or attachment read policy changes. Migration 076 was installed on skill-management-dev (also backing the hosted demo); migration 065 remains deferred. This database change is backward compatible with the previously deployed API's stricter input validation.
+
+Validation: 181 frontend tests, 294 API tests, workspace typechecks, architecture and web build passed. A SQL rollback fixture applies 076, saves an empty description through SaveOwnSkillClaim, and verifies earlier history is unchanged. Local browser checks confirm blank description can finish skill details and Projects/Evidence start collapsed. No synthetic employee claim was persisted through the browser. Local attachment storage was unavailable, so a real uploaded-file acceptance run and live AI suggestion rendering are not claimed. The web/API deployment is a separate release step from database installation.

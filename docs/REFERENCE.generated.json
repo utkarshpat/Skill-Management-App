@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "988a1b061161f3b2",
+  "revision": "e757efa31344aded",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -77,7 +77,8 @@
       "072_legacy_certification_resubmission.sql",
       "073_capability_draft_removal.sql",
       "074_four_level_proficiency.sql",
-      "075_certification_duplicate_identity.sql"
+      "075_certification_duplicate_identity.sql",
+      "076_optional_skill_description.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -6774,7 +6775,7 @@
       "name": "SaveOwnSkillClaim",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@expected_revision int,@payload nvarchar(max)",
-      "source": "database/migrations/042_skill_last_used.sql"
+      "source": "database/migrations/076_optional_skill_description.sql"
     },
     {
       "name": "OwnAiConversations",

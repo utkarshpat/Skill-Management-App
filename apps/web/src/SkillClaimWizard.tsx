@@ -162,10 +162,9 @@ export function SkillClaimWizard({
       if (
         !Number.isInteger(draft.experienceMonths) ||
         draft.experienceMonths < 0 ||
-        draft.experienceMonths > 600 ||
-        !draft.description.trim()
+        draft.experienceMonths > 600
       ) {
-        setValidation('Enter your experience and describe how you used this skill.');
+        setValidation('Enter experience between 0 and 600 months.');
         onPage(1);
         requestAnimationFrame(() =>
           document.getElementById('skill-experience-description')?.focus(),
@@ -426,16 +425,12 @@ export function SkillClaimWizard({
                   onChange={value => onDraft({ ...draft, ...value })}
                 />
                 <label>
-                  Describe your experience{' '}
-                  <span className="skill-required" aria-hidden="true">
-                    *
-                  </span>
+                  Describe your experience
                   <textarea
                     id="skill-experience-description"
                     name="experienceDescription"
                     autoComplete="off"
                     maxLength={2000}
-                    aria-required="true"
                     rows={3}
                     value={draft.description}
                     onChange={event => onDraft({ ...draft, description: event.target.value })}

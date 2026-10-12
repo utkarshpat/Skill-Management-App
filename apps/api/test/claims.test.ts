@@ -32,7 +32,6 @@ test('draft validation rejects fabricated owners, verification, invalid levels, 
     { rank: 0 },
     { definitionRevision: 0 },
     { revision: -1 },
-    { description: ' ' },
     { description: 'x'.repeat(2001) },
   ])
     assert.throws(() => claimChange({ ...valid, ...fields }));
@@ -181,4 +180,10 @@ test('own-skills HTTP binds actor to identity and denies revoked or fabricated p
       server.close(error => (error ? reject(error) : resolve())),
     );
   }
+});
+
+test('experience description may be blank without relaxing other claim validation', () => {
+  const valid = draft();
+  assert.equal(claimChange({ ...valid, description: '  ' }).description, '');
+  assert.throws(() => claimChange({ ...valid, description: null }));
 });
