@@ -875,3 +875,95 @@
     padding: 16px;
   }
 }
+/* Compact certificate-first intake and centered close confirmation. */
+.cap-discard-dialog {
+  width: min(440px, calc(100vw - 32px));
+  height: auto;
+  margin: auto;
+}
+.cap-discard-dialog .form-dialog-body {
+  padding: 18px 20px;
+}
+.cap-discard-dialog .form-dialog-body p {
+  margin: 0;
+  color: var(--muted);
+}
+.cap-discard-dialog .form-dialog-footer {
+  justify-content: flex-end;
+}
+.capability-composer .cap-entry {
+  padding: 14px;
+}
+.cap-entry .cap-upload-step {
+  padding: 0;
+  gap: 12px;
+}
+.cap-entry-certificate > summary {
+  padding: 12px 16px;
+}
+.cap-entry-certificate .cap-upload-card {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+  padding: 16px;
+  border: 0;
+  border-radius: 0;
+}
+.cap-entry-certificate .cap-upload-guide {
+  align-self: start;
+}
+.cap-entry-certificate .cap-fields {
+  gap: 12px;
+}
+.cap-entry-certificate .certificate-dropzone {
+  min-height: 220px;
+}
+.cap-entry-certificate .certificate-dropzone img,
+.cap-entry-certificate .certificate-pdf-preview canvas {
+  max-height: 360px;
+  object-fit: contain;
+}
+.cap-expiry-options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.cap-expiry-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cap-expiry-presets button {
+  padding: 6px 10px;
+  min-height: 32px;
+  font-size: 13px;
+}
+.cap-expiry-presets button[aria-pressed='true'] {
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
+  background: var(--raised);
+}
+@media (max-width: 750px) {
+  .cap-entry-certificate .cap-upload-card {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+}
+.capability-composer .form-dialog-body {
+  padding: 0;
+}
+.cap-entry-certificate .cap-fields input,
+.cap-entry-certificate .cap-fields select {
+  padding: 8px 10px;
+}
+.cap-entry-certificate .certificate-dropzone > h3,
+.cap-entry-certificate .certificate-dropzone h3 {
+  font-size: 18px;
+}
+.form-dialog.cap-discard-dialog {
+  height: fit-content;
+  max-height: calc(100dvh - 32px);
+}
+.cap-discard-dialog .form-dialog-body {
+  flex: 0 1 auto;
+}

@@ -25,6 +25,7 @@ import {
   useCertificationImage,
 } from '../certifications/CertificationImage';
 import {
+  addCredentialMonths,
   emptyCertification,
   certificationFieldError,
   certificationFields,
@@ -186,6 +187,7 @@ export function CapabilityComposer({
     [phase, setPhase] = useState(''),
     [discard, setDiscard] = useState(false),
     [recovery, setRecovery] = useState(false);
+  const [expandedCertificate, setExpandedCertificate] = useState<string | undefined>(certs[0]?.id);
   const [autofillingCertificate, setAutofillingCertificate] = useState<string>();
   const [editingSkill, setEditingSkill] = useState<string>();
   const [skillDialogError, setSkillDialogError] = useState('');
@@ -217,7 +219,7 @@ export function CapabilityComposer({
     [personalReady, setPersonalReady] = useState(false),
     [bootstrapAttempt, setBootstrapAttempt] = useState(0),
     [definitions, setDefinitions] = useState<any[]>([]);
-  const hasUploadedCertificate = certs.some(c => Boolean(c.file || c.uploaded));
+  const hasUploadedCertificate = certs.some(c => Boolean(c.file || c.uploaded || c.reuse));
   const working = busy || uploadBusy || initializing || !personalReady || recovery;
   const patchCertificate = (certId: string, patch: Partial<SelectedCertificate>) => {
     dirty.current = true;
@@ -259,11 +261,13 @@ export function CapabilityComposer({
   const addCertificate = () => {
     if (working || certs.length >= 10) return;
     dirty.current = true;
+    const certificateId = crypto.randomUUID();
+    setExpandedCertificate(certificateId);
     setHasCertificate(true);
     setCerts(old => [
       ...old,
       {
-        id: crypto.randomUUID(),
+        id: certificateId,
         revision: 0,
         reuse: false,
         fields: { ...emptyCertification(), expiryDate: '' },
@@ -289,7 +293,8 @@ export function CapabilityComposer({
         })),
       );
       setHasCertificate(value.intake.certifications.length > 0);
-      setPage(1);
+      setExpandedCertificate(value.intake.certifications[0]?.id);
+      setPage(value.intake.certifications.length ? 0 : 1);
       return;
     }
     setSkills(old =>
@@ -338,7 +343,8 @@ export function CapabilityComposer({
     );
     if (restore) {
       setHasCertificate(value.certifications.length > 0);
-      setPage(1);
+      setExpandedCertificate(value.certifications[0]?.id);
+      setPage(value.certifications.length ? 0 : 1);
     }
   }
   useEffect(() => {
@@ -476,6 +482,20 @@ export function CapabilityComposer({
         setPhase('');
       }
     }
+  }
+  function checkCertificates() {
+    for (const c of certs) {
+      if (c.reuse) continue;
+      const invalid =
+        certificationFieldError(c.fields, new Date().toISOString().slice(0, 10)) ||
+        (!c.file && !c.uploaded ? 'Upload a file for each certificate.' : '');
+      if (invalid) {
+        setExpandedCertificate(c.id);
+        setError(invalid);
+        return false;
+      }
+    }
+    return true;
   }
   function validate() {
     if (!skills.length) return 'Select at least one published skill.';
@@ -696,6 +716,141 @@ export function CapabilityComposer({
       setBusy(false);
     }
   }
+  const certificateFieldsUI = (c: SelectedCertificate) => (
+    <div className="cap-fields">
+      <label className="cap-wide">
+        Choose an approved credential definition
+        <select
+          disabled={working || c.reuse}
+          value=""
+          onChange={e => {
+            const definition = definitions.find(d => d.id === e.target.value);
+            if (definition)
+              patchCertificate(c.id, {
+                fields: {
+                  ...c.fields,
+                  certificationName: definition.name,
+                  provider: definition.provider,
+                  category: definition.category,
+                },
+              });
+          }}
+        >
+          <option value="">Select a catalogue credential or enter the details below…</option>
+          {definitions.map(d => (
+            <option key={d.id} value={d.id}>
+              {d.name} · {d.provider}
+            </option>
+          ))}
+        </select>
+      </label>
+      {[
+        ['certificationName', 'Certification name', 200],
+        ['provider', 'Issuer', 120],
+        ['category', 'Category', 80],
+        ['certificationDate', 'Issue date', 10],
+        ['expiryDate', 'Expiry date', 10],
+      ].map(([key, label, max]) => (
+        <label key={String(key)} className={key === 'certificationName' ? 'cap-wide' : undefined}>
+          <span>
+            {label}
+            {['certificationName', 'provider', 'category', 'certificationDate'].includes(
+              String(key),
+            ) ||
+            (key === 'expiryDate' && c.fields.expiryDate !== null) ? (
+              <span className="cert-required-mark"> *</span>
+            ) : null}
+          </span>
+          <input
+            type={String(key).includes('Date') ? 'date' : key === 'credentialUrl' ? 'url' : 'text'}
+            value={String(c.fields[key as keyof typeof c.fields] ?? '')}
+            maxLength={Number(max)}
+            disabled={working || c.reuse || (key === 'expiryDate' && c.fields.expiryDate === null)}
+            max={key === 'certificationDate' ? new Date().toISOString().slice(0, 10) : undefined}
+            min={key === 'expiryDate' ? c.fields.certificationDate || undefined : undefined}
+            onChange={e =>
+              patchCertificate(c.id, {
+                fields: {
+                  ...c.fields,
+                  [key]: key === 'expiryDate' ? e.target.value || '' : e.target.value,
+                },
+              })
+            }
+          />
+        </label>
+      ))}
+      <div className="cap-wide cap-expiry-options">
+        <div className="cap-expiry-presets" aria-label="Certificate validity duration">
+          {[
+            [6, '6 months'],
+            [12, '1 year'],
+            [24, '2 years'],
+          ].map(([months, label]) => {
+            const expiry = addCredentialMonths(c.fields.certificationDate, Number(months));
+            return (
+              <button
+                type="button"
+                key={months}
+                className="secondary-button"
+                disabled={working || c.reuse || !expiry}
+                aria-pressed={Boolean(expiry && c.fields.expiryDate === expiry)}
+                onClick={() =>
+                  patchCertificate(c.id, { fields: { ...c.fields, expiryDate: expiry } })
+                }
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        <label className="cap-checkbox">
+          <input
+            type="checkbox"
+            checked={c.fields.expiryDate === null}
+            disabled={working || c.reuse}
+            onChange={e =>
+              patchCertificate(c.id, {
+                fields: { ...c.fields, expiryDate: e.target.checked ? null : '' },
+              })
+            }
+          />
+          Does not expire
+        </label>
+      </div>
+      {(
+        [
+          ['credentialId', 'Credential ID', 200],
+          ['credentialUrl', 'Verification URL', 1000],
+        ] as const
+      ).map(([key, label, max]) => (
+        <label key={key}>
+          {label}
+          <input
+            type={key === 'credentialUrl' ? 'url' : 'text'}
+            value={c.fields[key]}
+            maxLength={max}
+            disabled={working || c.reuse}
+            onChange={e =>
+              patchCertificate(c.id, { fields: { ...c.fields, [key]: e.target.value } })
+            }
+          />
+        </label>
+      ))}
+      <label>
+        Notes
+        <textarea
+          maxLength={2000}
+          disabled={working || c.reuse}
+          value={c.fields.notes}
+          onChange={e =>
+            patchCertificate(c.id, {
+              fields: { ...c.fields, notes: e.target.value },
+            })
+          }
+        />
+      </label>
+    </div>
+  );
   const close = () => {
     if (busy || uploadBusy) return;
     if (dirty.current) setDiscard(true);
@@ -704,8 +859,7 @@ export function CapabilityComposer({
   return (
     <>
       <FormDialog
-        title="Add skills"
-        subtitle="Skills and supporting certificates"
+        title="Add skill"
         className="capability-composer"
         busy={busy || uploadBusy}
         onClose={close}
@@ -714,11 +868,10 @@ export function CapabilityComposer({
         onPageChange={visiblePage => {
           const next = visiblePage;
           if (working) return;
-          if (next > 0 && hasCertificate && !certs.length) {
-            setError(
-              'Add a certificate, or choose Add skill without certificate on the first step.',
-            );
-            return;
+          if (page === 0 && next > 0 && hasUploadedCertificate && !checkCertificates()) return;
+          if (page === 0 && next === 1 && !hasUploadedCertificate) {
+            setCerts([]);
+            setHasCertificate(false);
           }
           if (next === 2) {
             const invalid = validate();
@@ -731,17 +884,7 @@ export function CapabilityComposer({
           setPage(next);
         }}
         message={
-          discard ? (
-            <div className="cap-discard" role="alert">
-              <p>Close without saving these changes?</p>
-              <button type="button" className="secondary-button" onClick={() => setDiscard(false)}>
-                Keep editing
-              </button>
-              <button type="button" className="secondary-button" onClick={onClose}>
-                Discard unsaved changes
-              </button>
-            </div>
-          ) : error ? (
+          error ? (
             <p role="alert">{error}</p>
           ) : phase ? (
             <p role="status">{phase}</p>
@@ -751,89 +894,149 @@ export function CapabilityComposer({
         }
         pages={[
           {
-            label: 'Certificate or skill',
+            label: 'Certificates',
             content: (
               <section className="cap-entry">
-                <h3>Upload your certificate</h3>
                 {hasCertificate && (
                   <section className="cap-upload-step">
                     {certs.map((c, index) => (
-                      <section
-                        className="cap-upload-card"
+                      <details
                         key={c.id}
-                        aria-busy={autofillingCertificate === c.id}
+                        className="cap-accordion cap-entry-certificate"
+                        open={expandedCertificate === c.id}
                       >
-                        <div
-                          className={`cap-upload-file${autofillingCertificate === c.id ? ' is-reading' : ''}`}
-                        >
-                          <h4>{c.fields.certificationName || `Certificate ${index + 1}`}</h4>
-                          {page === 0 && (
-                            <FileCard
-                              certificate={c}
-                              busy={working}
-                              onBusy={setUploadBusy}
-                              onFile={file => patchCertificate(c.id, { file, uploaded: false })}
-                              submissionId={id.current}
-                              fileAvailable={initializing || fileAvailable}
-                              onStoredFile={() =>
-                                setCerts(old =>
-                                  old.map(item =>
-                                    item.id === c.id ? { ...item, uploaded: true } : item,
-                                  ),
-                                )
-                              }
-                            />
-                          )}
-                          {autofillingCertificate === c.id && (
-                            <p className="cap-reading-status" role="status">
-                              <Sparkles size={16} /> Reading certificate…
-                            </p>
-                          )}
-                        </div>
-                        <div className="cap-upload-guide">
-                          {c.reuse ? (
-                            <p>Already reviewed</p>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                className="admin-primary"
-                                disabled={working || !c.file || !aiAvailable}
-                                onClick={() => void autofill(c)}
-                              >
-                                <Sparkles size={16} />{' '}
-                                {autofillingCertificate === c.id
-                                  ? 'Reading certificate…'
-                                  : 'Autofill with AI'}
-                              </button>
-                              <p className="cap-help">
-                                {initializing
-                                  ? 'Getting your form ready…'
-                                  : aiAvailable
-                                    ? 'Shares this file with AI. Review the filled details.'
-                                    : 'AI unavailable. You can fill the details yourself.'}
-                              </p>
-                            </>
-                          )}
-                          {suggestionCertificate === c.id && suggestions.length > 0 && (
-                            <p className="cap-upload-result" role="status">
-                              Details and skill suggestions ready.
-                            </p>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          className="cap-remove"
-                          disabled={working}
-                          onClick={() => {
-                            dirty.current = true;
-                            setCerts(old => old.filter(item => item.id !== c.id));
+                        <summary
+                          onClick={e => {
+                            e.preventDefault();
+                            if (!working)
+                              setExpandedCertificate(
+                                expandedCertificate === c.id ? undefined : c.id,
+                              );
                           }}
                         >
-                          Remove certificate from this draft
-                        </button>
-                      </section>
+                          <Award size={18} />
+                          <span>
+                            <strong>
+                              {c.fields.certificationName || `Certificate ${index + 1}`}
+                            </strong>
+                          </span>
+                          <span className="cap-pill">{c.reuse ? 'Reviewed' : 'Draft'}</span>
+                        </summary>
+                        <section
+                          className="cap-upload-card"
+                          aria-busy={autofillingCertificate === c.id}
+                        >
+                          <div
+                            className={`cap-upload-file${autofillingCertificate === c.id ? ' is-reading' : ''}`}
+                          >
+                            {page === 0 && expandedCertificate === c.id && (
+                              <FileCard
+                                certificate={c}
+                                busy={working}
+                                onBusy={setUploadBusy}
+                                onFile={file => patchCertificate(c.id, { file, uploaded: false })}
+                                submissionId={id.current}
+                                fileAvailable={initializing || fileAvailable}
+                                onStoredFile={() =>
+                                  setCerts(old =>
+                                    old.map(item =>
+                                      item.id === c.id ? { ...item, uploaded: true } : item,
+                                    ),
+                                  )
+                                }
+                              />
+                            )}
+                            {autofillingCertificate === c.id && (
+                              <p className="cap-reading-status" role="status">
+                                <Sparkles size={16} /> Reading certificate…
+                              </p>
+                            )}
+                          </div>
+                          <div className="cap-upload-guide">
+                            {c.reuse ? (
+                              <p>Already reviewed</p>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  className="admin-primary"
+                                  disabled={working || !c.file || !aiAvailable}
+                                  onClick={() => void autofill(c)}
+                                >
+                                  <Sparkles size={16} />{' '}
+                                  {autofillingCertificate === c.id
+                                    ? 'Reading certificate…'
+                                    : 'Autofill with AI'}
+                                </button>
+                                <p className="cap-help">
+                                  {initializing
+                                    ? 'Getting your form ready…'
+                                    : aiAvailable
+                                      ? 'Shares this file with AI. Review the filled details.'
+                                      : 'AI unavailable. You can fill the details yourself.'}
+                                </p>
+                              </>
+                            )}
+                            {suggestionCertificate === c.id && suggestions.length > 0 && (
+                              <p className="cap-upload-result" role="status">
+                                Details and skill suggestions ready.
+                              </p>
+                            )}
+                            {certificateFieldsUI(c)}
+                          </div>
+                          <button
+                            type="button"
+                            className="cap-remove"
+                            disabled={working}
+                            onClick={() => {
+                              dirty.current = true;
+                              const remaining = certs.filter(item => item.id !== c.id);
+                              setCerts(remaining);
+                              if (expandedCertificate === c.id)
+                                setExpandedCertificate(remaining[0]?.id);
+                            }}
+                          >
+                            Remove certificate from this draft
+                          </button>
+                        </section>
+                      </details>
                     ))}
+                    {ownCertificates.some(c => !certs.some(v => v.id === c.id)) && (
+                      <label>
+                        Link an existing certification
+                        <select
+                          value=""
+                          disabled={working || certs.length >= 10}
+                          onChange={e => {
+                            const own = ownCertificates.find(c => c.id === e.target.value);
+                            if (!own) return;
+                            dirty.current = true;
+                            setHasCertificate(true);
+                            setExpandedCertificate(own.id);
+                            setCerts(old => [
+                              ...old,
+                              {
+                                id: own.id,
+                                revision: own.revision,
+                                reuse: own.status === 'APPROVED',
+                                fields: certificationFields(own),
+                                skillIds: skills.map(s => s.choice.id),
+                                uploaded: Boolean(own.hasImage),
+                              },
+                            ]);
+                          }}
+                        >
+                          <option value="">Choose from my credentials…</option>
+                          {ownCertificates
+                            .filter(c => !certs.some(v => v.id === c.id))
+                            .map(c => (
+                              <option key={c.id} value={c.id}>
+                                {c.certificationName} · {c.provider}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    )}
                     <button
                       type="button"
                       className="secondary-button"
@@ -858,243 +1061,15 @@ export function CapabilityComposer({
             ),
           },
           {
-            label: 'Details & skills',
+            label: 'Skills',
             content: (
               <div className="cap-composer-body">
-                <section
-                  className={`cap-certificates${certs.length ? '' : ' cap-certificates-empty'}`}
-                >
-                  <header>
-                    <div>
-                      <h3>
-                        {certs.length ? (
-                          <>
-                            <span className="cap-section-number">1</span> Confirm certificate
-                            details
-                          </>
-                        ) : (
-                          'Add supporting certificates'
-                        )}
-                      </h3>
-                      <p>
-                        Check the extracted fields or enter them yourself. Then connect each
-                        certificate to your skills below.
-                      </p>
-                    </div>
-                  </header>
-                  <label>
-                    Link an existing certification
-                    <select
-                      value=""
-                      disabled={working || certs.length >= 10}
-                      onChange={e => {
-                        const own = ownCertificates.find(c => c.id === e.target.value);
-                        if (!own) return;
-                        dirty.current = true;
-                        setHasCertificate(true);
-                        setCerts(old => [
-                          ...old,
-                          {
-                            id: own.id,
-                            revision: own.revision,
-                            reuse: own.status === 'APPROVED',
-                            fields: certificationFields(own),
-                            skillIds: skills.map(s => s.choice.id),
-                            uploaded: Boolean(own.hasImage),
-                          },
-                        ]);
-                      }}
-                    >
-                      <option value="">Choose from my credentials…</option>
-                      {ownCertificates
-                        .filter(c => !certs.some(v => v.id === c.id))
-                        .map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.certificationName} · {c.provider}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                  {certs.map((c, index) => (
-                    <details key={c.id} className="cap-accordion" open>
-                      <summary>
-                        <Award size={20} />
-                        <span>
-                          <strong>
-                            {c.fields.certificationName || `Certificate ${index + 1}`}
-                          </strong>
-                          <small>
-                            {c.fields.provider || 'Fill credential details'} ·{' '}
-                            {c.fields.expiryDate
-                              ? `Expires ${c.fields.expiryDate}`
-                              : 'Expiry not set / no expiry'}
-                          </small>
-                        </span>
-                        <span className="cap-pill">{c.reuse ? 'Reviewed' : 'Draft'}</span>
-                      </summary>
-                      <div className="cap-certificate-grid">
-                        <div>
-                          {page === 1 && (
-                            <FileCard
-                              certificate={c}
-                              busy={working}
-                              onBusy={setUploadBusy}
-                              onFile={file => patchCertificate(c.id, { file, uploaded: false })}
-                              submissionId={id.current}
-                              fileAvailable={initializing || fileAvailable}
-                              onStoredFile={() =>
-                                setCerts(old =>
-                                  old.map(item =>
-                                    item.id === c.id ? { ...item, uploaded: true } : item,
-                                  ),
-                                )
-                              }
-                            />
-                          )}
-                          {!c.reuse && (
-                            <button
-                              type="button"
-                              className="secondary-button"
-                              disabled={working}
-                              onClick={() => setPage(0)}
-                            >
-                              Upload & AI autofill
-                            </button>
-                          )}
-                        </div>
-                        <div className="cap-fields">
-                          <label className="cap-wide">
-                            Choose an approved credential definition
-                            <select
-                              disabled={working || c.reuse}
-                              value=""
-                              onChange={e => {
-                                const definition = definitions.find(d => d.id === e.target.value);
-                                if (definition)
-                                  patchCertificate(c.id, {
-                                    fields: {
-                                      ...c.fields,
-                                      certificationName: definition.name,
-                                      provider: definition.provider,
-                                      category: definition.category,
-                                    },
-                                  });
-                              }}
-                            >
-                              <option value="">
-                                Select a catalogue credential or enter the details below…
-                              </option>
-                              {definitions.map(d => (
-                                <option key={d.id} value={d.id}>
-                                  {d.name} · {d.provider}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          {[
-                            ['certificationName', 'Certification name', 200],
-                            ['provider', 'Issuer', 120],
-                            ['category', 'Category', 80],
-                            ['certificationDate', 'Issue date', 10],
-                            ['expiryDate', 'Expiry date', 10],
-                            ['credentialId', 'Credential ID', 200],
-                            ['credentialUrl', 'Verification URL', 1000],
-                          ].map(([key, label, max]) => (
-                            <label key={String(key)}>
-                              <span>
-                                {label}
-                                {[
-                                  'certificationName',
-                                  'provider',
-                                  'category',
-                                  'certificationDate',
-                                ].includes(String(key)) ||
-                                (key === 'expiryDate' && c.fields.expiryDate !== null) ? (
-                                  <span className="cert-required-mark"> *</span>
-                                ) : null}
-                              </span>
-                              <input
-                                type={
-                                  String(key).includes('Date')
-                                    ? 'date'
-                                    : key === 'credentialUrl'
-                                      ? 'url'
-                                      : 'text'
-                                }
-                                value={String(c.fields[key as keyof typeof c.fields] ?? '')}
-                                maxLength={Number(max)}
-                                disabled={working || c.reuse}
-                                onChange={e =>
-                                  patchCertificate(c.id, {
-                                    fields: {
-                                      ...c.fields,
-                                      [key]:
-                                        key === 'expiryDate'
-                                          ? e.target.value || ''
-                                          : e.target.value,
-                                    },
-                                  })
-                                }
-                              />
-                            </label>
-                          ))}
-                          <label className="cap-checkbox">
-                            <input
-                              type="checkbox"
-                              checked={c.fields.expiryDate === null}
-                              disabled={working || c.reuse}
-                              onChange={e =>
-                                patchCertificate(c.id, {
-                                  fields: { ...c.fields, expiryDate: e.target.checked ? null : '' },
-                                })
-                              }
-                            />
-                            Does not expire
-                          </label>
-                          <label>
-                            Notes
-                            <textarea
-                              maxLength={2000}
-                              disabled={working || c.reuse}
-                              value={c.fields.notes}
-                              onChange={e =>
-                                patchCertificate(c.id, {
-                                  fields: { ...c.fields, notes: e.target.value },
-                                })
-                              }
-                            />
-                          </label>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="cap-remove"
-                        disabled={working}
-                        onClick={() => {
-                          dirty.current = true;
-                          setCerts(old => old.filter(v => v.id !== c.id));
-                        }}
-                      >
-                        <X size={14} /> Remove from this submission
-                      </button>
-                    </details>
-                  ))}
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    disabled={working || certs.length >= 10}
-                    onClick={addCertificate}
-                  >
-                    <Plus size={16} /> Add certificate
-                  </button>
-                </section>
                 <section className="cap-skill-select">
                   <header>
                     <div>
                       <h3>
-                        <span className="cap-section-number">{certs.length ? 2 : 1}</span> Choose
-                        your skills <span className="cert-required-mark">*</span>
+                        <span className="cap-section-number">1</span> Choose your skills{' '}
+                        <span className="cert-required-mark">*</span>
                       </h3>
                       <p>
                         Choose published catalogue skills. Each skill has its own proficiency and
@@ -1337,7 +1312,7 @@ export function CapabilityComposer({
             ),
           },
           {
-            label: 'Review & save',
+            label: 'Review',
             content: (
               <section className="cap-final">
                 <h3>Review your linked capabilities</h3>
@@ -1444,6 +1419,7 @@ export function CapabilityComposer({
                   className="admin-primary"
                   disabled={working}
                   onClick={() => {
+                    if (page === 0 && hasUploadedCertificate && !checkCertificates()) return;
                     const invalid = page === 1 ? validate() : '';
                     if (invalid) {
                       setError(invalid);
@@ -1628,6 +1604,30 @@ export function CapabilityComposer({
               )}
             </FormDialog>
           ))}
+      {discard && (
+        <FormDialog
+          title="Discard unsaved changes?"
+          className="cap-discard-dialog"
+          onClose={() => setDiscard(false)}
+          footer={
+            <>
+              <button
+                type="button"
+                className="secondary-button"
+                autoFocus
+                onClick={() => setDiscard(false)}
+              >
+                Keep editing
+              </button>
+              <button type="button" className="admin-primary" onClick={onClose}>
+                Discard
+              </button>
+            </>
+          }
+        >
+          <p>Your unsaved changes will be lost.</p>
+        </FormDialog>
+      )}
     </>
   );
 }
