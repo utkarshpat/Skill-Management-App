@@ -5,6 +5,7 @@ import {
   capabilityCommand,
   capabilityDecision,
   normalizeCapabilityIds,
+  capabilityResult,
 } from '../src/modules/skills/capability-submissions.js';
 import { CertificateAutofillService } from '../src/modules/ai/certificate-autofill.js';
 import { MemoryAiBudget } from '../src/modules/ai/budget.js';
@@ -257,4 +258,20 @@ test('SQL JSON IDs normalize consistently for draft recovery, membership and pri
   assert.equal(normalized.items[0].id, cert);
   assert.equal(normalized.items[0].blobName, 'Private/CASE');
   assert.equal(normalized.certifications[0].fields.credentialId, actor.toUpperCase());
+});
+
+test('private incomplete draft DTOs retain empty record arrays without inventing profile credentials', () => {
+  const result = capabilityResult('GET', {
+    id: id.toUpperCase(),
+    revision: 1,
+    status: 'DRAFT',
+    intake: { certifications: [{ id: cert }] },
+  });
+  assert.equal(result.id, id);
+  assert.deepEqual(result.skills, []);
+  assert.deepEqual(result.certifications, []);
+  assert.deepEqual(result.stagedFiles, []);
+  assert.equal(result.intake.certifications.length, 1);
+  assert.throws(() => capabilityResult('GET', null));
+  assert.throws(() => capabilityResult('GET', { skills: 'corrupt' }));
 });

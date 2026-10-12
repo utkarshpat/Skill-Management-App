@@ -289,3 +289,23 @@ export function normalizeCapabilityIds<T>(value: T): T {
         : v;
   return walk(value);
 }
+
+export function capabilityResult(operation: string, value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new AccessError(503, 'Capability result could not be confirmed.');
+  const result = normalizeCapabilityIds(value) as Record<string, any>;
+  const arrays =
+    operation === 'OPTIONS'
+      ? ['claims', 'certifications', 'definitions']
+      : operation === 'LINKS'
+        ? ['links']
+        : operation === 'MINE' || operation === 'QUEUE'
+          ? ['records']
+          : ['skills', 'certifications', 'stagedFiles'];
+  for (const key of arrays) {
+    if (result[key] == null) result[key] = [];
+    else if (!Array.isArray(result[key]))
+      throw new AccessError(503, 'Capability result could not be confirmed.');
+  }
+  return result;
+}

@@ -4,6 +4,7 @@ import { readSqlJson } from '../../shared/sql-json.js';
 import { AccessError } from '../../shared/errors.js';
 import {
   normalizeCapabilityIds,
+  capabilityResult,
   type CapabilitySubmissionStore,
 } from './capability-submissions.js';
 import { BlobServiceClient } from '@azure/storage-blob';
@@ -170,7 +171,8 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
           .input('operation', sql.VarChar(20), operation)
           .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload))
           .execute('dbo.CapabilitySubmissionWorkspace');
-        return normalizeCapabilityIds(
+        return capabilityResult(
+          operation,
           readSqlJson<any>((result.recordsets as unknown as any[][]).flat().at(-1)?.json ?? '{}'),
         );
       });

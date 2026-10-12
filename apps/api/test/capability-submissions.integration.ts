@@ -30,6 +30,7 @@ await withDatabase(async pool => {
     'publish-links',
     'standalone-block',
     'reroute',
+    'legacy-returned',
   ].filter(
     s =>
       !process.env.CAPABILITY_SQL_SCENARIOS ||
@@ -45,6 +46,17 @@ await withDatabase(async pool => {
       if (info.version < 71)
         for (const batch of source.split(/^GO\s*$/m))
           if (batch.trim()) await new sql.Request(tx).batch(batch);
+      if (info.version < 72) {
+        const compatibility = await readFile(
+          new URL(
+            '../../../database/migrations/072_legacy_certification_resubmission.sql',
+            import.meta.url,
+          ),
+          'utf8',
+        );
+        for (const batch of compatibility.split(/^GO\s*$/m))
+          if (batch.trim()) await new sql.Request(tx).batch(batch);
+      }
       const owner = randomUUID(),
         manager = randomUUID(),
         outside = randomUUID(),
@@ -167,7 +179,29 @@ await withDatabase(async pool => {
       const saved = await run(owner, 'SAVE', command);
       assert.equal(saved.skills.length, 2);
       assert.equal(saved.certifications.length, 1);
-      if (scenario === 'standalone-block') {
+      if (scenario === 'legacy-returned') {
+        await new sql.Request(tx)
+          .input('a', sql.UniqueIdentifier, account)
+          .input('c', sql.UniqueIdentifier, cert)
+          .input('e', sql.UniqueIdentifier, randomUUID())
+          .query(
+            "UPDATE dbo.CertificationRecord SET requires_skill_link=0,status='CHANGES_REQUESTED' WHERE account_id=@a AND id=@c;DELETE dbo.SkillCertificationLink WHERE account_id=@a AND certification_id=@c;INSERT dbo.CertificationImageRecord(account_id,certification_id,evidence_id,blob_name,bytes,width,height,active,mime_type,file_name) VALUES(@a,@c,@e,'rollback.pdf',3,NULL,NULL,1,'application/pdf','rollback.pdf');",
+          );
+        await assert.rejects(
+          new sql.Request(tx)
+            .input('a', sql.UniqueIdentifier, account)
+            .input('o', sql.UniqueIdentifier, owner)
+            .input(
+              'p',
+              sql.NVarChar(sql.MAX),
+              JSON.stringify({ id: cert, revision: saved.certifications[0].revision }),
+            )
+            .query(
+              "EXECUTE AS USER=N'skill_management_runtime';BEGIN TRY EXEC dbo.CertificationWorkspace @a,@o,'SUBMIT',@p;REVERT;END TRY BEGIN CATCH REVERT;THROW;END CATCH;",
+            ),
+          (e: any) => e.number === 51012,
+        );
+      } else if (scenario === 'standalone-block') {
         await assert.rejects(
           new sql.Request(tx)
             .input('a', sql.UniqueIdentifier, account)

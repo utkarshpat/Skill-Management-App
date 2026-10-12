@@ -73,7 +73,8 @@
       "068_business_access_audit_subjects.sql",
       "069_business_record_attribution.sql",
       "070_business_submitted_files.sql",
-      "071_linked_capability_submissions.sql"
+      "071_linked_capability_submissions.sql",
+      "072_legacy_certification_resubmission.sql"
     ],
     "tables": {
       "SchemaMigration": {
