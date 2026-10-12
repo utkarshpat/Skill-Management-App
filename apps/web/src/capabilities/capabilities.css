@@ -445,3 +445,327 @@
   position: absolute;
   bottom: 80px;
 }
+
+.cap-upload-step {
+  padding: 28px;
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.cap-upload-step h3 {
+  margin: 8px 0;
+  font-size: 25px;
+}
+.cap-upload-step h4 {
+  margin: 0 0 14px;
+}
+.cap-upload-step p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.cap-upload-step > header {
+  max-width: 760px;
+}
+.cap-upload-step > button {
+  justify-self: start;
+}
+.cap-upload-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  gap: 28px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.cap-upload-card > div {
+  min-width: 0;
+}
+.cap-upload-guide {
+  align-self: center;
+}
+.cap-upload-guide .cap-help {
+  padding: 0;
+  font-size: 12px;
+}
+.cap-upload-result {
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--raised);
+  color: var(--accent-ink) !important;
+}
+.cap-composer-body > section {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  min-width: 0;
+}
+.cap-section-number {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--raised);
+  color: var(--accent-ink);
+  font-size: 14px;
+  vertical-align: middle;
+}
+.cap-certificates-empty {
+  order: 4;
+}
+@media (max-width: 750px) {
+  .cap-upload-step {
+    padding: 16px;
+  }
+  .cap-upload-card {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 18px;
+  }
+  .cap-composer-body > section {
+    padding: 14px;
+  }
+}
+
+.cap-entry .cap-upload-step {
+  padding: 24px 0 0;
+}
+.cap-entry .cap-upload-step > header {
+  display: none;
+}
+.cap-start-options > button[aria-pressed='true'] {
+  border-color: var(--accent-ink);
+  background: var(--raised);
+}
+.cap-search {
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  gap: 8px;
+}
+.cap-search .cap-chips {
+  margin: 0;
+  display: contents;
+}
+.cap-search > input {
+  flex: 1;
+  width: auto;
+  min-width: 180px;
+  min-height: 36px;
+}
+.cap-suggestion-bar {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  position: relative;
+  margin-top: 12px;
+}
+.cap-suggestion-bar .cap-skill-results {
+  flex: 1;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
+  max-height: none;
+  margin: 0;
+  padding-bottom: 8px;
+}
+.cap-suggestion-bar .cap-skill-results button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.cap-show-all {
+  flex-shrink: 0;
+}
+.cap-show-all > summary {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  cursor: pointer;
+}
+.cap-show-all[open] .cap-skill-grid {
+  position: absolute;
+  z-index: 2;
+  top: 50px;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px #0002;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.cap-skill-grid button {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  text-align: left;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--surface);
+  cursor: pointer;
+}
+.cap-skill-grid small {
+  flex-basis: 100%;
+  color: var(--muted);
+}
+.cap-skill-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px;
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.cap-skill-summary > strong {
+  flex: 1;
+}
+.cap-skill-summary > span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.cap-skill-dialog {
+  width: min(760px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+}
+.cap-skill-dialog .form-dialog-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+.cap-submission-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+@media (max-width: 750px) {
+  .cap-show-all[open] .cap-skill-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cap-search > input {
+    min-width: 120px;
+  }
+  .cap-skill-dialog .cap-skill-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cap-without-certificate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px auto 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-ink);
+  font: inherit;
+  cursor: pointer;
+  padding: 12px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.cap-entry > div > p {
+  max-width: 780px;
+}
+.cap-upload-card > .cap-remove {
+  grid-column: 1/-1;
+  justify-self: start;
+  padding: 0;
+}
+
+.cap-ai-suggestion-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 6px 0;
+}
+.cap-ai-suggestion-strip button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.cap-ai-suggestion-strip small {
+  display: none;
+}
+
+.cap-search {
+  position: relative;
+  padding-right: 122px;
+}
+.cap-search > .cap-show-all > summary {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+.cap-search > .cap-show-all[open] .cap-skill-grid {
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+}
+
+.cap-upload-file.is-reading .certificate-dropzone {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-color: var(--accent-ink);
+}
+.cap-upload-file.is-reading .certificate-dropzone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--accent-ink) 8%, transparent);
+  z-index: 2;
+}
+.cap-upload-file.is-reading .certificate-dropzone::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 64px;
+  pointer-events: none;
+  z-index: 3;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--accent-ink) 25%, transparent));
+  border-bottom: 2px solid var(--accent-ink);
+  animation: cap-certificate-scan 1.8s ease-in-out infinite;
+}
+.cap-reading-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--accent-ink) !important;
+  font-size: 14px;
+  margin-bottom: 0;
+}
+@keyframes cap-certificate-scan {
+  from {
+    top: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    top: 100%;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cap-upload-file.is-reading .certificate-dropzone::after {
+    animation: none;
+    top: 45%;
+  }
+}

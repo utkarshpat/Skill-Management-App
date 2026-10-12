@@ -102,6 +102,29 @@ export function registerCapabilityRoutes(
       next(e);
     }
   });
+  const draftAction =
+    (operation: 'DISCARD' | 'RESTORE'): RequestHandler =>
+    async (req, res, next) => {
+      try {
+        if (
+          !req.body ||
+          Object.keys(req.body).some(k => k !== 'revision') ||
+          !Number.isSafeInteger(req.body.revision) ||
+          req.body.revision < 1
+        )
+          throw new AccessError(400, 'A saved draft revision is required.');
+        res.json(
+          await deps!.capabilitySubmissions!.run(res.locals.capabilityActor, operation, {
+            id: certificationId(req.params.id),
+            revision: req.body.revision,
+          }),
+        );
+      } catch (e) {
+        next(e);
+      }
+    };
+  app.post('/api/capability-submissions/:id/discard', draftAction('DISCARD'));
+  app.post('/api/capability-submissions/:id/restore', draftAction('RESTORE'));
   app.post('/api/capability-submissions/intake', async (req, res, next) => {
     try {
       res.json(

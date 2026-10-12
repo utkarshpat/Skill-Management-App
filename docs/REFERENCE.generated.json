@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "d5639c99923bb275",
+  "revision": "8a3cd26bc3852156",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -74,7 +74,8 @@
       "069_business_record_attribution.sql",
       "070_business_submitted_files.sql",
       "071_linked_capability_submissions.sql",
-      "072_legacy_certification_resubmission.sql"
+      "072_legacy_certification_resubmission.sql",
+      "073_capability_draft_removal.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -5760,6 +5761,10 @@
           {
             "sql": "CHECK(reviewer_id IS NULL OR reviewer_id<>person_id)",
             "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_CapabilitySubmission_Status CHECK(status IN('DRAFT','SUBMITTING','SUBMITTED','REVIEWED','LINKED','DISCARDED'))",
+            "source": "073_capability_draft_removal.sql"
           }
         ],
         "indexes": [],
@@ -6447,6 +6452,18 @@
     },
     {
       "method": "POST",
+      "path": "/api/capability-submissions/:id/discard",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/capability-submissions/:id/restore",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "POST",
       "path": "/api/capability-submissions/intake",
       "module": "skills",
       "source": "apps/api/src/modules/skills/capability-routes.ts"
@@ -7105,7 +7122,7 @@
       "name": "CapabilitySubmissionWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/071_linked_capability_submissions.sql"
+      "source": "database/migrations/073_capability_draft_removal.sql"
     },
     {
       "name": "CapabilitySubmissionFiles",

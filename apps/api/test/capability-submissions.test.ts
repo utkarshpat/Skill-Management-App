@@ -224,6 +224,30 @@ test('capability HTTP binds verified actor, validates revision sets and conceals
     200,
   );
   assert.deepEqual(seen, ['SAVE']);
+  for (const action of ['discard', 'restore']) {
+    assert.equal(
+      (
+        await fetch(`${root}/${id}/${action}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ revision: 1, actorId: cert }),
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await fetch(`${root}/${id}/${action}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ revision: 1 }),
+        })
+      ).status,
+      200,
+    );
+  }
+  assert.deepEqual(seen, ['SAVE', 'DISCARD', 'RESTORE']);
+
   const file = await fetch(root + '/' + id + '/files/' + cert, { headers });
   assert.equal(file.status, 200);
   assert.equal(file.headers.get('cache-control'), 'no-store');

@@ -18,6 +18,9 @@ await withDatabase(async pool => {
     'utf8',
   );
   for (const scenario of [
+    'discard-restore',
+    'discard-foreign',
+    'discard-stale',
     'happy',
     'foreign',
     'stale',
@@ -55,6 +58,14 @@ await withDatabase(async pool => {
           'utf8',
         );
         for (const batch of compatibility.split(/^GO\s*$/m))
+          if (batch.trim()) await new sql.Request(tx).batch(batch);
+      }
+      if (info.version < 73) {
+        const removal = await readFile(
+          new URL('../../../database/migrations/073_capability_draft_removal.sql', import.meta.url),
+          'utf8',
+        );
+        for (const batch of removal.split(/^GO\s*$/m))
           if (batch.trim()) await new sql.Request(tx).batch(batch);
       }
       const owner = randomUUID(),
@@ -124,6 +135,38 @@ await withDatabase(async pool => {
           );
         return JSON.parse((result.recordsets as any[][]).flat().at(-1)?.json ?? '{}');
       };
+      if (scenario.startsWith('discard-')) {
+        const draft = await run(owner, 'INTAKE', {
+          id,
+          revision: 0,
+          skills: [],
+          certifications: [],
+        });
+        if (scenario === 'discard-foreign')
+          await assert.rejects(
+            run(outside, 'DISCARD', { id, revision: draft.revision }),
+            (e: any) => e.number === 51003,
+          );
+        else if (scenario === 'discard-stale')
+          await assert.rejects(
+            run(owner, 'DISCARD', { id, revision: draft.revision + 1 }),
+            (e: any) => e.number === 51009,
+          );
+        else {
+          const removed = await run(owner, 'DISCARD', { id, revision: draft.revision });
+          assert.equal(removed.status, 'DISCARDED');
+          const retry = await run(owner, 'DISCARD', { id, revision: draft.revision });
+          assert.equal(retry.revision, removed.revision);
+          assert.ok(
+            !(await run(owner, 'MINE', {})).records?.some((r: any) => r.id.toLowerCase() === id),
+          );
+          const restored = await run(owner, 'RESTORE', { id, revision: removed.revision });
+          assert.equal(restored.status, 'DRAFT');
+          assert.equal((await run(owner, 'GET', { id })).revision, restored.revision);
+        }
+        console.log('PASS rollback linked capabilities: ' + scenario);
+        continue;
+      }
       if (scenario === 'intake-file') {
         const draft = await run(owner, 'INTAKE', {
           id,

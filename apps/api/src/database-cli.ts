@@ -105,6 +105,7 @@ if (command !== 'check' && command !== 'migrate') {
           [70, '070_business_submitted_files.sql'],
           [71, '071_linked_capability_submissions.sql'],
           [72, '072_legacy_certification_resubmission.sql'],
+          [73, '073_capability_draft_removal.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

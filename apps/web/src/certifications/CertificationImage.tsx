@@ -186,7 +186,11 @@ export function CertificateImageUploader({
           PDF, JPEG, PNG, WebP, DOCX or TXT · up to 5 MB. Images are compressed automatically.
         </p>
       </div>
-      {!available && <p className="cert-help">Certificate file storage is not configured.</p>}
+      {!available && (
+        <p className="cert-help">
+          Certificate upload is currently unavailable. Please try again later.
+        </p>
+      )}
       {(error || localError) && <p role="alert">{error || localError}</p>}
       {error && onRetry && (
         <button
