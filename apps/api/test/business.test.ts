@@ -886,3 +886,76 @@ test('SQL business adapter normalizes empty reads before delivering them to web 
   for (const key of ['projects', 'memberships', 'responsibilities'])
     assert.deepEqual(admin[key], []);
 });
+
+test('credential follow-up tools return scoped records and unambiguous responsibility IDs with fresh access checks', async () => {
+  const s = state();
+  const access: AccessStore = {
+    snapshot: () => structuredClone(s),
+    person: () => s.people[0],
+    save: async () => s,
+  };
+  let reads = 0;
+  const business: BusinessStore = {
+    context: async () => context(),
+    dashboard: async (id, query) => {
+      assert.equal(id, actor);
+      assert.equal(query.dataset, 'certifications');
+      assert.equal(query.status, 'APPROVED');
+      assert.equal(query.validity, 'EXPIRED');
+      assert.equal(query.scopeId, scope);
+      reads++;
+      const result = dashboard();
+      result.context.scopes[0].scopeId = person; // resource UUID differs from responsibility UUID
+      result.rows = [
+        {
+          id: person,
+          name: 'Azure Fundamentals',
+          issuer: 'Microsoft',
+          status: 'APPROVED',
+          validity: 'EXPIRED',
+        },
+      ];
+      return result;
+    },
+    administration: async () => ({}),
+    change: async () => {},
+    workflow: async () => ({}),
+  };
+  const registry = new ToolRegistry(
+    access,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    business,
+  );
+  const signal = AbortSignal.timeout(1000);
+  assert.ok(
+    registry
+      .available(s, s.people[0])
+      .some(tool => tool.function.name === 'business_certifications'),
+  );
+  await assert.rejects(
+    registry.execute(actor, 'business_certifications', { personId: person }, signal),
+  );
+  assert.equal(reads, 0);
+  const result = (
+    await registry.execute(
+      actor,
+      'business_certifications',
+      { scopeId: scope, status: 'APPROVED', validity: 'EXPIRED' },
+      signal,
+    )
+  ).data as any;
+  assert.equal(result.rows[0].name, 'Azure Fundamentals');
+  assert.deepEqual(result.authorizedScopes, [{ id: scope, kind: 'PROJECT', label: 'Project A' }]);
+  assert.equal(result.coverage, undefined);
+  assert.equal(result.hasMore, false);
+  s.people[0].business!.view = false;
+  await assert.rejects(
+    registry.execute(actor, 'business_certifications', {}, signal),
+    /permission/,
+  );
+  assert.equal(reads, 1, 'Revocation must stop the next record read');
+});

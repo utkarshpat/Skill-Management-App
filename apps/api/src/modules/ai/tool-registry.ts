@@ -253,6 +253,11 @@ export class ToolRegistry {
           'certifications',
         ],
         [
+          'business_certifications',
+          'Read a bounded page of submitted credential records in your authorized Business Operations scope, including credential name, issuer, employee, review status and dates. Use for follow-ups asking which certificate or whose credential, including records behind an expiry count. Set status APPROVED for manager-reviewed holdings; use validity EXPIRED for expired credentials. This does not read private notes or files or grant review authority.',
+          'certifications',
+        ],
+        [
           'business_people',
           'Read a bounded page of currently authorized people and reviewed holding counts. Multi-project unions are deduplicated. No private profile fields.',
           'people',
@@ -268,8 +273,18 @@ export class ToolRegistry {
                 type: 'object',
                 additionalProperties: false,
                 properties: {
-                  scopeId: { type: 'string', format: 'uuid' },
-                  search: { type: 'string', maxLength: 100 },
+                  scopeId: {
+                    type: 'string',
+                    format: 'uuid',
+                    description:
+                      'Optional authorizedScopes.id returned by a business tool. This is a responsibility ID, never a Delivery Unit, department, project or employee ID. Omit for your authorized scope union; never guess an ID.',
+                  },
+                  search: {
+                    type: 'string',
+                    maxLength: 100,
+                    description:
+                      'Employee name or employee code only; this does not search credential names.',
+                  },
                   page: { type: 'integer', minimum: 1, maximum: 10000 },
                   validity: {
                     type: 'string',
@@ -334,6 +349,9 @@ export class ToolRegistry {
             return {
               asOf: result.context.asOf,
               filters: args,
+              authorizedScopes: result.context.scopes
+                .filter(scope => scope.effect === 'ALLOW')
+                .map(scope => ({ id: scope.id, kind: scope.kind, label: scope.label })),
               summary: result.summary,
               ...(name === 'business_insights'
                 ? {
