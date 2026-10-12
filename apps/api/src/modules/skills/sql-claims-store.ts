@@ -114,6 +114,7 @@ export class SqlClaimsStore implements ClaimsStore {
           claims: sets[1].map(item => ({
             ...item,
             id: item.id.toLowerCase(),
+            activeSubmissionId: item.activeSubmissionId?.toLowerCase(),
             skillId: item.skillId.toLowerCase(),
             personId: item.personId?.toLowerCase(),
             reviewerId: item.reviewerId?.toLowerCase(),
@@ -319,7 +320,12 @@ export class SqlClaimsStore implements ClaimsStore {
         .input('account_id', sql.UniqueIdentifier, this.accountId)
         .input('actor_id', sql.UniqueIdentifier, actorId)
         .execute('dbo.ReadSkillClaimNotifications');
-      return result.recordset.map(
+      const combined = await pool
+        .request()
+        .input('account_id', sql.UniqueIdentifier, this.accountId)
+        .input('actor_id', sql.UniqueIdentifier, actorId)
+        .execute('dbo.ReadCapabilitySubmissionNotifications');
+      return [...result.recordset, ...combined.recordset].map(
         (row: { id: string; at: Date; title: string; body: string; href: string }) => ({
           ...row,
           at: row.at.toISOString(),

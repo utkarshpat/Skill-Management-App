@@ -68,7 +68,10 @@ export function FormDialog({
     const input = Array.from(element.querySelectorAll<HTMLElement>('input,select,textarea')).find(
       field => !field.closest('[hidden]') && !field.hasAttribute('disabled') && field.tabIndex >= 0,
     );
-    if (!className.includes('skill-wizard') || window.matchMedia('(min-width:801px)').matches)
+    if (
+      (!className.includes('skill-wizard') && !className.includes('capability-composer')) ||
+      window.matchMedia('(min-width:801px)').matches
+    )
       input?.focus();
     return () => {
       element.close();

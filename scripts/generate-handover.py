@@ -174,7 +174,7 @@ for path in sorted((ROOT/'database/migrations').glob('*.sql')):
 groups={
  'Identity foundation':['SchemaMigration','Account','DeliveryUnit','Department','Team','AppUser','TeamMembership','ReportingRelationship','AppRole','Permission','UserRole','RolePermission','UserPermission','AuditEvent'],
  'Access & organization':['AccessWorkspace','AccessRuntimeAccount','AccountRole','AccessPerson','AccountRolePermission','AccessPersonRole','AccessPersonOverride','AccessAudit','AccessOrgNode','AccessOrgAssignment','AccessImplementedScope'],
- 'Skills & claims':['SkillCatalogue','ProficiencyFramework','ProficiencyLevel','SkillDefinitionVersion','SkillVersionCriterion','SkillClaimDraft','SkillClaimNotification','SkillClaimEvidence','CertificationRecord','CertificationImageRecord'],
+ 'Skills & claims':['SkillCatalogue','ProficiencyFramework','ProficiencyLevel','SkillDefinitionVersion','SkillVersionCriterion','SkillClaimDraft','SkillClaimNotification','SkillClaimEvidence','CertificationRecord','CertificationImageRecord','CapabilitySubmission','CapabilitySubmissionItem','SkillCertificationLink','CapabilityIntakeFile'],
  'Learning & recommendations':['LearningPlan','LearningSession','LearningQuiz','LearningAttempt','LearningRecommendation','LearningRecommendationEvent','CertificationRecommendation','CertificationRecommendationEvent'],
  'Requests & incidents':['WorkflowRecord','WorkflowEvent'],
  'Business Operations':['BusinessProject','BusinessProjectMember','BusinessResponsibility','CredentialProvider','CredentialDefinition','MasterAmendment','BusinessDemand','BusinessShortlist'],

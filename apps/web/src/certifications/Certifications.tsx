@@ -7,10 +7,13 @@ import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
 import { toast } from '../toast';
 import type { WorkspaceState } from '../Workspace';
-import { CertificationDialog } from './CertificationDialog';
+import { CapabilityComposer } from '../capabilities/CapabilityComposer';
+import { CapabilitySubmissions } from '../capabilities/CapabilitySubmissions';
 import { CertificationReviewDialog } from './CertificationReviewDialog';
+import { RelatedCapabilities } from '../capabilities/RelatedCapabilities';
 import { CertificationImage } from './CertificationImage';
 import {
+  certificationFields,
   certificationRenewalFields,
   certificationRenewalId,
   certificationStatusLabels,
@@ -38,14 +41,21 @@ export function Certifications({
     [error, setError] = useState(''),
     [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
+  const [combined, setCombined] = useState(false);
+  const [combinedId, setCombinedId] = useState<string>();
+  const [initialCredential, setInitialCredential] = useState<CertificationRecord>();
+  const editCredential = (record: CertificationRecord) => {
+    setCombinedId(record.activeSubmissionId ?? undefined);
+    setInitialCredential(record.activeSubmissionId ? undefined : record);
+    setCombined(true);
+  };
   useEffect(() => {
     const refresh = () => setAttempt(value => value + 1);
     window.addEventListener('notifications-remote-updated', refresh);
     return () => window.removeEventListener('notifications-remote-updated', refresh);
   }, []);
   const [viewing, setViewing] = useState<CertificationRecord>();
-  const [editing, setEditing] = useState<CertificationRecord | null | undefined>(),
-    [reviewing, setReviewing] = useState<CertificationRecord>(),
+  const [reviewing, setReviewing] = useState<CertificationRecord>(),
     [submitting, setSubmitting] = useState<CertificationRecord>();
   const [renewalSource, setRenewalSource] = useState<CertificationRecord>();
   const [renewalFields, setRenewalFields] = useState<CertificationFields>();
@@ -109,7 +119,7 @@ export function Certifications({
     }
     setRenewalSource(source);
     setRenewalFields(certificationRenewalFields(source, today));
-    setEditing(null);
+    setCombined(true);
   }, [params, renewalId, loading, data, setParams, today]);
   const changeView = (tab: string) => {
     const next = new URLSearchParams(params);
@@ -129,31 +139,6 @@ export function Certifications({
     setAttempt(n => n + 1);
     window.dispatchEvent(new Event('notifications-updated'));
   }
-  const save = async (
-    id: string,
-    revision: number,
-    fields: CertificationFields,
-    submit: boolean,
-  ) => {
-    const result = await readApiResponse<{ revision: number }>(
-      await authenticatedFetch('/api/certifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: submit ? 'SAVE_SUBMIT' : 'SAVE',
-          id,
-          revision,
-          fields,
-          // The pre-upload SAVE persists the renewal link; submission keeps it.
-          ...(!submit && renewalSource ? { renewedFromId: renewalSource.id } : {}),
-        }),
-      }),
-      'Save failed. Your entries are still here.',
-    );
-    if (!Number.isSafeInteger(result.revision) || result.revision <= revision)
-      throw Error('Save could not be confirmed. Refresh your records before retrying.');
-    return result.revision;
-  };
   async function submit() {
     if (!submitting || submissionLock.current) return;
     submissionLock.current = true;
@@ -175,7 +160,7 @@ export function Certifications({
   const actions = (
     <div className="cert-header-actions">
       {data?.canManage && (
-        <button className="admin-primary" disabled={loading} onClick={() => setEditing(null)}>
+        <button className="admin-primary" disabled={loading} onClick={() => setCombined(true)}>
           <Plus size={16} /> Add certification
         </button>
       )}
@@ -183,6 +168,38 @@ export function Certifications({
   );
   return (
     <div className="certifications-container">
+      <CapabilitySubmissions onUpdated={() => setAttempt(v => v + 1)} />
+      {combined && (
+        <CapabilityComposer
+          submissionId={combinedId}
+          initialCertificate
+          initialCredential={
+            initialCredential
+              ? { ...initialCredential, fields: certificationFields(initialCredential) }
+              : undefined
+          }
+          renewal={
+            renewalSource && renewalFields
+              ? { id: renewalSource.id, fields: renewalFields }
+              : undefined
+          }
+          onClose={() => {
+            setCombined(false);
+            setCombinedId(undefined);
+            setInitialCredential(undefined);
+            setRenewalSource(undefined);
+            setRenewalFields(undefined);
+          }}
+          onSaved={() => {
+            setCombined(false);
+            setCombinedId(undefined);
+            setInitialCredential(undefined);
+            setRenewalSource(undefined);
+            setRenewalFields(undefined);
+            setAttempt(v => v + 1);
+          }}
+        />
+      )}
       {!recommendationsTab && !actionsContainer && (
         <div className="my-skills-actions">{actions}</div>
       )}
@@ -236,17 +253,16 @@ export function Certifications({
           today={today}
           canManage={data.canManage}
           canRenew={data.canManage && data.canUploadImage}
-          onAdd={() => setEditing(null)}
+          onAdd={() => setCombined(true)}
           onView={setViewing}
-          onEdit={setEditing}
+          onEdit={editCredential}
           onRenew={record => {
             setRenewalSource(record);
             setRenewalFields(certificationRenewalFields(record, today));
-            setEditing(null);
+            setCombined(true);
           }}
           onSubmit={record => {
-            setSubmitError('');
-            setSubmitting(record);
+            editCredential(record);
           }}
           onReview={setReviewing}
         />
@@ -265,7 +281,7 @@ export function Certifications({
                 <button
                   className="primary-button"
                   onClick={() => {
-                    setEditing(viewing);
+                    editCredential(viewing);
                     setViewing(undefined);
                   }}
                 >
@@ -281,7 +297,7 @@ export function Certifications({
                     onClick={() => {
                       setRenewalSource(viewing);
                       setRenewalFields(certificationRenewalFields(viewing, today));
-                      setEditing(null);
+                      setCombined(true);
                       setViewing(undefined);
                     }}
                   >
@@ -317,6 +333,7 @@ export function Certifications({
               <p>No issuer link provided.</p>
             )}
             {viewing.notes && <p>{viewing.notes}</p>}
+            <RelatedCapabilities kind="CERTIFICATION" id={viewing.id} />
             {data?.canUploadImage && <CertificationImage id={viewing.id} />}
           </section>
           {viewing.feedback && (
@@ -336,23 +353,6 @@ export function Certifications({
             proficiency.
           </p>
         </FormDialog>
-      )}
-      {editing !== undefined && (
-        <CertificationDialog
-          initial={editing}
-          initialFields={renewalFields}
-          renewal={Boolean(renewalSource)}
-          renewalSource={renewalSource}
-          canSubmit={Boolean(data?.canSubmitNew)}
-          imageAvailable={Boolean(data?.canUploadImage)}
-          onClose={() => {
-            setEditing(undefined);
-            setRenewalSource(undefined);
-            setRenewalFields(undefined);
-            setAttempt(n => n + 1);
-          }}
-          onSave={save}
-        />
       )}
       {reviewing && (
         <CertificationReviewDialog

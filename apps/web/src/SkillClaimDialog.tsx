@@ -14,6 +14,7 @@ import { ReviewHistory } from './ReviewHistory';
 import { ReviewAssistance } from './ReviewAssistance';
 import { ClaimReviewAccess } from './ClaimReviewAccess';
 import { ClaimEvidence } from './ClaimEvidence';
+import { RelatedCapabilities } from './capabilities/RelatedCapabilities';
 import { formatSkillDate } from './skill-dates';
 import './claim-review.css';
 export function SkillClaimDialog({
@@ -138,6 +139,7 @@ export function SkillClaimDialog({
           </section>
           <section className="claim-content-block">
             <h3>Evidence</h3>
+            <RelatedCapabilities kind="SKILL" id={claim.id} />
             <ClaimEvidence
               claim={claim}
               reviewer={review || history}

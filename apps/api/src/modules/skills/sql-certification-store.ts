@@ -52,7 +52,12 @@ export class SqlCertificationStore implements CertificationStore {
           'An active current reporting manager with review access is required.',
         );
       if (number === 51012)
-        throw new AccessError(400, 'Attach a certificate image before submitting.');
+        throw new AccessError(
+          400,
+          /linked|combined|skill/i.test((e as Error).message)
+            ? 'Link a skill and submit this credential through its combined capability request.'
+            : 'Attach a certificate file before submitting.',
+        );
       if (number === 2601 || number === 2627)
         throw new AccessError(409, 'Another active renewal exists. Open that renewal to continue.');
       if (number === 51013)
@@ -69,6 +74,16 @@ export class SqlCertificationStore implements CertificationStore {
     return rows.map(row => ({
       ...row,
       id: String(row.id).toLowerCase(),
+      activeSubmissionId: row.activeSubmissionId
+        ? String(row.activeSubmissionId).toLowerCase()
+        : undefined,
+      relatedSkills:
+        typeof row.relatedSkills === 'string'
+          ? JSON.parse(row.relatedSkills).map((s: { id: string; name: string }) => ({
+              ...s,
+              id: s.id.toLowerCase(),
+            }))
+          : undefined,
       personId: String(row.personId).toLowerCase(),
       reviewerId: row.reviewerId ? String(row.reviewerId).toLowerCase() : undefined,
     })) as Certification[];

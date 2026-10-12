@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { CertificationRecommendations } from './certifications/CertificationRecommendations';
 import './capability-workspace.css';
+import { CapabilitySubmissions } from './capabilities/CapabilitySubmissions';
 import './review-workbench.css';
 import './certifications/certifications.css';
 const SkillReviews = lazy(() => import('./SkillReviews').then(m => ({ default: m.SkillReviews })));
@@ -182,6 +183,7 @@ export function ReviewWorkspace({
           </Link>
         )}
       </nav>
+      <CapabilitySubmissions review onUpdated={() => setAttempt(v => v + 1)} />
       {type === 'skills' ? (
         <Suspense fallback={<p role="status">Loading skill review workspace…</p>}>
           <SkillReviews />

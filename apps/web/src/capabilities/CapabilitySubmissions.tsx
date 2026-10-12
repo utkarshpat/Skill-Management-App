@@ -1,0 +1,123 @@
+import { useEffect, useRef, useState } from 'react';
+import { authenticatedFetch } from '../auth';
+import { readApiResponse } from '../api-response';
+import { CapabilityComposer } from './CapabilityComposer';
+import { CapabilityReview } from './CapabilityReview';
+import { useSearchParams } from 'react-router';
+import './capabilities.css';
+export function CapabilitySubmissions({
+  review = false,
+  onUpdated,
+}: {
+  review?: boolean;
+  onUpdated?: () => void;
+}) {
+  const [params] = useSearchParams();
+  const consumed = useRef<string | undefined>(undefined);
+  const [expanded, setExpanded] = useState(false);
+  const [records, setRecords] = useState<any[]>([]),
+    [error, setError] = useState(''),
+    [attempt, setAttempt] = useState(0),
+    [opened, setOpened] = useState<string>();
+  useEffect(() => {
+    const abort = new AbortController();
+    authenticatedFetch('/api/capability-submissions?view=' + (review ? 'queue' : 'mine'), {
+      signal: abort.signal,
+    })
+      .then(r => readApiResponse<any>(r, 'Combined submissions could not be loaded.'))
+      .then(data => {
+        if (!abort.signal.aborted) {
+          setRecords(data.records ?? []);
+          setError('');
+        }
+      })
+      .catch(e => {
+        if (!abort.signal.aborted) {
+          setRecords([]);
+          setError(e.message);
+        }
+      });
+    return () => abort.abort();
+  }, [review, attempt]);
+  useEffect(() => {
+    const refresh = () => setAttempt(v => v + 1);
+    window.addEventListener('notifications-remote-updated', refresh);
+    window.addEventListener('own-skills-updated', refresh);
+    return () => {
+      window.removeEventListener('notifications-remote-updated', refresh);
+      window.removeEventListener('own-skills-updated', refresh);
+    };
+  }, []);
+  useEffect(() => {
+    const target = params.get('submission');
+    if (target && consumed.current !== target && records.some(r => r.id === target)) {
+      consumed.current = target;
+      setOpened(target);
+    }
+  }, [params, records]);
+  const done = () => {
+    setOpened(undefined);
+    setAttempt(v => v + 1);
+    onUpdated?.();
+  };
+  if (!records.length && !error) return null;
+  return (
+    <section className="cap-submissions">
+      <header>
+        <h3>{review ? 'Combined capability reviews' : 'Linked capability submissions'}</h3>
+        <small>Skills and credentials in one request</small>
+      </header>
+      {error && (
+        <p role="alert">
+          {error}
+          <button type="button" className="secondary-button" onClick={() => setAttempt(v => v + 1)}>
+            Retry
+          </button>
+        </p>
+      )}
+      {(expanded ? records : records.slice(0, 5)).map(record => (
+        <div key={record.id} className="cap-submission-row">
+          <span>
+            <strong>
+              {review ? record.name + ' - ' : ''}
+              {record.label || 'Capability submission'}
+            </strong>
+            <small>
+              {record.skills} skills · {record.certifications} certificates ·{' '}
+              {record.status.toLowerCase()}
+            </small>
+          </span>
+          {review || (record.status === 'DRAFT' && record.canEdit) ? (
+            <button type="button" className="secondary-button" onClick={() => setOpened(record.id)}>
+              {review ? 'Review request' : 'Continue draft'}
+            </button>
+          ) : (
+            <button type="button" className="secondary-button" onClick={() => setOpened(record.id)}>
+              View submission
+            </button>
+          )}
+        </div>
+      ))}
+      {records.length > 5 && (
+        <button type="button" className="secondary-button" onClick={() => setExpanded(v => !v)}>
+          {expanded ? 'Show fewer' : 'Show all recent submissions'}
+        </button>
+      )}
+      {opened &&
+        (review || !records.find(r => r.id === opened)?.canEdit ? (
+          <CapabilityReview
+            id={opened}
+            readOnly={!review}
+            onClose={() => setOpened(undefined)}
+            onSaved={done}
+          />
+        ) : (
+          <CapabilityComposer
+            submissionId={opened}
+            onClose={() => setOpened(undefined)}
+            onSaved={done}
+          />
+        ))}
+    </section>
+  );
+}

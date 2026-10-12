@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "44ebfde4fe717942",
+  "revision": "d5639c99923bb275",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -72,7 +72,8 @@
       "067_access_profile_administration.sql",
       "068_business_access_audit_subjects.sql",
       "069_business_record_attribution.sql",
-      "070_business_submitted_files.sql"
+      "070_business_submitted_files.sql",
+      "071_linked_capability_submissions.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -4289,6 +4290,18 @@
             "nullable": true,
             "declaration": "renewed_from_id uniqueidentifier NULL",
             "source": "057_certification_expiry_reminders.sql"
+          },
+          "requires_skill_link": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "requires_skill_link bit NOT NULL CONSTRAINT DF_Certification_LinkLegacy DEFAULT 0 WITH VALUES",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "CONSTRAINT": {
+            "type": "DF_Certification_LinkRequired",
+            "nullable": true,
+            "declaration": "CONSTRAINT DF_Certification_LinkRequired DEFAULT 1 FOR requires_skill_link",
+            "source": "071_linked_capability_submissions.sql"
           }
         },
         "pk": [
@@ -5646,6 +5659,424 @@
         ],
         "indexes": [],
         "domain": "Business Operations"
+      },
+      "CapabilitySubmission": {
+        "source": "071_linked_capability_submissions.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "reviewer_id": {
+            "type": "uniqueidentifier",
+            "nullable": true,
+            "declaration": "reviewer_id uniqueidentifier NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "status": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "status varchar(20) NOT NULL CHECK(status IN('DRAFT','SUBMITTING','SUBMITTED','REVIEWED','LINKED'))",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "updated_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "updated_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "intake_json": {
+            "type": "nvarchar(max)",
+            "nullable": true,
+            "declaration": "intake_json nvarchar(max) NULL CHECK(intake_json IS NULL OR ISJSON(intake_json)=1)",
+            "source": "071_linked_capability_submissions.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "reviewer_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "071_linked_capability_submissions.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,id)",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,reviewer_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "sql": "CHECK(reviewer_id IS NULL OR reviewer_id<>person_id)",
+            "source": "071_linked_capability_submissions.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Skills & claims"
+      },
+      "CapabilitySubmissionItem": {
+        "source": "071_linked_capability_submissions.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "submission_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "submission_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "kind": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "kind varchar(20) NOT NULL CHECK(kind IN('SKILL','CERTIFICATION'))",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "record_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "record_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "needs_review": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "needs_review bit NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "snapshot_json": {
+            "type": "nvarchar(max)",
+            "nullable": true,
+            "declaration": "snapshot_json nvarchar(max) NULL CHECK(snapshot_json IS NULL OR ISJSON(snapshot_json)=1)",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "decision_json": {
+            "type": "nvarchar(max)",
+            "nullable": true,
+            "declaration": "decision_json nvarchar(max) NULL CHECK(decision_json IS NULL OR ISJSON(decision_json)=1)",
+            "source": "071_linked_capability_submissions.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "submission_id",
+          "kind",
+          "record_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "submission_id"
+            ],
+            "target": "CapabilitySubmission",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "071_linked_capability_submissions.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,submission_id,kind,record_id)",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,submission_id) REFERENCES dbo.CapabilitySubmission(account_id,id)",
+            "source": "071_linked_capability_submissions.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_CapabilityItem_Record",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "kind",
+              "record_id",
+              "submission_id"
+            ],
+            "filter": "",
+            "source": "071_linked_capability_submissions.sql"
+          }
+        ],
+        "domain": "Skills & claims"
+      },
+      "CapabilityIntakeFile": {
+        "source": "071_linked_capability_submissions.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "submission_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "submission_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "certification_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "certification_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "evidence_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "evidence_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "blob_name": {
+            "type": "varchar(160)",
+            "nullable": false,
+            "declaration": "blob_name varchar(160) NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "bytes": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "bytes int NOT NULL CHECK(bytes BETWEEN 1 AND 5242880)",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "mime_type": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "mime_type varchar(100) NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "file_name": {
+            "type": "nvarchar(255)",
+            "nullable": false,
+            "declaration": "file_name nvarchar(255) NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "width": {
+            "type": "int",
+            "nullable": true,
+            "declaration": "width int NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "height": {
+            "type": "int",
+            "nullable": true,
+            "declaration": "height int NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "active": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "active bit NOT NULL DEFAULT 1",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "transferred": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "transferred bit NOT NULL DEFAULT 0",
+            "source": "071_linked_capability_submissions.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "submission_id",
+          "certification_id",
+          "evidence_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "submission_id"
+            ],
+            "target": "CapabilitySubmission",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "071_linked_capability_submissions.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,submission_id,certification_id,evidence_id)",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,submission_id) REFERENCES dbo.CapabilitySubmission(account_id,id)",
+            "source": "071_linked_capability_submissions.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_IntakeFile_Active",
+            "unique": true,
+            "columns": [
+              "account_id",
+              "submission_id",
+              "certification_id"
+            ],
+            "filter": "WHERE active=1",
+            "source": "071_linked_capability_submissions.sql"
+          }
+        ],
+        "domain": "Skills & claims"
+      },
+      "SkillCertificationLink": {
+        "source": "071_linked_capability_submissions.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "claim_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "claim_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "certification_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "certification_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "submission_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "submission_id uniqueidentifier NOT NULL",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          "published": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "published bit NOT NULL DEFAULT 0",
+            "source": "071_linked_capability_submissions.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "claim_id",
+          "certification_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "claim_id"
+            ],
+            "target": "SkillClaimDraft",
+            "targetColumns": [
+              "account_id",
+              "claim_id"
+            ],
+            "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "certification_id"
+            ],
+            "target": "CertificationRecord",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "submission_id"
+            ],
+            "target": "CapabilitySubmission",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "071_linked_capability_submissions.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,claim_id,certification_id)",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,claim_id) REFERENCES dbo.SkillClaimDraft(account_id,claim_id)",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,certification_id) REFERENCES dbo.CertificationRecord(account_id,id)",
+            "source": "071_linked_capability_submissions.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,submission_id) REFERENCES dbo.CapabilitySubmission(account_id,id)",
+            "source": "071_linked_capability_submissions.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Skills & claims"
       }
     },
     "views": {
@@ -5997,6 +6428,108 @@
     },
     {
       "method": "GET",
+      "path": "/api/capability-submissions",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capability-submissions/availability",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capability-submissions/options",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/capability-submissions/intake",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/capability-submissions/:id/staged/:cert",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capability-submissions/:id/staged/:cert",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capability-submissions/:id/staged/:cert/:file",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/capability-submissions/autofill",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capability-submissions/links/:kind/:id",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capability-submissions/:id",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capability-submissions/:id/files/:record",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/capability-submissions/:id/files/:record/:file",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/capability-submissions",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/capability-submissions/submit",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/capability-submissions/reroute",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/capability-submissions/publish-links",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/capability-submissions/decision",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/capability-routes.ts"
+    },
+    {
+      "method": "GET",
       "path": "/api/certification-recommendations",
       "module": "skills",
       "source": "apps/api/src/modules/skills/certification-recommendation-routes.ts"
@@ -6205,7 +6738,7 @@
       "name": "ReadOwnSkillClaims",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1",
-      "source": "database/migrations/046_own_skill_read_access.sql"
+      "source": "database/migrations/071_linked_capability_submissions.sql"
     },
     {
       "name": "ReadClaimSkills",
@@ -6241,7 +6774,7 @@
       "name": "ReadSkillClaimNotifications",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/029_notification_destinations.sql"
+      "source": "database/migrations/071_linked_capability_submissions.sql"
     },
     {
       "name": "SkillProficiencyLevel",
@@ -6307,7 +6840,7 @@
       "name": "ReadSkillReviewWorkbench",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1,@query nvarchar(100)=N'',@category nvarchar(80)=N'',\n @status varchar(20)='SUBMITTED',@person_id uniqueidentifier=NULL,@claim_id uniqueidentifier=NULL,@history_page int=1",
-      "source": "database/migrations/042_skill_last_used.sql"
+      "source": "database/migrations/071_linked_capability_submissions.sql"
     },
     {
       "name": "AccessReportingValid",
@@ -6385,7 +6918,7 @@
       "name": "CertificationWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/063_credential_renewal_reliability.sql"
+      "source": "database/migrations/071_linked_capability_submissions.sql"
     },
     {
       "name": "CertificationImage",
@@ -6517,7 +7050,7 @@
       "name": "BusinessDashboard",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@payload nvarchar(max),@export bit=0",
-      "source": "database/migrations/070_business_submitted_files.sql"
+      "source": "database/migrations/071_linked_capability_submissions.sql"
     },
     {
       "name": "BusinessScopeCovers",
@@ -6566,6 +7099,30 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@kind varchar(20),@id uniqueidentifier",
       "source": "database/migrations/070_business_submitted_files.sql"
+    },
+    {
+      "name": "CapabilitySubmissionWorkspace",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
+      "source": "database/migrations/071_linked_capability_submissions.sql"
+    },
+    {
+      "name": "CapabilitySubmissionFiles",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@id uniqueidentifier,@record_id uniqueidentifier",
+      "source": "database/migrations/071_linked_capability_submissions.sql"
+    },
+    {
+      "name": "ReadCapabilitySubmissionNotifications",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/071_linked_capability_submissions.sql"
+    },
+    {
+      "name": "CapabilityIntakeFiles",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@id uniqueidentifier,@certification_id uniqueidentifier,@operation varchar(8)='READ',@payload nvarchar(max)=N'{}'",
+      "source": "database/migrations/071_linked_capability_submissions.sql"
     }
   ],
   "groups": {
@@ -6608,7 +7165,11 @@
       "SkillClaimNotification",
       "SkillClaimEvidence",
       "CertificationRecord",
-      "CertificationImageRecord"
+      "CertificationImageRecord",
+      "CapabilitySubmission",
+      "CapabilitySubmissionItem",
+      "SkillCertificationLink",
+      "CapabilityIntakeFile"
     ],
     "Learning & recommendations": [
       "LearningPlan",

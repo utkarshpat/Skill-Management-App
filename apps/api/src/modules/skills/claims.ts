@@ -1,6 +1,8 @@
 import { AccessError } from '../../shared/errors.js';
 
 export interface SkillClaim {
+  activeSubmissionId?:string;
+  linkedCertifications?:number;
   id: string;
   revision: number;
   skillId: string;

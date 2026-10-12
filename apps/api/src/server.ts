@@ -12,7 +12,12 @@ import { developmentLoginEnabled, hostedDemoConfig } from './modules/identity/in
 import { SqlAccessStore } from './modules/access/sql-access-store.js';
 import { createEmployeeProfileReader } from './modules/identity/employee-profile.js';
 import { StoredEmployeeDirectoryProvider } from './modules/identity/employee-directory.js';
-import { AssistantService, configuredProvider } from './modules/ai/index.js';
+import {
+  AssistantService,
+  configuredProvider,
+  CertificateAutofillService,
+} from './modules/ai/index.js';
+import { SqlCapabilitySubmissionStore } from './modules/skills/sql-capability-submissions.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
 import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
 import { SqlCertificationStore } from './modules/skills/sql-certification-store.js';
@@ -85,6 +90,27 @@ const business = process.env.ACCESS_ACCOUNT_ID
   : undefined;
 const provider = configuredProvider(process.env),
   aiBudget = access ? new SqlAiBudget(process.env.ACCESS_ACCOUNT_ID!) : undefined;
+const capabilitySubmissions = process.env.ACCESS_ACCOUNT_ID
+  ? new SqlCapabilitySubmissionStore(
+      process.env.ACCESS_ACCOUNT_ID,
+      process.env.EVIDENCE_STORAGE_CONNECTION_STRING && process.env.EVIDENCE_STORAGE_CONTAINER
+        ? {
+            connection: process.env.EVIDENCE_STORAGE_CONNECTION_STRING,
+            container: process.env.EVIDENCE_STORAGE_CONTAINER,
+          }
+        : undefined,
+    )
+  : undefined;
+const certificateAutofill =
+  access && claims && aiBudget && provider
+    ? new CertificateAutofillService(
+        access,
+        claims,
+        aiBudget,
+        provider,
+        async actor => (await capabilitySubmissions!.run(actor, 'OPTIONS', {})).definitions ?? [],
+      )
+    : undefined;
 const knowledgeTransfer =
   access && aiBudget && process.env.KNOWLEDGE_TRANSFER_ENABLED !== 'false'
     ? new KnowledgeTransferService(access, aiBudget, provider)
@@ -106,6 +132,7 @@ const assistant = access
       business,
       certifications,
       organization?.ownOrganization.bind(organization),
+      capabilitySubmissions,
     )
   : undefined;
 const learningGenerator: QuizGenerator | undefined = assistant
@@ -153,6 +180,8 @@ const app = createApp(
         catalogue,
         claims,
         certifications,
+        capabilitySubmissions,
+        certificateAutofill: certificateAutofill?.extract.bind(certificateAutofill),
         certificationRecommendations,
         evidenceStore,
         certificationImages,

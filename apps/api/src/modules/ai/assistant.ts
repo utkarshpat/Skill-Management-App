@@ -11,6 +11,7 @@ import type {
   CatalogueStore,
   SkillClaim,
   CertificationStore,
+  CapabilitySubmissionStore,
 } from '../skills/index.js';
 import { ToolRegistry, type ToolDefinition } from './tool-registry.js';
 import type { OrganizationStore, OwnOrganization } from '../organization/index.js';
@@ -106,6 +107,7 @@ export class AssistantService {
     business?: BusinessStore,
     certifications?: CertificationStore,
     ownOrganization?: (actor: string) => Promise<OwnOrganization>,
+    capabilitySubmissions?: CapabilitySubmissionStore,
   ) {
     this.registry = new ToolRegistry(
       store,
@@ -117,6 +119,7 @@ export class AssistantService {
       business,
       certifications,
       ownOrganization,
+      capabilitySubmissions,
     );
   }
   async reviewAssistance(actor: string, input: unknown, signal: AbortSignal) {

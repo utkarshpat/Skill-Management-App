@@ -25,6 +25,7 @@ import {
   type ClaimsStore,
   type CatalogueStore,
   type CertificationStore,
+  type CapabilitySubmissionStore,
   certificationAccess,
 } from '../skills/index.js';
 
@@ -124,7 +125,42 @@ export class ToolRegistry {
     business?: BusinessStore,
     certifications?: CertificationStore,
     ownOrganization?: (actor: string) => Promise<OwnOrganization>,
+    capabilitySubmissions?: CapabilitySubmissionStore,
   ) {
+    if (capabilitySubmissions)
+      for (const view of ['mine', 'queue'] as const)
+        this.entries.set(
+          view === 'mine' ? 'my_capability_submissions' : 'assigned_capability_submissions',
+          {
+            definition: definition(
+              view === 'mine' ? 'my_capability_submissions' : 'assigned_capability_submissions',
+              view === 'mine'
+                ? 'Read recent own linked skill/certificate submissions and their review progress. No uploaded file contents.'
+                : 'Read combined pending review requests assigned to the current direct manager. These requests are excluded from standalone skill/certificate queues; include this tool when answering pending review questions. No uploaded file contents.',
+            ),
+            permission: (s, p) =>
+              can(s, p, 'profile.view', true) &&
+              (view === 'mine' ? can(s, p, 'skill.view', true) : canReviewAssigned(s, p)),
+            source: {
+              label:
+                view === 'mine' ? 'Linked capability submissions' : 'Combined capability reviews',
+              url: view === 'mine' ? '/my-skills' : '/skill-reviews',
+            },
+            read: async ({ person }) => {
+              const value = await capabilitySubmissions.run(
+                person.id,
+                view === 'mine' ? 'MINE' : 'QUEUE',
+                {},
+              );
+              return {
+                records: (value.records ?? []).slice(0, 20),
+                hasMore: (value.records ?? []).length > 20,
+                policy:
+                  'One request may contain multiple skill and credential items. A linked certificate does not automatically establish proficiency; review decisions remain independent.',
+              };
+            },
+          },
+        );
     if (certifications) {
       for (const view of ['mine', 'queue'] as const) {
         const name = view === 'mine' ? 'my_certifications' : 'assigned_certification_reviews';
@@ -177,6 +213,9 @@ export class ToolRegistry {
               asOfUtc: today,
               records: result.records.map(record => ({
                 certification: record.certificationName,
+                ...(record.relatedSkills
+                  ? { relatedSkills: record.relatedSkills.map(s => s.name) }
+                  : {}),
                 provider: record.provider,
                 category: record.category,
                 reviewStatus: record.status,

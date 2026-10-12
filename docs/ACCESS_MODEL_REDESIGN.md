@@ -4,6 +4,10 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Linked capabilities — approved increment, 12 October 2026
+
+The user approved a common skill/certificate submission workflow with canonical related-skill links and independent per-item decisions. Migration 071 preserves the exact current assigned-manager policy and introduces no permission grants or broader scopes. Draft links and staged files are owner-private; submitted links are published only within existing resource read policies. A combined decision is atomic, and linking previously approved records never creates a new approval. See [the implementation and release record](LINKED_CAPABILITIES_2026-10-12.md) for deployment status and constraints.
+
 ### Scoped submitted-file viewing — 11 October 2026
 
 The user explicitly approved Business Analytics read access to uploaded certificates and skill evidence within its currently authorized employee scope. Migration 070 implements a separate read-only `BusinessRecordFiles` path for records currently SUBMITTED or APPROVED. Editable drafts, returned/rejected records and files not captured before the latest skill submission remain private. Current account/person activity, profile prerequisites, explicit Business responsibility, server-resolved visible people and matching scope DENY remain mandatory; an Organization `evidence.view` DENY also blocks this path. Legacy template ALLOW alone cannot enable it. Owner/reviewer endpoints, uploads, amendments and exact assigned-current-manager review authority are unchanged.

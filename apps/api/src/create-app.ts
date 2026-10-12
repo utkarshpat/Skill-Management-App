@@ -1,5 +1,9 @@
 import { registerBusinessRoutes, type BusinessDependencies } from './modules/business/index.js';
 import { startRequestTiming } from './shared/request-timing.js';
+import {
+  registerCapabilityRoutes,
+  type CapabilityDependencies,
+} from './modules/skills/capability-routes.js';
 import { randomUUID } from 'node:crypto';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
@@ -51,6 +55,7 @@ import {
 } from './modules/knowledge-transfer/index.js';
 
 export type AppDependencies = IdentityDependencies &
+  CapabilityDependencies &
   AccessDependencies &
   OrganizationDependencies &
   SkillsDependencies &
@@ -110,6 +115,8 @@ export function createApp(
     });
     timing.run(next);
   });
+  // Combined drafts carry bounded details for up to twenty items, including catalogue criteria.
+  app.use('/api/capability-submissions', express.json({ limit: '1mb' }));
   app.use(express.json({ limit: '128kb' }));
   identityRoutes(
     app,
@@ -148,6 +155,7 @@ export function createApp(
   );
   registerLearningRoutes(app, dependencies, store, demo);
   registerCertificationRoutes(app, dependencies, store, demo);
+  registerCapabilityRoutes(app, dependencies, store, demo);
   registerCertificationRecommendationRoutes(app, dependencies, store, demo);
   registerRecommendationRoutes(app, dependencies, store, demo);
   registerWorkflowRoutes(app, dependencies, store, demo);

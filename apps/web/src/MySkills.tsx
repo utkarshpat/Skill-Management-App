@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { CapabilityComposer } from './capabilities/CapabilityComposer';
+import { CapabilitySubmissions } from './capabilities/CapabilitySubmissions';
 import { Plus } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
@@ -25,6 +27,7 @@ import {
 } from './own-skill-profile';
 
 export interface Claim {
+  activeSubmissionId?: string;
   personId?: string;
   reviewAccess?: ClaimReviewDecision;
   id: string;
@@ -97,6 +100,8 @@ export function MySkills({
   const [inspecting, setInspecting] = useState<Claim>(),
     [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [combined, setCombined] = useState(false);
+  const [combinedId, setCombinedId] = useState<string>();
   const [submissionFailure, setSubmissionFailure] = useState<{ id: string; message: string }>();
   const [draft, setDraft] = useState<Draft>(),
     [formPage, setFormPage] = useState(0),
@@ -259,6 +264,11 @@ export function MySkills({
     }
   }, [options, optionsLoading, suggestedSkillName, draft?.skillId]);
   function edit(claim?: Claim) {
+    if (claim?.activeSubmissionId) {
+      setCombinedId(claim.activeSubmissionId);
+      setCombined(true);
+      return;
+    }
     setOptionResult(undefined);
     setPicked(undefined);
     setSuggestedSkillName('');
@@ -468,7 +478,7 @@ export function MySkills({
     }
   }
   const actions = state?.canClaim && (
-    <button className="admin-primary" disabled={busy || loading} onClick={() => edit()}>
+    <button className="admin-primary" disabled={busy || loading} onClick={() => setCombined(true)}>
       <Plus size={17} />
       Add skill
     </button>
@@ -501,6 +511,21 @@ export function MySkills({
     );
   return (
     <>
+      {!reviewRequest && <CapabilitySubmissions onUpdated={() => void load()} />}
+      {combined && (
+        <CapabilityComposer
+          submissionId={combinedId}
+          onClose={() => {
+            setCombined(false);
+            setCombinedId(undefined);
+          }}
+          onSaved={() => {
+            setCombined(false);
+            setCombinedId(undefined);
+            void load();
+          }}
+        />
+      )}
       {!reviewRequest && (
         <>
           {submissionFailure && (
@@ -543,7 +568,7 @@ export function MySkills({
             state && (
               <SkillsProfileView
                 initialStatus={new URLSearchParams(location.search).get('status') ?? ''}
-                onAdd={() => edit()}
+                onAdd={() => setCombined(true)}
                 claims={state.claims}
                 canClaim={state.canClaim}
                 loading={loading || busy}
@@ -553,6 +578,11 @@ export function MySkills({
                 }}
                 onEdit={edit}
                 onSubmit={claim => {
+                  if (claim.activeSubmissionId) {
+                    setCombinedId(claim.activeSubmissionId);
+                    setCombined(true);
+                    return;
+                  }
                   setInspecting(claim);
                   setSubmitting(true);
                 }}

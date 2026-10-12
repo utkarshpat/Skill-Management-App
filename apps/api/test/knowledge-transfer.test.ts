@@ -42,7 +42,7 @@ test('KT rejects forged authority/history and oversized context before any provi
 });
 
 test('KT inventory preserves actual FK tuples and treats view and quota tables honestly', async () => {
-  assert.equal(Object.keys(content.schema.tables).length, 56);
+  assert.equal(Object.keys(content.schema.tables).length, 60);
   assert.equal(
     content.schema.migrations.length,
     (await readdir(new URL('../../../database/migrations/', import.meta.url))).filter(file =>
