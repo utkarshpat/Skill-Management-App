@@ -6,6 +6,8 @@ import {
   Clock3,
   BriefcaseBusiness,
   ShieldCheck,
+  UserRound,
+  AlertCircle,
 } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { FormDialog } from './FormDialog';
@@ -17,6 +19,7 @@ import { ClaimEvidence } from './ClaimEvidence';
 import { RelatedCapabilities } from './capabilities/RelatedCapabilities';
 import { formatSkillDate } from './skill-dates';
 import './claim-review.css';
+
 export function SkillClaimDialog({
   claim,
   mode,
@@ -111,14 +114,60 @@ export function SkillClaimDialog({
     >
       <div className={'claim-review-layout' + (review ? '' : ' read-only')}>
         <section className="claim-review-content">
+          {!review && (
+            <div className="claim-status-banner">
+              <div className="claim-status-banner-left">
+                <span className="claim-status-label">Review status:</span>
+                <span className={`cap-status-pill ${claim.status.toLowerCase()}`}>
+                  {claim.status === 'APPROVED' ? (
+                    <ShieldCheck size={12} aria-hidden="true" />
+                  ) : claim.status === 'SUBMITTED' ? (
+                    <Clock3 size={12} aria-hidden="true" />
+                  ) : claim.status === 'DRAFT' ? (
+                    <UserRound size={12} aria-hidden="true" />
+                  ) : (
+                    <AlertCircle size={12} aria-hidden="true" />
+                  )}
+                  {claim.status === 'SUBMITTED'
+                    ? 'Awaiting review'
+                    : claim.status.replaceAll('_', ' ')}
+                </span>
+              </div>
+              {claim.updatedAt && (
+                <span className="claim-status-date">
+                  Updated{' '}
+                  {new Date(claim.updatedAt).toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="claim-review-facts">
-            <div>
-              <strong>L{claim.rank}</strong>
-              <span>{claim.levelName}</span>
+            <div className="claim-fact-level-card">
+              <div className="claim-fact-level-header">
+                <strong>Level {claim.rank}</strong>
+                <div className="claim-fact-bars" aria-hidden="true">
+                  {Array.from({ length: 4 }, (_, i) => (
+                    <i key={i} className={i < claim.rank ? 'filled' : 'empty'} />
+                  ))}
+                </div>
+              </div>
+              <span className="claim-fact-level-name">{claim.levelName}</span>
+              {claim.levelDescription && (
+                <p className="claim-fact-desc">{claim.levelDescription}</p>
+              )}
             </div>
             <div>
               <BriefcaseBusiness size={20} />
-              <strong>{claim.experienceMonths} months</strong>
+              <strong>
+                {claim.experienceMonths < 12
+                  ? `${claim.experienceMonths} ${claim.experienceMonths === 1 ? 'month' : 'months'}`
+                  : `${Number((claim.experienceMonths / 12).toFixed(1))} ${claim.experienceMonths === 12 ? 'year' : 'years'}`}
+              </strong>
               <span>Experience</span>
             </div>
             <div>
@@ -138,8 +187,10 @@ export function SkillClaimDialog({
             )}
           </section>
           <section className="claim-content-block">
-            <h3>Evidence</h3>
             <RelatedCapabilities kind="SKILL" id={claim.id} />
+          </section>
+          <section className="claim-content-block">
+            <h3>Attached evidence images</h3>
             <ClaimEvidence
               claim={claim}
               reviewer={review || history}
@@ -147,12 +198,6 @@ export function SkillClaimDialog({
               onBusy={setUploading}
             />
           </section>
-          {claim.levelDescription && (
-            <details className="claim-detail">
-              <summary>Level criteria · L{claim.rank}</summary>
-              <p>{claim.levelDescription}</p>
-            </details>
-          )}
           {history && (
             <details className="claim-detail">
               <summary>Review history</summary>
@@ -239,18 +284,16 @@ export function SkillClaimDialog({
               Verification records reviewed proficiency. Learning completion stays separate.
             </p>
           </aside>
-        ) : (
+        ) : mode === 'submit' ? (
           <section className="claim-content-block">
-            <h3>{mode === 'submit' ? 'Ready for manager review' : 'Review status'}</h3>
+            <h3>Ready for manager review</h3>
             <strong>{claim.status.replaceAll('_', ' ')}</strong>
-            {mode === 'submit' && (
-              <p>
-                Your current reporting manager receives this claim. Submitted claims remain locked
-                until changes are requested or rejected.
-              </p>
-            )}
+            <p>
+              Your current reporting manager receives this claim. Submitted claims remain locked
+              until changes are requested or rejected.
+            </p>
           </section>
-        )}
+        ) : null}
       </div>
     </FormDialog>
   );
