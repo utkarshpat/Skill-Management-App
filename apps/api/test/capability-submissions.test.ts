@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import {
   capabilityCommand,
   capabilityDecision,
+  normalizeCapabilityIds,
 } from '../src/modules/skills/capability-submissions.js';
 import { CertificateAutofillService } from '../src/modules/ai/certificate-autofill.js';
 import { MemoryAiBudget } from '../src/modules/ai/budget.js';
@@ -241,4 +242,19 @@ test('capability HTTP binds verified actor, validates revision sets and conceals
     ).status,
     400,
   );
+});
+
+test('SQL JSON IDs normalize consistently for draft recovery, membership and private file reads without changing text', () => {
+  const source = {
+    id: id.toUpperCase(),
+    skills: [{ id: skill.toUpperCase(), skillId: skill.toUpperCase(), name: 'AZURE' }],
+    certifications: [{ id: cert.toUpperCase(), fields: { credentialId: actor.toUpperCase() } }],
+    items: [{ id: cert.toUpperCase(), blobName: 'Private/CASE' }],
+  };
+  const normalized = normalizeCapabilityIds(source);
+  assert.equal(normalized.id, id);
+  assert.equal(normalized.skills[0].id, skill);
+  assert.equal(normalized.items[0].id, cert);
+  assert.equal(normalized.items[0].blobName, 'Private/CASE');
+  assert.equal(normalized.certifications[0].fields.credentialId, actor.toUpperCase());
 });

@@ -2,7 +2,10 @@ import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { readSqlJson } from '../../shared/sql-json.js';
 import { AccessError } from '../../shared/errors.js';
-import type { CapabilitySubmissionStore } from './capability-submissions.js';
+import {
+  normalizeCapabilityIds,
+  type CapabilitySubmissionStore,
+} from './capability-submissions.js';
 import { BlobServiceClient } from '@azure/storage-blob';
 import { certificationId } from './certifications.js';
 import { prepareCertificateFile } from './evidence.js';
@@ -33,7 +36,7 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
           .input('operation', sql.VarChar(8), operation)
           .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload))
           .execute('dbo.CapabilityIntakeFiles');
-        const value = readSqlJson<any>(result.recordset[0].json);
+        const value = normalizeCapabilityIds(readSqlJson<any>(result.recordset[0].json));
         value.items ??= [];
         return value;
       });
@@ -119,8 +122,8 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
           .input('id', sql.UniqueIdentifier, certificationId(id))
           .input('record_id', sql.UniqueIdentifier, certificationId(record))
           .execute('dbo.CapabilitySubmissionFiles');
-        const value = readSqlJson<any>(
-          (result.recordsets as unknown as any[][]).flat().at(-1)?.json ?? '{}',
+        const value = normalizeCapabilityIds(
+          readSqlJson<any>((result.recordsets as unknown as any[][]).flat().at(-1)?.json ?? '{}'),
         );
         value.items ??= [];
         return value;
@@ -167,8 +170,8 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
           .input('operation', sql.VarChar(20), operation)
           .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload))
           .execute('dbo.CapabilitySubmissionWorkspace');
-        return readSqlJson<any>(
-          (result.recordsets as unknown as any[][]).flat().at(-1)?.json ?? '{}',
+        return normalizeCapabilityIds(
+          readSqlJson<any>((result.recordsets as unknown as any[][]).flat().at(-1)?.json ?? '{}'),
         );
       });
     } catch (error) {

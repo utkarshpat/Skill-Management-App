@@ -49,7 +49,7 @@ export function CapabilitySubmissions({
     };
   }, []);
   useEffect(() => {
-    const target = params.get('submission');
+    const target = params.get('submission')?.toLowerCase();
     if (target && consumed.current !== target && records.some(r => r.id === target)) {
       consumed.current = target;
       setOpened(target);

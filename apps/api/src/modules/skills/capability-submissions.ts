@@ -256,3 +256,36 @@ export function capabilityDecision(input: unknown) {
     throw new AccessError(400, 'Duplicate review decisions.');
   return { id: certificationId(body.id), revision: revision(body.revision), decisions };
 }
+
+// SQL JSON serializes uniqueidentifier values in uppercase; public IDs use the
+// same lowercase contract as the existing skill and certification adapters.
+export function normalizeCapabilityIds<T>(value: T): T {
+  const keys = new Set([
+    'id',
+    'skillId',
+    'claimId',
+    'certificationId',
+    'personId',
+    'reviewerId',
+    'submissionId',
+    'recordId',
+    'fileId',
+    'renewedFromId',
+  ]);
+  const walk = (v: any): any =>
+    Array.isArray(v)
+      ? v.map(walk)
+      : v && typeof v === 'object'
+        ? Object.fromEntries(
+            Object.entries(v).map(([key, item]) => [
+              key,
+              typeof item === 'string' &&
+              keys.has(key) &&
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item)
+                ? item.toLowerCase()
+                : walk(item),
+            ]),
+          )
+        : v;
+  return walk(value);
+}
