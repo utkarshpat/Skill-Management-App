@@ -312,7 +312,8 @@ export function CertificateRenewalSummary() {
       </h3>
       <div className="cap-renewal-counts">
         <span>
-          <strong>{records.length}</strong>Certificates
+          <strong>{records.length}</strong>
+          {records.length === 1 ? 'Certificate' : 'Certificates'}
         </span>
         <span>
           <strong>

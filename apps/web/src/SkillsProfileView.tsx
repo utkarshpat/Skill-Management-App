@@ -22,6 +22,7 @@ import {
   Monitor,
   Target,
   AlertCircle,
+  Plus,
 } from 'lucide-react';
 import { SupportingCertificates } from './capabilities/SupportingCertificates';
 import type { CertificationRecord } from './certifications/types';
@@ -278,134 +279,125 @@ export function SkillsProfileView({
           </div>
           {rows.length ? (
             <>
-              <div
-                className="skills-table-scroll"
-                tabIndex={0}
-                aria-label="Skill table; scroll horizontally on smaller screens"
-              >
-                <table className="skills-profile-table">
-                  <thead>
-                    <tr>
-                      {[
-                        'Skill',
-                        'Category',
-                        'Proficiency',
-                        'Experience',
-                        'Status',
-                        'Updated',
-                        'Actions',
-                      ].map(label => (
-                        <th key={label} scope="col">
-                          {label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(claim => (
-                      <tr key={claim.id}>
-                        <td>
-                          <button className="skills-name-button" onClick={() => onView(claim)}>
-                            <span className="skills-row-icon">
-                              <SkillIcon category={claim.category} />
-                            </span>
-                            <span>
-                              <strong>{claim.skillName}</strong>
-                              <small>View experience & evidence</small>
-                            </span>
-                          </button>
-                          {onCertificate && (
-                            <SupportingCertificates
-                              records={certificates}
-                              skillId={claim.skillId}
-                              disabled={loading}
-                              onOpen={onCertificate}
-                            />
-                          )}
-                        </td>
-                        <td>
-                          <span className="skills-category-pill">{claim.category}</span>
-                        </td>
-                        <td>
-                          <strong className="skills-level-label">Level {claim.rank}</strong>
-                          <span className="skills-rank-bars" aria-hidden="true">
-                            {Array.from({ length: claim.rank }, (_, i) => (
-                              <i key={i} />
-                            ))}
-                          </span>
-                          <small className="skills-level-name">{claim.levelName}</small>
-                        </td>
-                        <td className="skills-experience">
-                          {claim.experienceMonths < 12
-                            ? `${claim.experienceMonths} months`
-                            : `${Number((claim.experienceMonths / 12).toFixed(1))} ${claim.experienceMonths === 12 ? 'year' : 'years'}`}
-                        </td>
-                        <td>
-                          <span className={'skills-status ' + claim.status.toLowerCase()}>
-                            {claim.status === 'APPROVED' ? (
-                              <ShieldCheck size={13} />
-                            ) : claim.status === 'SUBMITTED' ? (
-                              <Clock3 size={13} />
-                            ) : claim.status === 'DRAFT' ? (
-                              <UserRound size={13} />
-                            ) : (
-                              <AlertCircle size={13} />
-                            )}{' '}
-                            {statuses[claim.status]}
-                          </span>
-                        </td>
-                        <td className="skills-date">
-                          {new Date(claim.updatedAt).toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </td>
-                        <td>
-                          <div className="skills-row-actions">
+              <div className="skills-items-container" role="list" aria-label="Your skills list">
+                {rows.map(claim => (
+                  <article key={claim.id} className="skills-item-card" role="listitem">
+                    <div className="skills-item-main">
+                      <div className="skills-item-left">
+                        <div className="skills-item-icon" aria-hidden="true">
+                          <SkillIcon category={claim.category} />
+                        </div>
+                        <div className="skills-item-info">
+                          <div className="skills-item-title-row">
                             <button
-                              title="View claim"
-                              aria-label={`View ${claim.skillName} claim`}
+                              type="button"
+                              className="skills-name-button"
                               onClick={() => onView(claim)}
                             >
-                              <Eye size={16} />
+                              <strong>{claim.skillName}</strong>
                             </button>
-                            {canClaim &&
-                              ['DRAFT', 'CHANGES_REQUESTED', 'REJECTED'].includes(claim.status) && (
-                                <button
-                                  title="Edit draft"
-                                  aria-label={`Edit ${claim.skillName} draft`}
-                                  disabled={loading}
-                                  onClick={() => onEdit(claim)}
-                                >
-                                  <Pencil size={15} />
-                                </button>
-                              )}
-                            {canClaim && claim.status !== 'APPROVED' && (
+                            <span className="skills-category-pill">{claim.category}</span>
+                            <span className={'skills-status ' + claim.status.toLowerCase()}>
+                              {claim.status === 'APPROVED' ? (
+                                <ShieldCheck size={13} aria-hidden="true" />
+                              ) : claim.status === 'SUBMITTED' ? (
+                                <Clock3 size={13} aria-hidden="true" />
+                              ) : claim.status === 'DRAFT' ? (
+                                <UserRound size={13} aria-hidden="true" />
+                              ) : (
+                                <AlertCircle size={13} aria-hidden="true" />
+                              )}{' '}
+                              {statuses[claim.status]}
+                            </span>
+                          </div>
+                          <div className="skills-item-meta-row">
+                            <span className="skills-experience">
+                              {claim.experienceMonths < 12
+                                ? `${claim.experienceMonths} ${claim.experienceMonths === 1 ? 'month' : 'months'}`
+                                : `${Number((claim.experienceMonths / 12).toFixed(1))} ${claim.experienceMonths === 12 ? 'year' : 'years'}`}{' '}
+                              experience
+                            </span>
+                            <span className="skills-meta-sep">·</span>
+                            <span className="skills-date">
+                              Updated{' '}
+                              {new Date(claim.updatedAt).toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="skills-item-right">
+                        <div className="skills-item-proficiency">
+                          <div className="skills-level-header">
+                            <strong className="skills-level-label">Level {claim.rank}</strong>
+                            <span className="skills-level-name">{claim.levelName}</span>
+                          </div>
+                          <span className="skills-rank-bars" aria-hidden="true">
+                            {Array.from({ length: 4 }, (_, i) => (
+                              <i key={i} className={i < claim.rank ? 'filled' : 'empty'} />
+                            ))}
+                          </span>
+                        </div>
+
+                        <div className="skills-row-actions">
+                          <button
+                            type="button"
+                            title="View claim"
+                            aria-label={`View ${claim.skillName} claim`}
+                            onClick={() => onView(claim)}
+                          >
+                            <Eye size={16} />
+                          </button>
+                          {canClaim &&
+                            ['DRAFT', 'CHANGES_REQUESTED', 'REJECTED'].includes(claim.status) && (
                               <button
-                                title={
-                                  claim.status === 'SUBMITTED'
-                                    ? 'Reroute review'
-                                    : 'Submit for review'
-                                }
-                                aria-label={`${claim.status === 'SUBMITTED' ? 'Reroute' : 'Submit'} ${claim.skillName} for review`}
+                                type="button"
+                                title="Edit draft"
+                                aria-label={`Edit ${claim.skillName} draft`}
                                 disabled={loading}
-                                onClick={() => onSubmit(claim)}
+                                onClick={() => onEdit(claim)}
                               >
-                                <Send size={15} />
+                                <Pencil size={15} />
                               </button>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          {canClaim && claim.status !== 'APPROVED' && (
+                            <button
+                              type="button"
+                              title={
+                                claim.status === 'SUBMITTED'
+                                  ? 'Reroute review'
+                                  : 'Submit for review'
+                              }
+                              aria-label={`${claim.status === 'SUBMITTED' ? 'Reroute' : 'Submit'} ${claim.skillName} for review`}
+                              disabled={loading}
+                              onClick={() => onSubmit(claim)}
+                            >
+                              <Send size={15} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {onCertificate && (
+                      <SupportingCertificates
+                        records={certificates}
+                        skillId={claim.skillId}
+                        disabled={loading}
+                        onOpen={onCertificate}
+                      />
+                    )}
+                  </article>
+                ))}
               </div>
               <div className="skills-pagination">
                 <span>
                   Showing {(current - 1) * size + 1}–{Math.min(current * size, count)} of {count}{' '}
-                  skills
+                  {count === 1 ? 'skill' : 'skills'}
                 </span>
                 <div>
                   <button
@@ -455,6 +447,15 @@ export function SkillsProfileView({
               {claims.length > 0 && (
                 <button className="secondary-button" onClick={reset}>
                   Clear filters
+                </button>
+              )}
+              {canClaim && onAdd && !claims.length && (
+                <button
+                  type="button"
+                  className="admin-primary skills-empty-add-btn"
+                  onClick={onAdd}
+                >
+                  <Plus size={16} /> Add your first skill
                 </button>
               )}
             </div>
