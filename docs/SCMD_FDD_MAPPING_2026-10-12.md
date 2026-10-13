@@ -2,6 +2,8 @@
 
 Reviewed 12 October 2026 against repository commit `6d4a899121babcdcefe116fefca5a09180ebc0e1`.
 
+Current follow-up: [13 October commit audit and updated mapping](NEW_COMMITS_AUDIT_AND_FDD_2026-10-13.md) supersedes the statuses for four-level support, certification identity, unified manager navigation and redesigned analytics. The tables below remain the historical comparison at the pinned commit.
+
 Source: `C:/Users/utpatel/Downloads/SCMD FDD V0.1.docx`. Its cover identifies version 1.0 and status Draft, although the filename says V0.1. This is a requirements comparison, not approval of a new baseline or a fresh production acceptance test. The original document and application behavior were not changed. Current repository code is the implementation basis; deployment and organization configuration must be verified separately.
 
 The application's employee, exact current-manager review, scoped Business Analytics and Admin workspaces provide a substantial foundation for SCMD. The main gaps are Oracle master data and iReflect levels, certification business uniqueness, corporate email eligibility, Oracle-specific dimensions/reports, and durable lead/threshold/monthly notifications. Several differences are deliberate user-approved design choices rather than defects.

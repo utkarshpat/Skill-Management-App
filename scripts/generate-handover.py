@@ -177,7 +177,7 @@ groups={
  'Skills & claims':['SkillCatalogue','ProficiencyFramework','ProficiencyLevel','SkillDefinitionVersion','SkillVersionCriterion','SkillClaimDraft','SkillClaimNotification','SkillClaimEvidence','CertificationRecord','CertificationImageRecord','CapabilitySubmission','CapabilitySubmissionItem','SkillCertificationLink','CapabilityIntakeFile'],
  'Learning & recommendations':['LearningPlan','LearningSession','LearningQuiz','LearningAttempt','LearningRecommendation','LearningRecommendationEvent','CertificationRecommendation','CertificationRecommendationEvent'],
  'Requests & incidents':['WorkflowRecord','WorkflowEvent'],
- 'Business Operations':['BusinessProject','BusinessProjectMember','BusinessResponsibility','CredentialProvider','CredentialDefinition','MasterAmendment','BusinessDemand','BusinessShortlist'],
+ 'Business Operations':['BusinessProject','BusinessProjectMember','BusinessResponsibility','CredentialProvider','CredentialDefinition','CredentialSkillMapping','MasterAmendment','BusinessDemand','BusinessShortlist'],
  'AI & budget':['AiConversation','AiAccountBudget','AiActorBudget'],
 }
 assert set(sum(groups.values(), []))==set(tables), 'Update schema domain groups for new tables'

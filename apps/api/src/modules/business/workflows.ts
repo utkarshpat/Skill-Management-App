@@ -28,6 +28,7 @@ export function businessWorkflow(
       'active',
       'providerId',
       'criteria',
+      'relatedSkillIds',
       'reason',
     ],
     APPROVE_AMENDMENT: ['id', 'revision', 'note'],
@@ -81,7 +82,19 @@ export function businessWorkflow(
       description: text(q.description ?? '', 2000, q.type === 'SKILL'),
       active: q.active !== false,
     };
-    if (q.type === 'CERTIFICATION') payload.providerId = identifier(q.providerId);
+    if (q.type === 'CERTIFICATION') {
+      payload.providerId = identifier(q.providerId);
+      if (q.relatedSkillIds !== undefined) {
+        if (!Array.isArray(q.relatedSkillIds) || q.relatedSkillIds.length > 20)
+          throw new AccessError(400, 'Choose up to twenty related catalogue skills.');
+        const ids = q.relatedSkillIds.map(identifier);
+        if (new Set(ids.map(id => id.toLowerCase())).size !== ids.length)
+          throw new AccessError(400, 'Choose each related skill once.');
+        payload.relatedSkillIds = ids;
+      }
+    } else if (q.relatedSkillIds !== undefined) {
+      throw new AccessError(400, 'Related skill mappings belong to credential definitions.');
+    }
     if (q.type === 'SKILL') {
       if (!Array.isArray(q.criteria) || q.criteria.length !== 4)
         throw new AccessError(400, 'Describe all four skill proficiency levels.');

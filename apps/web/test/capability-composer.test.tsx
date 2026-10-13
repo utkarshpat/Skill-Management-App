@@ -5,8 +5,70 @@ import {
   relatedSkillIds,
   submissionPayload,
   mergeCertificateSuggestions,
+  submissionLevelName,
+  submissionReviewState,
+  credentialSkillDefaults,
 } from '../src/capabilities/capability-model';
 import { CertificateFilePreview } from '../src/certifications/CertificateFilePreview';
+
+test('catalogue mappings propose multiple canonical skills only for matching credential and issuer', () => {
+  const skills = ['oic', 'oci'].map(id => ({
+    id,
+    name: id,
+    category: 'Oracle Platform',
+    definitionRevision: 1,
+    levels: [{ rank: 1, name: 'Foundation', description: 'Guided work' }],
+  }));
+  const definitions = [{ name: 'Oracle Integration', provider: 'Oracle', relatedSkills: skills }];
+  assert.deepEqual(
+    credentialSkillDefaults(definitions, {
+      certificationName: '  oracle   integration ',
+      provider: 'ORACLE',
+    }).map(s => s.skill.id),
+    ['oic', 'oci'],
+  );
+  assert.deepEqual(
+    credentialSkillDefaults(definitions, {
+      certificationName: 'Oracle Integration',
+      provider: 'Other issuer',
+    }),
+    [],
+  );
+  assert.deepEqual(
+    credentialSkillDefaults(definitions, {
+      certificationName: 'Other credential',
+      provider: 'Oracle',
+    }),
+    [],
+  );
+  assert.ok(
+    credentialSkillDefaults(definitions, {
+      certificationName: 'Oracle Integration',
+      provider: 'Oracle',
+    }).every(s => !('rank' in s)),
+  );
+});
+
+test('review proficiency comes from the saved version and never relabels historical ranks', () => {
+  assert.equal(
+    submissionLevelName({ rank: 2, levels: [{ rank: 2, name: 'Beginner' }] }),
+    'Beginner',
+  );
+  assert.equal(
+    submissionLevelName({ rank: 2, levels: [{ rank: 2, name: 'Autonomous' }] }),
+    'Autonomous',
+  );
+  assert.equal(submissionLevelName({ rank: 5, levels: [{ rank: 5, name: 'Expert' }] }), 'Expert');
+  assert.equal(submissionLevelName({ rank: 2 }), '');
+});
+
+test('historical review states distinguish decisions from immutable needs-review flags', () => {
+  assert.equal(submissionReviewState('APPROVED', true, false), 'Manager reviewed');
+  assert.equal(submissionReviewState('CHANGES_REQUESTED', true, false), 'Changes requested');
+  assert.equal(submissionReviewState('REJECTED', true, false), 'Not approved');
+  assert.equal(submissionReviewState('SUBMITTED', true, true), 'Needs decision');
+  assert.equal(submissionReviewState('SUBMITTED', true, false), 'Awaiting review');
+});
 test('one credential can support several canonical skills without duplicating a file or credential', () => {
   const skills = ['azure', 'api'].map(id => ({
     id: 'claim-' + id,

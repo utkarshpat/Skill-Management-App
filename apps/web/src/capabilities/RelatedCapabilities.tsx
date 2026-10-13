@@ -9,6 +9,8 @@ export function RelatedCapabilities({ kind, id }: { kind: 'SKILL' | 'CERTIFICATI
     [error, setError] = useState('');
   useEffect(() => {
     const abort = new AbortController();
+    setLinks(undefined);
+    setError('');
     authenticatedFetch(`/api/capability-submissions/links/${kind}/${id}`, { signal: abort.signal })
       .then(r => readApiResponse<any>(r, 'Related capabilities unavailable.'))
       .then(v => {
@@ -52,7 +54,7 @@ export function RelatedCapabilities({ kind, id }: { kind: 'SKILL' | 'CERTIFICATI
                           </>
                         ) : link.status === 'APPROVED' ? (
                           <>
-                            <ShieldCheck size={11} aria-hidden="true" /> Verified
+                            <ShieldCheck size={11} aria-hidden="true" /> Manager reviewed
                           </>
                         ) : (
                           link.status?.toLowerCase()

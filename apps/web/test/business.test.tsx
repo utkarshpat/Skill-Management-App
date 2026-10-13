@@ -7,8 +7,37 @@ import {
   businessFilters,
   updateBusinessFilters,
   businessCoverageRows,
+  businessPeriod,
+  businessPeoplePage,
 } from '../src/business/business-model';
 import { personalNavigationItems, isSupportedWorkspacePath } from '../src/WorkspaceNavigation';
+
+test('activity presets use UTC year and day boundaries, including positive-offset New Year', () => {
+  const now = new Date('2026-01-01T00:30:00+05:30');
+  assert.deepEqual(businessPeriod('ytd', now), { from: '2025-01-01', to: '2025-12-31' });
+  assert.deepEqual(businessPeriod('ytd', new Date('2026-10-13T10:00:00Z')), {
+    from: '2026-01-01',
+    to: '2026-10-13',
+  });
+  assert.deepEqual(businessPeriod('30', new Date('2026-03-01T00:00:00Z')), {
+    from: '2026-01-30',
+    to: '2026-03-01',
+  });
+  assert.deepEqual(businessPeriod('all', now), { from: '', to: '' });
+});
+
+test('people comparison ranks only supplied page rows without mutating the server page', () => {
+  const rows = [
+    { employee: 'First alphabetically', currentCertifications: 1, reviewedSkills: 2 },
+    { employee: 'Current page holder', currentCertifications: 3, reviewedSkills: 1 },
+    { employee: 'Tie with more skills', currentCertifications: 3, reviewedSkills: 4 },
+  ];
+  assert.deepEqual(
+    businessPeoplePage(rows).map(row => row.employee),
+    ['Tie with more skills', 'Current page holder', 'First alphabetically'],
+  );
+  assert.equal(rows[0].employee, 'First alphabetically');
+});
 test('business record dates show readable dates and escaped attribution only for an existing event', () => {
   const html = renderToStaticMarkup(<BusinessRecordDate value="2026-10-11" by="Reviewer <QA>" />);
   assert.match(html, /11 Oct 2026/);

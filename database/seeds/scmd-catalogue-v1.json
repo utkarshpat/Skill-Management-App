@@ -1,0 +1,410 @@
+{
+  "source": "SCMD FDD V0.1.docx skills; credential titles verified against https://www.oracle.com/education/certification/ on 2026-10-13. Skill mappings are application defaults, not Oracle endorsements.",
+  "skills": [
+    {
+      "code": "SCMD-01",
+      "name": "Oracle HCM",
+      "category": "Oracle Applications",
+      "description": "FDD skill area: Oracle HCM. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
+      "levels": [
+        {
+          "rank": 1,
+          "name": "Foundation",
+          "description": "Understand core Oracle HCM concepts and perform guided exercises."
+        },
+        {
+          "rank": 2,
+          "name": "Autonomous",
+          "description": "Deliver routine Oracle HCM tasks independently and explain the outcome."
+        },
+        {
+          "rank": 3,
+          "name": "Experienced",
+          "description": "Resolve complex Oracle HCM issues, evaluate trade-offs and review implementation work."
+        },
+        {
+          "rank": 4,
+          "name": "Expert",
+          "description": "Design Oracle HCM solutions, establish standards and mentor others using demonstrated experience."
+        }
+      ]
+    },
+    {
+      "code": "SCMD-02",
+      "name": "Oracle Payroll",
+      "category": "Oracle Applications",
+      "description": "FDD skill area: Oracle Payroll. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
+      "levels": [
+        {
+          "rank": 1,
+          "name": "Foundation",
+          "description": "Understand core Oracle Payroll concepts and perform guided exercises."
+        },
+        {
+          "rank": 2,
+          "name": "Autonomous",
+          "description": "Deliver routine Oracle Payroll tasks independently and explain the outcome."
+        },
+        {
+          "rank": 3,
+          "name": "Experienced",
+          "description": "Resolve complex Oracle Payroll issues, evaluate trade-offs and review implementation work."
+        },
+        {
+          "rank": 4,
+          "name": "Expert",
+          "description": "Design Oracle Payroll solutions, establish standards and mentor others using demonstrated experience."
+        }
+      ]
+    },
+    {
+      "code": "SCMD-03",
+      "name": "Oracle Recruiting",
+      "category": "Oracle Applications",
+      "description": "FDD skill area: Oracle Recruiting. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
+      "levels": [
+        {
+          "rank": 1,
+          "name": "Foundation",
+          "description": "Understand core Oracle Recruiting concepts and perform guided exercises."
+        },
+        {
+          "rank": 2,
+          "name": "Autonomous",
+          "description": "Deliver routine Oracle Recruiting tasks independently and explain the outcome."
+        },
+        {
+          "rank": 3,
+          "name": "Experienced",
+          "description": "Resolve complex Oracle Recruiting issues, evaluate trade-offs and review implementation work."
+        },
+        {
+          "rank": 4,
+          "name": "Expert",
+          "description": "Design Oracle Recruiting solutions, establish standards and mentor others using demonstrated experience."
+        }
+      ]
+    },
+    {
+      "code": "SCMD-04",
+      "name": "Oracle Learning",
+      "category": "Oracle Applications",
+      "description": "FDD skill area: Oracle Learning. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
+      "levels": [
+        {
+          "rank": 1,
+          "name": "Foundation",
+          "description": "Understand core Oracle Learning concepts and perform guided exercises."
+        },
+        {
+          "rank": 2,
+          "name": "Autonomous",
+          "description": "Deliver routine Oracle Learning tasks independently and explain the outcome."
+        },
+        {
+          "rank": 3,
+          "name": "Experienced",
+          "description": "Resolve complex Oracle Learning issues, evaluate trade-offs and review implementation work."
+        },
+        {
+          "rank": 4,
+          "name": "Expert",
+          "description": "Design Oracle Learning solutions, establish standards and mentor others using demonstrated experience."
+        }
+      ]
+    },
+    {
+      "code": "SCMD-05",
+      "name": "Oracle Benefits",
+      "category": "Oracle Applications",
+      "description": "FDD skill area: Oracle Benefits. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
+      "levels": [
+        {
+          "rank": 1,
+          "name": "Foundation",
+          "description": "Understand core Oracle Benefits concepts and perform guided exercises."
+        },
+        {
+          "rank": 2,
+          "name": "Autonomous",
+          "description": "Deliver routine Oracle Benefits tasks independently and explain the outcome."
+        },
+        {
+          "rank": 3,
+          "name": "Experienced",
+          "description": "Resolve complex Oracle Benefits issues, evaluate trade-offs and review implementation work."
+        },
+        {
+          "rank": 4,
+          "name": "Expert",
+          "description": "Design Oracle Benefits solutions, establish standards and mentor others using demonstrated experience."
+        }
+      ]
+    },
+    {
+      "code": "SCMD-06",
+      "name": "Oracle OIC",
+      "category": "Oracle Platform",
+      "description": "FDD skill area: Oracle OIC. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
+      "levels": [
+        {
+          "rank": 1,
+          "name": "Foundation",
+          "description": "Understand core Oracle OIC concepts and perform guided exercises."
+        },
+        {
+          "rank": 2,
+          "name": "Autonomous",
+          "description": "Deliver routine Oracle OIC tasks independently and explain the outcome."
+        },
+        {
+          "rank": 3,
+          "name": "Experienced",
+          "description": "Resolve complex Oracle OIC issues, evaluate trade-offs and review implementation work."
+        },
+        {
+          "rank": 4,
+          "name": "Expert",
+          "description": "Design Oracle OIC solutions, establish standards and mentor others using demonstrated experience."
+        }
+      ]
+    },
+    {
+      "code": "SCMD-07",
+      "name": "Oracle OCI",
+      "category": "Oracle Platform",
+      "description": "FDD skill area: Oracle OCI. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
+      "levels": [
+        {
+          "rank": 1,
+          "name": "Foundation",
+          "description": "Understand core Oracle OCI concepts and perform guided exercises."
+        },
+        {
+          "rank": 2,
+          "name": "Autonomous",
+          "description": "Deliver routine Oracle OCI tasks independently and explain the outcome."
+        },
+        {
+          "rank": 3,
+          "name": "Experienced",
+          "description": "Resolve complex Oracle OCI issues, evaluate trade-offs and review implementation work."
+        },
+        {
+          "rank": 4,
+          "name": "Expert",
+          "description": "Design Oracle OCI solutions, establish standards and mentor others using demonstrated experience."
+        }
+      ]
+    },
+    {
+      "code": "SCMD-08",
+      "name": "Oracle APEX",
+      "category": "Oracle Platform",
+      "description": "FDD skill area: Oracle APEX. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
+      "levels": [
+        {
+          "rank": 1,
+          "name": "Foundation",
+          "description": "Understand core Oracle APEX concepts and perform guided exercises."
+        },
+        {
+          "rank": 2,
+          "name": "Autonomous",
+          "description": "Deliver routine Oracle APEX tasks independently and explain the outcome."
+        },
+        {
+          "rank": 3,
+          "name": "Experienced",
+          "description": "Resolve complex Oracle APEX issues, evaluate trade-offs and review implementation work."
+        },
+        {
+          "rank": 4,
+          "name": "Expert",
+          "description": "Design Oracle APEX solutions, establish standards and mentor others using demonstrated experience."
+        }
+      ]
+    },
+    {
+      "code": "SCMD-09",
+      "name": "Oracle EPM",
+      "category": "Oracle Platform",
+      "description": "FDD skill area: Oracle EPM. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
+      "levels": [
+        {
+          "rank": 1,
+          "name": "Foundation",
+          "description": "Understand core Oracle EPM concepts and perform guided exercises."
+        },
+        {
+          "rank": 2,
+          "name": "Autonomous",
+          "description": "Deliver routine Oracle EPM tasks independently and explain the outcome."
+        },
+        {
+          "rank": 3,
+          "name": "Experienced",
+          "description": "Resolve complex Oracle EPM issues, evaluate trade-offs and review implementation work."
+        },
+        {
+          "rank": 4,
+          "name": "Expert",
+          "description": "Design Oracle EPM solutions, establish standards and mentor others using demonstrated experience."
+        }
+      ]
+    },
+    {
+      "code": "SCMD-10",
+      "name": "AI & Automation",
+      "category": "Data & Automation",
+      "description": "FDD skill area: AI & Automation. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
+      "levels": [
+        {
+          "rank": 1,
+          "name": "Foundation",
+          "description": "Understand core AI & Automation concepts and perform guided exercises."
+        },
+        {
+          "rank": 2,
+          "name": "Autonomous",
+          "description": "Deliver routine AI & Automation tasks independently and explain the outcome."
+        },
+        {
+          "rank": 3,
+          "name": "Experienced",
+          "description": "Resolve complex AI & Automation issues, evaluate trade-offs and review implementation work."
+        },
+        {
+          "rank": 4,
+          "name": "Expert",
+          "description": "Design AI & Automation solutions, establish standards and mentor others using demonstrated experience."
+        }
+      ]
+    },
+    {
+      "code": "SCMD-11",
+      "name": "SQL & Analytics",
+      "category": "Data & Automation",
+      "description": "FDD skill area: SQL & Analytics. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
+      "levels": [
+        {
+          "rank": 1,
+          "name": "Foundation",
+          "description": "Understand core SQL & Analytics concepts and perform guided exercises."
+        },
+        {
+          "rank": 2,
+          "name": "Autonomous",
+          "description": "Deliver routine SQL & Analytics tasks independently and explain the outcome."
+        },
+        {
+          "rank": 3,
+          "name": "Experienced",
+          "description": "Resolve complex SQL & Analytics issues, evaluate trade-offs and review implementation work."
+        },
+        {
+          "rank": 4,
+          "name": "Expert",
+          "description": "Design SQL & Analytics solutions, establish standards and mentor others using demonstrated experience."
+        }
+      ]
+    }
+  ],
+  "credentials": [
+    {
+      "name": "Oracle Global Human Resources Cloud 2026 Implementation Professional",
+      "category": "Oracle Applications",
+      "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
+      "skillCodes": [
+        "SCMD-01"
+      ]
+    },
+    {
+      "name": "Oracle Payroll Cloud 2026 Implementation Professional",
+      "category": "Oracle Applications",
+      "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
+      "skillCodes": [
+        "SCMD-02",
+        "SCMD-01"
+      ]
+    },
+    {
+      "name": "Oracle Recruiting Cloud 2026 Implementation Professional",
+      "category": "Oracle Applications",
+      "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
+      "skillCodes": [
+        "SCMD-03",
+        "SCMD-01"
+      ]
+    },
+    {
+      "name": "Oracle Learning Cloud 2026 Implementation Professional",
+      "category": "Oracle Applications",
+      "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
+      "skillCodes": [
+        "SCMD-04",
+        "SCMD-01"
+      ]
+    },
+    {
+      "name": "Oracle Benefits Cloud 2026 Implementation Professional",
+      "category": "Oracle Applications",
+      "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
+      "skillCodes": [
+        "SCMD-05",
+        "SCMD-01"
+      ]
+    },
+    {
+      "name": "Oracle Cloud Infrastructure Application Integration Professional",
+      "category": "Oracle Platform",
+      "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
+      "skillCodes": [
+        "SCMD-06",
+        "SCMD-07"
+      ]
+    },
+    {
+      "name": "Oracle Cloud Infrastructure Architect Associate",
+      "category": "Oracle Platform",
+      "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
+      "skillCodes": [
+        "SCMD-07"
+      ]
+    },
+    {
+      "name": "Oracle APEX Cloud Developer Professional",
+      "category": "Oracle Platform",
+      "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
+      "skillCodes": [
+        "SCMD-08",
+        "SCMD-11"
+      ]
+    },
+    {
+      "name": "Oracle Planning + AI 2026 Implementation Professional",
+      "category": "Oracle Platform",
+      "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
+      "skillCodes": [
+        "SCMD-09",
+        "SCMD-10"
+      ]
+    },
+    {
+      "name": "Oracle Fusion AI Agent Studio Developer Professional",
+      "category": "Oracle Platform",
+      "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
+      "skillCodes": [
+        "SCMD-10"
+      ]
+    },
+    {
+      "name": "Oracle Database SQL",
+      "category": "Oracle Platform",
+      "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
+      "skillCodes": [
+        "SCMD-11"
+      ]
+    }
+  ]
+}

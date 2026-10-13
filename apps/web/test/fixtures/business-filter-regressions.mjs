@@ -180,6 +180,11 @@ let tree = render();
 await tick();
 tree = render();
 assert.ok(section(tree));
+assert.ok(text(tree).includes('People on This Page by Current Credentials'));
+assert.ok(!text(tree).includes('Top Certified Resources & Leaderboard'));
+assert.ok(!text(tree).includes('Month-wise Certification & Submission Growth'));
+assert.ok(text(tree).includes('Monthly Submission & Review Activity'));
+assert.ok(!text(tree).includes('L2 · Working'));
 dataset(tree).props.onChange({ target: { value: 'certifications' } });
 tree = render();
 await tick();
@@ -211,4 +216,25 @@ await tick();
 tree = render();
 assert.ok(!text(tree).includes('Current employee'));
 assert.ok(text(tree).includes('Access revoked'));
+
+params = new URLSearchParams('tab=insights&dataset=people&minRank=2&validity=15_30');
+tree = render();
+await tick();
+const rankSelector = nodes(tree).find(n => n.type === 'select' && n.props.value === '2_4');
+assert.ok(rankSelector, 'Minimum-only rank links keep their selected range visible');
+assert.ok(text(tree).includes('Minimum rank'), 'Minimum-only filters retain a removable chip');
+const upperValidity = nodes(tree).find(n =>
+  n.type === 'select' && nodes(n).some(o => o.type === 'option' && text(o) === 'Current & active'),
+);
+assert.equal(upperValidity.props.value, '15_30');
+assert.ok(nodes(upperValidity).some(n => n.type === 'option' && n.props.value === '15_30'));
+const empty = dashboard('Empty workforce');
+empty.summary.employees = 0;
+empty.rows = [];
+empty.total = 0;
+deferred[3].resolve(json(empty));
+await tick();
+tree = render();
+assert.equal(nodes(tree).find(n => n.props.className === 'bo-pop-bar-fill certified').props.style.width, '0%');
+assert.equal(nodes(tree).find(n => n.props.className === 'bo-pop-bar-fill non-certified').props.style.width, '0%');
 console.log('Business filter lifecycle regressions passed');

@@ -5,6 +5,7 @@ import { readApiResponse } from '../api-response';
 import { CapabilityEvidence } from './CapabilityEvidence';
 import { toast } from '../toast';
 import type { Submission } from './capability-model';
+import { submissionLevelName, submissionReviewState } from './capability-model';
 import {
   AlertCircle,
   Award,
@@ -15,7 +16,6 @@ import {
   ShieldCheck,
   XCircle,
 } from 'lucide-react';
-import { proficiencyNames } from '../proficiency';
 
 export function CapabilityReview({
   id,
@@ -40,6 +40,9 @@ export function CapabilityReview({
 
   useEffect(() => {
     const abort = new AbortController();
+    setData(undefined);
+    setError('');
+    setDecisions({});
     authenticatedFetch('/api/capability-submissions/' + id, { signal: abort.signal })
       .then(r => readApiResponse<Submission>(r, 'Submission unavailable.'))
       .then(v => {
@@ -85,7 +88,7 @@ export function CapabilityReview({
   }, [data]);
 
   async function save() {
-    if (!data || lock.current) return;
+    if (!data || readOnly || data.status !== 'SUBMITTED' || lock.current) return;
     const pending = rows.filter(r => r.needsReview);
     if (pending.some(r => !decisions[r.kind + r.id]?.feedback?.trim())) {
       setError('Please add feedback notes for every pending item before saving.');
@@ -155,6 +158,7 @@ export function CapabilityReview({
   const skillRows = rows.filter(r => r.kind === 'SKILL');
   const certRows = rows.filter(r => r.kind === 'CERTIFICATION');
   const pendingCount = rows.filter(r => r.needsReview).length;
+  const canDecide = !readOnly && data?.status === 'SUBMITTED';
 
   return (
     <FormDialog
@@ -190,7 +194,9 @@ export function CapabilityReview({
               disabled={busy}
               onClick={() => void save()}
             >
-              {pendingCount > 0 ? `Save review decisions (${pendingCount})` : 'Save review decisions'}
+              {pendingCount > 0
+                ? `Save review decisions (${pendingCount})`
+                : 'Save review decisions'}
             </button>
           )}
         </>
@@ -235,16 +241,16 @@ export function CapabilityReview({
           const isSkill = row.kind === 'SKILL';
           const decision = decisions[key] ?? { action: 'APPROVE', feedback: '' };
           const linkedCerts = isSkill
-            ? data?.certifications.filter(c =>
+            ? (data?.certifications.filter(c =>
                 c.relatedSkills?.some((link: any) => link.skillId === row.skillId),
-              ) ?? []
+              ) ?? [])
             : [];
           const linkedSkills = !isSkill
-            ? data?.skills.filter(s =>
+            ? (data?.skills.filter(s =>
                 row.relatedSkills?.some((link: any) => link.skillId === s.skillId),
-              ) ?? []
+              ) ?? [])
             : [];
-          const levelName = isSkill ? proficiencyNames[row.rank - 1] ?? `L${row.rank}` : '';
+          const levelName = isSkill ? submissionLevelName(row) : '';
           const expLabel = isSkill
             ? `${row.experienceMonths} ${row.experienceMonths === 1 ? 'month' : 'months'} experience`
             : '';
@@ -264,7 +270,8 @@ export function CapabilityReview({
                     {isSkill ? (
                       <>
                         <span className="cap-meta-pill highlight">
-                          Level {row.rank} · {levelName}
+                          Level {row.rank}
+                          {levelName ? ` · ${levelName}` : ''}
                         </span>
                         <span className="cap-meta-pill">{expLabel}</span>
                       </>
@@ -282,13 +289,14 @@ export function CapabilityReview({
                   </div>
                 </div>
                 <div className="cap-review-header-right">
-                  {row.needsReview ? (
+                  {canDecide && row.needsReview ? (
                     <span className="cap-status-badge pending">
                       <Clock3 size={12} aria-hidden="true" /> Needs decision
                     </span>
                   ) : (
                     <span className="cap-status-badge verified">
-                      <ShieldCheck size={12} aria-hidden="true" /> Previously verified
+                      <ShieldCheck size={12} aria-hidden="true" />{' '}
+                      {submissionReviewState(row.status, row.needsReview, false)}
                     </span>
                   )}
                 </div>
@@ -400,7 +408,7 @@ export function CapabilityReview({
                 )}
               </div>
 
-              {!readOnly && row.needsReview && (
+              {canDecide && row.needsReview && (
                 <footer className="cap-review-decision-footer">
                   <div className="cap-decision-choice-row">
                     <span className="cap-decision-legend">Record decision:</span>
@@ -419,6 +427,7 @@ export function CapabilityReview({
                           }))
                         }
                         role="radio"
+                        disabled={busy}
                         aria-checked={decision.action === 'APPROVE'}
                       >
                         <CheckCircle2 size={14} aria-hidden="true" /> Approve
@@ -433,6 +442,7 @@ export function CapabilityReview({
                           }))
                         }
                         role="radio"
+                        disabled={busy}
                         aria-checked={decision.action === 'REQUEST_CHANGES'}
                       >
                         <AlertCircle size={14} aria-hidden="true" /> Request changes
@@ -447,6 +457,7 @@ export function CapabilityReview({
                           }))
                         }
                         role="radio"
+                        disabled={busy}
                         aria-checked={decision.action === 'REJECT'}
                       >
                         <XCircle size={14} aria-hidden="true" /> Reject
@@ -481,10 +492,10 @@ export function CapabilityReview({
                 </footer>
               )}
 
-              {!readOnly && !row.needsReview && (
+              {canDecide && !row.needsReview && (
                 <footer className="cap-review-verified-footer">
                   <ShieldCheck size={15} aria-hidden="true" />
-                  <span>Previously approved and verified · No review required</span>
+                  <span>Previously manager reviewed · No review required</span>
                 </footer>
               )}
             </article>

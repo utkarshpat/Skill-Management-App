@@ -101,3 +101,24 @@ export function businessCoverageRows(coverage: BusinessDashboard['coverage']) {
   }
   return [...rows.values()];
 }
+
+/** Reporting dates use UTC, matching the server's calendar boundaries. */
+export function businessPeriod(preset: 'all' | '30' | '90' | 'ytd', now = new Date()) {
+  if (preset === 'all') return { from: '', to: '' };
+  const start = new Date(now);
+  if (preset === 'ytd') start.setUTCMonth(0, 1);
+  else start.setUTCDate(start.getUTCDate() - Number(preset));
+  return { from: start.toISOString().slice(0, 10), to: now.toISOString().slice(0, 10) };
+}
+
+/** Counts in the People dataset are paginated; they cannot establish a scope-wide ranking. */
+export function businessPeoplePage(rows: BusinessDashboard['rows']) {
+  return [...rows]
+    .sort(
+      (a, b) =>
+        (Number(b.currentCertifications) || 0) - (Number(a.currentCertifications) || 0) ||
+        (Number(b.reviewedSkills) || 0) - (Number(a.reviewedSkills) || 0) ||
+        String(a.employee).localeCompare(String(b.employee)),
+    )
+    .slice(0, 8);
+}

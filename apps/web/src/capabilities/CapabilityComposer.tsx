@@ -35,6 +35,7 @@ import { skillDateError } from '../skill-dates';
 import {
   relatedSkillIds,
   mergeCertificateSuggestions,
+  credentialSkillDefaults,
   type CertificateSkillSuggestion,
   submissionPayload,
   type SelectedSkill,
@@ -468,15 +469,23 @@ export function CapabilityComposer({
         'AI could not read this file. Continue manually.',
       );
       if (!mounted.current) return;
-      patchCertificate(cert.id, {
-        fields: {
-          ...cert.fields,
-          ...Object.fromEntries(
-            Object.entries(data.fields).filter(([, v]) => v !== '' && v !== null),
-          ),
-        },
-      });
-      setSuggestions(old => mergeCertificateSuggestions(old, cert.id, data.suggestions ?? []));
+      const fields = {
+        ...cert.fields,
+        ...Object.fromEntries(
+          Object.entries(data.fields).filter(([, v]) => v !== '' && v !== null),
+        ),
+      };
+      patchCertificate(cert.id, { fields });
+      const mapped = credentialSkillDefaults(definitions, fields);
+      const combined = [
+        ...new Map(
+          [...(data.suggestions ?? []), ...mapped].map(suggestion => [
+            suggestion.skill.id,
+            suggestion,
+          ]),
+        ).values(),
+      ];
+      setSuggestions(old => mergeCertificateSuggestions(old, cert.id, combined));
       setSuggestionCertificate(cert.id);
       setCredentialSuggestion(data.catalogueSuggestion);
       toast.info(data.warning);
@@ -762,7 +771,7 @@ export function CapabilityComposer({
           value=""
           onChange={e => {
             const definition = definitions.find(d => d.id === e.target.value);
-            if (definition)
+            if (definition) {
               patchCertificate(c.id, {
                 fields: {
                   ...c.fields,
@@ -771,6 +780,19 @@ export function CapabilityComposer({
                   category: definition.category,
                 },
               });
+              setSuggestions(previous =>
+                mergeCertificateSuggestions(
+                  previous,
+                  c.id,
+                  (definition.relatedSkills ?? []).map((skill: SkillChoice) => ({
+                    skill,
+                    reason:
+                      'Catalogue mapping — confirm this skill is supported by your certificate.',
+                  })),
+                ),
+              );
+              setSuggestionCertificate(c.id);
+            }
           }}
         >
           <option value="">Select a catalogue credential or enter the details below…</option>
@@ -1257,7 +1279,13 @@ export function CapabilityComposer({
                             >
                               {suggested ? <Sparkles size={15} /> : <Plus size={15} />}
                               {option.name}
-                              <small>{suggested ? 'AI suggested' : option.category}</small>
+                              <small>
+                                {suggested
+                                  ? suggested.reason.startsWith('Catalogue mapping')
+                                    ? 'Catalogue suggested'
+                                    : 'AI suggested'
+                                  : option.category}
+                              </small>
                             </button>
                           );
                         })}

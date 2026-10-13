@@ -14,6 +14,37 @@ import {
   type BusinessStore,
 } from '../src/modules/business/business.js';
 import { businessWorkflow } from '../src/modules/business/workflows.js';
+
+test('credential mapping proposals accept canonical skill IDs and reject duplicate, forged or wrong-master inputs', () => {
+  const command = {
+    id: '11111111-1111-4111-8111-111111111111',
+    revision: 1,
+    type: 'CERTIFICATION',
+    name: 'Oracle Database SQL',
+    category: 'Oracle Platform',
+    providerId: '22222222-2222-4222-8222-222222222222',
+    reason: 'Catalogue mapping',
+    relatedSkillIds: ['33333333-3333-4333-8333-333333333333'],
+  };
+  assert.deepEqual(
+    (businessWorkflow('PROPOSE', command).payload.definition as any).relatedSkillIds,
+    command.relatedSkillIds,
+  );
+  assert.throws(() => businessWorkflow('PROPOSE', { ...command, relatedSkillIds: ['invalid'] }));
+  assert.throws(() =>
+    businessWorkflow('PROPOSE', {
+      ...command,
+      relatedSkillIds: [...command.relatedSkillIds, ...command.relatedSkillIds],
+    }),
+  );
+  assert.throws(() =>
+    businessWorkflow('PROPOSE', {
+      ...command,
+      relatedSkillIds: Array(21).fill(command.relatedSkillIds[0]),
+    }),
+  );
+  assert.throws(() => businessWorkflow('PROPOSE', { ...command, type: 'PROVIDER' }));
+});
 import { assertBusinessScope, SqlBusinessStore } from '../src/modules/business/sql-store.js';
 import { businessCsv, businessXlsx } from '../src/modules/business/export.js';
 import {

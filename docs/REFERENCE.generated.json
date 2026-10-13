@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "c5b2a4ce2e1927fc",
+  "revision": "7919634cdf4f56c7",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -79,7 +79,8 @@
       "074_four_level_proficiency.sql",
       "075_certification_duplicate_identity.sql",
       "076_optional_skill_description.sql",
-      "077_capability_draft_recovery_metadata.sql"
+      "077_capability_draft_recovery_metadata.sql",
+      "078_credential_skill_master_mappings.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -6091,6 +6092,77 @@
         ],
         "indexes": [],
         "domain": "Skills & claims"
+      },
+      "CredentialSkillMapping": {
+        "source": "078_credential_skill_master_mappings.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "078_credential_skill_master_mappings.sql"
+          },
+          "credential_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "credential_id uniqueidentifier NOT NULL",
+            "source": "078_credential_skill_master_mappings.sql"
+          },
+          "skill_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "skill_id uniqueidentifier NOT NULL",
+            "source": "078_credential_skill_master_mappings.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "credential_id",
+          "skill_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "credential_id"
+            ],
+            "target": "CredentialDefinition",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "078_credential_skill_master_mappings.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "skill_id"
+            ],
+            "target": "SkillCatalogue",
+            "targetColumns": [
+              "account_id",
+              "skill_id"
+            ],
+            "source": "078_credential_skill_master_mappings.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,credential_id,skill_id)",
+            "source": "078_credential_skill_master_mappings.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,credential_id) REFERENCES dbo.CredentialDefinition(account_id,id)",
+            "source": "078_credential_skill_master_mappings.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,skill_id) REFERENCES dbo.SkillCatalogue(account_id,skill_id)",
+            "source": "078_credential_skill_master_mappings.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Business Operations"
       }
     },
     "views": {
@@ -7100,7 +7172,7 @@
       "name": "BusinessWorkflow",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(30),@payload nvarchar(max)",
-      "source": "database/migrations/066_amendment_lifecycle.sql"
+      "source": "database/migrations/078_credential_skill_master_mappings.sql"
     },
     {
       "name": "CertificationRenewalValid",
@@ -7118,7 +7190,7 @@
       "name": "BusinessAmendmentNotifications",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/066_amendment_lifecycle.sql"
+      "source": "database/migrations/078_credential_skill_master_mappings.sql"
     },
     {
       "name": "BusinessRecordFiles",
@@ -7130,7 +7202,7 @@
       "name": "CapabilitySubmissionWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/077_capability_draft_recovery_metadata.sql"
+      "source": "database/migrations/078_credential_skill_master_mappings.sql"
     },
     {
       "name": "CapabilitySubmissionFiles",
@@ -7223,6 +7295,7 @@
       "BusinessResponsibility",
       "CredentialProvider",
       "CredentialDefinition",
+      "CredentialSkillMapping",
       "MasterAmendment",
       "BusinessDemand",
       "BusinessShortlist"

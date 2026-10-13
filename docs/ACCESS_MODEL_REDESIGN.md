@@ -4,6 +4,10 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Governed credential skill defaults — approved increment, 13 October 2026
+
+The user approved FDD-based catalogue content and certification-to-skill mappings while retaining demonstration accounts. Migration 078 extends the existing credential amendment and approval workflow with account-bound published-skill defaults, transaction-time validation and existing revision/audit checks. Personal OPTIONS offers these mappings as employee-confirmed suggestions; neither a catalogue mapping nor AI output grants approval, assigns proficiency or rewrites submitted snapshots. No authority or scope grant changes. Installation and hosted acceptance are separate from local implementation; see [the implementation and rollout record](SCMD_CATALOGUE_AND_MAPPING_2026-10-13.md).
+
 ### Four-level proficiency and credential identity — approved increment, 12 October 2026
 
 The user approved Foundation, Autonomous, Experienced and Expert, with Oracle content managed through the existing catalogue. Migration 074 creates a new framework; previous claim/definition snapshots remain unchanged and do not establish equivalence with its four ranks. Migration 075 prevents a second employee credential with the same normalized issuer/name or nonempty printed Credential ID, while preserving explicit validated renewal ancestry and existing current-manager checks. No access grant or wider scope is introduced. On 12 October, after the matching hosted web deployment was verified and the user confirmed redeployment, migrations 074/075 were installed on the development database backing the hosted demo; 70 unchanged seed definitions received audited four-level versions. Installed-database rollback checks passed, and the hosted employee form exposed all four labels and the new rubric. This does not establish rollout to other databases or full hosted renewal acceptance. See [the implementation and rollout record](FOUR_LEVEL_AND_CERTIFICATION_IDENTITY_2026-10-12.md).

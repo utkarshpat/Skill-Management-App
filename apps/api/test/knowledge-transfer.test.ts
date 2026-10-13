@@ -42,7 +42,12 @@ test('KT rejects forged authority/history and oversized context before any provi
 });
 
 test('KT inventory preserves actual FK tuples and treats view and quota tables honestly', async () => {
-  assert.equal(Object.keys(content.schema.tables).length, 60);
+  assert.equal(Object.keys(content.schema.tables).length, 61);
+  assert.ok('CredentialSkillMapping' in content.schema.tables);
+  assert.deepEqual(content.schema.tables.CredentialSkillMapping.fks.map(f => [f.columns,f.target,f.targetColumns]), [
+    [['account_id','credential_id'],'CredentialDefinition',['account_id','id']],
+    [['account_id','skill_id'],'SkillCatalogue',['account_id','skill_id']],
+  ]);
   assert.equal(
     content.schema.migrations.length,
     (await readdir(new URL('../../../database/migrations/', import.meta.url))).filter(file =>

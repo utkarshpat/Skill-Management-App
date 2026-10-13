@@ -7,6 +7,8 @@ function Preview({ root, item }: { root: string; item: any }) {
     [error, setError] = useState('');
   useEffect(() => {
     const abort = new AbortController();
+    setUrl('');
+    setError('');
     let object = '';
     authenticatedFetch(root + '/' + item.id, { signal: abort.signal })
       .then(async r => {
@@ -53,6 +55,8 @@ export function CapabilityEvidence({
     [error, setError] = useState('');
   useEffect(() => {
     const abort = new AbortController();
+    setItems(undefined);
+    setError('');
     authenticatedFetch(root, { signal: abort.signal })
       .then(r => readApiResponse<any>(r, 'Submitted evidence unavailable.'))
       .then(data => {

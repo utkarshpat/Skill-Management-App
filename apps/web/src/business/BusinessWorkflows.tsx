@@ -25,6 +25,7 @@ interface Master {
   description?: string;
   active?: boolean;
   levels?: { rank: number; description: string }[];
+  relatedSkillIds?: string[];
 }
 interface Masters {
   revision: number;
@@ -126,6 +127,7 @@ export function BusinessWorkflows({
     [description, setDescription] = useState(''),
     [provider, setProvider] = useState(''),
     [criteria, setCriteria] = useState(['', '', '', '']),
+    [relatedSkillIds, setRelatedSkillIds] = useState<string[]>([]),
     [reason, setReason] = useState(''),
     [active, setActive] = useState(true),
     [scope, setScope] = useState(''),
@@ -256,6 +258,7 @@ export function BusinessWorkflows({
     setSelectedMaster(undefined);
     setProviderName('');
     setType('CERTIFICATION');
+    setRelatedSkillIds([]);
     setPreview(undefined);
     setDecision(undefined);
     setError('');
@@ -272,7 +275,7 @@ export function BusinessWorkflows({
     setMasterSearch('');
     setMasterTerm('');
     setMasterPage(1);
-    setCriteria(['', '', '', '', '']);
+    setCriteria(['', '', '', '']);
   };
   async function prepare(command: { operation: string; payload: Record<string, unknown> }) {
     if (guard.current) return;
@@ -347,6 +350,7 @@ export function BusinessWorkflows({
           description,
           providerId: provider,
           criteria,
+          ...(type === 'CERTIFICATION' ? { relatedSkillIds } : {}),
           reason,
           active,
         },
@@ -431,7 +435,8 @@ export function BusinessWorkflows({
     setDescription('');
     setProvider('');
     setProviderName('');
-    setCriteria(['', '', '', '', '']);
+    setCriteria(['', '', '', '']);
+    setRelatedSkillIds([]);
     setActive(true);
     setMasterSearch('');
     setMasterTerm('');
@@ -447,6 +452,7 @@ export function BusinessWorkflows({
     setProvider(item?.providerId ?? '');
     setProviderName(item?.provider ?? '');
     setDescription(item?.description ?? '');
+    setRelatedSkillIds((item?.relatedSkillIds ?? []).map(id => id.toLowerCase()));
     setActive(item?.active ?? true);
     setCriteria(
       [1, 2, 3, 4].map(rank =>
@@ -1084,6 +1090,41 @@ export function BusinessWorkflows({
                   </label>
                 )}
                 {view === 'amendments' && type === 'CERTIFICATION' && (
+                  <fieldset className="bo-panel">
+                    <legend>Related catalogue skills</legend>
+                    <p className="bo-note">
+                      Suggest these skills when this credential is selected. Employees confirm each
+                      skill and its proficiency. Use the catalogue search above for more skills.
+                    </p>
+                    <span>{relatedSkillIds.length}/20 selected</span>
+                    <div className="bo-mapping-options">
+                      {(masters?.skills ?? [])
+                        .filter(skill => skill.active !== false)
+                        .map(skill => (
+                          <label key={skill.id}>
+                            <input
+                              type="checkbox"
+                              checked={relatedSkillIds.includes(skill.id.toLowerCase())}
+                              disabled={
+                                busy ||
+                                (!relatedSkillIds.includes(skill.id.toLowerCase()) &&
+                                  relatedSkillIds.length >= 20)
+                              }
+                              onChange={e =>
+                                setRelatedSkillIds(previous =>
+                                  e.target.checked
+                                    ? [...previous, skill.id.toLowerCase()]
+                                    : previous.filter(id => id !== skill.id.toLowerCase()),
+                                )
+                              }
+                            />
+                            {skill.name}
+                          </label>
+                        ))}
+                    </div>
+                  </fieldset>
+                )}
+                {view === 'amendments' && type === 'CERTIFICATION' && (
                   <label>
                     Provider <span className="bo-required">*</span>
                     <select
@@ -1505,10 +1546,27 @@ function DefinitionPreview({
   const requirements = d.requirements as
     { skills: { id: string; minRank: number }[]; certifications: string[] } | undefined;
   const levels = d.levels as { rank: number; description: string }[] | undefined;
+  const mappings = d.relatedSkillIds as string[] | undefined;
   return (
     <div className="bo-page bo-review">
       <h3>{String(d.name ?? d.title ?? 'Reviewed decision')}</h3>
       <dl>
+        {mappings && (
+          <>
+            <dt>Related skills</dt>
+            <dd>
+              {mappings.length
+                ? mappings
+                    .map(
+                      id =>
+                        masters?.skills.find(skill => skill.id.toLowerCase() === id.toLowerCase())
+                          ?.name ?? 'Catalogue skill (rechecked before approval)',
+                    )
+                    .join(', ')
+                : 'No default skill suggestions'}
+            </dd>
+          </>
+        )}
         {!!details.type && (
           <>
             <dt>Master type</dt>

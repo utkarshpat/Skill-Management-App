@@ -5,6 +5,22 @@ export interface CertificateSkillSuggestion {
   reason: string;
   certificateId: string;
 }
+
+export function credentialSkillDefaults(
+  definitions: { name: string; provider: string; relatedSkills?: SkillChoice[] }[],
+  fields: { certificationName: string; provider: string },
+) {
+  const normalize = (text: string) => text.trim().replace(/\s+/g, ' ').toLowerCase();
+  const definition = definitions.find(
+    d =>
+      normalize(d.name) === normalize(fields.certificationName) &&
+      normalize(d.provider) === normalize(fields.provider),
+  );
+  return (definition?.relatedSkills ?? []).map(skill => ({
+    skill,
+    reason: 'Catalogue mapping — confirm this skill is supported by your certificate.',
+  }));
+}
 export function mergeCertificateSuggestions(
   previous: CertificateSkillSuggestion[],
   certificateId: string,
@@ -53,6 +69,29 @@ export interface Submission {
     mimeType: string;
     bytes: number;
   }[];
+}
+
+/** Ordinals alone do not identify the proficiency framework of a historical claim. */
+export function submissionLevelName(skill: {
+  rank: number;
+  levels?: { rank: number; name: string }[];
+}) {
+  return skill.levels?.find(level => level.rank === skill.rank)?.name ?? '';
+}
+
+export function submissionReviewState(status: string, needsReview: boolean, canDecide: boolean) {
+  if (canDecide && needsReview) return 'Needs decision';
+  return (
+    (
+      {
+        APPROVED: 'Manager reviewed',
+        SUBMITTED: 'Awaiting review',
+        CHANGES_REQUESTED: 'Changes requested',
+        REJECTED: 'Not approved',
+        DRAFT: 'Draft',
+      } as Record<string, string>
+    )[status] ?? status.replaceAll('_', ' ')
+  );
 }
 export function relatedSkillIds(selected: string[], available: string[]) {
   return [...new Set(selected)].filter(id => available.includes(id));

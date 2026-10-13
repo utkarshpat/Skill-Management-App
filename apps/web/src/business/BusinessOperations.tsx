@@ -34,6 +34,8 @@ import { BusinessWorkflows } from './BusinessWorkflows';
 import {
   businessFilters,
   businessCoverageRows,
+  businessPeriod,
+  businessPeoplePage,
   updateBusinessFilters,
   type BusinessContext,
   type BusinessDashboard,
@@ -108,7 +110,7 @@ export function BusinessOperations() {
           <p>
             {context && !context.canView
               ? 'Propose and review organizational changes using your current permissions.'
-              : 'End-to-end analytical reporting on skill coverage, credential certification health, community benchmarks, and compliance renewal priorities across your authorized scope.'}
+              : 'Skill coverage, reviewed credentials and renewal priorities within your authorized scope.'}
           </p>
         </div>
         <div className="bo-heading-actions">
@@ -117,21 +119,23 @@ export function BusinessOperations() {
               Catalogue amendments
             </Link>
           )}
-          <button
-            className="secondary-button bo-ai-btn"
-            onClick={() =>
-              window.dispatchEvent(
-                new CustomEvent('assistant-context-request', {
-                  detail: {
-                    prompt:
-                      'Use my current authorized Business Operations tools to summarize skill coverage, credential expiry, top certified resources, and renewal priorities. State scope, as-of time, and any key capability gaps.',
-                  },
-                }),
-              )
-            }
-          >
-            <Sparkles size={16} /> Ask AI Insights
-          </button>
+          {context?.canView && (
+            <button
+              className="secondary-button bo-ai-btn"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent('assistant-context-request', {
+                    detail: {
+                      prompt:
+                        'Use my current authorized Business Operations tools to summarize skill coverage, credential expiry, top certified resources, and renewal priorities. State scope, as-of time, and any key capability gaps.',
+                    },
+                  }),
+                )
+              }
+            >
+              <Sparkles size={16} /> Ask AI Insights
+            </button>
+          )}
         </div>
       </header>
 
@@ -335,22 +339,7 @@ function Insights({ context }: { context: BusinessContext }) {
 
   // Quick period helper
   const setQuickPeriod = (preset: 'all' | '30' | '90' | 'ytd') => {
-    const today = new Date();
-    const toStr = today.toISOString().slice(0, 10);
-    if (preset === 'all') {
-      change({ from: '', to: '' });
-    } else if (preset === '30') {
-      const d = new Date();
-      d.setDate(d.getDate() - 30);
-      change({ from: d.toISOString().slice(0, 10), to: toStr });
-    } else if (preset === '90') {
-      const d = new Date();
-      d.setDate(d.getDate() - 90);
-      change({ from: d.toISOString().slice(0, 10), to: toStr });
-    } else if (preset === 'ytd') {
-      const yearStart = new Date(today.getFullYear(), 0, 1);
-      change({ from: yearStart.toISOString().slice(0, 10), to: toStr });
-    }
+    change(businessPeriod(preset));
   };
 
   const cards = [
@@ -381,14 +370,14 @@ function Insights({ context }: { context: BusinessContext }) {
       'Reviewed skill holders',
       BarChart3,
       { dataset: 'skills', status: 'APPROVED', validity: '', issuer: '' },
-      'Employees with at least one manager-reviewed skill aligned to the four-level model.',
+      'Employees with at least one manager-reviewed skill. Saved definition versions remain unchanged.',
     ],
     [
       'pending',
       'Awaiting review',
       Clock3,
       { dataset: 'submissions', status: 'SUBMITTED', validity: '' },
-      'Submissions pending manager review and decision.',
+      'Individual skill and credential records awaiting manager review; a combined request may contain several records.',
     ],
     [
       'expired',
@@ -410,27 +399,18 @@ function Insights({ context }: { context: BusinessContext }) {
   const totalEmployees = data ? data.summary.employees : 0;
   const certifiedCount = data ? data.summary.certified : 0;
   const nonCertifiedCount = Math.max(0, totalEmployees - certifiedCount);
-  const certifiedPct =
-    totalEmployees > 0 ? Math.round((certifiedCount / totalEmployees) * 100) : 0;
-  const nonCertifiedPct = 100 - certifiedPct;
+  const certifiedPct = totalEmployees > 0 ? Math.round((certifiedCount / totalEmployees) * 100) : 0;
+  const nonCertifiedPct = totalEmployees > 0 ? 100 - certifiedPct : 0;
 
   // Active filter count (excluding dataset and page)
   const activeFilterList = [...filters].filter(
-    ([k, v]) => !['dataset', 'page', 'minRank'].includes(k) && v,
+    ([k, v]) =>
+      !['dataset', 'page'].includes(k) && !(k === 'minRank' && filters.has('maxRank')) && v,
   );
 
   // Compute Leaderboard / Top Certified Resources when available from data.rows or general view
   const topCertifiedResources =
-    data && filters.get('dataset') === 'people'
-      ? [...data.rows]
-          .sort((a, b) => {
-            const certA = Number(a.currentCertifications) || 0;
-            const certB = Number(b.currentCertifications) || 0;
-            if (certB !== certA) return certB - certA;
-            return (Number(b.reviewedSkills) || 0) - (Number(a.reviewedSkills) || 0);
-          })
-          .slice(0, 8)
-      : [];
+    data && filters.get('dataset') === 'people' ? businessPeoplePage(data.rows) : [];
 
   return (
     <>
@@ -442,7 +422,8 @@ function Insights({ context }: { context: BusinessContext }) {
             <h3 className="bo-filter-heading">Synchronized Filters & Scope Controls</h3>
             {activeFilterList.length > 0 && (
               <span className="bo-active-count-badge">
-                {activeFilterList.length} active {activeFilterList.length === 1 ? 'filter' : 'filters'}
+                {activeFilterList.length} active{' '}
+                {activeFilterList.length === 1 ? 'filter' : 'filters'}
               </span>
             )}
           </div>
@@ -462,8 +443,8 @@ function Insights({ context }: { context: BusinessContext }) {
           {/* Scope Filter */}
           <label className="bo-field-label">
             <span className="bo-field-title">
-              Scope / Practice / BU
-              <MetricTooltip text="Filter metrics to a specific Delivery Unit, Department, or Account/Project." />
+              Authorized scope
+              <MetricTooltip text="Select an assigned organization, Delivery Unit, Department or Project responsibility. This does not add access." />
             </span>
             <select
               value={params.get('scopeId') ?? ''}
@@ -518,8 +499,8 @@ function Insights({ context }: { context: BusinessContext }) {
           {/* Quick Period & Date Range */}
           <div className="bo-period-group">
             <span className="bo-field-title">
-              Reporting Period
-              <MetricTooltip text="Filter activity trends by date presets or custom range." />
+              Activity period (UTC)
+              <MetricTooltip text="Filters submission and decision activity. Coverage and current validity remain as-of-now metrics." />
             </span>
             <div className="bo-period-quick-bar">
               <button
@@ -529,18 +510,10 @@ function Insights({ context }: { context: BusinessContext }) {
               >
                 All time
               </button>
-              <button
-                type="button"
-                className="bo-period-pill"
-                onClick={() => setQuickPeriod('30')}
-              >
+              <button type="button" className="bo-period-pill" onClick={() => setQuickPeriod('30')}>
                 Last 30d
               </button>
-              <button
-                type="button"
-                className="bo-period-pill"
-                onClick={() => setQuickPeriod('90')}
-              >
+              <button type="button" className="bo-period-pill" onClick={() => setQuickPeriod('90')}>
                 Last 90d
               </button>
               <button
@@ -583,7 +556,9 @@ function Insights({ context }: { context: BusinessContext }) {
                 className="bo-select"
               >
                 <option value="">All skills</option>
-                {Array.from(new Set(data.coverage.map(c => JSON.stringify({ id: c.id, label: c.label }))))
+                {Array.from(
+                  new Set(data.coverage.map(c => JSON.stringify({ id: c.id, label: c.label }))),
+                )
                   .map(jsonStr => JSON.parse(jsonStr))
                   .map(item => (
                     <option key={item.id} value={item.id}>
@@ -598,7 +573,11 @@ function Insights({ context }: { context: BusinessContext }) {
           <label className="bo-field-label">
             <span className="bo-field-title">Proficiency level</span>
             <select
-              value={params.get('minRank') ? `${params.get('minRank')}_${params.get('maxRank')}` : ''}
+              value={
+                params.get('minRank') || params.get('maxRank')
+                  ? `${params.get('minRank') ?? '1'}_${params.get('maxRank') ?? '4'}`
+                  : ''
+              }
               onChange={e => {
                 const val = e.target.value;
                 if (!val) change({ minRank: '', maxRank: '' });
@@ -609,24 +588,30 @@ function Insights({ context }: { context: BusinessContext }) {
               }}
               className="bo-select"
             >
-              <option value="">All levels (L1–L4)</option>
-              <option value="1_1">L1 · Foundational</option>
-              <option value="2_2">L2 · Working</option>
-              <option value="3_3">L3 · Autonomous</option>
-              <option value="4_4">L4 · Expert</option>
+              <option value="">All supported ranks (L1–L4)</option>
+              <option value="1_1">L1</option>
+              <option value="2_2">L2</option>
+              <option value="3_3">L3</option>
+              <option value="4_4">L4</option>
+              {(params.has('minRank') || params.has('maxRank')) &&
+                params.get('minRank') !== params.get('maxRank') && (
+                  <option value={`${params.get('minRank') ?? '1'}_${params.get('maxRank') ?? '4'}`}>
+                    Ranks L{params.get('minRank') ?? '1'}–L{params.get('maxRank') ?? '4'}
+                  </option>
+                )}
             </select>
           </label>
 
           {/* Pillar / Category */}
           {!!data?.categories?.length && (
             <label className="bo-field-label">
-              <span className="bo-field-title">Pillar / Category</span>
+              <span className="bo-field-title">Credential category</span>
               <select
                 value={params.get('category') ?? ''}
                 onChange={e => change({ category: e.target.value })}
                 className="bo-select"
               >
-                <option value="">All pillars & categories</option>
+                <option value="">All credential categories</option>
                 {data.categories.map(c => (
                   <option key={c.label} value={c.label}>
                     {c.label} ({c.value})
@@ -657,7 +642,7 @@ function Insights({ context }: { context: BusinessContext }) {
 
           {/* Review Status */}
           <label className="bo-field-label">
-            <span className="bo-field-title">Certification status</span>
+            <span className="bo-field-title">Record review status</span>
             <select
               value={params.get('status') ?? ''}
               onChange={e => change({ status: e.target.value })}
@@ -686,6 +671,9 @@ function Insights({ context }: { context: BusinessContext }) {
               <option value="30">Expires in 30 days</option>
               <option value="60">Expires in 60 days</option>
               <option value="90">Expires in 90 days</option>
+              <option value="15_30">15–30 days</option>
+              <option value="31_60">31–60 days</option>
+              <option value="61_90">61–90 days</option>
               <option value="NO_EXPIRY">No expiration</option>
               <option value="LATER">Beyond 90 days</option>
             </select>
@@ -702,7 +690,11 @@ function Insights({ context }: { context: BusinessContext }) {
                   key={k}
                   className="bo-chip-btn"
                   onClick={() =>
-                    change(k === 'maxRank' ? { minRank: '', maxRank: '' } : { [k]: '' })
+                    change(
+                      k === 'maxRank' || k === 'minRank'
+                        ? { minRank: '', maxRank: '' }
+                        : { [k]: '' },
+                    )
                   }
                   title={`Remove ${k} filter`}
                 >
@@ -712,6 +704,7 @@ function Insights({ context }: { context: BusinessContext }) {
                         scopeId: 'Scope',
                         skillId: 'Skill',
                         maxRank: 'Proficiency',
+                        minRank: 'Minimum rank',
                         status: 'Status',
                         validity: 'Validity',
                         from: 'From',
@@ -719,7 +712,7 @@ function Insights({ context }: { context: BusinessContext }) {
                         sort: 'Sort',
                         search: 'Search',
                         issuer: 'Issuer',
-                        category: 'Pillar',
+                        category: 'Category',
                       } as Record<string, string>
                     )[k] ?? k}
                     :
@@ -780,7 +773,7 @@ function Insights({ context }: { context: BusinessContext }) {
             className={`bo-perspective-btn ${analyticalView === 'community' ? 'active' : ''}`}
             onClick={() => setAnalyticalView('community')}
           >
-            <Building2 size={15} /> Community & Leaders
+            <Building2 size={15} /> Scope & People
           </button>
           <button
             className={`bo-perspective-btn ${analyticalView === 'records' ? 'active' : ''}`}
@@ -809,7 +802,9 @@ function Insights({ context }: { context: BusinessContext }) {
               <MetricTooltip text={tooltip} />
             </div>
             <span>{label}</span>
-            <strong>{data ? data.summary[id].toLocaleString() : <span className="bo-loading-number" />}</strong>
+            <strong>
+              {data ? data.summary[id].toLocaleString() : <span className="bo-loading-number" />}
+            </strong>
           </button>
         ))}
 
@@ -823,7 +818,9 @@ function Insights({ context }: { context: BusinessContext }) {
             <span>Certified vs Non-Certified</span>
             <div className="bo-population-stat-row">
               <strong className="bo-pop-certified-text">{certifiedPct}%</strong>
-              <small className="bo-pop-subtext">certified ({certifiedCount}/{totalEmployees})</small>
+              <small className="bo-pop-subtext">
+                certified ({certifiedCount}/{totalEmployees})
+              </small>
             </div>
           </div>
           <div className="bo-population-bar-track">
@@ -894,31 +891,48 @@ function Insights({ context }: { context: BusinessContext }) {
                   <div>
                     <h2 className="bo-panel-title">
                       Skill-wise Headcount & Proficiency Matrix (Top 10)
-                      <MetricTooltip text="Distribution of skill holders across current four-level definitions (L1 Foundational to L4 Expert). Select any level cell to filter matching employee records." />
+                      <MetricTooltip text="Reviewed holders by saved proficiency rank. Definitions can differ by version; matching ranks do not establish equivalent proficiency." />
                     </h2>
                     <p className="bo-note">
-                      Holders by proficiency rank, evaluated against {data.summary.employees} authorized
-                      workforce members. Historical snapshots remain intact. Click any cell to inspect employee claims.
+                      Holders by proficiency rank, evaluated against {data.summary.employees}{' '}
+                      authorized workforce members. Historical snapshots remain intact. Click any
+                      cell to inspect employee claims.
                     </p>
                   </div>
                 </div>
                 <div className="bo-level-legend">
-                  <span><i className="bo-l-dot l1" /> L1 Foundational</span>
-                  <span><i className="bo-l-dot l2" /> L2 Working</span>
-                  <span><i className="bo-l-dot l3" /> L3 Autonomous</span>
-                  <span><i className="bo-l-dot l4" /> L4 Expert</span>
+                  <span>
+                    <i className="bo-l-dot l1" /> L1
+                  </span>
+                  <span>
+                    <i className="bo-l-dot l2" /> L2
+                  </span>
+                  <span>
+                    <i className="bo-l-dot l3" /> L3
+                  </span>
+                  <span>
+                    <i className="bo-l-dot l4" /> L4
+                  </span>
                 </div>
               </div>
 
               <div className="bo-heatmap">
                 {businessCoverageRows(data.coverage).map(({ id, label, cells }) => {
-                  const rowTotal = [1, 2, 3, 4].reduce((sum, r) => sum + (cells.get(r)?.holders ?? 0), 0);
-                  const coveragePct = totalEmployees > 0 ? Math.min(100, Math.round((rowTotal / totalEmployees) * 100)) : 0;
+                  const rowTotal = [1, 2, 3, 4].reduce(
+                    (sum, r) => sum + (cells.get(r)?.holders ?? 0),
+                    0,
+                  );
+                  const coveragePct =
+                    totalEmployees > 0
+                      ? Math.min(100, Math.round((rowTotal / totalEmployees) * 100))
+                      : 0;
                   return (
                     <div key={id} className="bo-heatmap-row">
                       <div className="bo-heatmap-skill-label">
                         <strong title={label}>{label}</strong>
-                        <small className="bo-skill-coverage-meta">{rowTotal} holders ({coveragePct}%)</small>
+                        <small className="bo-skill-coverage-meta">
+                          {rowTotal} holders ({coveragePct}%)
+                        </small>
                       </div>
                       <div className="bo-heatmap-cells">
                         {[1, 2, 3, 4].map(rank => {
@@ -930,17 +944,18 @@ function Insights({ context }: { context: BusinessContext }) {
                               disabled={!cell || holders === 0}
                               className={`bo-heatmap-cell rank-${rank} ${holders > 0 ? 'has-holders' : 'empty'}`}
                               style={{
-                                background: holders > 0
-                                  ? 'color-mix(in srgb, var(--bo-accent) ' +
-                                    Math.max(
-                                      15,
-                                      Math.min(
-                                        85,
-                                        (100 * holders) / Math.max(1, data.summary.employees),
-                                      ),
-                                    ) +
-                                    '%, var(--surface))'
-                                  : undefined,
+                                background:
+                                  holders > 0
+                                    ? 'color-mix(in srgb, var(--bo-accent) ' +
+                                      Math.max(
+                                        15,
+                                        Math.min(
+                                          85,
+                                          (100 * holders) / Math.max(1, data.summary.employees),
+                                        ),
+                                      ) +
+                                      '%, var(--surface))'
+                                    : undefined,
                               }}
                               onClick={() =>
                                 change({
@@ -976,21 +991,23 @@ function Insights({ context }: { context: BusinessContext }) {
             <div className="bo-chart-grid">
               {/* Certification-wise headcount / Top Issuers (Requirement H: Certification-wise headcount) */}
               <Bars
-                title="Certification-wise Headcount & Issuers (Top 15)"
+                title="Reviewed Credential Records by Issuer (Top 15)"
                 items={data.distribution}
                 description="Manager-reviewed credential records by issuing body (e.g., Microsoft, AWS, Cisco)."
                 icon={ShieldCheck}
-                tooltip="Headcount of approved credentials grouped by certified vendor/issuer."
-                onFilter={issuer => change({ dataset: 'certifications', issuer, status: 'APPROVED' })}
+                tooltip="Credential record counts, not distinct employee headcount, grouped by issuer. Expired reviewed records are included unless validity is filtered."
+                onFilter={issuer =>
+                  change({ dataset: 'certifications', issuer, status: 'APPROVED' })
+                }
               />
 
               {/* Pillar-wise certification summary (Requirement H: Pillar-wise certification summary) */}
               <Bars
-                title="Pillar-wise Certification Summary (Top 15)"
+                title="Reviewed Credential Records by Category (Top 15)"
                 items={data.categories ?? []}
                 description="Reviewed credentials categorized by architectural & practice domain."
                 icon={Layers}
-                tooltip="Aggregated credentials classified across functional technical pillars (e.g., Cloud, AI, Security)."
+                tooltip="Stored credential categories. These are not an approved Pillar or Practice mapping."
                 onFilter={category =>
                   change({
                     dataset: 'certifications',
@@ -1038,24 +1055,32 @@ function Insights({ context }: { context: BusinessContext }) {
                     </div>
                     <div>
                       <h2 className="bo-panel-title">
-                        Month-wise Certification & Submission Growth
+                        Monthly Submission & Review Activity
                         <MetricTooltip text="Monthly trend comparing employee submissions against manager review decisions." />
                       </h2>
                       <p className="bo-note">
-                        Audited volume of submissions and manager approvals over the last 12 active months.
+                        Skill and credential submissions and review decisions over the last 12
+                        active months. Decisions include approval, changes requested and rejection.
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="bo-trend-legend">
-                  <span><i className="bo-trend-dot sub" /> Submissions</span>
-                  <span><i className="bo-trend-dot dec" /> Manager Decisions</span>
+                  <span>
+                    <i className="bo-trend-dot sub" /> Submissions
+                  </span>
+                  <span>
+                    <i className="bo-trend-dot dec" /> Manager Decisions
+                  </span>
                 </div>
 
                 <div className="bo-trend">
                   {data.activity.slice(-12).map(item => {
-                    const maxVal = Math.max(1, ...data.activity.map(i => Math.max(i.submissions, i.decisions)));
+                    const maxVal = Math.max(
+                      1,
+                      ...data.activity.map(i => Math.max(i.submissions, i.decisions)),
+                    );
                     const subHeight = Math.max(4, (120 * item.submissions) / maxVal);
                     const decHeight = Math.max(4, (120 * item.decisions) / maxVal);
                     return (
@@ -1098,8 +1123,12 @@ function Insights({ context }: { context: BusinessContext }) {
                       {data.activity.map(i => (
                         <tr key={i.label}>
                           <td>{i.label}</td>
-                          <td><strong>{i.submissions}</strong></td>
-                          <td><strong>{i.decisions}</strong></td>
+                          <td>
+                            <strong>{i.submissions}</strong>
+                          </td>
+                          <td>
+                            <strong>{i.decisions}</strong>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1126,7 +1155,8 @@ function Insights({ context }: { context: BusinessContext }) {
                           <MetricTooltip text="Capability benchmark across organizational scopes (Delivery Units, Departments, Projects)." />
                         </h2>
                         <p className="bo-note">
-                          Comparison across allowed bindings (up to 30). Project memberships can overlap.
+                          Comparison across allowed bindings (up to 30). Project memberships can
+                          overlap.
                         </p>
                       </div>
                     </div>
@@ -1145,19 +1175,28 @@ function Insights({ context }: { context: BusinessContext }) {
                       </thead>
                       <tbody>
                         {data.comparisons.map(c => {
-                          const certPct = c.employees > 0 ? Math.round((c.certified / c.employees) * 100) : 0;
+                          const certPct =
+                            c.employees > 0 ? Math.round((c.certified / c.employees) * 100) : 0;
                           return (
                             <tr key={c.id}>
                               <td>
                                 <strong>{c.label}</strong>
-                                <small className="bo-scope-kind-pill"> · {c.kind.replaceAll('_', ' ')}</small>
+                                <small className="bo-scope-kind-pill">
+                                  {' '}
+                                  · {c.kind.replaceAll('_', ' ')}
+                                </small>
                               </td>
                               <td>{c.employees}</td>
                               <td>
                                 <div className="bo-table-progress-cell">
-                                  <span>{c.certified} ({certPct}%)</span>
+                                  <span>
+                                    {c.certified} ({certPct}%)
+                                  </span>
                                   <div className="bo-mini-track">
-                                    <div className="bo-mini-fill" style={{ width: `${certPct}%` }} />
+                                    <div
+                                      className="bo-mini-fill"
+                                      style={{ width: `${certPct}%` }}
+                                    />
                                   </div>
                                 </div>
                               </td>
@@ -1188,11 +1227,12 @@ function Insights({ context }: { context: BusinessContext }) {
                     </div>
                     <div>
                       <h2 className="bo-panel-title">
-                        Top Certified Resources & Leaderboard
-                        <MetricTooltip text="Top talent holding the highest verified certifications and reviewed skills." />
+                        People on This Page by Current Credentials
+                        <MetricTooltip text="Up to eight employees from the current People results page, sorted by current reviewed credential count. This is not a scope-wide leaderboard." />
                       </h2>
                       <p className="bo-note">
-                        Leading capability champions across your authorized population.
+                        Current page only ({data.rows.length} of {data.total} matching people); use
+                        the records explorer to browse further pages.
                       </p>
                     </div>
                   </div>
@@ -1202,7 +1242,7 @@ function Insights({ context }: { context: BusinessContext }) {
                       className="secondary-button bo-btn-sm"
                       onClick={() => change({ dataset: 'people' })}
                     >
-                      Load talent list
+                      View people
                     </button>
                   )}
                 </div>
@@ -1237,7 +1277,9 @@ function Insights({ context }: { context: BusinessContext }) {
                         <button
                           type="button"
                           className="secondary-button bo-btn-sm bo-inspect-btn"
-                          onClick={() => change({ search: String(res.employee), dataset: 'people' })}
+                          onClick={() =>
+                            change({ search: String(res.employee), dataset: 'people' })
+                          }
                           title={`Drill into ${res.employee}`}
                         >
                           Inspect
@@ -1248,14 +1290,16 @@ function Insights({ context }: { context: BusinessContext }) {
                 ) : (
                   <div className="bo-leaderboard-placeholder">
                     <p>
-                      Switch to the <strong>People</strong> dataset in the records explorer below to view the top certified resources leaderboard.
+                      {filters.get('dataset') === 'people'
+                        ? 'No matching people on this page.'
+                        : 'Choose the People dataset to compare holdings on the current results page.'}
                     </p>
                     <button
                       type="button"
                       className="secondary-button"
                       onClick={() => change({ dataset: 'people' })}
                     >
-                      View People Leaderboard
+                      View people
                     </button>
                   </div>
                 )}
@@ -1497,7 +1541,8 @@ function Insights({ context }: { context: BusinessContext }) {
                 </table>
                 {!data.rows.length && (
                   <p className="bo-empty">
-                    No matching records found. Adjust your active filters to explore your authorized scope.
+                    No matching records found. Adjust your active filters to explore your authorized
+                    scope.
                   </p>
                 )}
               </div>

@@ -110,6 +110,7 @@ if (command !== 'check' && command !== 'migrate') {
           [75, '075_certification_duplicate_identity.sql'],
           [76, '076_optional_skill_description.sql'],
           [77, '077_capability_draft_recovery_metadata.sql'],
+          [78, '078_credential_skill_master_mappings.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();
