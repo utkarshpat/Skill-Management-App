@@ -12,4 +12,8 @@ Queue/recommendation/analytics panels fetch their relevant data without fetching
 
 Validation: 183 frontend tests passed, including legacy navigation links and the absence of separate review-type tabs. Typecheck and web build passed. Local browser verification used the existing Hemant demo manager, opened all three views, verified recommendation feeds load and confirmed selected tab URLs. No recommendation or review decision was sent through the browser and no test records were saved. The earlier linked-flow SQL evidence is recorded in LINKED_FLOW_AUDIT_2026-10-13.md; actual hosted two-browser realtime and Blob upload/download remain separate acceptance steps.
 
-No deployment or permanent migration installation was performed during local verification. Migration 077 remains pending coordinated installation after the matching web/API deployment is available.
+## Applied rollout — 13 October 2026
+
+Release `8123488` was pushed with explicit user authorization. Matching composer and unified manager bundles were verified on the production site before migration 077 was permanently installed on the shared development database backing the demo. Four post-installation rollback SQL scenarios passed: happy path, immutable snapshot, many-to-many analytics and staged intake transfer.
+
+Production browser verification as the Hemant demo manager confirmed the unified Review queue / Team analytics / Recommendations navigation without the old Skills / Certifications switch. The actual pending combined request opened with both its skill and credential. Its existing PDF loaded with a first-page preview and authenticated View evidence / Download controls. No review decision or recommendation was submitted. Evidence: `.local/production-unified-manager-reviews-2026-10-13.png`. New production upload-to-review acceptance and two-browser realtime delivery remain unverified. Later UI commits are outside the review evidence for `8123488`.
