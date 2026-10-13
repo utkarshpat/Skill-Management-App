@@ -1,7 +1,7 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router';
 import { ArrowUpRight, Bell, Check, RefreshCw, X } from 'lucide-react';
-import { notificationDestination } from './notification-model';
+import { notificationDestination, notificationDay } from './notification-model';
 import { authenticatedFetch } from './auth';
 import { startActivityRefresh, type RefreshStatus } from './activity-refresh';
 import { RefreshIndicator } from './RefreshIndicator';
@@ -11,6 +11,9 @@ interface Item {
   title: string;
   body: string;
   href: string;
+  actorName?: string;
+  actionLabel?: string;
+  subject?: string;
 }
 interface Feed {
   personId: string;
@@ -33,6 +36,7 @@ export function Notifications({ id }: { id: string }) {
     [attempt, setAttempt] = useState(0),
     [loading, setLoading] = useState(false),
     [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [category, setCategory] = useState('All updates');
   const [freshness, setFreshness] = useState<RefreshStatus>();
   useEffect(() => {
     const controller = new AbortController();
@@ -117,7 +121,18 @@ export function Notifications({ id }: { id: string }) {
     event.currentTarget.closest<HTMLElement>('[popover]')?.hidePopover();
   }
   const unread = feed?.items.filter(item => !read.includes(item.id)).length ?? 0;
-  const items = feed?.items.filter(item => filter === 'all' || !read.includes(item.id)) ?? [];
+  const items =
+    feed?.items.filter(
+      item =>
+        (filter === 'all' || !read.includes(item.id)) &&
+        (category === 'All updates' || notificationDestination(item.href)?.kind === category),
+    ) ?? [];
+  const categories = [
+    'All updates',
+    ...new Set(
+      feed?.items.map(i => notificationDestination(i.href)?.kind ?? 'Workspace update') ?? [],
+    ),
+  ];
   return (
     <>
       <button
@@ -204,6 +219,17 @@ export function Notifications({ id }: { id: string }) {
                   Read all
                 </button>
               </div>
+              <div
+                className="notification-categories"
+                role="group"
+                aria-label="Notification category"
+              >
+                {categories.map(c => (
+                  <button key={c} aria-pressed={category === c} onClick={() => setCategory(c)}>
+                    {c}
+                  </button>
+                ))}
+              </div>
               {feed.partial && (
                 <p role="status">Some updates could not be loaded. Refresh to try again.</p>
               )}
@@ -231,12 +257,27 @@ export function Notifications({ id }: { id: string }) {
                 </div>
               ) : (
                 <ul className="notification-list">
-                  {items.map(item => {
+                  {items.map((item, index) => {
                     const destination = notificationDestination(item.href),
                       Icon = destination?.icon ?? Bell,
                       isRead = read.includes(item.id);
+                    const prefix = `${item.actorName} · ${item.actionLabel} · `;
+                    const body = (
+                      item.actorName && item.actionLabel && item.body.startsWith(prefix)
+                        ? item.body.slice(prefix.length)
+                        : item.body
+                    ).replace(
+                      /(\d+) (skill|certificate)\(s\)/g,
+                      (_, count, kind) => `${count} ${kind}${Number(count) === 1 ? '' : 's'}`,
+                    );
                     return (
                       <li key={item.id} className={isRead ? '' : 'unread'}>
+                        {(index === 0 ||
+                          notificationDay(items[index - 1].at) !== notificationDay(item.at)) && (
+                          <span className="notification-date-group">
+                            {notificationDay(item.at)}
+                          </span>
+                        )}
                         <span className="notification-item-icon">
                           <Icon size={18} />
                         </span>
@@ -245,6 +286,12 @@ export function Notifications({ id }: { id: string }) {
                             {destination?.kind ?? 'Workspace update'}
                             {!isRead && <i aria-label="Unread" />}
                           </span>
+                          {item.actorName && (
+                            <small className="notification-actor">
+                              {item.actorName}
+                              {item.actionLabel ? ` · ${item.actionLabel}` : ''}
+                            </small>
+                          )}
                           {destination ? (
                             <Link
                               className="notification-summary-link"
@@ -252,12 +299,18 @@ export function Notifications({ id }: { id: string }) {
                               onClick={event => opened(event, item.id)}
                             >
                               <strong>{item.title}</strong>
-                              <p>{item.body}</p>
+                              {item.subject && (
+                                <p className="notification-subject">{item.subject}</p>
+                              )}
+                              <p>{body}</p>
                             </Link>
                           ) : (
                             <>
                               <strong>{item.title}</strong>
-                              <p>{item.body}</p>
+                              {item.subject && (
+                                <p className="notification-subject">{item.subject}</p>
+                              )}
+                              <p>{body}</p>
                             </>
                           )}
                           <time dateTime={item.at}>
@@ -288,7 +341,7 @@ export function Notifications({ id }: { id: string }) {
               )}
               <RefreshIndicator status={freshness} />
               <small className="notification-device-note">
-                Read status is saved on this device. Actions use your current access.
+                Read status is saved on this device.
               </small>
             </>
           )

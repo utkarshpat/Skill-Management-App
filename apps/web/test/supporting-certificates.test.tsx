@@ -19,6 +19,19 @@ const certificate = {
     { id: 'api', name: 'API' },
   ],
 } as CertificationRecord;
+test('approved renewal replaces supporting display; expired unrenewed records remain', () => {
+  const renewed = { ...certificate, id: 'new', credentialId: 'new-id', expiryDate: '2028-10-01' };
+  const old = { ...certificate, supersededById: 'new' };
+  assert.deepEqual(
+    certificatesForSkill([old, renewed], 'azure').map(c => c.id),
+    ['new'],
+  );
+  assert.deepEqual(
+    certificatesForSkill([certificate], 'azure').map(c => c.id),
+    [certificate.id],
+  );
+  assert.equal(uniqueCertificates([old, renewed]).length, 2);
+});
 test('one certificate supports multiple skill rows while certificate totals remain distinct', () => {
   const records = [certificate, { ...certificate, id: certificate.id.toUpperCase() }];
   assert.equal(uniqueCertificates(records).length, 1);

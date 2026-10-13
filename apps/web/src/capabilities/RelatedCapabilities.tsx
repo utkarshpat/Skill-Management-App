@@ -18,7 +18,8 @@ export function RelatedCapabilities({ kind, id }: { kind: 'SKILL' | 'CERTIFICATI
     authenticatedFetch(`/api/capability-submissions/links/${kind}/${id}`, { signal: abort.signal })
       .then(r => readApiResponse<any>(r, 'Related capabilities unavailable.'))
       .then(v => {
-        if (!abort.signal.aborted) setLinks(v.links ?? []);
+        if (!abort.signal.aborted)
+          setLinks((v.links ?? []).filter((l: any) => kind !== 'SKILL' || !l.supersededById));
       })
       .catch(e => {
         if (!abort.signal.aborted) setError(e.message);

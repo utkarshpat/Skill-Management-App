@@ -38,6 +38,7 @@ interface Props {
   onTab?: (tab: string) => void;
 }
 import { learningSummary, planWeeks } from './learning-progress';
+import { LearningCompletionNextSteps } from './LearningCompletionNextSteps';
 const percent = (plan: Plan) =>
   plan.tasks.length
     ? Math.round((plan.tasks.filter(t => t.completedAt).length / plan.tasks.length) * 100)
@@ -413,6 +414,7 @@ export function LearningHome({
       </div>
       {tab === 'My learning' && (
         <>
+          <LearningCompletionNextSteps plans={plans} />
           <div className="ld-layout">
             <div className="ld-primary">
               <section className="ld-card">

@@ -21,21 +21,39 @@ export function notificationDestination(href: string) {
         ? 'Open certification recommendation'
         : url.searchParams.get('type') === 'certifications'
           ? 'Review certification'
-          : 'Review claim',
-      kind: 'Skill reviews',
+          : url.searchParams.has('submission')
+            ? 'Open review request'
+            : 'Review skill claim',
+      kind: 'Skills & reviews',
       icon: ClipboardCheck,
     },
-    '/my-skills': { label: 'View skill claim', kind: 'My skills', icon: ClipboardCheck },
+    '/my-skills': {
+      label: url.searchParams.has('submission') ? 'View review outcome' : 'View skill claim',
+      kind: 'Skills & reviews',
+      icon: ClipboardCheck,
+    },
     '/certifications': {
       label: url.searchParams.has('renew')
-        ? 'Record renewal'
+        ? 'Update renewed certificate'
         : url.searchParams.has('recommendation')
           ? 'Open certification recommendation'
           : 'View certification',
-      kind: 'Certifications',
+      kind: 'Skills & reviews',
       icon: ClipboardCheck,
     },
     '/profile': { label: 'View profile', kind: 'Profile & access', icon: Bell },
+    '/skills': { label: 'View catalogue request', kind: 'Requests', icon: Inbox },
   };
   return actions[url.pathname];
+}
+
+export function notificationDay(at: string, now = new Date()) {
+  const date = new Date(at);
+  if (!Number.isFinite(date.getTime())) return 'Earlier updates';
+  const day = (value: Date) => [value.getFullYear(), value.getMonth(), value.getDate()].join('-');
+  if (day(date) === day(now)) return 'Today';
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (day(date) === day(yesterday)) return 'Yesterday';
+  return date.toLocaleDateString(undefined, { dateStyle: 'medium' });
 }

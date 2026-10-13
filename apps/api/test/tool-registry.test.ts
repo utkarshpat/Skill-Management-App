@@ -4,6 +4,63 @@ import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
 import { ToolRegistry } from '../src/modules/ai/tool-registry.js';
 import { AssistantService } from '../src/modules/ai/assistant.js';
 import type { ClaimsStore } from '../src/modules/skills/claims.js';
+test('personal credential catalogue tool binds the actor, returns only canonical choices and honors DENY', async () => {
+  const access = await LocalAccessStore.open(),
+    state = access.snapshot(),
+    person = state.people[0];
+  for (const permission of ['profile.view', 'skill.view', 'skill.claim'] as const)
+    person.overrides.push({ permission, scope: 'OWN', effect: 'ALLOW' });
+  person.overrides.push({ permission: 'skill.view', scope: 'ORGANIZATION', effect: 'ALLOW' });
+  access.snapshot = () => structuredClone(state);
+  let called = '';
+  const store = {
+    run: async (actor: string, operation: string) => {
+      called = actor;
+      assert.equal(operation, 'CATALOGUE');
+      return {
+        total: 12,
+        claims: [{ description: 'private narrative' }],
+        certifications: [{ credentialId: 'private-id' }],
+        credentials: Array.from({ length: 12 }, (_, i) => ({
+          id: `master-${i}`,
+          name: 'Cloud credential ' + i,
+          provider: 'Published issuer',
+          category: 'Cloud',
+        })),
+      };
+    },
+  } as any;
+  const registry = new ToolRegistry(
+      access,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      store,
+    ),
+    signal = AbortSignal.timeout(5000);
+  const result = await registry.execute(
+    person.id,
+    'credential_catalogue_search',
+    { search: 'Cloud', page: 1 },
+    signal,
+  );
+  assert.equal(called, person.id);
+  assert.match(JSON.stringify(result), /master-9/);
+  assert.doesNotMatch(JSON.stringify(result), /master-10|private narrative|private-id/);
+  await assert.rejects(
+    registry.execute(person.id, 'credential_catalogue_search', { personId: 'other' }, signal),
+  );
+  person.overrides.push({ permission: 'skill.claim', scope: 'OWN', effect: 'DENY' });
+  assert.ok(
+    !registry.available(state, person).some(t => t.function.name === 'credential_catalogue_search'),
+  );
+  await assert.rejects(registry.execute(person.id, 'credential_catalogue_search', {}, signal));
+});
 
 test('typed own-skills tools bind the actor, label unverified drafts and reject write/foreign arguments', async () => {
   const access = await LocalAccessStore.open(),

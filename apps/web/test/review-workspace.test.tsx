@@ -21,5 +21,5 @@ test('manager workspace integrates linked reviews and credential panels without 
   assert.match(source, /CapabilitySubmissions review showEmpty/);
   assert.match(source, /teamContent=/);
   assert.match(source, /recommendationContent=/);
-  assert.match(source, /Supporting certificates awaiting review/);
+  assert.match(source, /Team certificates/);
 });

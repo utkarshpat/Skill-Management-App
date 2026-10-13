@@ -341,6 +341,13 @@ export function CapabilityReview({
 
                 {!isSkill && (
                   <>
+                    {row.renewedFromId && (
+                      <p className="cap-callout">
+                        Renewal certificate. Approval makes this the current version and keeps the
+                        previous certificate in history. Requesting changes or rejecting it keeps
+                        the previous version in place.
+                      </p>
+                    )}
                     <div className="cap-cert-grid">
                       <div className="cap-cert-item">
                         <span className="cap-detail-label">Issue date</span>

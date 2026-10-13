@@ -130,7 +130,7 @@ export function CapabilityComposer({
 }: {
   initialCertificate?: boolean;
   submissionId?: string;
-  renewal?: { id: string; fields: CertificationFields };
+  renewal?: { id: string; fields: CertificationFields; skillIds?: string[] };
   initialCredential?: {
     id: string;
     revision: number;
@@ -197,6 +197,7 @@ export function CapabilityComposer({
     [discard, setDiscard] = useState(false),
     [recovery, setRecovery] = useState(false);
   const [expandedCertificate, setExpandedCertificate] = useState<string | undefined>(certs[0]?.id);
+  const isRenewal = Boolean(renewal) || certs.some(c => Boolean(c.renewedFromId));
   const [autofillingCertificate, setAutofillingCertificate] = useState<string>();
   const [editingSkill, setEditingSkill] = useState<string>();
   const [skillDialogError, setSkillDialogError] = useState('');
@@ -387,6 +388,38 @@ export function CapabilityComposer({
             (personal.certifications ?? []).filter((c: any) => c.status !== 'SUBMITTED'),
           );
           setDefinitions(personal.definitions ?? []);
+          if (renewal && !submissionId) {
+            const approved = (personal.claims ?? [])
+              .filter(
+                (c: any) =>
+                  c.status === 'APPROVED' &&
+                  renewal.skillIds?.some(id => id.toLowerCase() === c.skillId.toLowerCase()),
+              )
+              .slice(0, 10);
+            setSkills(
+              approved.map((c: any) => ({
+                id: c.id,
+                revision: c.revision,
+                reuse: true,
+                choice: {
+                  id: c.skillId,
+                  name: c.name,
+                  category: c.category,
+                  definitionRevision: c.definitionRevision,
+                  levels: [],
+                },
+                rank: c.rank,
+                experienceMonths: c.experienceMonths,
+                description: c.description,
+                projects: c.projects ?? '',
+                evidence: c.evidence ?? '',
+                lastUsedOn: c.lastUsedOn?.slice(0, 10) ?? '',
+              })),
+            );
+            setCerts(old =>
+              old.map(c => ({ ...c, skillIds: approved.map((s: any) => s.skillId) })),
+            );
+          }
           setPersonalReady(true);
         }
         if (submissionId) {
@@ -481,7 +514,12 @@ export function CapabilityComposer({
       const fields = {
         ...cert.fields,
         ...Object.fromEntries(
-          Object.entries(data.fields).filter(([, v]) => v !== '' && v !== null),
+          Object.entries(data.fields).filter(
+            ([key, v]) =>
+              v !== '' &&
+              v !== null &&
+              !(cert.renewedFromId && ['certificationName', 'provider'].includes(key)),
+          ),
         ),
       };
       patchCertificate(cert.id, { fields });
@@ -776,7 +814,7 @@ export function CapabilityComposer({
       <label className="cap-wide">
         Choose an approved credential definition
         <select
-          disabled={working || c.reuse}
+          disabled={working || c.reuse || Boolean(c.renewedFromId)}
           value=""
           onChange={e => {
             const definition = definitions.find(d => d.id === e.target.value);
@@ -833,7 +871,13 @@ export function CapabilityComposer({
             type={String(key).includes('Date') ? 'date' : key === 'credentialUrl' ? 'url' : 'text'}
             value={String(c.fields[key as keyof typeof c.fields] ?? '')}
             maxLength={Number(max)}
-            disabled={working || c.reuse || (key === 'expiryDate' && c.fields.expiryDate === null)}
+            disabled={
+              working ||
+              c.reuse ||
+              (Boolean(c.renewedFromId) &&
+                ['certificationName', 'provider'].includes(String(key))) ||
+              (key === 'expiryDate' && c.fields.expiryDate === null)
+            }
             max={key === 'certificationDate' ? new Date().toISOString().slice(0, 10) : undefined}
             min={key === 'expiryDate' ? c.fields.certificationDate || undefined : undefined}
             onChange={e =>
@@ -927,7 +971,7 @@ export function CapabilityComposer({
   return (
     <>
       <FormDialog
-        title="Add skill"
+        title={certs.some(c => c.renewedFromId) ? 'Renew certificate' : 'Add skill'}
         className="capability-composer"
         busy={busy || uploadBusy}
         onClose={close}
@@ -936,6 +980,10 @@ export function CapabilityComposer({
         onPageChange={visiblePage => {
           const next = visiblePage;
           if (working) return;
+          if (page === 0 && next > 0 && isRenewal && !hasUploadedCertificate) {
+            setError('Upload the renewed certificate before continuing.');
+            return;
+          }
           if (page === 0 && next > 0 && hasUploadedCertificate && !checkCertificates()) return;
           if (page === 0 && next === 1 && !hasUploadedCertificate) {
             setCerts([]);
@@ -958,6 +1006,11 @@ export function CapabilityComposer({
             <p role="status">{phase}</p>
           ) : initializing ? (
             <p role="status">Getting your form ready…</p>
+          ) : page === 0 && isRenewal ? (
+            <p className="cap-renewal-info">
+              Upload your renewed certificate and enter its new credential ID, issue date and
+              expiry. The previous certificate moves to history after approval.
+            </p>
           ) : undefined
         }
         pages={[
@@ -1056,7 +1109,7 @@ export function CapabilityComposer({
                           <button
                             type="button"
                             className="cap-remove"
-                            disabled={working}
+                            disabled={working || Boolean(c.renewedFromId)}
                             onClick={() => {
                               dirty.current = true;
                               const remaining = certs.filter(item => item.id !== c.id);
@@ -1361,12 +1414,24 @@ export function CapabilityComposer({
                     {certs.map(c => (
                       <div className="cap-final-item" key={c.id}>
                         <strong>{c.fields.certificationName}</strong>
+                        {c.renewedFromId && (
+                          <span className="cap-pill">
+                            Renewal · replaces previous version after approval
+                          </span>
+                        )}
                         <span>
                           {c.fields.provider} ·{' '}
                           {c.fields.expiryDate
                             ? `Expires ${c.fields.expiryDate}`
                             : 'Does not expire'}
                         </span>
+                        <p>
+                          Issued {c.fields.certificationDate}
+                          {c.fields.credentialId
+                            ? ` · Credential ID: ${c.fields.credentialId}`
+                            : ''}
+                        </p>
+                        {c.file && <p>Attached: {c.file.name}</p>}
                         <div className="cap-chips">
                           {skills
                             .filter(s => c.skillIds.includes(s.choice.id))
@@ -1438,7 +1503,7 @@ export function CapabilityComposer({
                 <button
                   type="button"
                   className="admin-primary"
-                  disabled={working}
+                  disabled={working || (page === 0 && isRenewal && !hasUploadedCertificate)}
                   onClick={() => {
                     if (page === 0 && hasUploadedCertificate && !checkCertificates()) return;
                     const invalid = page === 1 ? validate() : '';
@@ -1446,7 +1511,7 @@ export function CapabilityComposer({
                       setError(invalid);
                       return;
                     }
-                    if (page === 0 && !hasUploadedCertificate) {
+                    if (page === 0 && !hasUploadedCertificate && !isRenewal) {
                       setCerts([]);
                       setHasCertificate(false);
                       setError('');
@@ -1456,7 +1521,7 @@ export function CapabilityComposer({
                 >
                   {page === 1
                     ? 'Review'
-                    : hasUploadedCertificate
+                    : hasUploadedCertificate || isRenewal
                       ? 'Continue'
                       : 'Continue without certificate'}
                   <ArrowRight size={16} />

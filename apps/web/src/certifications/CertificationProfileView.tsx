@@ -17,7 +17,7 @@ import {
 import type { CertificationRecord } from './types';
 import { certificationStatusLabels, credentialValidity } from './certification-model';
 export function CertificationProfileView({
-  records,
+  records: allRecords,
   loading = false,
   today,
   canManage,
@@ -41,6 +41,7 @@ export function CertificationProfileView({
   onSubmit: (record: CertificationRecord) => void;
   onReview: (record: CertificationRecord) => void;
 }) {
+  const records = allRecords.filter(r => !r.supersededById);
   const [query, setQuery] = useState(''),
     [category, setCategory] = useState(''),
     [status, setStatus] = useState(''),

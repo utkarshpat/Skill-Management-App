@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "f999776a57998e5c",
+  "revision": "55df1b1ff7552242",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -81,7 +81,8 @@
       "076_optional_skill_description.sql",
       "077_capability_draft_recovery_metadata.sql",
       "078_credential_skill_master_mappings.sql",
-      "079_combined_review_queue_totals.sql"
+      "079_combined_review_queue_totals.sql",
+      "080_approved_renewal_portfolio.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -7017,7 +7018,7 @@
       "name": "CertificationWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/075_certification_duplicate_identity.sql"
+      "source": "database/migrations/080_approved_renewal_portfolio.sql"
     },
     {
       "name": "CertificationImage",
@@ -7035,7 +7036,7 @@
       "name": "CertificationExpiryNotifications",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/063_credential_renewal_reliability.sql"
+      "source": "database/migrations/080_approved_renewal_portfolio.sql"
     },
     {
       "name": "CertificationRecommendationCan",
@@ -7047,7 +7048,7 @@
       "name": "CertificationReviewAnalytics",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/058_certification_review_workspace.sql"
+      "source": "database/migrations/080_approved_renewal_portfolio.sql"
     },
     {
       "name": "CertificationRecommendations",
@@ -7149,7 +7150,7 @@
       "name": "BusinessDashboard",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@payload nvarchar(max),@export bit=0",
-      "source": "database/migrations/074_four_level_proficiency.sql"
+      "source": "database/migrations/080_approved_renewal_portfolio.sql"
     },
     {
       "name": "BusinessScopeCovers",
@@ -7167,7 +7168,7 @@
       "name": "BusinessMatchRequirements",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@person uniqueidentifier,@requirements nvarchar(max)) RETURNS TABLE",
-      "source": "database/migrations/074_four_level_proficiency.sql"
+      "source": "database/migrations/080_approved_renewal_portfolio.sql"
     },
     {
       "name": "BusinessWorkflow",
@@ -7179,7 +7180,7 @@
       "name": "CertificationRenewalValid",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@source uniqueidentifier,@owner uniqueidentifier,@name nvarchar(200),@provider nvarchar(120),@issue date,@expiry date) RETURNS bit",
-      "source": "database/migrations/063_credential_renewal_reliability.sql"
+      "source": "database/migrations/080_approved_renewal_portfolio.sql"
     },
     {
       "name": "BusinessWorkflowRecovery",
@@ -7203,7 +7204,7 @@
       "name": "CapabilitySubmissionWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/079_combined_review_queue_totals.sql"
+      "source": "database/migrations/080_approved_renewal_portfolio.sql"
     },
     {
       "name": "CapabilitySubmissionFiles",
@@ -7215,7 +7216,7 @@
       "name": "ReadCapabilitySubmissionNotifications",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/071_linked_capability_submissions.sql"
+      "source": "database/migrations/080_approved_renewal_portfolio.sql"
     },
     {
       "name": "CapabilityIntakeFiles",
@@ -7228,6 +7229,18 @@
       "kind": "FUNCTION",
       "signature": "(@value nvarchar(4000)) RETURNS nvarchar(4000)\nWITH SCHEMABINDING",
       "source": "database/migrations/075_certification_duplicate_identity.sql"
+    },
+    {
+      "name": "CertificationPortfolio",
+      "kind": "VIEW",
+      "signature": "",
+      "source": "database/migrations/080_approved_renewal_portfolio.sql"
+    },
+    {
+      "name": "CurrentCertificationRecord",
+      "kind": "VIEW",
+      "signature": "",
+      "source": "database/migrations/080_approved_renewal_portfolio.sql"
     }
   ],
   "groups": {

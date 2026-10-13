@@ -852,3 +852,15 @@
 .ld-spin {
   animation: ld-spin 0.8s linear infinite;
 }
+.learning-completion-next article,
+.learning-completion-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 0;
+}
+.learning-completion-next small {
+  color: var(--muted);
+}

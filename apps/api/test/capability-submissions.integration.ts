@@ -35,6 +35,10 @@ await withDatabase(async pool => {
     'standalone-block',
     'reroute',
     'legacy-returned',
+    'renewal-approved',
+    'renewal-returned',
+    'renewal-expiry',
+    'catalogue-read',
   ].filter(
     s =>
       !process.env.CAPABILITY_SQL_SCENARIOS ||
@@ -86,6 +90,12 @@ await withDatabase(async pool => {
         'utf8',
       );
       for (const batch of queueTotals.split(/^GO\s*$/m))
+        if (batch.trim()) await new sql.Request(tx).batch(batch);
+      const renewalPortfolio = await readFile(
+        new URL('../../../database/migrations/080_approved_renewal_portfolio.sql', import.meta.url),
+        'utf8',
+      );
+      for (const batch of renewalPortfolio.split(/^GO\s*$/m))
         if (batch.trim()) await new sql.Request(tx).batch(batch);
       const owner = randomUUID(),
         manager = randomUUID(),
@@ -150,6 +160,8 @@ await withDatabase(async pool => {
         skills,
         certifications: [{ id: cert, revision: 0, fields, skillIds: skills.map(s => s.skillId) }],
       };
+      if (scenario.startsWith('renewal-')) fields.expiryDate = '2026-02-01';
+      if (scenario === 'renewal-expiry') fields.expiryDate = new Date().toISOString().slice(0, 10);
       const run = async (actor: string, operation: string, payload: object) => {
         const result = await new sql.Request(tx)
           .input('a', sql.UniqueIdentifier, account)
@@ -161,6 +173,23 @@ await withDatabase(async pool => {
           );
         return JSON.parse((result.recordsets as any[][]).flat().at(-1)?.json ?? '{}');
       };
+      if (scenario === 'catalogue-read') {
+        const choices = await run(owner, 'CATALOGUE', { search: 'Oracle', page: 1 });
+        assert.ok(choices.total > 0);
+        assert.ok(choices.credentials.length > 0 && choices.credentials.length <= 10);
+        assert.ok(
+          choices.credentials.every(
+            (c: any) => c.name && c.provider && c.relatedSkills.length <= 10,
+          ),
+        );
+        assert.ok(!('claims' in choices) && !('certifications' in choices));
+        await assert.rejects(
+          run(owner, 'CATALOGUE', { search: 'Oracle', page: 1, personId: outside }),
+          (e: any) => e.number === 51000,
+        );
+        console.log('PASS rollback linked capabilities: ' + scenario);
+        continue;
+      }
       if (scenario.startsWith('discard-')) {
         const draft = await run(owner, 'INTAKE', {
           id,
@@ -427,7 +456,13 @@ await withDatabase(async pool => {
                 id: c.id,
                 kind: 'CERTIFICATION',
                 revision: c.revision,
-                action: ['publish-links', 'analytics-many-to-many'].includes(scenario)
+                action: [
+                  'publish-links',
+                  'analytics-many-to-many',
+                  'renewal-approved',
+                  'renewal-returned',
+                  'renewal-expiry',
+                ].includes(scenario)
                   ? 'APPROVE'
                   : 'REQUEST_CHANGES',
                 feedback: 'Clarify issuer verification',
@@ -442,7 +477,13 @@ await withDatabase(async pool => {
             assert.ok(reviewed.skills.every((s: any) => s.status === 'APPROVED'));
             assert.equal(
               reviewed.certifications[0].status,
-              ['publish-links', 'analytics-many-to-many'].includes(scenario)
+              [
+                'publish-links',
+                'analytics-many-to-many',
+                'renewal-approved',
+                'renewal-returned',
+                'renewal-expiry',
+              ].includes(scenario)
                 ? 'APPROVED'
                 : 'CHANGES_REQUESTED',
             );
@@ -574,6 +615,109 @@ await withDatabase(async pool => {
               assert.equal(published.status, 'LINKED');
               assert.ok(published.skills.every((r: any) => r.status === 'APPROVED'));
               assert.ok(published.reviewerId == null);
+            }
+            if (scenario.startsWith('renewal-')) {
+              const nextId = randomUUID(),
+                nextCert = randomUUID();
+              const next = await run(owner, 'SAVE', {
+                id: nextId,
+                revision: 0,
+                skills: reviewed.skills.map((s: any) => ({
+                  id: s.id,
+                  revision: s.revision,
+                  skillId: s.skillId,
+                })),
+                certifications: [
+                  {
+                    id: nextCert,
+                    revision: 0,
+                    renewedFromId: cert,
+                    fields: {
+                      ...fields,
+                      certificationDate: new Date().toISOString().slice(0, 10),
+                      expiryDate: '2028-01-01',
+                      credentialId: 'QA-NEW-ID',
+                    },
+                    skillIds: skills.map(s => s.skillId),
+                  },
+                ],
+              });
+              await new sql.Request(tx)
+                .input('a', sql.UniqueIdentifier, account)
+                .input('c', sql.UniqueIdentifier, nextCert)
+                .input('e', sql.UniqueIdentifier, randomUUID())
+                .query(
+                  "INSERT dbo.CertificationImageRecord(account_id,certification_id,evidence_id,blob_name,bytes,width,height,active,mime_type,file_name) VALUES(@a,@c,@e,'renewed.pdf',3,NULL,NULL,1,'application/pdf','renewed.pdf');UPDATE dbo.CertificationRecord SET revision=revision+1 WHERE account_id=@a AND id=@c",
+                );
+              const nextSubmitted = await run(owner, 'SUBMIT', {
+                id: nextId,
+                revision: next.revision,
+                skills: next.skills.map((s: any) => ({ id: s.id, revision: s.revision })),
+                certifications: next.certifications.map((c: any) => ({
+                  id: c.id,
+                  revision: c.revision + 1,
+                })),
+              });
+              const before = await new sql.Request(tx)
+                .input('a', sql.UniqueIdentifier, account)
+                .input('c', sql.UniqueIdentifier, cert)
+                .query(
+                  'SELECT supersededById,activeRenewalId FROM dbo.CertificationPortfolio WHERE account_id=@a AND id=@c',
+                );
+              assert.equal(before.recordset[0].supersededById, null);
+              assert.equal(before.recordset[0].activeRenewalId.toLowerCase(), nextCert);
+              const approvedRenewal = scenario !== 'renewal-returned';
+              await run(manager, 'DECIDE', {
+                id: nextId,
+                revision: nextSubmitted.revision,
+                decisions: nextSubmitted.certifications.map((c: any) => ({
+                  id: c.id,
+                  kind: 'CERTIFICATION',
+                  revision: c.revision,
+                  action: approvedRenewal ? 'APPROVE' : 'REQUEST_CHANGES',
+                  feedback: 'Renewal dates and new ID checked',
+                })),
+              });
+              const after = await new sql.Request(tx)
+                .input('a', sql.UniqueIdentifier, account)
+                .input('o', sql.UniqueIdentifier, owner)
+                .query(
+                  "SELECT id,supersededById,credential_id FROM dbo.CertificationPortfolio WHERE account_id=@a AND person_id=@o; SELECT id FROM dbo.CurrentCertificationRecord WHERE account_id=@a AND person_id=@o AND status='APPROVED'",
+                );
+              const sets = after.recordsets as any[][];
+              assert.equal(sets[0].length, 2);
+              const old = sets[0].find((c: any) => c.id.toLowerCase() === cert);
+              assert.equal(
+                old.supersededById?.toLowerCase() ?? null,
+                approvedRenewal ? nextCert : null,
+              );
+              assert.equal(sets[1].length, 1);
+              assert.equal(sets[1][0].id.toLowerCase(), approvedRenewal ? nextCert : cert);
+              const analytics = await new sql.Request(tx)
+                .input('account_id', sql.UniqueIdentifier, account)
+                .input('actor_id', sql.UniqueIdentifier, manager)
+                .execute('dbo.CertificationReviewAnalytics');
+              assert.equal(analytics.recordset[0].reviewed, 1);
+              assert.equal(analytics.recordset[0].expired, approvedRenewal ? 0 : 1);
+              const notes = await new sql.Request(tx)
+                .input('account_id', sql.UniqueIdentifier, account)
+                .input('actor_id', sql.UniqueIdentifier, owner)
+                .execute('dbo.ReadCapabilitySubmissionNotifications');
+              assert.ok(
+                notes.recordset.some(
+                  (n: any) =>
+                    n.href.toLowerCase().endsWith(nextId) &&
+                    n.actorName === 'Linked QA manager' &&
+                    n.body.includes(approvedRenewal ? '1 approved' : '1 changes requested'),
+                ),
+              );
+              const expiryNotes = await new sql.Request(tx)
+                .input('account_id', sql.UniqueIdentifier, account)
+                .input('actor_id', sql.UniqueIdentifier, owner)
+                .execute('dbo.CertificationExpiryNotifications');
+              assert.ok(
+                !expiryNotes.recordset.some((n: any) => n.href.toLowerCase().endsWith(cert)),
+              );
             }
           }
         }

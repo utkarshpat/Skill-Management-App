@@ -120,12 +120,29 @@ export function SkillCertificates({
         'This certificate could not open. Please try again.',
       );
       if (abort.signal.aborted) return;
+      if (renewal && result.record.activeRenewalId) {
+        setDetailError('A renewal is already in progress. Open it to continue.');
+        const renewalResult = await readApiResponse<{ record: CertificationRecord }>(
+          await authenticatedFetch(`/api/certifications/${result.record.activeRenewalId}`, {
+            signal: abort.signal,
+          }),
+          'The existing renewal could not open.',
+        );
+        if (abort.signal.aborted) return;
+        setDetailError('');
+        if (renewalResult.record.canEdit) {
+          setRenewing(false);
+          setEditing(renewalResult.record);
+        } else setViewing(renewalResult.record);
+        return;
+      }
       if (
         renewal &&
         data?.canManage &&
         data.canUploadImage &&
         result.record.status === 'APPROVED' &&
-        result.record.expiryDate
+        result.record.expiryDate &&
+        !result.record.supersededById
       ) {
         setRenewing(true);
         setEditing(result.record);
@@ -196,6 +213,7 @@ export function SkillCertificates({
                 </button>
               )}
               {viewing?.status === 'APPROVED' &&
+                !viewing.supersededById &&
                 viewing.expiryDate &&
                 data?.canManage &&
                 data.canUploadImage && (
@@ -203,12 +221,10 @@ export function SkillCertificates({
                     type="button"
                     className="admin-primary"
                     onClick={() => {
-                      setRenewing(true);
-                      setEditing(viewing);
-                      setViewing(undefined);
+                      void open(viewing.id, true);
                     }}
                   >
-                    Record renewal
+                    {viewing.activeRenewalId ? 'Continue renewal' : 'Renew certificate'}
                   </button>
                 )}
             </>
@@ -226,6 +242,25 @@ export function SkillCertificates({
             viewing && (
               <section className="cap-certificate-detail">
                 <div className="cap-certificate-facts">
+                  {viewing.supersededById && (
+                    <p className="cap-callout">
+                      Renewed certificate approved. This version is kept in history.{' '}
+                      <button
+                        className="skills-text-link"
+                        onClick={() => void open(viewing.supersededById!)}
+                      >
+                        View latest certificate
+                      </button>
+                    </p>
+                  )}
+                  {viewing.renewedFromId && (
+                    <button
+                      className="skills-text-link"
+                      onClick={() => void open(viewing.renewedFromId!)}
+                    >
+                      View previous certificate
+                    </button>
+                  )}
                   <p>{certificationStatusLabels[viewing.status]}</p>
                   <p
                     className={
@@ -266,7 +301,11 @@ export function SkillCertificates({
           }
           renewal={
             renewing
-              ? { id: editing.id, fields: certificationRenewalFields(editing, today) }
+              ? {
+                  id: editing.id,
+                  fields: certificationRenewalFields(editing, today),
+                  skillIds: editing.relatedSkills?.map(s => s.id),
+                }
               : undefined
           }
           onClose={() => setEditing(undefined)}
@@ -300,7 +339,8 @@ export function CertificateRenewalSummary() {
         <p role="status">Getting your certificates ready…</p>
       </section>
     );
-  const records = uniqueCertificates(data.records);
+  const history = uniqueCertificates(data.records).filter(c => c.supersededById);
+  const records = uniqueCertificates(data.records).filter(c => !c.supersededById);
   const attention = records.filter(c =>
     ['Expired', 'Expires soon'].includes(credentialValidity(c.expiryDate, today)),
   );
@@ -332,6 +372,22 @@ export function CertificateRenewalSummary() {
         </span>
       </div>
       {!attention.length && <p>No renewals due in the next 90 days.</p>}
+      {!!history.length && (
+        <details>
+          <summary>Renewal history ({history.length})</summary>
+          <div className="cap-renewal-list">
+            {history.map(c => (
+              <button type="button" key={c.id} onClick={() => open(c.id)}>
+                <span>
+                  {c.certificationName}
+                  <small>Previous certificate · {c.credentialId || c.certificationDate}</small>
+                </span>
+                <Eye size={16} />
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
       {!!attention.length && (
         <details>
           <summary>{attention.length} need attention</summary>

@@ -43,6 +43,8 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
   const [analyticsError, setAnalyticsError] = useState('');
   const [analytics, setAnalytics] = useState<{
     pending: number;
+    reviewed?: number;
+    certifiedPeople?: number;
     expired: number;
     expiresSoon: number;
     noExpiry: number;
@@ -284,10 +286,16 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
             aria-label="Supporting certificate analytics"
             aria-busy={analyticsLoading}
           >
-            <h3>Supporting certificates awaiting review</h3>
+            <h3>Team certificates</h3>
             <div className="team-certificate-metrics">
               <span>
                 <strong>{analytics?.pending ?? '—'}</strong> Assigned certificates
+              </span>
+              <span>
+                <strong>{analytics?.reviewed ?? '—'}</strong> Manager reviewed
+              </span>
+              <span>
+                <strong>{analytics?.certifiedPeople ?? '—'}</strong> Currently certified people
               </span>
               <span>
                 <strong>{analytics?.expired ?? '—'}</strong> Expired
@@ -299,7 +307,10 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
                 <strong>{analytics?.noExpiry ?? '—'}</strong> No expiry
               </span>
             </div>
-            <small>Current direct reports · assigned pending certificates only</small>
+            <small>
+              Current direct reports · certificates assigned to you. Validity counts use reviewed
+              certificates; previous renewed versions are excluded.
+            </small>
             {!!analytics?.categories.length && (
               <details>
                 <summary>Certificate categories</summary>

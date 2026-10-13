@@ -161,6 +161,50 @@ export class ToolRegistry {
             },
           },
         );
+    if (capabilitySubmissions)
+      this.entries.set('credential_catalogue_search', {
+        definition: {
+          type: 'function',
+          function: {
+            name: 'credential_catalogue_search',
+            description:
+              'Search active published credential definitions and related published skills for your own learning next steps. Suggest only returned names and issuers; catalogue presence does not establish exam eligibility, achievement or proficiency. No personal files, claims or writes.',
+            parameters: searchSchema,
+          },
+        },
+        validate: args => searchArguments(args),
+        permission: (s, p) =>
+          can(s, p, 'profile.view', true) &&
+          can(s, p, 'skill.view', true) &&
+          can(s, p, 'skill.claim', true) &&
+          can(s, p, 'skill.view', false),
+        source: { label: 'Published credential catalogue', url: '/my-skills' },
+        read: async ({ person, args }) => {
+          const page = Number(args.page);
+          const value = await capabilitySubmissions.run(person.id, 'CATALOGUE', {
+            search: String(args.search),
+            page,
+          });
+          return {
+            total: Number(value.total),
+            page,
+            pageSize: 10,
+            hasMore: page * 10 < Number(value.total),
+            credentials: (value.credentials ?? []).slice(0, 10).map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              provider: d.provider,
+              category: d.category,
+              description: d.description,
+              relatedSkills: (d.relatedSkills ?? [])
+                .slice(0, 10)
+                .map((s: any) => ({ id: s.id, name: s.name, category: s.category })),
+            })),
+            policy:
+              'Learning completion is recorded activity, not certification achievement or verified skill proficiency. Recommend an eligible catalogue option as a possible next step; the employee must confirm experience and upload an earned certificate before review. Related skills are limited to ten catalogue matches per credential; do not infer proficiency levels.',
+          };
+        },
+      });
     if (certifications) {
       for (const view of ['mine', 'queue'] as const) {
         const name = view === 'mine' ? 'my_certifications' : 'assigned_certification_reviews';
@@ -219,22 +263,27 @@ export class ToolRegistry {
                 provider: record.provider,
                 category: record.category,
                 reviewStatus: record.status,
+                portfolioState: record.supersededById
+                  ? 'Renewed — previous version retained in history'
+                  : 'Current portfolio record',
                 issued: record.certificationDate,
                 expires: record.expiryDate,
                 ...(view === 'queue' ? { person: record.name } : {}),
-                validity: !record.expiryDate
-                  ? 'No expiry'
-                  : record.expiryDate < today
-                    ? 'Expired'
-                    : (Date.parse(record.expiryDate + 'T12:00:00Z') -
-                          Date.parse(today + 'T12:00:00Z')) /
-                          86400000 <=
-                        90
-                      ? 'Expires soon'
-                      : 'Current',
+                validity: record.supersededById
+                  ? 'Historical — replaced by an approved renewal'
+                  : !record.expiryDate
+                    ? 'No expiry'
+                    : record.expiryDate < today
+                      ? 'Expired'
+                      : (Date.parse(record.expiryDate + 'T12:00:00Z') -
+                            Date.parse(today + 'T12:00:00Z')) /
+                            86400000 <=
+                          90
+                        ? 'Expires soon'
+                        : 'Current',
               })),
               policy:
-                'Manager reviewed is an internal decision, not issuer verification or proof of current validity. Expiry is independent. Expires soon means within 90 days, including today. Page results are not aggregate validity counts. Reminder milestones are evaluated on notification reads; do not promise background email or scheduled delivery.',
+                'Total includes retained renewal history. Superseded records are not current holdings or renewal attention. Manager reviewed is an internal decision, not issuer verification or proof of current validity. Expiry is independent. Expires soon means within 90 days, including today. Page results are not aggregate validity counts. Reminder milestones are evaluated on notification reads; do not promise background email or scheduled delivery.',
             };
           },
         });

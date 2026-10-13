@@ -482,7 +482,10 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
 }
 .cap-submission-card:last-child {
   margin-bottom: 0;
@@ -1780,3 +1783,7 @@
   }
 }
 
+.capability-composer .form-dialog-message .cap-renewal-info {
+  color: var(--muted);
+  font-size: 13px;
+}

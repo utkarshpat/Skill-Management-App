@@ -50,10 +50,10 @@ test('credential form validates dates, required issuer fields and safe links bef
     { credentialUrl: 'https://user:password@issuer.example/' },
   ])
     assert.ok(certificationFieldError({ ...fields, ...patch }, '2026-10-09'));
-  assert.equal(notificationDestination('/certifications?tab=queue')?.kind, 'Certifications');
+  assert.equal(notificationDestination('/certifications?tab=queue')?.kind, 'Skills & reviews');
   assert.equal(
     notificationDestination('/certifications?renew=credential-id')?.label,
-    'Record renewal',
+    'Update renewed certificate',
   );
 });
 test('renewal draft keeps credential identity but resets dates, attachment-specific details and notes', () => {

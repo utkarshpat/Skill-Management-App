@@ -8,8 +8,10 @@ import {
 export const uniqueCertificates = (records: CertificationRecord[]) =>
   Array.from(new Map(records.map(record => [record.id.toLowerCase(), record])).values());
 export const certificatesForSkill = (records: CertificationRecord[], skillId: string) =>
-  uniqueCertificates(records).filter(record =>
-    record.relatedSkills?.some(skill => skill.id.toLowerCase() === skillId.toLowerCase()),
+  uniqueCertificates(records).filter(
+    record =>
+      !record.supersededById &&
+      record.relatedSkills?.some(skill => skill.id.toLowerCase() === skillId.toLowerCase()),
   );
 
 export function SupportingCertificates({
