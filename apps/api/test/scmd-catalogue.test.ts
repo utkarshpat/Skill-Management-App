@@ -30,6 +30,8 @@ test('FDD catalogue has all eleven skill areas, four-level rubrics and real sour
       ['Foundation', 'Autonomous', 'Experienced', 'Expert'],
     );
   const codes = new Set(data.skills.map((s: any) => s.code));
+  assert.equal(codes.size, 11);
+  assert.ok(data.skills.every((s: any) => /^SKL-\d{3}$/.test(s.code)));
   for (const credential of data.credentials) {
     assert.ok(credential.name.length <= 100);
     assert.doesNotMatch(credential.name, /demo|sample|synthetic/i);

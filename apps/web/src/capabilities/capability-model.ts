@@ -21,6 +21,31 @@ export function credentialSkillDefaults(
     reason: 'Catalogue mapping — confirm this skill is supported by your certificate.',
   }));
 }
+
+/** Recompute catalogue defaults from saved identity so continuing a draft keeps its suggestions. */
+export function activeCertificateSuggestions(
+  certificates: Pick<SelectedCertificate, 'id' | 'fields'>[],
+  definitions: { name: string; provider: string; relatedSkills?: SkillChoice[] }[],
+  suggestions: CertificateSkillSuggestion[],
+) {
+  const active = suggestions.filter(suggestion =>
+    certificates.some(c => c.id === suggestion.certificateId),
+  );
+  const mapped = certificates.flatMap(c =>
+    credentialSkillDefaults(definitions, c.fields).map(suggestion => ({
+      ...suggestion,
+      certificateId: c.id,
+    })),
+  );
+  return [
+    ...new Map(
+      [...active, ...mapped].map(suggestion => [
+        suggestion.certificateId + ':' + suggestion.skill.id.toLowerCase(),
+        suggestion,
+      ]),
+    ).values(),
+  ];
+}
 export function mergeCertificateSuggestions(
   previous: CertificateSkillSuggestion[],
   certificateId: string,

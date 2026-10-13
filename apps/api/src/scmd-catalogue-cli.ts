@@ -7,7 +7,9 @@ import { withDatabase } from './shared/database.js';
 const operatorArg = process.argv.find(a => a.startsWith('--operator='));
 if (
   !operatorArg ||
-  process.argv.slice(2).some(a => a !== '--apply' && !a.startsWith('--operator='))
+  process.argv
+    .slice(2)
+    .some(a => a !== '--apply' && a !== '--verify' && !a.startsWith('--operator='))
 )
   throw Error(
     'Specify the existing authorized operator with --operator=<person UUID>; preview first, then --apply.',
@@ -57,21 +59,36 @@ await withDatabase(async pool => {
           (old: any) => old.code === s.code || old.name.toLowerCase() === s.name.toLowerCase(),
         ),
     );
+    for (const skill of source.skills) {
+      if (!/^SKL-\d{3}$/.test(skill.code)) throw Error('Invalid catalogue business code.');
+      if (
+        skills.some(
+          (old: any) =>
+            old.code === skill.code && old.name.toLowerCase() !== skill.name.toLowerCase(),
+        )
+      )
+        throw Error('Business code already belongs to another skill: ' + skill.code);
+    }
     const oracle = providers.find((p: any) => p.name.toLowerCase() === 'oracle');
     if (oracle && !oracle.active)
       throw Error('Existing Oracle provider is retired; review it through amendments first.');
-    const existingCredentials = credentials.filter((c: any) =>
-      oracle && c.providerId.toLowerCase() === oracle.id.toLowerCase() && source.credentials.some((s: any) => s.name === c.name),
+    const existingCredentials = credentials.filter(
+      (c: any) =>
+        oracle &&
+        c.providerId.toLowerCase() === oracle.id.toLowerCase() &&
+        source.credentials.some((s: any) => s.name === c.name),
     );
-    if (existingCredentials.some((c:any)=>!c.active)) throw Error('A matching credential is retired; review it through amendments first.');
-    const mapped = (id:string) => records[4].some((row:any)=>row.credentialId.toLowerCase()===id.toLowerCase());
+    if (existingCredentials.some((c: any) => !c.active))
+      throw Error('A matching credential is retired; review it through amendments first.');
+    const mapped = (id: string) =>
+      records[4].some((row: any) => row.credentialId.toLowerCase() === id.toLowerCase());
     const plan = {
       newSkills: newSkills.map((s: any) => s.name),
       createProvider: !oracle,
       newCredentials: source.credentials
         .filter((s: any) => !existingCredentials.some((c: any) => c.name === s.name))
         .map((s: any) => s.name),
-      addMappings: existingCredentials.filter((c:any)=>!mapped(c.id)).map((c:any)=>c.name),
+      addMappings: existingCredentials.filter((c: any) => !mapped(c.id)).map((c: any) => c.name),
     };
     const receipt = createHash('sha256')
       .update(
@@ -85,7 +102,7 @@ await withDatabase(async pool => {
       )
       .digest('hex');
     console.log(JSON.stringify({ plan, receipt, employeeClaimsChanged: 0 }));
-    if (!process.argv.includes('--apply')) {
+    if (!process.argv.includes('--apply') && !process.argv.includes('--verify')) {
       await writeFile(
         new URL('../../../.local/scmd-catalogue-preview.json', import.meta.url),
         JSON.stringify({ receipt }),
@@ -126,7 +143,7 @@ await withDatabase(async pool => {
         .execute('dbo.SaveSkillCatalogue');
       skills.push({ id, code: skill.code, name: skill.name, status: 'PUBLISHED' });
     }
-    const amend = async (type: string, definition: object, targetId:string|null=null) => {
+    const amend = async (type: string, definition: object, targetId: string | null = null) => {
       const id = randomUUID();
       const run = async (operation: string, payload: object) =>
         new sql.Request(tx)
@@ -165,7 +182,7 @@ await withDatabase(async pool => {
     };
     const providerId = oracle?.id ?? (await amend('PROVIDER', { name: 'Oracle', active: true }));
     for (const credential of source.credentials) {
-      const existing = existingCredentials.find((c:any)=>c.name===credential.name);
+      const existing = existingCredentials.find((c: any) => c.name === credential.name);
       if (existing && mapped(existing.id)) continue;
       const ids = credential.skillCodes.map((code: string) => {
         const canonical = source.skills.find((s: any) => s.code === code);
@@ -176,14 +193,24 @@ await withDatabase(async pool => {
           throw Error('Mapped skill requires a published catalogue definition: ' + code);
         return skill.id;
       });
-      await amend('CERTIFICATION', {
-        name: credential.name,
-        providerId,
-        category: existing?.category ?? credential.category,
-        description: existing?.description ?? credential.description,
-        active: true,
-        relatedSkillIds: ids,
-      },existing?.id ?? null);
+      await amend(
+        'CERTIFICATION',
+        {
+          name: credential.name,
+          providerId,
+          category: existing?.category ?? credential.category,
+          description: existing?.description ?? credential.description,
+          active: true,
+          relatedSkillIds: ids,
+        },
+        existing?.id ?? null,
+      );
+    }
+    if (process.argv.includes('--verify')) {
+      console.log(
+        'PASS complete catalogue provisioning; rolling back every skill, credential, mapping and audit change.',
+      );
+      return;
     }
     await tx.commit();
     committed = true;

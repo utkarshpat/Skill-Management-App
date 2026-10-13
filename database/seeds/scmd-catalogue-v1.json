@@ -2,7 +2,7 @@
   "source": "SCMD FDD V0.1.docx skills; credential titles verified against https://www.oracle.com/education/certification/ on 2026-10-13. Skill mappings are application defaults, not Oracle endorsements.",
   "skills": [
     {
-      "code": "SCMD-01",
+      "code": "SKL-071",
       "name": "Oracle HCM",
       "category": "Oracle Applications",
       "description": "FDD skill area: Oracle HCM. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
@@ -30,7 +30,7 @@
       ]
     },
     {
-      "code": "SCMD-02",
+      "code": "SKL-072",
       "name": "Oracle Payroll",
       "category": "Oracle Applications",
       "description": "FDD skill area: Oracle Payroll. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
@@ -58,7 +58,7 @@
       ]
     },
     {
-      "code": "SCMD-03",
+      "code": "SKL-073",
       "name": "Oracle Recruiting",
       "category": "Oracle Applications",
       "description": "FDD skill area: Oracle Recruiting. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
@@ -86,7 +86,7 @@
       ]
     },
     {
-      "code": "SCMD-04",
+      "code": "SKL-074",
       "name": "Oracle Learning",
       "category": "Oracle Applications",
       "description": "FDD skill area: Oracle Learning. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
@@ -114,7 +114,7 @@
       ]
     },
     {
-      "code": "SCMD-05",
+      "code": "SKL-075",
       "name": "Oracle Benefits",
       "category": "Oracle Applications",
       "description": "FDD skill area: Oracle Benefits. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
@@ -142,7 +142,7 @@
       ]
     },
     {
-      "code": "SCMD-06",
+      "code": "SKL-076",
       "name": "Oracle OIC",
       "category": "Oracle Platform",
       "description": "FDD skill area: Oracle OIC. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
@@ -170,7 +170,7 @@
       ]
     },
     {
-      "code": "SCMD-07",
+      "code": "SKL-077",
       "name": "Oracle OCI",
       "category": "Oracle Platform",
       "description": "FDD skill area: Oracle OCI. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
@@ -198,7 +198,7 @@
       ]
     },
     {
-      "code": "SCMD-08",
+      "code": "SKL-078",
       "name": "Oracle APEX",
       "category": "Oracle Platform",
       "description": "FDD skill area: Oracle APEX. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
@@ -226,7 +226,7 @@
       ]
     },
     {
-      "code": "SCMD-09",
+      "code": "SKL-079",
       "name": "Oracle EPM",
       "category": "Oracle Platform",
       "description": "FDD skill area: Oracle EPM. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
@@ -254,7 +254,7 @@
       ]
     },
     {
-      "code": "SCMD-10",
+      "code": "SKL-080",
       "name": "AI & Automation",
       "category": "Data & Automation",
       "description": "FDD skill area: AI & Automation. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
@@ -282,7 +282,7 @@
       ]
     },
     {
-      "code": "SCMD-11",
+      "code": "SKL-081",
       "name": "SQL & Analytics",
       "category": "Data & Automation",
       "description": "FDD skill area: SQL & Analytics. Criteria follow the approved four-level model and can be refined through catalogue amendments; these are application rubrics, not Oracle issuer criteria.",
@@ -316,7 +316,7 @@
       "category": "Oracle Applications",
       "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
       "skillCodes": [
-        "SCMD-01"
+        "SKL-071"
       ]
     },
     {
@@ -324,8 +324,8 @@
       "category": "Oracle Applications",
       "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
       "skillCodes": [
-        "SCMD-02",
-        "SCMD-01"
+        "SKL-072",
+        "SKL-071"
       ]
     },
     {
@@ -333,8 +333,8 @@
       "category": "Oracle Applications",
       "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
       "skillCodes": [
-        "SCMD-03",
-        "SCMD-01"
+        "SKL-073",
+        "SKL-071"
       ]
     },
     {
@@ -342,8 +342,8 @@
       "category": "Oracle Applications",
       "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
       "skillCodes": [
-        "SCMD-04",
-        "SCMD-01"
+        "SKL-074",
+        "SKL-071"
       ]
     },
     {
@@ -351,8 +351,8 @@
       "category": "Oracle Applications",
       "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
       "skillCodes": [
-        "SCMD-05",
-        "SCMD-01"
+        "SKL-075",
+        "SKL-071"
       ]
     },
     {
@@ -360,8 +360,8 @@
       "category": "Oracle Platform",
       "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
       "skillCodes": [
-        "SCMD-06",
-        "SCMD-07"
+        "SKL-076",
+        "SKL-077"
       ]
     },
     {
@@ -369,7 +369,7 @@
       "category": "Oracle Platform",
       "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
       "skillCodes": [
-        "SCMD-07"
+        "SKL-077"
       ]
     },
     {
@@ -377,8 +377,8 @@
       "category": "Oracle Platform",
       "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
       "skillCodes": [
-        "SCMD-08",
-        "SCMD-11"
+        "SKL-078",
+        "SKL-081"
       ]
     },
     {
@@ -386,8 +386,8 @@
       "category": "Oracle Platform",
       "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
       "skillCodes": [
-        "SCMD-09",
-        "SCMD-10"
+        "SKL-079",
+        "SKL-080"
       ]
     },
     {
@@ -395,7 +395,7 @@
       "category": "Oracle Platform",
       "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
       "skillCodes": [
-        "SCMD-10"
+        "SKL-080"
       ]
     },
     {
@@ -403,7 +403,7 @@
       "category": "Oracle Platform",
       "description": "Credential title source: https://www.oracle.com/education/certification/ (checked 2026-10-13). Related skills are application catalogue defaults; confirm support from your actual evidence. No automatic proficiency or issuer verification.",
       "skillCodes": [
-        "SCMD-11"
+        "SKL-081"
       ]
     }
   ]

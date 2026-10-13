@@ -36,6 +36,7 @@ import {
   relatedSkillIds,
   mergeCertificateSuggestions,
   credentialSkillDefaults,
+  activeCertificateSuggestions,
   type CertificateSkillSuggestion,
   submissionPayload,
   type SelectedSkill,
@@ -228,13 +229,21 @@ export function CapabilityComposer({
     [personalReady, setPersonalReady] = useState(false),
     [bootstrapAttempt, setBootstrapAttempt] = useState(0),
     [definitions, setDefinitions] = useState<any[]>([]);
-  const activeSuggestions = suggestions.filter(suggestion =>
-    certs.some(c => c.id === suggestion.certificateId),
-  );
+  const activeSuggestions = activeCertificateSuggestions(certs, definitions, suggestions);
   const hasUploadedCertificate = certs.some(c => Boolean(c.file || c.uploaded || c.reuse));
   const working = busy || uploadBusy || initializing || !personalReady || recovery;
   const patchCertificate = (certId: string, patch: Partial<SelectedCertificate>) => {
     dirty.current = true;
+    const current = certs.find(c => c.id === certId);
+    if (
+      'file' in patch ||
+      (patch.fields &&
+        (patch.fields.certificationName !== current?.fields.certificationName ||
+          patch.fields.provider !== current?.fields.provider))
+    )
+      setSuggestions(previous =>
+        previous.filter(suggestion => suggestion.certificateId !== certId),
+      );
     setCerts(old => old.map(c => (c.id === certId ? { ...c, ...patch } : c)));
   };
   const patchSkill = (skillId: string, patch: Partial<SelectedSkill>) => {

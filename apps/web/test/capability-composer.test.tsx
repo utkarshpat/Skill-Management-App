@@ -8,8 +8,41 @@ import {
   submissionLevelName,
   submissionReviewState,
   credentialSkillDefaults,
+  activeCertificateSuggestions,
 } from '../src/capabilities/capability-model';
 import { CertificateFilePreview } from '../src/certifications/CertificateFilePreview';
+
+test('continuing a draft restores current catalogue suggestions and removes deleted certificate sources', () => {
+  const skill = {
+    id: 'oic',
+    name: 'Oracle OIC',
+    category: 'Oracle Platform',
+    definitionRevision: 1,
+    levels: [],
+  };
+  const definition = { name: 'Oracle Integration', provider: 'Oracle', relatedSkills: [skill] };
+  const fields = {
+    certificationName: 'Oracle Integration',
+    provider: 'Oracle',
+    category: 'Oracle Platform',
+    certificationDate: '2026-10-01',
+    expiryDate: null,
+    credentialId: '',
+    credentialUrl: '',
+    notes: '',
+  };
+  const recovered = JSON.parse(JSON.stringify([{ id: 'certificate', fields }]));
+  assert.deepEqual(
+    activeCertificateSuggestions(recovered, [definition], []).map(s => [
+      s.certificateId,
+      s.skill.id,
+    ]),
+    [['certificate', 'oic']],
+  );
+  const stale = { certificateId: 'deleted', skill, reason: 'Old result' };
+  assert.deepEqual(activeCertificateSuggestions([], [definition], [stale]), []);
+  assert.equal(activeCertificateSuggestions(recovered, [], [stale]).length, 0);
+});
 
 test('catalogue mappings propose multiple canonical skills only for matching credential and issuer', () => {
   const skills = ['oic', 'oci'].map(id => ({
