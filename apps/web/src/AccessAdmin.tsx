@@ -1,16 +1,12 @@
 import { BusinessAdministration } from './business/BusinessAdministration';
 import { AccessAudit } from './AccessAudit';
-import { EffectiveAccess, type Decision } from './EffectiveAccess';
-import {
-  EmploymentFields,
-  EmploymentSummary,
-  EmploymentChange,
-  type Employment,
-} from './EmploymentDetails';
+import type { Decision } from './EffectiveAccess';
+import { EmploymentFields, EmploymentChange, type Employment } from './EmploymentDetails';
 import { PrimaryCapabilityFields } from './PrimaryCapabilityFields';
 import { SidebarNavigation } from './SidebarNavigation';
 import { AccessDirectory } from './AccessDirectory';
 import { OrganizationSetup } from './OrganizationSetup';
+import { PersonAccessDialog } from './PersonAccessDialog';
 import { Workspace, type WorkspaceState } from './Workspace';
 import { personalNavigationItems, personalPageTitle } from './WorkspaceNavigation';
 import { readOrganizationSummary, type OrganizationSummary } from './organization-summary';
@@ -207,8 +203,7 @@ export function AccessAdmin({
     return () => controller.abort();
   }, [state?.revision, organizationAttempt]);
   const [bulkReview, setBulkReview] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<string>(),
-    [personSection, setPersonSection] = useState('effective');
+  const [selectedPerson, setSelectedPerson] = useState<string>();
   const [review, setReview] = useState<{
     body: Record<string, unknown>;
     receipt: string;
@@ -315,6 +310,39 @@ export function AccessAdmin({
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The change could not be saved.');
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function previewPersonChange(updatedPerson: Person) {
+    if (busy || !state) throw Error('Wait for the current change before previewing.');
+    setBusy(true);
+    setError('');
+    try {
+      const body = {
+        ...updatedPerson,
+        id: updatedPerson.id || undefined,
+        kind: 'person',
+        revision: state.revision,
+      };
+      const response = await authenticatedFetch(endpoint + '/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json();
+      if (!response.ok) throw Error(result?.error?.message ?? 'Preview could not be loaded.');
+      setReview({
+        body,
+        receipt: result.receipt,
+        before: result.before,
+        after: result.after,
+        impacts: result.impacts,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'The preview could not be loaded.';
+      setError(message);
+      throw Error(message);
     } finally {
       setBusy(false);
     }
@@ -840,7 +868,6 @@ export function AccessAdmin({
                     const item = state.people.find(person => person.id === id);
                     if (item) {
                       setSelectedPerson(item.id);
-                      setPersonSection('effective');
                       setError('');
                     }
                   }}
@@ -852,195 +879,49 @@ export function AccessAdmin({
                 (() => {
                   const selected = state.people.find(item => item.id === selectedPerson);
                   if (!selected) return null;
-                  const edge = organization?.assignments.find(
-                    item => item.personId === selected.id,
-                  );
-                  const manager = state.people.find(item => item.id === edge?.managerId);
                   return (
-                    <section className="profile-panel">
-                      <div className="panel-title">
-                        <div>
-                          <h2>{selected.displayName}</h2>
-                          <p>
-                            {selected.employeeCode} · {selected.active ? 'Active' : 'Inactive'}
-                          </p>
-                        </div>
-                        <div>
-                          {state.canManageUsers && (
-                            <button
-                              className="secondary-button"
-                              onClick={() => {
-                                setPerson(structuredClone(selected));
-                                setEditor('person');
-                                setEditorPage(0);
-                                setEditorRevision(state.revision);
-                              }}
-                            >
-                              Edit person
-                            </button>
-                          )}
-                          <button
-                            className="secondary-button"
-                            onClick={() => setSelectedPerson(undefined)}
-                          >
-                            Close person
-                          </button>
-                        </div>
-                      </div>
-                      <div className="access-person-tabs">
-                        {['effective', 'organization', 'assignments', 'exceptions', 'history'].map(
-                          section => (
-                            <button
-                              className="secondary-button"
-                              key={section}
-                              aria-pressed={personSection === section}
-                              onClick={() => setPersonSection(section)}
-                            >
-                              {
-                                (
-                                  {
-                                    effective: 'Effective access',
-                                    organization: 'Organization',
-                                    assignments: 'Assigned access',
-                                    exceptions: 'Exceptions',
-                                    history: 'History',
-                                  } as Record<string, string>
-                                )[section]
-                              }
-                            </button>
-                          ),
-                        )}
-                      </div>
-                      {personSection === 'effective' && (
-                        <EffectiveAccess
-                          key={state.revision}
-                          endpoint={endpoint + '/effective/' + selected.id}
-                          actorId={selected.id}
-                        />
-                      )}
-                      {personSection === 'organization' && (
-                        <>
-                          <EmploymentSummary value={selected} />
-                          <div className="access-person-context">
-                            <div>
-                              <small>Direct manager</small>
-                              <strong>
-                                {manager?.displayName ??
-                                  (organization
-                                    ? 'Not assigned'
-                                    : 'Organization details unavailable')}
-                              </strong>
-                            </div>
-                            <div>
-                              <small>Department / team</small>
-                              <strong>
-                                {organization?.nodes.find(
-                                  node => node.id === (edge?.teamId ?? edge?.departmentId),
-                                )?.name ?? (organization ? 'Not assigned' : 'Unavailable')}
-                              </strong>
-                            </div>
-                          </div>
-                          {state.canManageUsers && (
-                            <button
-                              className="secondary-button"
-                              onClick={() => setTab('organization')}
-                            >
-                              Manage reporting & membership
-                            </button>
-                          )}
-                        </>
-                      )}
-                      {personSection === 'assignments' && (
-                        <>
-                          {workspaceContext?.capabilities.businessAdministration && (
-                            <BusinessAdministration
-                              key={selected.id}
-                              selectedPersonId={selected.id}
-                              onSaved={() => {
-                                void load().catch(err => setError(err.message));
-                              }}
-                            />
-                          )}
-
-                          <p>
-                            Templates grant only their supported actions and scopes.
-                            Reporting-derived skill review is explained under Effective access.
-                          </p>
-                          <ul>
-                            {selected.roleIds.map(id => (
-                              <li key={id}>
-                                {state.roles.find(role => role.id === id)?.name ?? id}
-                              </li>
-                            ))}
-                          </ul>
-                          {state.canManageUsers && (
-                            <button
-                              className="secondary-button"
-                              onClick={() => {
-                                setPerson(structuredClone(selected));
-                                setEditor('person');
-                                setEditorPage(1);
-                                setEditorRevision(state.revision);
-                              }}
-                            >
-                              Edit additional templates
-                            </button>
-                          )}
-                        </>
-                      )}
-                      {personSection === 'exceptions' && (
-                        <>
-                          <p>
-                            Specific scoped Allow / Block with reason and expiry. Existing entries
-                            without these details need review.
-                          </p>
-                          {selected.overrides.length ? (
-                            <ul>
-                              {selected.overrides.map(item => (
-                                <li key={item.permission + item.scope}>
-                                  {item.permission} · {item.effect} · {item.scope}
-                                  <p>
-                                    {item.reason ?? 'Legacy exception: reason missing'} ·{' '}
-                                    {item.validUntil
-                                      ? new Date(item.validUntil).toLocaleString()
-                                      : 'Legacy exception: expiry missing'}
-                                  </p>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p>No individual exceptions.</p>
-                          )}
-                          {state.canManageUsers && (
-                            <button
-                              className="secondary-button"
-                              onClick={() => {
-                                setPerson(structuredClone(selected));
-                                setEditor('person');
-                                setEditorPage(2);
-                                setEditorRevision(state.revision);
-                              }}
-                            >
-                              Manage exceptions
-                            </button>
-                          )}
-                        </>
-                      )}
-                      {personSection === 'history' && (
-                        <>
-                          {!state.canViewAudit ? (
-                            <p>Audit viewing is not assigned.</p>
-                          ) : (
-                            <AccessAudit
-                              key={selected.id + state.revision}
-                              endpoint={endpoint}
-                              personId={selected.id}
-                              revision={state.revision}
-                            />
-                          )}
-                        </>
-                      )}
-                    </section>
+                    <PersonAccessDialog
+                      key={selected.id}
+                      person={selected}
+                      roles={state.roles}
+                      catalogue={state.catalogue}
+                      organization={organization}
+                      people={state.people}
+                      canManageUsers={state.canManageUsers}
+                      canViewAudit={state.canViewAudit}
+                      endpoint={endpoint}
+                      revision={state.revision}
+                      busy={busy}
+                      error={error}
+                      onReload={async () => {
+                        await load();
+                        setError('');
+                      }}
+                      onClose={() => setSelectedPerson(undefined)}
+                      onApplyChange={previewPersonChange}
+                      onFullEdit={personToEdit => {
+                        setSelectedPerson(undefined);
+                        setPerson(structuredClone(personToEdit));
+                        setEditor('person');
+                        setEditorPage(0);
+                        setEditorRevision(state.revision);
+                      }}
+                      onManageOrganization={() => {
+                        setSelectedPerson(undefined);
+                        setTab('organization');
+                      }}
+                      businessAdministrationNode={
+                        workspaceContext?.capabilities.businessAdministration ? (
+                          <BusinessAdministration
+                            key={selected.id}
+                            selectedPersonId={selected.id}
+                            onSaved={() => {
+                              void load().catch(err => setError(err.message));
+                            }}
+                          />
+                        ) : undefined
+                      }
+                    />
                   );
                 })()}
               {bulkReview && (

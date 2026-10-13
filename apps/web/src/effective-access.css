@@ -15,7 +15,7 @@
   gap: 9px;
 }
 .effective-decision {
-  border: 1px solid var(--border, #dce3ed);
+  border: 1px solid var(--line, #dce3ed);
   border-radius: 10px;
   padding: 13px;
 }
@@ -73,10 +73,443 @@
 }
 .access-person-context > div {
   padding: 16px;
-  border: 1px solid var(--border, #dce3ed);
+  border: 1px solid var(--line, #dce3ed);
   border-radius: 10px;
 }
 .access-person-context small {
   display: block;
   margin-bottom: 8px;
+}
+
+/* ==========================================================================
+   Person Access View & Amendment Dialog
+   ========================================================================== */
+
+.access-view-dialog {
+  width: min(880px, calc(100vw - 32px)) !important;
+  max-width: 880px !important;
+}
+.access-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 4px 0;
+}
+.access-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Person Banner */
+.access-person-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: var(--raised, #f6f8fb);
+  border: 1px solid var(--line, #dce3ed);
+}
+.access-avatar-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #078596 0%, #3b82f6 100%);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.access-banner-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.access-banner-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.access-banner-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink, #1e293b);
+}
+.access-status-badge {
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.access-status-badge.active {
+  background: #def5ed;
+  color: #006653;
+}
+.access-status-badge.suspended {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.access-banner-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.access-meta-chip {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #dce3ed);
+  color: var(--muted, #64748b);
+}
+.access-meta-chip.highlight {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  font-weight: 600;
+}
+.access-meta-chip.warning {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+  font-weight: 600;
+}
+
+/* Tabs Bar */
+.access-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--line, #dce3ed);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.access-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--muted, #64748b);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.access-tab-btn:hover {
+  color: var(--ink, #1e293b);
+}
+.access-tab-btn.active {
+  color: #078596;
+  border-bottom-color: #078596;
+}
+
+/* Tab Content */
+.access-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 6px;
+}
+.access-section-header {
+  margin-bottom: 4px;
+}
+.access-section-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink, #1e293b);
+}
+.access-section-desc {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted, #64748b);
+  line-height: 1.5;
+}
+.access-cards-grid {
+  display: grid;
+  gap: 10px;
+}
+
+/* Role Card */
+.access-role-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--line, #dce3ed);
+  background: var(--surface, #ffffff);
+  transition: border-color 0.15s ease;
+}
+.access-role-card:hover {
+  border-color: #078596;
+}
+.access-role-card-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.access-role-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #e0f2fe;
+  color: #0369a1;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.access-role-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink, #1e293b);
+}
+.access-role-sub {
+  font-size: 12px;
+  color: var(--muted, #64748b);
+}
+.danger-ghost-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #ef4444;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.danger-ghost-button:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+.access-empty-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px dashed var(--line, #dce3ed);
+  color: var(--muted, #64748b);
+  font-size: 13px;
+}
+
+/* Amendment Box */
+.access-amend-box {
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line, #dce3ed);
+  background: var(--raised, #f6f8fb);
+}
+.access-amend-title {
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #078596;
+}
+.access-amend-help {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--muted, #64748b);
+}
+.access-role-assign-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.access-select,
+.access-input {
+  box-sizing: border-box;
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line, #dce3ed);
+  background: var(--surface, #ffffff);
+  color: var(--ink, #1e293b);
+  font: inherit;
+  font-size: 13px;
+}
+.access-role-assign-row .access-select {
+  flex: 1;
+}
+
+/* Override Card */
+.access-override-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--line, #dce3ed);
+  background: var(--surface, #ffffff);
+}
+.access-override-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.access-override-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.override-effect-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.override-effect-pill.allow {
+  background: #def5ed;
+  color: #006653;
+}
+.override-effect-pill.deny {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.access-override-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink, #1e293b);
+}
+.override-scope-pill {
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--raised, #f6f8fb);
+  border: 1px solid var(--line, #dce3ed);
+  font-size: 11px;
+  color: var(--muted, #64748b);
+}
+.access-override-reason {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink, #1e293b);
+}
+.access-override-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--muted, #64748b);
+}
+.override-expiry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.override-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+}
+.access-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.access-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink, #1e293b);
+}
+.access-field.full-width {
+  grid-column: 1 / -1;
+}
+.access-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.access-form-error {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 12.5px;
+}
+
+.access-role-card-left {
+  min-width: 0;
+  flex: 1;
+}
+.access-role-title,
+.access-override-title,
+.access-override-reason {
+  overflow-wrap: anywhere;
+}
+.access-role-assign-row .access-select {
+  min-width: 0;
+  width: 100%;
+}
+.access-role-assign-row button {
+  flex-shrink: 0;
+}
+.access-field {
+  min-width: 0;
+}
+.access-field .access-input,
+.access-field .access-select {
+  min-width: 0;
+  width: 100%;
+}
+.access-form-error p {
+  margin: 0 0 8px;
+}
+@media (max-width: 600px) {
+  .access-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .access-role-assign-row {
+    flex-wrap: wrap;
+  }
+  .access-role-assign-row .access-select {
+    flex-basis: 100%;
+  }
+  .access-role-card,
+  .access-override-card,
+  .access-person-banner {
+    flex-wrap: wrap;
+  }
+  .access-role-card-left,
+  .access-override-card-body {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+  .access-override-meta {
+    flex-wrap: wrap;
+  }
+  .access-dialog-footer {
+    flex-wrap: wrap;
+  }
 }
