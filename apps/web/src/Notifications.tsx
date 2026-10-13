@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { ArrowUpRight, Bell, Check, RefreshCw, X } from 'lucide-react';
 import { notificationDestination, notificationDay } from './notification-model';
 import { authenticatedFetch } from './auth';
+import { readApiResponse } from './api-response';
 import { startActivityRefresh, type RefreshStatus } from './activity-refresh';
 import { RefreshIndicator } from './RefreshIndicator';
 interface Item {
@@ -55,7 +56,10 @@ export function Notifications({ id }: { id: string }) {
           const body = await response.json().catch(() => undefined);
           throw new Error(body?.error?.message ?? 'Notifications could not be loaded.');
         }
-        const body: Feed = await response.json();
+        const body = await readApiResponse<Feed>(
+          response,
+          'Notifications could not be loaded. Try again.',
+        );
         if (!controller.signal.aborted) {
           setFeed(body);
           setRead(readIds(body.personId));

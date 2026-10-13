@@ -139,7 +139,7 @@ export function Workspace({
   const sections = [
     {
       id: 'business',
-      label: 'Business Operations',
+      label: 'Analytics',
       href: '/business',
       icon: LineChart,
       visible: state?.capabilities.businessOperations,

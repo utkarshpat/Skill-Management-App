@@ -82,7 +82,7 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
       },
       {
         id: 'reports',
-        label: 'Business Operations',
+        label: 'Analytics',
         assigned: available('reports.view'),
         implemented: Boolean(person.business?.view),
       },

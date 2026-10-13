@@ -11,8 +11,7 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
   const workspace = workspaceFor(state, person),
     capabilities = workspace.capabilities;
   const pages = [{ label: 'Dashboard', url: '/workspace' }];
-  if (capabilities.businessOperations)
-    pages.push({ label: 'Business Operations', url: '/business' });
+  if (capabilities.businessOperations) pages.push({ label: 'Analytics', url: '/business' });
   if (capabilities.ownProfile) pages.push({ label: 'My profile', url: '/profile' });
   if (capabilities.ownSkills) pages.push({ label: 'My skills', url: '/my-skills' });
   if (capabilities.ownSkills) pages.push({ label: 'My certifications', url: '/certifications' });

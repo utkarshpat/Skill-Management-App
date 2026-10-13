@@ -293,7 +293,7 @@ export class ToolRegistry {
       for (const [name, description, dataset] of [
         [
           'business_insights',
-          'Read current authorized Business Operations counts, reviewed skill coverage, credential distribution and submission/review trends. Coverage is an as-of snapshot; activity dates apply only to event trends. Private drafts, notes and files are excluded.',
+          'Read current authorized Analytics counts, reviewed skill coverage, credential distribution and submission/review trends. Coverage is an as-of snapshot; activity dates apply only to event trends. Private drafts, notes and files are excluded.',
           'people',
         ],
         [
@@ -303,7 +303,7 @@ export class ToolRegistry {
         ],
         [
           'business_certifications',
-          'Read a bounded page of submitted credential records in your authorized Business Operations scope, including credential name, issuer, employee, review status and dates. Use for follow-ups asking which certificate or whose credential, including records behind an expiry count. Set status APPROVED for manager-reviewed holdings; use validity EXPIRED for expired credentials. This does not read private notes or files or grant review authority.',
+          'Read a bounded page of submitted credential records in your authorized Analytics scope, including credential name, issuer, employee, review status and dates. Use for follow-ups asking which certificate or whose credential, including records behind an expiry count. Set status APPROVED for manager-reviewed holdings; use validity EXPIRED for expired credentials. This does not read private notes or files or grant review authority.',
           'certifications',
         ],
         [
@@ -368,7 +368,7 @@ export class ToolRegistry {
             },
           },
           permission: (state, person) => can(state, person, 'reports.view'),
-          source: { label: 'Business Operations · Authorized analytics', url: '/business' },
+          source: { label: 'Analytics · Authorized analytics', url: '/business' },
           validate: args => {
             const q = args as Record<string, unknown>;
             if (
@@ -436,7 +436,7 @@ export class ToolRegistry {
           'business_amendment_options',
           'MASTERS',
           'skill.catalogue.propose',
-          'Read current master skill, credential and provider choices before drafting an amendment. Only a current direct manager or authorized Business Operations person may propose; the administrator applies an explicitly reviewed amendment.',
+          'Read current master skill, credential and provider choices before drafting an amendment. Only a current direct manager or authorized Analytics person may propose; the administrator applies an explicitly reviewed amendment.',
         ],
         [
           'business_demand_options',
@@ -488,9 +488,7 @@ export class ToolRegistry {
           },
           source: {
             label:
-              operation === 'MASTERS'
-                ? 'Catalogue · Master definitions'
-                : 'Business Operations · Demand',
+              operation === 'MASTERS' ? 'Catalogue · Master definitions' : 'Analytics · Demand',
             url: operation === 'MASTERS' ? '/skills?tab=amendments' : '/business?tab=demand',
           },
           read: async ({ person, args }) => {
@@ -543,7 +541,7 @@ export class ToolRegistry {
             throw new AccessError(400, 'Choose an authorized demand and page.');
           return { id: identifier(q.id), page: q.page ?? 1 };
         },
-        source: { label: 'Business Operations · Demand matching', url: '/business?tab=demand' },
+        source: { label: 'Analytics · Demand matching', url: '/business?tab=demand' },
         read: async ({ person, args }) => {
           const result = await business.workflow(person.id, 'MATCHES', args);
           const rows = result.rows as Record<string, unknown>[];
@@ -564,10 +562,10 @@ export class ToolRegistry {
       this.entries.set('business_report_options', {
         definition: definition(
           'business_report_options',
-          'Read your current report/export scopes and available formats. Exports are explicitly downloaded from Business Operations with a fresh authorization check; this tool never exports or sends employee data.',
+          'Read your current report/export scopes and available formats. Exports are explicitly downloaded from Analytics with a fresh authorization check; this tool never exports or sends employee data.',
         ),
         permission: (state, person) => can(state, person, 'reports.export'),
-        source: { label: 'Business Operations · Reports', url: '/business' },
+        source: { label: 'Analytics · Reports', url: '/business' },
         read: async ({ person }) => {
           const context = await business.context(person.id);
           if (!context.canExport) throw new AccessError(403, 'Export denied.');

@@ -88,11 +88,17 @@ globalThis.__probe = {
     },
   },
   response: { readApiResponse },
-  router: { useSearchParams: () => [params, next => (params = next)] },
+  router: {
+    useSearchParams: () => [
+      params,
+      next => (params = typeof next === 'function' ? next(params) : next),
+    ],
+  },
   administration: {},
   workflows: {},
   date: {},
   files: {},
+  overview: {},
 };
 let source = (
   await transform(
@@ -116,6 +122,7 @@ const sources = {
   './BusinessWorkflows': 'workflows',
   './BusinessRecordDate': 'date',
   './BusinessRecordFiles': 'files',
+  './AnalyticsOverview': 'overview',
 };
 source = source
   .replace(/import ['"]\.\/business\.css['"];?/g, '')

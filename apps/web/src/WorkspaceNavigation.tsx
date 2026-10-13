@@ -5,7 +5,7 @@ export const administrationShellFor = (pathname: string, administration: boolean
   pathname === '/access' || administration;
 export const personalPageTitle = (pathname: string | undefined) =>
   pathname === '/business'
-    ? 'Business Operations'
+    ? 'Analytics'
     : pathname === '/requests'
       ? 'Requests & incidents'
       : pathname === '/learning'
@@ -81,7 +81,7 @@ export function personalNavigationItems(
   if (!capabilities) return [];
   return [
     ...(businessNavigationVisible(capabilities)
-      ? [{ id: 'business', label: 'Business Operations', href: '/business', icon: BarChart3 }]
+      ? [{ id: 'business', label: 'Analytics', href: '/business', icon: BarChart3 }]
       : []),
     ...(capabilities.learning
       ? [{ id: 'learning', label: 'Learn & Grow', href: '/learning', icon: BookOpen }]

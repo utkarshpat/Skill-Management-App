@@ -25,3 +25,17 @@ test('API response failures retain status and safe server message for authorizat
   );
   assert.deepEqual(await readApiResponse(Response.json({ value: 7 }), 'Fallback'), { value: 7 });
 });
+
+test('empty or malformed successful JSON responses fail with a safe retry message', async () => {
+  for (const value of ['', '<html>Gateway unavailable</html>', 'null']) {
+    await assert.rejects(
+      readApiResponse(
+        new Response(value, { status: 200 }),
+        'Analytics could not be loaded. Try again.',
+      ),
+      (error: unknown) =>
+        (error as Error).message === 'Analytics could not be loaded. Try again.' &&
+        (error as { status: number }).status === 200,
+    );
+  }
+});

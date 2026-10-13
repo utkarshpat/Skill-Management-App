@@ -6,6 +6,22 @@ export interface BusinessScope {
   effect: string;
   bundle: string;
 }
+/** Presentation only: preserve an already selected server binding and all stored grants. */
+export function businessScopeChoices(scopes: BusinessScope[], selectedId = '') {
+  const choices = new Map<string, BusinessScope>();
+  for (const scope of scopes) {
+    if (scope.effect !== 'ALLOW') continue;
+    const key = `${scope.kind}:${scope.scopeId?.toLowerCase() ?? ''}`;
+    if (!choices.has(key) || scope.id === selectedId) choices.set(key, scope);
+  }
+  return [...choices.values()];
+}
+export function businessScopeLabel(scope: BusinessScope) {
+  const kind = scope.kind.replaceAll('_', ' ');
+  return kind.toLowerCase() === scope.label.toLowerCase()
+    ? scope.label
+    : `${kind} · ${scope.label}`;
+}
 export interface BusinessContext {
   actorId?: string;
   revision: number;

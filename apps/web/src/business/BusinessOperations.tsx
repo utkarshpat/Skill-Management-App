@@ -26,12 +26,16 @@ import {
   UserCheck,
   UserX,
   Trophy,
+  SlidersHorizontal,
+  ChevronDown,
 } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { BusinessWorkflows } from './BusinessWorkflows';
 import {
   businessFilters,
+  businessScopeChoices,
+  businessScopeLabel,
   businessCoverageRows,
   businessPeriod,
   updateBusinessFilters,
@@ -41,6 +45,7 @@ import {
 import './business.css';
 import { BusinessRecordDate } from './BusinessRecordDate';
 import { BusinessRecordFiles } from './BusinessRecordFiles';
+import { AnalyticsOverview } from './AnalyticsOverview';
 
 export function BusinessOperations() {
   const [params, setParams] = useSearchParams(),
@@ -51,7 +56,7 @@ export function BusinessOperations() {
   useEffect(() => {
     const abort = new AbortController();
     authenticatedFetch('/api/business/context', { signal: abort.signal })
-      .then(r => readApiResponse<BusinessContext>(r, 'Business Operations is unavailable.'))
+      .then(r => readApiResponse<BusinessContext>(r, 'Analytics is unavailable.'))
       .then(v => {
         if (!abort.signal.aborted) setContext(v);
       })
@@ -87,39 +92,41 @@ export function BusinessOperations() {
 
   return (
     <div className="bo-page">
-      <header className="bo-heading bo-heading-compact">
-        <h2 className="sr-only">Business analytics</h2>
-        {/* Main Section Navigation Tabs */}
-        <nav className="bo-tabs" aria-label="Business Operations sections">
-          {tabs.map(([id, label]) => (
-            <button
-              key={id}
-              aria-current={selected === id ? 'page' : undefined}
-              onClick={() => setParams(updateBusinessFilters(params, { tab: id }))}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
+      {selected === 'demand' && (
+        <header className="bo-heading bo-heading-compact">
+          <h2 className="sr-only">Business analytics</h2>
+          {/* Main Section Navigation Tabs */}
+          <nav className="bo-tabs" aria-label="Analytics sections">
+            {tabs.map(([id, label]) => (
+              <button
+                key={id}
+                aria-current={selected === id ? 'page' : undefined}
+                onClick={() => setParams(updateBusinessFilters(params, { tab: id }))}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
 
-        {context?.canView && (
-          <button
-            className="secondary-button"
-            onClick={() =>
-              window.dispatchEvent(
-                new CustomEvent('assistant-context-request', {
-                  detail: {
-                    prompt:
-                      'Summarize my current authorized business analytics: skill coverage, credential renewals and gaps. State scope and as-of time.',
-                  },
-                }),
-              )
-            }
-          >
-            <Sparkles size={16} /> Ask AI
-          </button>
-        )}
-      </header>
+          {context?.canView && (
+            <button
+              className="secondary-button"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent('assistant-context-request', {
+                    detail: {
+                      prompt:
+                        'Summarize my current authorized business analytics: skill coverage, credential renewals and gaps. State scope and as-of time.',
+                    },
+                  }),
+                )
+              }
+            >
+              <Sparkles size={16} /> Ask AI
+            </button>
+          )}
+        </header>
+      )}
       {error && (
         <p className="bo-error" role="alert">
           {error}
@@ -220,9 +227,17 @@ function Insights({ context }: { context: BusinessContext }) {
     exportGuard = useRef(false);
 
   const [fileRecord, setFileRecord] = useState<{ kind: string; id: string; name: string }>();
-  const [analyticalView, setAnalyticalView] = useState<
-    'all' | 'skills' | 'certifications' | 'community' | 'records'
-  >(params.get('dataset') ? 'records' : 'community');
+  const analyticalView = ['community', 'skills', 'certifications', 'records'].includes(
+    params.get('view') ?? '',
+  )
+    ? params.get('view')!
+    : params.get('dataset')
+      ? 'records'
+      : 'community';
+  const setAnalyticalView = (view: string) =>
+    setParams(current => updateBusinessFilters(current, { view }));
+  const resetFilters = () =>
+    setParams(new URLSearchParams({ tab: 'insights', view: analyticalView }));
 
   useEffect(() => setFileRecord(undefined), [key]);
 
@@ -231,6 +246,29 @@ function Insights({ context }: { context: BusinessContext }) {
   const [search, setSearch] = useState(params.get('search') ?? '');
 
   useEffect(() => setSearch(params.get('search') ?? ''), [params.get('search')]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const details = document.querySelector<HTMLDetailsElement>('.bo-toolbar-dropdown[open]');
+      if (details && !details.contains(e.target as Node)) {
+        details.removeAttribute('open');
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const details = document.querySelector<HTMLDetailsElement>('.bo-toolbar-dropdown[open]');
+      if (!details) return;
+      details.removeAttribute('open');
+      details.querySelector<HTMLElement>('summary')?.focus();
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -250,9 +288,14 @@ function Insights({ context }: { context: BusinessContext }) {
   }, [key, attempt]);
 
   const change = (patch: Record<string, string>) => {
-    if (patch.dataset || patch.skillId || patch.validity || patch.minRank)
-      setAnalyticalView('records');
-    setParams(updateBusinessFilters(params, patch));
+    setParams(current =>
+      updateBusinessFilters(current, {
+        ...patch,
+        ...(patch.dataset || patch.skillId || patch.validity || patch.minRank
+          ? { view: 'records' }
+          : {}),
+      }),
+    );
   };
 
   const exportAbort = useRef<AbortController | undefined>(undefined);
@@ -295,7 +338,10 @@ function Insights({ context }: { context: BusinessContext }) {
     }
   };
 
-  const scopes = (data?.context ?? context).scopes.filter(s => s.effect === 'ALLOW');
+  const scopes = businessScopeChoices(
+    (data?.context ?? context).scopes,
+    params.get('scopeId') ?? '',
+  );
 
   const cleared = {
     category: '',
@@ -328,6 +374,7 @@ function Insights({ context }: { context: BusinessContext }) {
         status: '',
       },
       'Total active employees across all authorized organizational scopes.',
+      'Active Scope',
     ],
     [
       'certified',
@@ -335,6 +382,7 @@ function Insights({ context }: { context: BusinessContext }) {
       ShieldCheck,
       { dataset: 'certifications', validity: 'CURRENT', status: 'APPROVED' },
       'Employees holding at least one manager-approved, currently active certification.',
+      'Active Credentials',
     ],
     [
       'skilled',
@@ -342,6 +390,7 @@ function Insights({ context }: { context: BusinessContext }) {
       BarChart3,
       { dataset: 'skills', status: 'APPROVED', validity: '', issuer: '' },
       'Employees with at least one manager-reviewed skill. Saved definition versions remain unchanged.',
+      'Manager reviewed',
     ],
     [
       'pending',
@@ -349,6 +398,7 @@ function Insights({ context }: { context: BusinessContext }) {
       Clock3,
       { dataset: 'submissions', status: 'SUBMITTED', validity: '' },
       'Individual skill and credential records awaiting manager review; a combined request may contain several records.',
+      'Needs Action',
     ],
     [
       'expired',
@@ -356,6 +406,7 @@ function Insights({ context }: { context: BusinessContext }) {
       AlertCircle,
       { dataset: 'certifications', validity: 'EXPIRED', status: '' },
       'Credentials that have passed their expiration date.',
+      'Expired',
     ],
     [
       'expiring',
@@ -363,6 +414,7 @@ function Insights({ context }: { context: BusinessContext }) {
       Clock3,
       { dataset: 'certifications', validity: '30', status: '' },
       'Credentials requiring renewal attention within the next 30 days.',
+      'Due Soon',
     ],
   ] as const;
 
@@ -374,289 +426,391 @@ function Insights({ context }: { context: BusinessContext }) {
     ([k, v]) =>
       !['dataset', 'page'].includes(k) && !(k === 'minRank' && filters.has('maxRank')) && v,
   );
+  const secondaryFilterCount = activeFilterList.filter(
+    ([k]) => !['scopeId', 'search'].includes(k),
+  ).length;
 
   return (
     <>
-      {/* Synchronized Analytics Command Filter Center */}
-      <section className="bo-filter-center" aria-label="Workforce Analytics Filters">
-        <div className="bo-filter-header">
-          <div className="bo-filter-header-left">
-            <Layers size={17} aria-hidden="true" />
-            <h3 className="bo-filter-heading">Filters</h3>
-            {activeFilterList.length > 0 && (
-              <span className="bo-active-count-badge">
-                {activeFilterList.length} active{' '}
-                {activeFilterList.length === 1 ? 'filter' : 'filters'}
-              </span>
-            )}
-          </div>
-          <div className="bo-filter-header-right">
-            <button
-              type="button"
-              className="bo-reset-btn"
-              onClick={() => setParams(new URLSearchParams())}
-              title="Reset all filters to default"
-            >
-              <RotateCcw size={13} aria-hidden="true" /> Clear
-            </button>
-          </div>
-        </div>
+      {/* Analytical Sub-Tab Views for Drill-through & Organization */}
+      <div className="bo-perspective-bar">
+        <nav className="bo-perspective-tabs" aria-label="Analytics views">
+          <button
+            className={`bo-perspective-btn ${analyticalView === 'community' ? 'active' : ''}`}
+            aria-current={analyticalView === 'community' ? 'page' : undefined}
+            onClick={() => setAnalyticalView('community')}
+          >
+            <BarChart3 size={15} /> Overview
+          </button>
+          <button
+            className={`bo-perspective-btn ${analyticalView === 'skills' ? 'active' : ''}`}
+            aria-current={analyticalView === 'skills' ? 'page' : undefined}
+            onClick={() => setAnalyticalView('skills')}
+          >
+            <Award size={15} /> Skill coverage
+          </button>
+          <button
+            className={`bo-perspective-btn ${analyticalView === 'certifications' ? 'active' : ''}`}
+            aria-current={analyticalView === 'certifications' ? 'page' : undefined}
+            onClick={() => setAnalyticalView('certifications')}
+          >
+            <ShieldCheck size={15} /> Certificates & renewals
+          </button>
 
-        <div className="bo-filter-grid">
-          {/* Scope Filter */}
-          <label className="bo-field-label">
-            <span className="bo-field-title">
-              Scope
-              <MetricTooltip text="Select an assigned organization, Delivery Unit, Department or Project responsibility. This does not add access." />
-            </span>
+          <button
+            className={`bo-perspective-btn ${analyticalView === 'records' ? 'active' : ''}`}
+            aria-current={analyticalView === 'records' ? 'page' : undefined}
+            onClick={() => {
+              setAnalyticalView('records');
+            }}
+          >
+            <Layers size={15} /> People & records
+          </button>
+        </nav>
+        <div className="an-navigation-actions">
+          {context.canDemandView && (
+            <button
+              className="secondary-button"
+              onClick={() =>
+                setParams(current => updateBusinessFilters(current, { tab: 'demand' }))
+              }
+            >
+              Demand & matching <ArrowRight size={14} />
+            </button>
+          )}
+          <button
+            type="button"
+            className="secondary-button"
+            aria-label="Ask AI about analytics"
+            title="Ask AI about analytics"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent('assistant-context-request', {
+                  detail: {
+                    prompt:
+                      'Summarize my current authorized analytics: skill coverage, credential renewals and gaps. State scope and as-of time.',
+                  },
+                }),
+              )
+            }
+          >
+            <Sparkles size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Sleek Horizontal Filter Toolbar */}
+      <section
+        className="bo-filter-toolbar bo-filter-center"
+        aria-label="Workforce Analytics Filters"
+      >
+        <div className="bo-toolbar-primary-row">
+          {/* Scope Selector */}
+          <div className="bo-toolbar-scope-wrap">
+            <Building2 size={15} className="bo-toolbar-scope-icon" aria-hidden="true" />
             <select
               value={params.get('scopeId') ?? ''}
               onChange={e => change({ scopeId: e.target.value })}
-              className="bo-select"
+              className="bo-select bo-toolbar-scope-select"
+              aria-label="Scope filter"
+              title="Filter by assigned organizational scope"
             >
-              <option value="">{scopes.length === 1 ? scopes[0].label : 'All my scopes'}</option>
+              <option value="">All my scopes</option>
               {scopes.map(s => (
                 <option key={s.id} value={s.id}>
-                  {s.kind.replaceAll('_', ' ')} · {s.label}
+                  {businessScopeLabel(s)}
                 </option>
               ))}
             </select>
-          </label>
+            <MetricTooltip text="Select an assigned organization, Delivery Unit, Department or Project responsibility. This does not add access." />
+          </div>
 
           {/* Employee Search */}
           <form
-            className="bo-search-form"
+            className="bo-toolbar-search-form"
             onSubmit={e => {
               e.preventDefault();
               change({ search });
             }}
           >
-            <label className="bo-field-label bo-full-width">
-              <span className="bo-field-title">Employee or code</span>
-              <div className="bo-search-input-wrap">
-                <Search size={15} className="bo-search-icon" aria-hidden="true" />
-                <input
-                  value={search}
-                  maxLength={100}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search employee or code…"
-                  className="bo-input bo-search-input"
-                />
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearch('');
-                      change({ search: '' });
-                    }}
-                    className="bo-search-clear-btn"
-                    aria-label="Clear search"
-                  >
-                    <X size={13} />
-                  </button>
-                )}
-              </div>
-            </label>
-            <button type="submit" className="secondary-button bo-search-submit">
+            <div className="bo-search-input-wrap">
+              <Search size={14} className="bo-search-icon" aria-hidden="true" />
+              <input
+                value={search}
+                maxLength={100}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search employee or code…"
+                className="bo-input bo-search-input"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    change({ search: '' });
+                  }}
+                  className="bo-search-clear-btn"
+                  aria-label="Clear search"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            <button type="submit" className="bo-toolbar-search-btn">
               Search
             </button>
           </form>
-        </div>
 
-        {/* Secondary Filters: Category, Status, Validity, Level */}
-        <details className="bo-extra-filters">
-          <summary>More filters</summary>
-          <div className="bo-filter-secondary-row">
-            {/* Quick Period & Date Range */}
-            <div className="bo-period-group">
-              <span className="bo-field-title">
-                Activity period (UTC)
-                <MetricTooltip text="Filters submission and decision activity. Coverage and current validity remain as-of-now metrics." />
-              </span>
-              <div className="bo-period-quick-bar">
-                <button
-                  type="button"
-                  className={`bo-period-pill ${!params.get('from') && !params.get('to') ? 'active' : ''}`}
-                  onClick={() => setQuickPeriod('all')}
-                >
-                  All time
-                </button>
-                <button
-                  type="button"
-                  className="bo-period-pill"
-                  onClick={() => setQuickPeriod('30')}
-                >
-                  Last 30d
-                </button>
-                <button
-                  type="button"
-                  className="bo-period-pill"
-                  onClick={() => setQuickPeriod('90')}
-                >
-                  Last 90d
-                </button>
-                <button
-                  type="button"
-                  className="bo-period-pill"
-                  onClick={() => setQuickPeriod('ytd')}
-                >
-                  YTD
-                </button>
+          {/* More Filters Popover Trigger */}
+          <details className="bo-extra-filters bo-toolbar-dropdown">
+            <summary className="bo-toolbar-filter-btn">
+              <SlidersHorizontal size={14} aria-hidden="true" />
+              <span>More filters</span>
+              {secondaryFilterCount > 0 && (
+                <span className="bo-secondary-badge">{secondaryFilterCount}</span>
+              )}
+              <ChevronDown size={13} className="bo-chevron-icon" aria-hidden="true" />
+            </summary>
+
+            {/* Floating Popover Container */}
+            <div className="bo-dropdown-popover">
+              <div className="bo-popover-header">
+                <div className="bo-popover-title-group">
+                  <SlidersHorizontal size={14} aria-hidden="true" />
+                  <strong>Additional Filters</strong>
+                </div>
+                {secondaryFilterCount > 0 && (
+                  <button
+                    type="button"
+                    className="bo-popover-reset-btn"
+                    onClick={() =>
+                      change({
+                        category: '',
+                        issuer: '',
+                        skillId: '',
+                        minRank: '',
+                        maxRank: '',
+                        status: '',
+                        validity: '',
+                        from: '',
+                        to: '',
+                      })
+                    }
+                  >
+                    Reset filters
+                  </button>
+                )}
               </div>
-              <div className="bo-date-inputs-row">
-                <input
-                  type="date"
-                  value={params.get('from') ?? ''}
-                  onChange={e => change({ from: e.target.value })}
-                  aria-label="Activity from date"
-                  className="bo-input bo-date-input"
-                />
-                <span className="bo-date-sep">to</span>
-                <input
-                  type="date"
-                  value={params.get('to') ?? ''}
-                  onChange={e => change({ to: e.target.value })}
-                  aria-label="Activity to date"
-                  className="bo-input bo-date-input"
-                />
+
+              <div className="bo-filter-secondary-row">
+                {/* Quick Period & Date Range */}
+                <div className="bo-period-group">
+                  <span className="bo-field-title">
+                    Activity period (UTC)
+                    <MetricTooltip text="Filters submission and decision activity. Coverage and current validity remain as-of-now metrics." />
+                  </span>
+                  <div className="bo-period-quick-bar">
+                    <button
+                      type="button"
+                      className={`bo-period-pill ${!params.get('from') && !params.get('to') ? 'active' : ''}`}
+                      onClick={() => setQuickPeriod('all')}
+                    >
+                      All time
+                    </button>
+                    <button
+                      type="button"
+                      className="bo-period-pill"
+                      onClick={() => setQuickPeriod('30')}
+                    >
+                      Last 30d
+                    </button>
+                    <button
+                      type="button"
+                      className="bo-period-pill"
+                      onClick={() => setQuickPeriod('90')}
+                    >
+                      Last 90d
+                    </button>
+                    <button
+                      type="button"
+                      className="bo-period-pill"
+                      onClick={() => setQuickPeriod('ytd')}
+                    >
+                      YTD
+                    </button>
+                  </div>
+                  <div className="bo-date-inputs-row">
+                    <input
+                      type="date"
+                      value={params.get('from') ?? ''}
+                      onChange={e => change({ from: e.target.value })}
+                      aria-label="Activity from date"
+                      className="bo-input bo-date-input"
+                    />
+                    <span className="bo-date-sep">to</span>
+                    <input
+                      type="date"
+                      value={params.get('to') ?? ''}
+                      onChange={e => change({ to: e.target.value })}
+                      aria-label="Activity to date"
+                      className="bo-input bo-date-input"
+                    />
+                  </div>
+                </div>
+
+                {/* Associated Skill */}
+                {!!data?.coverage.length && (
+                  <label className="bo-field-label">
+                    <span className="bo-field-title">Associated skill</span>
+                    <select
+                      value={params.get('skillId') ?? ''}
+                      onChange={e => change({ skillId: e.target.value })}
+                      className="bo-select"
+                    >
+                      <option value="">All skills</option>
+                      {Array.from(
+                        new Set(
+                          data.coverage.map(c => JSON.stringify({ id: c.id, label: c.label })),
+                        ),
+                      )
+                        .map(jsonStr => JSON.parse(jsonStr))
+                        .map(item => (
+                          <option key={item.id} value={item.id}>
+                            {item.label}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                )}
+
+                {/* Proficiency Level */}
+                <label className="bo-field-label">
+                  <span className="bo-field-title">Proficiency level</span>
+                  <select
+                    value={
+                      params.get('minRank') || params.get('maxRank')
+                        ? `${params.get('minRank') ?? '1'}_${params.get('maxRank') ?? '4'}`
+                        : ''
+                    }
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (!val) change({ minRank: '', maxRank: '' });
+                      else {
+                        const [min, max] = val.split('_');
+                        change({ minRank: min, maxRank: max });
+                      }
+                    }}
+                    className="bo-select"
+                  >
+                    <option value="">All supported ranks (L1–L4)</option>
+                    <option value="1_1">L1</option>
+                    <option value="2_2">L2</option>
+                    <option value="3_3">L3</option>
+                    <option value="4_4">L4</option>
+                    {(params.has('minRank') || params.has('maxRank')) &&
+                      params.get('minRank') !== params.get('maxRank') && (
+                        <option
+                          value={`${params.get('minRank') ?? '1'}_${params.get('maxRank') ?? '4'}`}
+                        >
+                          Ranks L{params.get('minRank') ?? '1'}–L{params.get('maxRank') ?? '4'}
+                        </option>
+                      )}
+                  </select>
+                </label>
+
+                {/* Pillar / Category */}
+                {!!data?.categories?.length && (
+                  <label className="bo-field-label">
+                    <span className="bo-field-title">Credential category</span>
+                    <select
+                      value={params.get('category') ?? ''}
+                      onChange={e => change({ category: e.target.value })}
+                      className="bo-select"
+                    >
+                      <option value="">All credential categories</option>
+                      {data.categories.map(c => (
+                        <option key={c.label} value={c.label}>
+                          {c.label} ({c.value})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {/* Certification Issuer */}
+                {!!data?.distribution?.length && (
+                  <label className="bo-field-label">
+                    <span className="bo-field-title">Issuer / Provider</span>
+                    <select
+                      value={params.get('issuer') ?? ''}
+                      onChange={e => change({ issuer: e.target.value })}
+                      className="bo-select"
+                    >
+                      <option value="">All issuers</option>
+                      {data.distribution.map(d => (
+                        <option key={d.label} value={d.label}>
+                          {d.label} ({d.value})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                {/* Review Status */}
+                <label className="bo-field-label">
+                  <span className="bo-field-title">Record review status</span>
+                  <select
+                    value={params.get('status') ?? ''}
+                    onChange={e => change({ status: e.target.value })}
+                    className="bo-select"
+                  >
+                    <option value="">All review statuses</option>
+                    <option value="SUBMITTED">Awaiting review</option>
+                    <option value="APPROVED">Manager reviewed</option>
+                    <option value="CHANGES_REQUESTED">Changes requested</option>
+                    <option value="REJECTED">Not approved</option>
+                  </select>
+                </label>
+
+                {/* Validity Filter */}
+                <label className="bo-field-label">
+                  <span className="bo-field-title">Validity window</span>
+                  <select
+                    value={params.get('validity') ?? ''}
+                    onChange={e => change({ validity: e.target.value })}
+                    className="bo-select"
+                  >
+                    <option value="">All validity states</option>
+                    <option value="CURRENT">Current & active</option>
+                    <option value="EXPIRED">Expired</option>
+                    <option value="14">Expires in 14 days</option>
+                    <option value="30">Expires in 30 days</option>
+                    <option value="60">Expires in 60 days</option>
+                    <option value="90">Expires in 90 days</option>
+                    <option value="15_30">15–30 days</option>
+                    <option value="31_60">31–60 days</option>
+                    <option value="61_90">61–90 days</option>
+                    <option value="NO_EXPIRY">No expiration</option>
+                    <option value="LATER">Beyond 90 days</option>
+                  </select>
+                </label>
               </div>
             </div>
-            {/* Associated Skill */}
-            {!!data?.coverage.length && (
-              <label className="bo-field-label">
-                <span className="bo-field-title">Associated skill</span>
-                <select
-                  value={params.get('skillId') ?? ''}
-                  onChange={e => change({ skillId: e.target.value })}
-                  className="bo-select"
-                >
-                  <option value="">All skills</option>
-                  {Array.from(
-                    new Set(data.coverage.map(c => JSON.stringify({ id: c.id, label: c.label }))),
-                  )
-                    .map(jsonStr => JSON.parse(jsonStr))
-                    .map(item => (
-                      <option key={item.id} value={item.id}>
-                        {item.label}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            )}
+          </details>
 
-            {/* Proficiency Level */}
-            <label className="bo-field-label">
-              <span className="bo-field-title">Proficiency level</span>
-              <select
-                value={
-                  params.get('minRank') || params.get('maxRank')
-                    ? `${params.get('minRank') ?? '1'}_${params.get('maxRank') ?? '4'}`
-                    : ''
-                }
-                onChange={e => {
-                  const val = e.target.value;
-                  if (!val) change({ minRank: '', maxRank: '' });
-                  else {
-                    const [min, max] = val.split('_');
-                    change({ minRank: min, maxRank: max });
-                  }
-                }}
-                className="bo-select"
-              >
-                <option value="">All supported ranks (L1–L4)</option>
-                <option value="1_1">L1</option>
-                <option value="2_2">L2</option>
-                <option value="3_3">L3</option>
-                <option value="4_4">L4</option>
-                {(params.has('minRank') || params.has('maxRank')) &&
-                  params.get('minRank') !== params.get('maxRank') && (
-                    <option
-                      value={`${params.get('minRank') ?? '1'}_${params.get('maxRank') ?? '4'}`}
-                    >
-                      Ranks L{params.get('minRank') ?? '1'}–L{params.get('maxRank') ?? '4'}
-                    </option>
-                  )}
-              </select>
-            </label>
-
-            {/* Pillar / Category */}
-            {!!data?.categories?.length && (
-              <label className="bo-field-label">
-                <span className="bo-field-title">Credential category</span>
-                <select
-                  value={params.get('category') ?? ''}
-                  onChange={e => change({ category: e.target.value })}
-                  className="bo-select"
-                >
-                  <option value="">All credential categories</option>
-                  {data.categories.map(c => (
-                    <option key={c.label} value={c.label}>
-                      {c.label} ({c.value})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            {/* Certification Issuer */}
-            {!!data?.distribution?.length && (
-              <label className="bo-field-label">
-                <span className="bo-field-title">Issuer / Provider</span>
-                <select
-                  value={params.get('issuer') ?? ''}
-                  onChange={e => change({ issuer: e.target.value })}
-                  className="bo-select"
-                >
-                  <option value="">All issuers</option>
-                  {data.distribution.map(d => (
-                    <option key={d.label} value={d.label}>
-                      {d.label} ({d.value})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            {/* Review Status */}
-            <label className="bo-field-label">
-              <span className="bo-field-title">Record review status</span>
-              <select
-                value={params.get('status') ?? ''}
-                onChange={e => change({ status: e.target.value })}
-                className="bo-select"
-              >
-                <option value="">All review statuses</option>
-                <option value="SUBMITTED">Awaiting review</option>
-                <option value="APPROVED">Manager reviewed</option>
-                <option value="CHANGES_REQUESTED">Changes requested</option>
-                <option value="REJECTED">Not approved</option>
-              </select>
-            </label>
-
-            {/* Validity Filter */}
-            <label className="bo-field-label">
-              <span className="bo-field-title">Validity window</span>
-              <select
-                value={params.get('validity') ?? ''}
-                onChange={e => change({ validity: e.target.value })}
-                className="bo-select"
-              >
-                <option value="">All validity states</option>
-                <option value="CURRENT">Current & active</option>
-                <option value="EXPIRED">Expired</option>
-                <option value="14">Expires in 14 days</option>
-                <option value="30">Expires in 30 days</option>
-                <option value="60">Expires in 60 days</option>
-                <option value="90">Expires in 90 days</option>
-                <option value="15_30">15–30 days</option>
-                <option value="31_60">31–60 days</option>
-                <option value="61_90">61–90 days</option>
-                <option value="NO_EXPIRY">No expiration</option>
-                <option value="LATER">Beyond 90 days</option>
-              </select>
-            </label>
-          </div>
-        </details>
+          {/* Reset button if any filters active */}
+          {activeFilterList.length > 0 && (
+            <button
+              type="button"
+              className="bo-toolbar-clear-btn"
+              onClick={resetFilters}
+              title="Reset all filters to default"
+            >
+              <RotateCcw size={12} aria-hidden="true" />
+              <span>Reset</span>
+            </button>
+          )}
+        </div>
 
         {/* Active Selections Chips Row */}
         {activeFilterList.length > 0 && (
@@ -708,11 +862,7 @@ function Insights({ context }: { context: BusinessContext }) {
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              className="bo-clear-all-text-btn"
-              onClick={() => setParams(new URLSearchParams())}
-            >
+            <button type="button" className="bo-clear-all-text-btn" onClick={resetFilters}>
               Clear all
             </button>
           </div>
@@ -725,62 +875,55 @@ function Insights({ context }: { context: BusinessContext }) {
         </p>
       )}
 
-      {/* Analytical Sub-Tab Views for Drill-through & Organization */}
-      <div className="bo-perspective-bar">
-        <div className="bo-perspective-tabs">
-          <button
-            className={`bo-perspective-btn ${analyticalView === 'community' ? 'active' : ''}`}
-            onClick={() => setAnalyticalView('community')}
-          >
-            <BarChart3 size={15} /> Overview
-          </button>
-          <button
-            className={`bo-perspective-btn ${analyticalView === 'skills' ? 'active' : ''}`}
-            onClick={() => setAnalyticalView('skills')}
-          >
-            <Award size={15} /> Skill coverage
-          </button>
-          <button
-            className={`bo-perspective-btn ${analyticalView === 'certifications' ? 'active' : ''}`}
-            onClick={() => setAnalyticalView('certifications')}
-          >
-            <ShieldCheck size={15} /> Certificates & renewals
-          </button>
-
-          <button
-            className={`bo-perspective-btn ${analyticalView === 'records' ? 'active' : ''}`}
-            onClick={() => {
-              setAnalyticalView('records');
-            }}
-          >
-            <Layers size={15} /> People & records
-          </button>
-        </div>
-      </div>
-
       {/* Executive KPI Ribbon */}
       <div className="bo-metrics" aria-busy={pending}>
         {cards
           .filter(
             ([id]) => !['expired', 'expiring'].includes(id) || analyticalView === 'certifications',
           )
-          .map(([id, label, Icon, patch, tooltip]) => (
-            <button
-              key={id}
-              className={'bo-metric bo-' + id}
-              onClick={() => change({ ...cleared, ...patch })}
-              disabled={!data || pending}
-            >
-              <div className="bo-metric-top">
-                <Icon size={20} aria-hidden="true" />
-                <MetricTooltip text={tooltip} />
-              </div>
-              <span>{label}</span>
-              <strong>
-                {data ? data.summary[id].toLocaleString() : <span className="bo-loading-number" />}
-              </strong>
-            </button>
-          ))}
+          .map(([id, label, Icon, patch, tooltip, tag]) => {
+            const isCardActive =
+              analyticalView === 'records' &&
+              Object.entries({ ...cleared, ...patch }).every(
+                ([field, value]) => field === 'sort' || (filters.get(field) ?? '') === value,
+              );
+
+            return (
+              <button
+                key={id}
+                className={`bo-metric bo-${id} ${isCardActive ? 'bo-metric-active' : ''}`}
+                onClick={() => change({ ...cleared, ...patch })}
+                disabled={!data || pending}
+                title={`Filter by ${label}`}
+              >
+                <div className="bo-metric-top">
+                  <div className="bo-metric-icon-badge">
+                    <Icon size={16} aria-hidden="true" />
+                  </div>
+                  <MetricTooltip text={tooltip} />
+                </div>
+                <div className="bo-metric-content">
+                  <span className="bo-metric-label">{label}</span>
+                  <div className="bo-metric-val-row">
+                    <strong className="bo-metric-number">
+                      {data ? (
+                        data.summary[id].toLocaleString()
+                      ) : (
+                        <span className="bo-loading-number" />
+                      )}
+                    </strong>
+                    {tag && (
+                      <span className={`bo-metric-tag bo-tag-${id}`}>
+                        {data && ['certified', 'skilled'].includes(id)
+                          ? `${data.summary.employees ? Math.round((100 * data.summary[id]) / data.summary.employees) : 0}% of scope`
+                          : tag}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
       </div>
 
       {data && pending && (
@@ -796,7 +939,7 @@ function Insights({ context }: { context: BusinessContext }) {
           ·{' '}
           {params.get('scopeId')
             ? scopes.find(s => s.id === params.get('scopeId'))?.label
-            : scopes.map(s => s.label).join(', ') || 'Your authorized scope'}
+            : [...new Set(scopes.map(s => s.label))].join(', ') || 'Your authorized scope'}
         </span>
       </p>
       {!data && !error && (
@@ -814,6 +957,29 @@ function Insights({ context }: { context: BusinessContext }) {
 
       {data && (
         <>
+          {analyticalView === 'community' && (
+            <AnalyticsOverview
+              data={data}
+              pending={pending}
+              dataset={filters.get('dataset') ?? 'people'}
+              onChange={change}
+              onView={setAnalyticalView}
+              onExport={download}
+              exporting={exporting}
+              onOpenFiles={row =>
+                setFileRecord({
+                  kind:
+                    filters.get('dataset') === 'submissions'
+                      ? row.type === 'SKILL'
+                        ? 'skills'
+                        : 'certifications'
+                      : filters.get('dataset')!,
+                  id: String(row.id).replace(/^(skill|certification)-/, ''),
+                  name: String(row.name ?? 'record'),
+                })
+              }
+            />
+          )}
           {/* SECTION 1: SKILL-WISE HEADCOUNT & 4-LEVEL MATRIX */}
           {(analyticalView === 'all' || analyticalView === 'skills') && (
             <section className="bo-panel bo-coverage bo-card-elevated">
@@ -1073,85 +1239,88 @@ function Insights({ context }: { context: BusinessContext }) {
           )}
 
           {/* SECTION 3: COMMUNITY DASHBOARD & CERTIFICATION LEADERBOARD */}
-          {(analyticalView === 'all' || analyticalView === 'community') && (
-            <div className="bo-community-leaderboard-grid">
-              {/* Workforce by scope (Requirement H: Community capability dashboard) */}
-              {!!data.comparisons?.length && (
-                <section className="bo-panel bo-card-elevated">
-                  <div className="bo-panel-header">
-                    <div className="bo-panel-title-group">
-                      <div className="bo-panel-icon-badge">
-                        <Building2 size={18} aria-hidden="true" />
-                      </div>
-                      <div>
-                        <h2 className="bo-panel-title">
-                          Workforce by scope
-                          <MetricTooltip text="Capability benchmark across organizational scopes (Delivery Units, Departments, Projects)." />
-                        </h2>
-                        <p className="bo-note">
-                          Comparison across allowed bindings (up to 30). Project memberships can
-                          overlap.
-                        </p>
+          {analyticalView === 'community' && !!data.comparisons?.length && (
+            <details className="bo-panel an-scope-comparison">
+              <summary>Compare authorized scopes</summary>
+              <div className="bo-community-leaderboard-grid">
+                {/* Workforce by scope (Requirement H: Community capability dashboard) */}
+                {!!data.comparisons?.length && (
+                  <section className="bo-panel bo-card-elevated">
+                    <div className="bo-panel-header">
+                      <div className="bo-panel-title-group">
+                        <div className="bo-panel-icon-badge">
+                          <Building2 size={18} aria-hidden="true" />
+                        </div>
+                        <div>
+                          <h2 className="bo-panel-title">
+                            Workforce by scope
+                            <MetricTooltip text="Capability benchmark across organizational scopes (Delivery Units, Departments, Projects)." />
+                          </h2>
+                          <p className="bo-note">
+                            Comparison across allowed bindings (up to 30). Project memberships can
+                            overlap.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="bo-table-wrap">
-                    <table className="bo-comparison-table">
-                      <thead>
-                        <tr>
-                          <th>Scope</th>
-                          <th>Headcount</th>
-                          <th>Currently Certified</th>
-                          <th>Reviewed Skills</th>
-                          <th>Drill-through</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.comparisons.map(c => {
-                          const certPct =
-                            c.employees > 0 ? Math.round((c.certified / c.employees) * 100) : 0;
-                          return (
-                            <tr key={c.id}>
-                              <td>
-                                <strong>{c.label}</strong>
-                                <small className="bo-scope-kind-pill">
-                                  {' '}
-                                  · {c.kind.replaceAll('_', ' ')}
-                                </small>
-                              </td>
-                              <td>{c.employees}</td>
-                              <td>
-                                <div className="bo-table-progress-cell">
-                                  <span>
-                                    {c.certified} ({certPct}%)
-                                  </span>
-                                  <div className="bo-mini-track">
-                                    <div
-                                      className="bo-mini-fill"
-                                      style={{ width: `${certPct}%` }}
-                                    />
+                    <div className="bo-table-wrap">
+                      <table className="bo-comparison-table">
+                        <thead>
+                          <tr>
+                            <th>Scope</th>
+                            <th>Headcount</th>
+                            <th>Currently Certified</th>
+                            <th>Reviewed Skills</th>
+                            <th>Drill-through</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.comparisons.map(c => {
+                            const certPct =
+                              c.employees > 0 ? Math.round((c.certified / c.employees) * 100) : 0;
+                            return (
+                              <tr key={c.id}>
+                                <td>
+                                  <strong>{c.label}</strong>
+                                  <small className="bo-scope-kind-pill">
+                                    {' '}
+                                    · {c.kind.replaceAll('_', ' ')}
+                                  </small>
+                                </td>
+                                <td>{c.employees}</td>
+                                <td>
+                                  <div className="bo-table-progress-cell">
+                                    <span>
+                                      {c.certified} ({certPct}%)
+                                    </span>
+                                    <div className="bo-mini-track">
+                                      <div
+                                        className="bo-mini-fill"
+                                        style={{ width: `${certPct}%` }}
+                                      />
+                                    </div>
                                   </div>
-                                </div>
-                              </td>
-                              <td>{c.skilled}</td>
-                              <td>
-                                <button
-                                  className="secondary-button bo-btn-sm"
-                                  onClick={() => change({ scopeId: c.id, dataset: 'people' })}
-                                >
-                                  View scope
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              )}
-            </div>
+                                </td>
+                                <td>{c.skilled}</td>
+                                <td>
+                                  <button
+                                    className="secondary-button bo-btn-sm"
+                                    onClick={() => change({ scopeId: c.id, dataset: 'people' })}
+                                  >
+                                    View scope
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+              </div>
+            </details>
           )}
 
           {/* SECTION 4: RECORDS EXPLORER (Full Drill-through, CSV/Excel Export & Attachment View) */}
@@ -1353,7 +1522,11 @@ function Insights({ context }: { context: BusinessContext }) {
                                   </span>
                                 ) : (
                                   <span className={v === 'EXPIRED' ? 'bo-danger' : undefined}>
-                                    {v === null ? '—' : String(v).replaceAll('_', ' ')}
+                                    {v === null
+                                      ? '—'
+                                      : ['validity', 'type'].includes(k)
+                                        ? String(v).replaceAll('_', ' ')
+                                        : String(v)}
                                   </span>
                                 )}
                               </td>

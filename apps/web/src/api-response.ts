@@ -8,5 +8,7 @@ export async function readApiResponse<T>(response: Response, fallback: string): 
     throw Object.assign(Error(body?.error?.message ?? fallback), {
       status: response.status,
     }) as ApiResponseError;
+  if (body === undefined || body === null)
+    throw Object.assign(Error(fallback), { status: response.status }) as ApiResponseError;
   return body as T;
 }

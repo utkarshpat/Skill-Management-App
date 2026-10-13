@@ -707,7 +707,7 @@ export function BusinessAdministration({
             </summary>
             <p>
               These assignments are retained. Their presence does not enable an unsupported workflow
-              or widen Business Operations.
+              or widen Analytics.
             </p>
             <pre>{JSON.stringify(state.historicalGrantsForReview, null, 2)}</pre>
           </details>
