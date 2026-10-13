@@ -145,7 +145,10 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
 
   return (
     <>
-      <section className="assigned-review-workspace review-shell" aria-busy={loading}>
+      <section
+        className="assigned-review-workspace review-shell"
+        aria-busy={view === 'queue' ? loading : analyticsLoading}
+      >
         {analyticsError && certificationTab !== 'queue' && (
           <div className="assigned-review-error" role="alert">
             <span>{analyticsError}</span>
@@ -277,62 +280,36 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
         )}
         {certificationTab === 'analytics' && (
           <section
-            className="cert-review-analytics"
-            aria-label="Assigned certification review analytics"
+            className="team-certificates-summary"
+            aria-label="Supporting certificate analytics"
             aria-busy={analyticsLoading}
           >
-            <header>
-              <div>
-                <h3>Assigned certification analytics</h3>
-                <p>
-                  Current direct-report submissions awaiting your review. Approved and unrelated
-                  credentials are not included.
-                </p>
-              </div>
-            </header>
-            <div className="assigned-review-summary">
-              <article className="assigned-review-total">
-                <span>
-                  <Clock3 size={17} /> Pending review
-                </span>
-                <strong>{analytics?.pending ?? '—'}</strong>
-                <small>Assigned to you</small>
-              </article>
-              <article>
-                <span>Expired</span>
-                <strong>{analytics?.expired ?? '—'}</strong>
-                <small>Submitted credentials</small>
-              </article>
-              <article>
-                <span>Expires within 90 days</span>
-                <strong>{analytics?.expiresSoon ?? '—'}</strong>
-                <small>Submitted credentials</small>
-              </article>
-              <article>
-                <span>No expiry date</span>
-                <strong>{analytics?.noExpiry ?? '—'}</strong>
-                <small>Submitted credentials</small>
-              </article>
+            <h3>Supporting certificates awaiting review</h3>
+            <div className="team-certificate-metrics">
+              <span>
+                <strong>{analytics?.pending ?? '—'}</strong> Assigned certificates
+              </span>
+              <span>
+                <strong>{analytics?.expired ?? '—'}</strong> Expired
+              </span>
+              <span>
+                <strong>{analytics?.expiresSoon ?? '—'}</strong> Expiring within 90 days
+              </span>
+              <span>
+                <strong>{analytics?.noExpiry ?? '—'}</strong> No expiry
+              </span>
             </div>
-            <div className="cert-review-category-list">
-              <h3>Pending by category</h3>
-              {analytics?.categories.length ? (
-                analytics.categories.map(item => (
-                  <div key={item.category}>
-                    <span>{item.category}</span>
-                    <strong>{item.count}</strong>
-                  </div>
-                ))
-              ) : (
-                <p>
-                  {analytics
-                    ? 'No assigned certification categories to summarize.'
-                    : analyticsLoading
-                      ? 'Loading authorized analytics…'
-                      : 'Analytics unavailable.'}
-                </p>
-              )}
-            </div>
+            <small>Current direct reports · assigned pending certificates only</small>
+            {!!analytics?.categories.length && (
+              <details>
+                <summary>Certificate categories</summary>
+                {analytics.categories.map(item => (
+                  <p key={item.category}>
+                    {item.category} <strong>{item.count}</strong>
+                  </p>
+                ))}
+              </details>
+            )}
           </section>
         )}
         {certificationTab === 'recommendations' && analytics?.canRecommend && (

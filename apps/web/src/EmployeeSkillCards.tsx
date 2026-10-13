@@ -10,6 +10,7 @@ export function EmployeeSkillCards({
   canRead,
   loading,
   opening,
+  hasCombinedPending = false,
   onOpen,
 }: {
   skills: TeamSkill[];
@@ -18,6 +19,7 @@ export function EmployeeSkillCards({
   canRead: boolean;
   loading: boolean;
   opening: boolean;
+  hasCombinedPending?: boolean;
   onOpen: (id: string) => void;
 }) {
   return (
@@ -75,7 +77,9 @@ export function EmployeeSkillCards({
                   <p>
                     {loading
                       ? 'Checking available details…'
-                      : 'No assigned record available to open.'}
+                      : pending && hasCombinedPending
+                        ? 'Open the combined request below.'
+                        : 'Reviewed summary'}
                   </p>
                 )}
               </footer>

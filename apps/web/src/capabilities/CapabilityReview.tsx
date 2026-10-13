@@ -1,3 +1,4 @@
+import { credentialValidity } from '../certifications/certification-model';
 import { useEffect, useRef, useState } from 'react';
 import { FormDialog } from '../FormDialog';
 import { authenticatedFetch } from '../auth';
@@ -162,7 +163,7 @@ export function CapabilityReview({
 
   return (
     <FormDialog
-      title={readOnly ? 'Capability submission' : 'Review capabilities'}
+      title={readOnly ? 'Skills & supporting certificates' : 'Review skill request'}
       subtitle={
         employeeName
           ? `Submitted by ${employeeName}${submissionLabel ? ` · ${submissionLabel}` : ''}`
@@ -206,8 +207,7 @@ export function CapabilityReview({
         {!data && !error && <p role="status">Loading submitted capabilities…</p>}
         {data?.intake && (
           <p className="cap-callout">
-            This private draft has incomplete details. Open Continue draft from your capability
-            submissions to finish it.
+            This draft is incomplete. Choose Continue in Skills to finish it.
           </p>
         )}
 
@@ -229,7 +229,7 @@ export function CapabilityReview({
               </div>
             </div>
             <div className="cap-review-summary-right">
-              <span className={`cap-status-pill ${readOnly ? 'approved' : 'submitted'}`}>
+              <span className={`cap-status-pill ${data?.status?.toLowerCase() ?? 'submitted'}`}>
                 {readOnly ? 'View only' : `${pendingCount} awaiting decision`}
               </span>
             </div>
@@ -281,7 +281,7 @@ export function CapabilityReview({
                         <span className="cap-meta-pill">{row.category}</span>
                         <span className="cap-meta-pill">
                           {row.expiryDate
-                            ? `Expires ${row.expiryDate.slice(0, 10)}`
+                            ? `${credentialValidity(row.expiryDate.slice(0, 10), new Date().toISOString().slice(0, 10))} · ${row.expiryDate.slice(0, 10)}`
                             : 'Does not expire'}
                         </span>
                       </>
@@ -352,7 +352,7 @@ export function CapabilityReview({
                         <span className="cap-detail-label">Validity</span>
                         <span className="cap-detail-val">
                           {row.expiryDate
-                            ? `Expires ${row.expiryDate.slice(0, 10)}`
+                            ? `${credentialValidity(row.expiryDate.slice(0, 10), new Date().toISOString().slice(0, 10))} · ${row.expiryDate.slice(0, 10)}`
                             : 'Does not expire'}
                         </span>
                       </div>

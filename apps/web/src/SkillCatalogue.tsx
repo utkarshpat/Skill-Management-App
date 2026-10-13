@@ -39,7 +39,11 @@ export function SkillCatalogue({
           </button>
           <button
             aria-current={amendments ? 'page' : undefined}
-            onClick={() => setParams({ tab: 'amendments' })}
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              next.set('tab', 'amendments');
+              setParams(next);
+            }}
           >
             Amendments
           </button>

@@ -1,3 +1,5 @@
+import { CapabilityReview } from './capabilities/CapabilityReview';
+import { readApiResponse } from './api-response';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
@@ -53,6 +55,29 @@ export function EmployeeCapability({
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
     [attempt, setAttempt] = useState(0);
+  const [combined, setCombined] = useState<any[]>([]);
+  const [combinedError, setCombinedError] = useState('');
+  const [submission, setSubmission] = useState<string>();
+  useEffect(() => {
+    const abort = new AbortController();
+    setCombined([]);
+    setCombinedError('');
+    setSubmission(undefined);
+    authenticatedFetch('/api/capability-submissions?view=queue', { signal: abort.signal })
+      .then(r => readApiResponse<any>(r, 'Assigned skill requests could not be loaded.'))
+      .then(v => {
+        if (!abort.signal.aborted)
+          setCombined(
+            (v.records ?? []).filter(
+              (r: any) => r.personId?.toLowerCase() === person.id.toLowerCase(),
+            ),
+          );
+      })
+      .catch(e => {
+        if (!abort.signal.aborted) setCombinedError(e.message);
+      });
+    return () => abort.abort();
+  }, [person.id, attempt]);
   const [claim, setClaim] = useState<Claim>(),
     [opening, setOpening] = useState(false);
   useEffect(() => {
@@ -317,6 +342,7 @@ export function EmployeeCapability({
               canRead={canRead}
               loading={loading}
               opening={opening}
+              hasCombinedPending={combined.length > 0}
               onOpen={id => void open(id)}
             />
           ) : (
@@ -370,7 +396,11 @@ export function EmployeeCapability({
                                 </button>
                               ) : (
                                 <span className="employee-summary-only">
-                                  {loading ? 'Loading details…' : 'Reviewed summary'}
+                                  {loading
+                                    ? 'Loading details…'
+                                    : s.status === 'SUBMITTED' && combined.length > 0
+                                      ? 'Open combined request below'
+                                      : 'Reviewed summary'}
                                 </span>
                               )}
                             </td>
@@ -449,6 +479,38 @@ export function EmployeeCapability({
           )}
         </footer>
       </section>
+      {combinedError && <p role="alert">{combinedError}</p>}
+      {combined.length > 0 && (
+        <section className="profile-panel">
+          <h3>Skills and supporting certificates awaiting review</h3>
+          {combined.map(r => (
+            <article className="combined-review-item" key={r.id}>
+              <div>
+                <strong>{r.label}</strong>
+                <p>
+                  {r.skills} skills · {r.certifications} certificates
+                </p>
+              </div>
+              <button className="admin-primary" onClick={() => setSubmission(r.id)}>
+                View request
+              </button>
+            </article>
+          ))}
+        </section>
+      )}
+      {submission && (
+        <CapabilityReview
+          id={submission}
+          employeeName={person.name}
+          onClose={() => setSubmission(undefined)}
+          onSaved={() => {
+            setSubmission(undefined);
+            setAttempt(n => n + 1);
+            onSaved();
+            window.dispatchEvent(new Event('notifications-updated'));
+          }}
+        />
+      )}
       <p className="employee-access-note">
         <ShieldCheck size={16} />
         Evidence and history are available for claims assigned to you. Private drafts stay with the

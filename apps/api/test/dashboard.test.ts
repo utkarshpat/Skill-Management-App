@@ -12,6 +12,50 @@ import type {
 import { createApp } from '../src/create-app.js';
 import { AccessError } from '../src/shared/errors.js';
 const actor = '00000000-0000-4000-8000-000000000001';
+test('pending dashboard counts combined requests once and uses full queue total beyond bounded previews', async () => {
+  const { state, person } = fixture([
+    own('profile.view'),
+    own('skill.view'),
+    { permission: 'skill.verify', scope: 'ORGANIZATION', effect: 'ALLOW' },
+  ]);
+  const seen: unknown[] = [];
+  const data = await loadDashboardCard('attention', actor, state, person, {
+    ...sources,
+    capabilitySubmissions: {
+      run: async (who, operation, payload) => {
+        seen.push([who, operation, payload]);
+        return {
+          records: [
+            {
+              id: 'combined',
+              total: 53,
+              name: 'Report',
+              label: 'Cloud skills',
+              skills: 3,
+              certifications: 2,
+            },
+          ],
+        };
+      },
+    },
+    certifications: { read: async () => ({ total: 2, records: [] }) } as never,
+  });
+  assert.ok('groups' in data && data.groups && data.items);
+  assert.equal(data.groups.find(g => g.id === 'reviews')?.count, 55);
+  assert.equal(
+    data.items.find(i => i.id === 'combined')?.href,
+    '/skill-reviews?submission=combined',
+  );
+  assert.match(data.items.find(i => i.id === 'combined')!.description, /3 skills · 2 certificates/);
+  assert.deepEqual(seen, [[actor, 'QUEUE', {}]]);
+});
+test('combined review source cannot expose a manager card to a non-reviewer', () => {
+  const { state, person } = fixture([own('profile.view'), own('skill.view')]);
+  const manifest = dashboardManifest(state, person, {
+    capabilitySubmissions: { run: async () => ({ records: [{ id: 'private' }] }) },
+  });
+  assert.ok(!manifest.cards.some(c => c.id === 'attention'));
+});
 function fixture(grants: Assignment[]) {
   const person: LocalPerson = {
     hasDirectReports: grants.some(

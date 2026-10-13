@@ -4,13 +4,19 @@ import {
   type LocalAccessState,
   type LocalPerson,
 } from '../access/index.js';
-import type { ClaimsStore } from '../skills/index.js';
+import type {
+  ClaimsStore,
+  CapabilitySubmissionStore,
+  CertificationStore,
+} from '../skills/index.js';
 import type { LearningStore, LearningPlan } from '../learning/index.js';
 import type { WorkflowStore } from '../workflows/index.js';
 import { AccessError } from '../../shared/errors.js';
 
 export interface DashboardSources {
   claims?: ClaimsStore;
+  capabilitySubmissions?: CapabilitySubmissionStore;
+  certifications?: CertificationStore;
   learning?: LearningStore;
   workflows?: WorkflowStore;
   aiConfigured?: boolean;
@@ -98,7 +104,9 @@ export function dashboardManifest(
   const learning = own('learning.view') && Boolean(sources.learning);
   const requests = (own('request.view') || own('incident.view')) && Boolean(sources.workflows);
   const reviews =
-    own('profile.view') && canReviewAssigned(state, person) && Boolean(sources.claims?.reviews);
+    own('profile.view') &&
+    canReviewAssigned(state, person) &&
+    Boolean(sources.claims?.reviews || sources.capabilitySubmissions || sources.certifications);
   const assigned =
     requests &&
     ['request', 'incident'].some(
@@ -354,22 +362,51 @@ export async function loadDashboardCard(
   if (
     can(state, person, 'profile.view', true) &&
     canReviewAssigned(state, person) &&
-    sources.claims?.reviews
+    (sources.claims?.reviews || sources.capabilitySubmissions || sources.certifications)
   )
     jobs.push({
       id: 'reviews',
       load: async () => {
-        const data = await sources.claims!.reviews!(actor, 1);
+        const [data, combined, credentials] = await Promise.all([
+          sources.claims?.reviews ? sources.claims.reviews(actor, 1) : { total: 0, claims: [] },
+          sources.capabilitySubmissions
+            ? sources.capabilitySubmissions.run(actor, 'QUEUE', {})
+            : { records: [] },
+          sources.certifications && can(state, person, 'skill.view', true)
+            ? sources.certifications.read(actor, { view: 'queue', page: 1, search: '' })
+            : { total: 0, records: [] },
+        ]);
         return {
-          count: data.total,
-          items: data.claims.slice(0, 3).map(c => ({
-            id: c.id,
-            title: c.skillName,
-            description: (c.personName ?? 'Assigned claim') + ' · ' + c.levelName,
-            href: '/skill-reviews?claim=' + c.id,
-            label: 'Review',
-            priority: 90,
-          })),
+          count:
+            data.total +
+            Number(combined.records[0]?.total ?? combined.records.length) +
+            credentials.total,
+          items: [
+            ...combined.records.slice(0, 3).map((r: any) => ({
+              id: r.id,
+              title: r.label || 'Skill review request',
+              description: `${r.personName ?? r.name ?? 'Assigned employee'} · ${r.skills ?? 0} skills · ${r.certifications ?? 0} certificates`,
+              href: '/skill-reviews?submission=' + r.id,
+              label: 'Review',
+              priority: 90,
+            })),
+            ...data.claims.slice(0, 3).map(c => ({
+              id: c.id,
+              title: c.skillName,
+              description: (c.personName ?? 'Assigned claim') + ' · ' + c.levelName,
+              href: '/skill-reviews?claim=' + c.id,
+              label: 'Review',
+              priority: 90,
+            })),
+            ...credentials.records.slice(0, 3).map(c => ({
+              id: c.id,
+              title: c.certificationName,
+              description: c.name,
+              href: '/skill-reviews?certification=' + c.id,
+              label: 'Review',
+              priority: 90,
+            })),
+          ].slice(0, 3),
         };
       },
     });
@@ -436,12 +473,12 @@ export async function loadDashboardCard(
       id: key,
       count: r.status === 'fulfilled' ? r.value.count : null,
       title: isReview
-        ? 'Skill reviews'
+        ? 'Pending reviews'
         : isLearning
           ? 'Overdue learning'
           : (incident ? 'Incidents' : 'Requests') + (started ? ' in progress' : ' to start'),
       description: isReview
-        ? 'Claims waiting for your review'
+        ? 'Skill requests and supporting certificates assigned to you'
         : isLearning
           ? 'Unfinished tasks from active plans'
           : 'Assigned to you · ' + (started ? 'Work already started' : 'Ready for triage'),
@@ -454,7 +491,7 @@ export async function loadDashboardCard(
             '&status=' +
             (started ? 'IN_PROGRESS' : 'SUBMITTED'),
       label: isReview
-        ? 'Review claims'
+        ? 'Open review queue'
         : isLearning
           ? 'Open backlog'
           : started

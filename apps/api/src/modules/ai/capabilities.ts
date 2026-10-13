@@ -11,7 +11,7 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
   const workspace = workspaceFor(state, person),
     capabilities = workspace.capabilities;
   const pages = [{ label: 'Dashboard', url: '/workspace' }];
-  if (capabilities.businessOperations || capabilities.businessAdministration)
+  if (capabilities.businessOperations)
     pages.push({ label: 'Business Operations', url: '/business' });
   if (capabilities.ownProfile) pages.push({ label: 'My profile', url: '/profile' });
   if (capabilities.ownSkills) pages.push({ label: 'My skills', url: '/my-skills' });
@@ -25,15 +25,22 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
   if (capabilities.catalogue && (capabilities.amendments || capabilities.approveAmendments))
     pages.push({ label: 'Catalogue amendments', url: '/skills?tab=amendments' });
   if (capabilities.administration) {
+    if (capabilities.businessAdministration)
+      pages.push({ label: 'People & Access: scoped profiles', url: '/access?view=profiles' });
     pages.push(
       { label: 'Administration dashboard', url: '/access?view=overview' },
-      { label: 'Access templates', url: '/access?view=roles' },
+      {
+        label: can(state, person, 'users.manage')
+          ? 'People & Access: templates'
+          : 'Access templates',
+        url: '/access?view=roles',
+      },
     );
     if (can(state, person, 'users.manage'))
       pages.push(
         { label: 'People & Access', url: '/access?view=people' },
         { label: 'Organization', url: '/access?view=organization' },
-        { label: 'Role assignments', url: '/access?view=assignments' },
+        { label: 'People & Access: bulk templates', url: '/access?view=assignments' },
       );
     if (can(state, person, 'audit.view'))
       pages.push({ label: 'Activity log', url: '/access?view=audit' });
@@ -162,6 +169,8 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
       ],
     });
   if (capabilities.administration) {
+    if (capabilities.businessAdministration)
+      pages.push({ label: 'People & Access: scoped profiles', url: '/access?view=profiles' });
     guidance.push({
       action: 'Design permission sets',
       url: '/access?view=roles',

@@ -65,19 +65,29 @@ test('business deep-link filters are bounded to recognized keys and reset pagina
     'name_asc',
   );
 });
-test('business sidebar requires analytics or administration; amendment-only manager access stays in catalogue', () => {
+test('business sidebar requires analytics; administration and amendment-only access stay in their own workspaces', () => {
   assert.ok(
     !personalNavigationItems({ ownProfile: true, ownSkills: true }).some(
       i => i.href === '/business',
     ),
   );
-  for (const capabilities of [{ businessOperations: true }, { businessAdministration: true }])
+  for (const capabilities of [
+    { businessOperations: true },
+    { businessOperations: true, businessAdministration: true },
+  ])
     assert.ok(
       personalNavigationItems(
         { ownProfile: true, ownSkills: true, ...capabilities },
         '/business',
       ).some(i => i.href === '/business' && i.active),
     );
+  assert.ok(
+    !personalNavigationItems({
+      ownProfile: true,
+      ownSkills: true,
+      businessAdministration: true,
+    }).some(i => i.href === '/business'),
+  );
   assert.ok(
     !personalNavigationItems(
       { ownProfile: true, ownSkills: true, amendments: true },

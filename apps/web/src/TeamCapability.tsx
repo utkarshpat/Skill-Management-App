@@ -33,11 +33,13 @@ interface Team {
 export function TeamCapability({
   onReviews,
   navigation,
+  supportingContent,
   canAskAi = false,
 }: {
   canAskAi?: boolean;
   onReviews: (personId: string) => void;
   navigation?: ReactNode;
+  supportingContent?: ReactNode;
 }) {
   const [data, setData] = useState<Team>(),
     [search, setSearch] = useState(''),
@@ -251,6 +253,7 @@ export function TeamCapability({
                 <ChevronRight size={18} />
               </button>
             </div>
+            {supportingContent}
             {!person && (
               <p className="team-note team-analytics-scope">
                 {stats
@@ -274,7 +277,7 @@ export function TeamCapability({
                       setSkillFilter('');
                     }}
                   >
-                    {[1, 2, 3, 4, 5].map(rank => (
+                    {[1, 2, 3, 4].map(rank => (
                       <option key={rank} value={rank}>
                         L{rank} and above
                       </option>

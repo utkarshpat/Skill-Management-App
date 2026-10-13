@@ -250,6 +250,7 @@ export function SkillReviews({
           <TeamCapability
             canAskAi={Boolean(data.canAskTeamAi)}
             navigation={navigation}
+            supportingContent={teamContent}
             onReviews={id => {
               setPerson(id);
               setStatus('SUBMITTED');
@@ -259,7 +260,6 @@ export function SkillReviews({
               setView('queue');
             }}
           />
-          {teamContent}
         </>
       ) : (
         <>

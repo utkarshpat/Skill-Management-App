@@ -72,8 +72,7 @@ const icons = new Proxy(
     ].map(name => [name, () => null]),
   ),
   {
-    get: (target, prop) =>
-      typeof prop === 'string' && prop in target ? target[prop] : () => null,
+    get: (target, prop) => (typeof prop === 'string' && prop in target ? target[prop] : () => null),
   },
 );
 globalThis.__probe = {
@@ -180,11 +179,22 @@ let tree = render();
 await tick();
 tree = render();
 assert.ok(section(tree));
-assert.ok(text(tree).includes('People on This Page by Current Credentials'));
+assert.ok(
+  !text(tree).includes('People on This Page by Current Credentials'),
+  'Records view does not stack all charts',
+);
 assert.ok(!text(tree).includes('Top Certified Resources & Leaderboard'));
 assert.ok(!text(tree).includes('Month-wise Certification & Submission Growth'));
-assert.ok(text(tree).includes('Monthly Submission & Review Activity'));
+button(tree, 'Overview').props.onClick();
+tree = render();
+assert.equal(button(tree, 'Overview').props.className.includes('active'), true);
+assert.ok(!text(tree).includes('People on This Page by Current Credentials'));
+assert.ok(!section(tree), 'Overview is compact and records are a separate view');
+button(tree, 'People & records').props.onClick();
+tree = render();
+assert.ok(section(tree));
 assert.ok(!text(tree).includes('L2 · Working'));
+
 dataset(tree).props.onChange({ target: { value: 'certifications' } });
 tree = render();
 await tick();
@@ -223,8 +233,10 @@ await tick();
 const rankSelector = nodes(tree).find(n => n.type === 'select' && n.props.value === '2_4');
 assert.ok(rankSelector, 'Minimum-only rank links keep their selected range visible');
 assert.ok(text(tree).includes('Minimum rank'), 'Minimum-only filters retain a removable chip');
-const upperValidity = nodes(tree).find(n =>
-  n.type === 'select' && nodes(n).some(o => o.type === 'option' && text(o) === 'Current & active'),
+const upperValidity = nodes(tree).find(
+  n =>
+    n.type === 'select' &&
+    nodes(n).some(o => o.type === 'option' && text(o) === 'Current & active'),
 );
 assert.equal(upperValidity.props.value, '15_30');
 assert.ok(nodes(upperValidity).some(n => n.type === 'option' && n.props.value === '15_30'));
@@ -235,6 +247,9 @@ empty.total = 0;
 deferred[3].resolve(json(empty));
 await tick();
 tree = render();
-assert.equal(nodes(tree).find(n => n.props.className === 'bo-pop-bar-fill certified').props.style.width, '0%');
-assert.equal(nodes(tree).find(n => n.props.className === 'bo-pop-bar-fill non-certified').props.style.width, '0%');
+assert.ok(
+  !nodes(tree).some(n => n.props.className === 'bo-population-metric'),
+  'Duplicate population gauge stays removed, including an empty workforce',
+);
+assert.ok(text(tree).includes('No matching records'));
 console.log('Business filter lifecycle regressions passed');

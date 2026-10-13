@@ -1,3 +1,4 @@
+import { BusinessAdministration } from './business/BusinessAdministration';
 import { AccessAudit } from './AccessAudit';
 import { EffectiveAccess, type Decision } from './EffectiveAccess';
 import {
@@ -21,7 +22,7 @@ import { NavbarAccount } from './NavbarAccount';
 import { RoleAssignments } from './RoleAssignments';
 import { PermissionEditor } from './PermissionEditor';
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router';
+import { Link, Navigate, useSearchParams, useNavigate } from 'react-router';
 import { authenticatedFetch, isDemoSession } from './auth';
 import {
   LayoutDashboard,
@@ -104,11 +105,28 @@ const emptyPerson = (): Person => ({
   roleIds: [],
   overrides: [],
 });
-type View = 'overview' | 'roles' | 'people' | 'audit' | 'organization' | 'assignments' | 'skills';
+type View =
+  | 'overview'
+  | 'roles'
+  | 'people'
+  | 'audit'
+  | 'organization'
+  | 'assignments'
+  | 'skills'
+  | 'profiles';
 const currentView = (params: URLSearchParams): View => {
   const view = params.get('view');
   return view &&
-    ['overview', 'roles', 'people', 'audit', 'organization', 'assignments', 'skills'].includes(view)
+    [
+      'overview',
+      'roles',
+      'people',
+      'audit',
+      'organization',
+      'assignments',
+      'skills',
+      'profiles',
+    ].includes(view)
     ? (view as View)
     : 'overview';
 };
@@ -389,8 +407,6 @@ export function AccessAdmin({
     { id: 'organization', label: 'Organization', icon: FolderTree },
     { id: 'skills', label: 'Skill catalogue', icon: BookOpen },
     { id: 'people', label: 'People & Access', icon: Users },
-    { id: 'roles', label: 'Access templates', icon: ShieldCheck },
-    { id: 'assignments', label: 'Role assignments', icon: Users },
     { id: 'audit', label: 'Activity log', icon: History },
   ] as const;
   const sidebarContent = (close: () => void = () => {}) => (
@@ -408,7 +424,7 @@ export function AccessAdmin({
             .filter(
               section =>
                 section.id === 'overview' ||
-                section.id === 'roles' ||
+                section.id === 'people' ||
                 (section.id === 'skills'
                   ? state?.canViewSkills
                   : section.id === 'audit'
@@ -417,11 +433,20 @@ export function AccessAdmin({
             )
             .map(({ id, label, icon }) => ({
               id: id === 'overview' ? 'dashboard' : id,
-              label,
+              label:
+                id === 'people' && state && !state.canManageUsers ? 'Access management' : label,
               icon,
-              active: !personalTitle && tab === id,
+              active:
+                !personalTitle &&
+                (tab === id ||
+                  (id === 'people' && ['roles', 'assignments', 'profiles'].includes(tab))),
               onSelect: () => {
-                setTab(id);
+                if (id === 'skills') {
+                  navigate('/skills');
+                  close();
+                  return;
+                }
+                setTab(id === 'people' && !state?.canManageUsers ? 'roles' : id);
                 setEditor(undefined);
                 setSearch('');
                 setNotice('');
@@ -432,6 +457,12 @@ export function AccessAdmin({
       />
     </>
   );
+
+  if (!personalTitle && tab === 'skills') {
+    const next = new URLSearchParams(params);
+    next.delete('view');
+    return <Navigate replace to={'/skills' + (next.size ? '?' + next : '')} />;
+  }
 
   return (
     <div className="admin-shell">
@@ -462,7 +493,12 @@ export function AccessAdmin({
                 {greetingName}
               </strong>
             </div>
-            <h1>{personalTitle ?? sections.find(section => section.id === tab)?.label}</h1>
+            <h1>
+              {personalTitle ??
+                (['people', 'roles', 'assignments', 'profiles'].includes(tab)
+                  ? 'People & Access'
+                  : sections.find(section => section.id === tab)?.label)}
+            </h1>
           </div>
           <div className="page-actions" role="group" aria-label="Page actions" ref={setPageActions}>
             {state && !personalTitle && tab === 'overview' && (
@@ -523,17 +559,36 @@ export function AccessAdmin({
           />
         </header>
         <main id="access-main" className="access-main">
-          {!personalTitle && workspaceContext?.capabilities.businessAdministration && (
-            <section className="profile-panel">
-              <h2>Employee · Manager · Business Analytics · Admin</h2>
-              <p>
-                Employee access follows the baseline. Manager access follows current direct reports.
-                Manage scoped Business Analytics and Admin assignments with a reviewed preview.
-              </p>
-              <Link className="secondary-button" to="/business?tab=administration">
-                Manage access profiles
-              </Link>
-            </section>
+          {!personalTitle && ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
+            <>
+              <nav className="bo-tabs" aria-label="People and access sections">
+                {[
+                  ...(state?.canManageUsers ? [['people', 'People']] : []),
+                  ...(workspaceContext?.capabilities.businessAdministration
+                    ? [['profiles', 'Projects & scoped access']]
+                    : []),
+                  ['roles', 'Templates'],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    aria-current={tab === id ? 'page' : undefined}
+                    onClick={() => {
+                      setTab(id as View);
+                      setEditor(undefined);
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+              {tab === 'profiles' && workspaceContext?.capabilities.businessAdministration && (
+                <BusinessAdministration
+                  onSaved={() => {
+                    void load().catch(err => setError(err.message));
+                  }}
+                />
+              )}
+            </>
           )}
           {error && (
             <div className="access-message" role="alert">
@@ -592,7 +647,7 @@ export function AccessAdmin({
                         target: 'people',
                       },
                       {
-                        label: 'Roles',
+                        label: 'Templates',
                         value: state.roles.length,
                         detail: 'Manage permissions',
                         icon: ShieldCheck,
@@ -648,6 +703,10 @@ export function AccessAdmin({
 
               {!personalTitle && tab === 'skills' && (
                 <SkillCatalogue
+                  amendmentsAllowed={Boolean(
+                    workspaceContext?.capabilities.amendments ||
+                    workspaceContext?.capabilities.approveAmendments,
+                  )}
                   actionsContainer={pageActions}
                   onChanged={() => {
                     load().catch(err => setError(err.message));
@@ -688,6 +747,11 @@ export function AccessAdmin({
               )}
               {!personalTitle && tab === 'roles' && (
                 <>
+                  {state.canManageUsers && (
+                    <button className="secondary-button" onClick={() => setTab('assignments')}>
+                      Bulk template assignments
+                    </button>
+                  )}
                   <details className="profile-panel role-presets">
                     <summary>Start from a permission set</summary>
                     <div className="preset-buttons">
@@ -698,7 +762,7 @@ export function AccessAdmin({
                           key={preset.key}
                           onClick={() => {
                             if (preset.assignmentMode === 'RESPONSIBILITY') {
-                              navigate('/business?tab=administration');
+                              navigate('/access?view=profiles');
                               return;
                             }
                             setRole(
@@ -764,7 +828,7 @@ export function AccessAdmin({
                   />
                 </>
               )}
-              {!personalTitle && tab === 'people' && (
+              {!personalTitle && tab === 'people' && state.canManageUsers && (
                 <AccessDirectory
                   key="people"
                   kind="people"
@@ -888,6 +952,16 @@ export function AccessAdmin({
                       )}
                       {personSection === 'assignments' && (
                         <>
+                          {workspaceContext?.capabilities.businessAdministration && (
+                            <BusinessAdministration
+                              key={selected.id}
+                              selectedPersonId={selected.id}
+                              onSaved={() => {
+                                void load().catch(err => setError(err.message));
+                              }}
+                            />
+                          )}
+
                           <p>
                             Templates grant only their supported actions and scopes.
                             Reporting-derived skill review is explained under Effective access.
@@ -909,7 +983,7 @@ export function AccessAdmin({
                                 setEditorRevision(state.revision);
                               }}
                             >
-                              Change assigned access
+                              Edit additional templates
                             </button>
                           )}
                         </>

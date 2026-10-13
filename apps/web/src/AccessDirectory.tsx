@@ -96,8 +96,8 @@ export function AccessDirectory({
           <thead>
             <tr>
               {(kind === 'people'
-                ? ['Person', 'Employee ID', 'Assigned roles', 'Status', 'Action']
-                : ['Role', 'Permissions', 'Assigned people', 'Action']
+                ? ['Person', 'Employee ID', 'Additional templates', 'Status', 'Action']
+                : ['Template', 'Permissions', 'Assigned people', 'Action']
               ).map(label => (
                 <th scope="col" key={label}>
                   {label}
@@ -128,11 +128,11 @@ export function AccessDirectory({
                       {item.roleIds.length ? (
                         item.roleIds.map(id => (
                           <span key={id}>
-                            {roles.find(role => role.id === id)?.name ?? 'Unlisted role'}
+                            {roles.find(role => role.id === id)?.name ?? 'Unlisted template'}
                           </span>
                         ))
                       ) : (
-                        <span className="directory-unassigned">No roles assigned</span>
+                        <span className="directory-unassigned">No additional templates</span>
                       )}
                     </div>
                   </td>

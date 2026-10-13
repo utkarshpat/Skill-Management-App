@@ -78,6 +78,15 @@ await withDatabase(async pool => {
       );
       for (const batch of recoveryMetadata.split(/^GO\s*$/m))
         if (batch.trim()) await new sql.Request(tx).batch(batch);
+      const queueTotals = await readFile(
+        new URL(
+          '../../../database/migrations/079_combined_review_queue_totals.sql',
+          import.meta.url,
+        ),
+        'utf8',
+      );
+      for (const batch of queueTotals.split(/^GO\s*$/m))
+        if (batch.trim()) await new sql.Request(tx).batch(batch);
       const owner = randomUUID(),
         manager = randomUUID(),
         outside = randomUUID(),
@@ -402,7 +411,10 @@ await withDatabase(async pool => {
             );
           } else {
             const queue = await run(manager, 'QUEUE', {});
-            assert.ok(queue.records.some((r: any) => r.id.toLowerCase() === id));
+            const queueRecord = queue.records.find((r: any) => r.id.toLowerCase() === id);
+            assert.ok(queueRecord);
+            assert.equal(queueRecord.total, 1);
+            assert.equal(queueRecord.personId.toLowerCase(), owner);
             const decisions = [
               ...submitted.skills.map((s: any) => ({
                 id: s.id,

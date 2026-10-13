@@ -1700,3 +1700,31 @@
     transform: none;
   }
 }
+.team-certificates-summary {
+  padding: 16px 20px;
+  border: 1px solid var(--border, #d2dbe2);
+  border-radius: 14px;
+  margin: 16px 0;
+  background: var(--surface, #fff);
+}
+.team-certificates-summary h3 {
+  margin: 0 0 12px;
+}
+.team-certificate-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.team-certificate-metrics span {
+  display: grid;
+  gap: 4px;
+}
+.team-certificate-metrics strong {
+  font-size: 1.4rem;
+}
+@media (max-width: 650px) {
+  .team-certificate-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

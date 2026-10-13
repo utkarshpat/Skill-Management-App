@@ -35,7 +35,13 @@ interface Administration {
   nodes: { id: string; name: string; kind: string; active: boolean }[];
   historicalGrantsForReview: unknown[];
 }
-export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessContext) => void }) {
+export function BusinessAdministration({
+  onSaved,
+  selectedPersonId,
+}: {
+  onSaved: (value: BusinessContext) => void;
+  selectedPersonId?: string;
+}) {
   const [state, setState] = useState<Administration>(),
     [error, setError] = useState(''),
     [loadError, setLoadError] = useState(''),
@@ -43,7 +49,7 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
     [kind, setKind] = useState('RESPONSIBILITY'),
     [search, setSearch] = useState(''),
     [id, setId] = useState(''),
-    [person, setPerson] = useState(''),
+    [person, setPerson] = useState(selectedPersonId ?? ''),
     [project, setProject] = useState(''),
     [name, setName] = useState(''),
     [department, setDepartment] = useState(''),
@@ -247,11 +253,9 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
     nodes = state?.nodes.filter(n => n.active || n.id === scope || n.id === department) ?? [];
   return (
     <section className="bo-panel" onChangeCapture={invalidatePreview}>
-      <h2>People & access profiles</h2>
+      <h2>Access profiles</h2>
       <p className="bo-note">
-        A person can belong to multiple projects. Membership, reporting and authority are managed
-        separately. Employee and Manager follow the active baseline and current reporting. Business
-        Analytics and Admin require explicit scoped assignments.
+        Choose a person, assign an access profile and scope, then preview the change.
       </p>
       {error && (
         <p role="alert" className="bo-error">
@@ -273,49 +277,54 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
         )
       ) : (
         <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-          <div className="bo-tabs">
-            {[
-              ['RESPONSIBILITY', 'People & access'],
-              ['PROJECT', 'Projects'],
-              ['MEMBERSHIP', 'Memberships'],
-              ['PERSONAL_BASELINE', 'Employee baseline'],
-            ].map(([k, label]) => (
-              <button
-                key={k}
-                aria-current={kind === k ? 'page' : undefined}
-                onClick={() => changeKind(k)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          {!selectedPersonId && (
+            <div className="bo-tabs">
+              {[
+                ['RESPONSIBILITY', 'People & access'],
+                ['PROJECT', 'Projects'],
+                ['MEMBERSHIP', 'Memberships'],
+                ['PERSONAL_BASELINE', 'Employee baseline'],
+              ].map(([k, label]) => (
+                <button
+                  key={k}
+                  aria-current={kind === k ? 'page' : undefined}
+                  onClick={() => changeKind(k)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           {kind === 'RESPONSIBILITY' && (
             <>
-              <div className="bo-access-profiles">
-                {[
-                  [
-                    'Employee',
-                    'Personal profile, skills, certifications and learning. Automatic for active employees when the baseline is enabled.',
-                  ],
-                  [
-                    'Manager',
-                    'Reviews, team insights and recommendations for current direct reports. Reporting and review checks apply.',
-                  ],
-                  [
-                    'Business Analytics',
-                    'Analytics, exports, demand and matching within an explicitly assigned scope.',
-                  ],
-                  [
-                    'Admin',
-                    'People/access, catalogue and audit administration, plus organization-wide Business Analytics.',
-                  ],
-                ].map(([label, description]) => (
-                  <article key={label}>
-                    <h3>{label}</h3>
-                    <p>{description}</p>
-                  </article>
-                ))}
-              </div>
+              <details className="bo-profile-help">
+                <summary>How access profiles work</summary>
+                <div className="bo-access-profiles">
+                  {[
+                    [
+                      'Employee',
+                      'Personal profile, skills, certifications and learning. Automatic for active employees when the baseline is enabled.',
+                    ],
+                    [
+                      'Manager',
+                      'Reviews, team insights and recommendations for current direct reports. Reporting and review checks apply.',
+                    ],
+                    [
+                      'Business Analytics',
+                      'Analytics, exports, demand and matching within an explicitly assigned scope.',
+                    ],
+                    [
+                      'Admin',
+                      'People/access, catalogue and audit administration, plus organization-wide Business Analytics.',
+                    ],
+                  ].map(([label, description]) => (
+                    <article key={label}>
+                      <h3>{label}</h3>
+                      <p>{description}</p>
+                    </article>
+                  ))}
+                </div>
+              </details>
               <div className="bo-access-toolbar">
                 <label>
                   Find person
@@ -345,10 +354,12 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
                   </thead>
                   <tbody>
                     {state.people
-                      .filter(p =>
-                        (p.name + ' ' + p.employeeCode)
-                          .toLowerCase()
-                          .includes(search.trim().toLowerCase()),
+                      .filter(
+                        p =>
+                          (!selectedPersonId || p.id === selectedPersonId) &&
+                          (p.name + ' ' + p.employeeCode)
+                            .toLowerCase()
+                            .includes(search.trim().toLowerCase()),
                       )
                       .map(p => (
                         <tr key={p.id}>
@@ -422,10 +433,12 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
                           </td>
                         </tr>
                       ))}
-                    {!state.people.some(p =>
-                      (p.name + ' ' + p.employeeCode)
-                        .toLowerCase()
-                        .includes(search.trim().toLowerCase()),
+                    {!state.people.some(
+                      p =>
+                        (!selectedPersonId || p.id === selectedPersonId) &&
+                        (p.name + ' ' + p.employeeCode)
+                          .toLowerCase()
+                          .includes(search.trim().toLowerCase()),
                     ) && (
                       <tr>
                         <td colSpan={4}>No matching people.</td>
@@ -505,7 +518,7 @@ export function BusinessAdministration({ onSaved }: { onSaved: (value: BusinessC
                   required
                   value={person}
                   onChange={e => selectPerson(e.target.value)}
-                  disabled={busy}
+                  disabled={busy || Boolean(selectedPersonId)}
                 >
                   <option value="">Choose employee</option>
                   {people.map(p => (

@@ -1,3 +1,5 @@
+import { CapabilityEvidence } from './CapabilityEvidence';
+import { credentialValidity } from '../certifications/certification-model';
 import { useEffect, useState } from 'react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
@@ -5,11 +7,13 @@ import { Award, ExternalLink, ShieldCheck, Clock3 } from 'lucide-react';
 import './capabilities.css';
 
 export function RelatedCapabilities({ kind, id }: { kind: 'SKILL' | 'CERTIFICATION'; id: string }) {
+  const [opened, setOpened] = useState<string>();
   const [links, setLinks] = useState<any[]>(),
     [error, setError] = useState('');
   useEffect(() => {
     const abort = new AbortController();
     setLinks(undefined);
+    setOpened(undefined);
     setError('');
     authenticatedFetch(`/api/capability-submissions/links/${kind}/${id}`, { signal: abort.signal })
       .then(r => readApiResponse<any>(r, 'Related capabilities unavailable.'))
@@ -70,7 +74,7 @@ export function RelatedCapabilities({ kind, id }: { kind: 'SKILL' | 'CERTIFICATI
                       <span className="cap-cert-label">Validity</span>
                       <span className="cap-cert-value">
                         {link.expiryDate
-                          ? `Expires ${link.expiryDate.slice(0, 10)}`
+                          ? `${credentialValidity(link.expiryDate.slice(0, 10), new Date().toISOString().slice(0, 10))} · ${link.expiryDate.slice(0, 10)}`
                           : 'Does not expire'}
                       </span>
                     </div>
@@ -94,6 +98,23 @@ export function RelatedCapabilities({ kind, id }: { kind: 'SKILL' | 'CERTIFICATI
                       </div>
                     )}
                   </div>
+                  {link.submissionId && (
+                    <details
+                      open={opened === link.certificationId}
+                      onToggle={e => {
+                        if (e.currentTarget.open) setOpened(link.certificationId);
+                        else setOpened(v => (v === link.certificationId ? undefined : v));
+                      }}
+                    >
+                      <summary>View certificate file</summary>
+                      {opened === link.certificationId && (
+                        <CapabilityEvidence
+                          submissionId={link.submissionId}
+                          recordId={link.certificationId}
+                        />
+                      )}
+                    </details>
+                  )}
                 </div>
               </div>
             ))}

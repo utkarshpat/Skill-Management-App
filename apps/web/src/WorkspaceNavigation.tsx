@@ -45,7 +45,7 @@ export const catalogueNavigationVisible = (
   );
 export const businessNavigationVisible = (
   capabilities: { businessOperations?: boolean; businessAdministration?: boolean } | undefined,
-) => Boolean(capabilities?.businessOperations || capabilities?.businessAdministration);
+) => Boolean(capabilities?.businessOperations);
 export const isSupportedWorkspacePath = (pathname: string) =>
   [
     '/',

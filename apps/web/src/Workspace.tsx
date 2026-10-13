@@ -142,7 +142,7 @@ export function Workspace({
       label: 'Business Operations',
       href: '/business',
       icon: LineChart,
-      visible: state?.capabilities.businessOperations || state?.capabilities.businessAdministration,
+      visible: state?.capabilities.businessOperations,
     },
     {
       id: 'skill-reviews',

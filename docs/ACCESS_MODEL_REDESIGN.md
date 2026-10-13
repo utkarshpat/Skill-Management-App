@@ -4,6 +4,10 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Workspace navigation refinement — 13 October 2026
+
+Business Operations navigation exposes authorized analytics and demand matching only. Catalogue amendment creation and authorized decisions remain on Skill catalogue; People & Access groups person inspection, scoped profiles and additional templates in one admin workspace. These routes are discovery and presentation changes, not authority grants. Backend effective access and current SQL scope, DENY, reporting and review checks remain canonical. Dashboard pending reviews include one combined skill/certificate submission as one request alongside legacy claims and certifications, with source availability and actor revision checked before delivery. Migration 079 adds an exact total and trusted owner ID to the existing bounded combined review queue read without changing its write or eligibility policy. It was applied to `skill-management-dev` on 13 October 2026. The hosted UI release still requires its own deployment verification.
+
 ### Governed credential skill defaults — approved increment, 13 October 2026
 
 The user approved FDD-based catalogue content and certification-to-skill mappings while retaining demonstration accounts. Migration 078 extends the existing credential amendment and approval workflow with account-bound published-skill defaults, transaction-time validation and existing revision/audit checks. Personal OPTIONS offers these mappings as employee-confirmed suggestions; neither a catalogue mapping nor AI output grants approval, assigns proficiency or rewrites submitted snapshots. No authority or scope grant changes. After matching release validation, migration 078 and the reviewed Oracle/FDD masters were installed on the shared development account on 13 October; employee claims were unchanged. Hosted acceptance details and remaining checks are recorded in [the implementation and rollout record](SCMD_CATALOGUE_AND_MAPPING_2026-10-13.md).
