@@ -4,6 +4,7 @@ import { learningDraftHandoff } from './learning-draft-handoff';
 import { notifyResponse, notify } from './toast';
 import { createMicrosoftSession } from './microsoft-session';
 import { discoverDevelopmentLogin, parseDemoLogin, type DemoLoginState } from './development-login';
+import { connectDemoSessionChanges } from './demo-session-sync';
 
 const tenant = import.meta.env.VITE_ENTRA_TENANT_ID;
 const web = import.meta.env.VITE_ENTRA_WEB_CLIENT_ID;
@@ -31,6 +32,14 @@ let ready: Promise<void> | undefined;
 let demoSession = false;
 export let developmentLoginState: DemoLoginState = { status: 'error', people: [], signedIn: false };
 let discovery: Promise<DemoLoginState> | undefined;
+let sessionSync: ReturnType<typeof connectDemoSessionChanges> | undefined;
+const demoSessionSync = () =>
+  (sessionSync ??= connectDemoSessionChanges(() => {
+    reads.invalidate();
+    learningDraftHandoff.clear();
+    businessDraftHandoff.clear();
+    window.location.reload();
+  }));
 export function refreshDevelopmentLogin() {
   return (discovery ??= (async () => {
     try {
@@ -71,10 +80,13 @@ export async function directSignIn(personId: string, accessCode?: string) {
     signal: AbortSignal.timeout(90000),
   });
   if (!response.ok) throw new Error('Direct login failed.');
+  reads.invalidate();
+  demoSessionSync().changed();
   await refreshDevelopmentLogin();
   if (!demoSession) throw new Error('Demo session could not be verified.');
 }
 export async function initializeAuth() {
+  demoSessionSync();
   await (ready ??= refreshDevelopmentLogin()
     .then(() => undefined)
     .catch(error => {
@@ -104,6 +116,7 @@ export async function signOut() {
   if (demoSession) {
     const response = await fetch('/api/dev-login', { method: 'DELETE' });
     if (!response.ok) throw new Error('Sign-out failed.');
+    demoSessionSync().changed();
     window.location.assign('/');
     return;
   }
