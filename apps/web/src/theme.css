@@ -546,7 +546,7 @@ html[data-theme] .admin-sidebar .admin-account {
     transform: translateX(-100%);
   }
 }
-@media (max-width: 650px) {
+@media (max-width: 850px) {
   .admin-shell {
     display: block;
   }

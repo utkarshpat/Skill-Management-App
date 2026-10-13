@@ -117,7 +117,7 @@ html[data-theme] .admin-sidebar nav.sidebar-navigation button.sidebar-drag-handl
   outline: 2px solid #8cdbd5;
   outline-offset: 2px;
 }
-@media (max-width: 650px) {
+@media (max-width: 850px) {
   html[data-theme] .admin-sidebar nav.sidebar-navigation button.sidebar-drag-handle {
     width: 42px;
     min-height: 44px;
