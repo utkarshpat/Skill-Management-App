@@ -44,6 +44,8 @@ try {
           permission,
           scope: 'OWN',
           effect: permission === deny ? 'DENY' : 'ALLOW',
+          reason: 'Rollback-only workflow regression fixture; no persistent access change.',
+          validUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         });
       const state = await new sql.Request(tx)
         .input('account_id', sql.UniqueIdentifier, account)

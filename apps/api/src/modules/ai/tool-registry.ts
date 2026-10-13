@@ -201,7 +201,7 @@ export class ToolRegistry {
                 .map((s: any) => ({ id: s.id, name: s.name, category: s.category })),
             })),
             policy:
-              'Learning completion is recorded activity, not certification achievement or verified skill proficiency. Recommend an eligible catalogue option as a possible next step; the employee must confirm experience and upload an earned certificate before review. Related skills are limited to ten catalogue matches per credential; do not infer proficiency levels.',
+              'Learning completion is recorded activity, not certification achievement or verified skill proficiency. Recommend a returned catalogue option as a possible next step without asserting exam eligibility; the employee must confirm experience and upload an earned certificate before review. Related skills are limited to ten catalogue matches per credential; do not infer proficiency levels.',
           };
         },
       });
@@ -866,6 +866,59 @@ export class ToolRegistry {
         },
       });
 
+    if (learning)
+      this.entries.set('my_learning_plan', {
+        definition: {
+          type: 'function',
+          function: {
+            name: 'my_learning_plan',
+            description:
+              'Read the exact own saved plan identified by planId, including authoritative completion totals. Use this for completed-learning next steps; no taskId is needed. Read-only and cannot select another person.',
+            parameters: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['planId'],
+              properties: { planId: { type: 'string', format: 'uuid' } },
+            },
+          },
+        },
+        validate: value => {
+          if (!value || typeof value !== 'object' || Array.isArray(value))
+            throw new AccessError(400, 'Choose a valid learning plan.');
+          const args = value as Record<string, unknown>;
+          if (
+            Object.keys(args).some(k => k !== 'planId') ||
+            typeof args.planId !== 'string' ||
+            !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(args.planId)
+          )
+            throw new AccessError(400, 'Choose a valid learning plan.');
+          return { planId: args.planId.toLowerCase() };
+        },
+        permission: (state, person) => can(state, person, 'learning.view', true),
+        source: { label: 'Your selected learning plan', url: '/learning' },
+        read: async ({ person, args }) => {
+          const own = await learning.read(person.id);
+          const plan = own.plans.find(p => p.id.toLowerCase() === args.planId);
+          if (!plan) throw new AccessError(404, 'This learning plan is unavailable.');
+          const completed = plan.tasks.filter(t => Boolean(t.completedAt)).length;
+          return {
+            id: plan.id,
+            title: plan.title,
+            goal: plan.goal.slice(0, 500),
+            status: plan.status,
+            focus: plan.focus,
+            skillName: plan.skillName,
+            completed,
+            totalTasks: plan.tasks.length,
+            allTasksCompleted:
+              plan.status !== 'ARCHIVED' &&
+              plan.tasks.length > 0 &&
+              completed === plan.tasks.length,
+            policy:
+              'Completion is learning activity, not earned certification or verified proficiency. Do not call my_learning_task without an actual task ID supplied by the user.',
+          };
+        },
+      });
     if (learning)
       this.entries.set('my_learning_task', {
         definition: {

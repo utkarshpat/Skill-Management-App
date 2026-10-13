@@ -4,6 +4,59 @@ import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
 import { ToolRegistry } from '../src/modules/ai/tool-registry.js';
 import { AssistantService } from '../src/modules/ai/assistant.js';
 import type { ClaimsStore } from '../src/modules/skills/claims.js';
+
+test('exact own learning plan lookup verifies completion beyond summary bounds and rejects foreign selectors', async () => {
+  const access = await LocalAccessStore.open(),
+    state = access.snapshot(),
+    person = state.people[0];
+  person.overrides.push({ permission: 'learning.view', scope: 'OWN', effect: 'ALLOW' });
+  access.snapshot = () => structuredClone(state);
+  const id = '00000000-0000-4000-8000-000000000077';
+  let actor = '';
+  const plans = Array.from({ length: 7 }, (_, i) => ({
+    id: i === 6 ? id : `00000000-0000-4000-8000-00000000000${i}`,
+    title: 'Saved plan',
+    goal: 'Cloud basics',
+    status: 'ACTIVE',
+    focus: 'SKILL',
+    tasks: [{ completedAt: '2026-10-13T00:00:00Z', privateNotes: 'private task note' }],
+  }));
+  const learning = {
+    read: async (current: string) => {
+      actor = current;
+      return { plans };
+    },
+  } as any;
+  const registry = new ToolRegistry(access, undefined, undefined, undefined, learning);
+  const signal = AbortSignal.timeout(5000);
+  const result = await registry.execute(
+    person.id,
+    'my_learning_plan',
+    { planId: id.toUpperCase() },
+    signal,
+  );
+  assert.equal(actor, person.id);
+  assert.match(JSON.stringify(result), /"allTasksCompleted":true/);
+  assert.doesNotMatch(JSON.stringify(result), /private task note/);
+  plans[6].tasks[0].completedAt = '';
+  assert.match(
+    JSON.stringify(await registry.execute(person.id, 'my_learning_plan', { planId: id }, signal)),
+    /"allTasksCompleted":false/,
+  );
+  await assert.rejects(
+    registry.execute(person.id, 'my_learning_plan', { planId: id, personId: 'other' }, signal),
+  );
+  await assert.rejects(
+    registry.execute(
+      person.id,
+      'my_learning_plan',
+      { planId: '00000000-0000-4000-8000-000000000099' },
+      signal,
+    ),
+  );
+  person.overrides.push({ permission: 'learning.view', scope: 'OWN', effect: 'DENY' });
+  await assert.rejects(registry.execute(person.id, 'my_learning_plan', { planId: id }, signal));
+});
 test('personal credential catalogue tool binds the actor, returns only canonical choices and honors DENY', async () => {
   const access = await LocalAccessStore.open(),
     state = access.snapshot(),

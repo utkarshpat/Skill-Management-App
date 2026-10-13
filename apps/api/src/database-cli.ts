@@ -113,6 +113,7 @@ if (command !== 'check' && command !== 'migrate') {
           [78, '078_credential_skill_master_mappings.sql'],
           [79, '079_combined_review_queue_totals.sql'],
           [80, '080_approved_renewal_portfolio.sql'],
+          [81, '081_workflow_notification_details.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

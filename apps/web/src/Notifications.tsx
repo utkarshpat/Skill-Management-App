@@ -287,10 +287,7 @@ export function Notifications({ id }: { id: string }) {
                             {!isRead && <i aria-label="Unread" />}
                           </span>
                           {item.actorName && (
-                            <small className="notification-actor">
-                              {item.actorName}
-                              {item.actionLabel ? ` · ${item.actionLabel}` : ''}
-                            </small>
+                            <small className="notification-actor">{item.actorName}</small>
                           )}
                           {destination ? (
                             <Link

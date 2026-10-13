@@ -85,7 +85,18 @@ export interface WorkflowStore {
   change(actor: string, input: WorkflowChange): Promise<void>;
   notifications(
     actor: string,
-  ): Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
+  ): Promise<
+    {
+      id: string;
+      at: string;
+      title: string;
+      body: string;
+      href: string;
+      actorName?: string;
+      subject?: string;
+      actionLabel?: string;
+    }[]
+  >;
 }
 function uuid(value: unknown) {
   if (

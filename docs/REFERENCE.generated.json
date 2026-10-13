@@ -1,6 +1,6 @@
 {
   "version": "2026-10-07",
-  "revision": "55df1b1ff7552242",
+  "revision": "4e739118ccc248a3",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -82,7 +82,8 @@
       "077_capability_draft_recovery_metadata.sql",
       "078_credential_skill_master_mappings.sql",
       "079_combined_review_queue_totals.sql",
-      "080_approved_renewal_portfolio.sql"
+      "080_approved_renewal_portfolio.sql",
+      "081_workflow_notification_details.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -6916,7 +6917,7 @@
       "name": "WorkflowWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@mode varchar(20),@record_id uniqueidentifier=NULL,@page int=1,@inbox bit=0,@payload nvarchar(max)=NULL,@query nvarchar(100)=NULL",
-      "source": "database/migrations/025_workflow_timeline_text.sql"
+      "source": "database/migrations/081_workflow_notification_details.sql"
     },
     {
       "name": "ReadWorkflowList",
