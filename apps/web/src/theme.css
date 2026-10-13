@@ -1649,6 +1649,7 @@ html[data-theme] .admin-sidebar .sidebar-scroll {
 }
 .notification-categories {
   display: flex;
+  flex-shrink: 0;
   gap: 6px;
   overflow-x: auto;
   padding: 10px 18px;
