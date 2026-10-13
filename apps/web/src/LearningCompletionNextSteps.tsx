@@ -6,7 +6,11 @@ import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { AssistantRichText } from './AssistantRichText';
 
-import { completedLearningPlans, learningNextStepPrompt } from './learning-next-step';
+import {
+  completedLearningPlans,
+  learningNextStepPrompt,
+  canUseLearningClaimActions,
+} from './learning-next-step';
 
 export function LearningCompletionNextSteps({ plans }: { plans: Plan[] }) {
   const completed = completedLearningPlans(plans);
@@ -14,6 +18,7 @@ export function LearningCompletionNextSteps({ plans }: { plans: Plan[] }) {
     [reply, setReply] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const [canClaim, setCanClaim] = useState(false);
   const request = useRef<AbortController | undefined>(undefined),
     lock = useRef(false);
   const revisionKey = completed.map(p => `${p.id}:${p.revision}`).join(',');
@@ -24,6 +29,7 @@ export function LearningCompletionNextSteps({ plans }: { plans: Plan[] }) {
     setReply('');
     setError('');
     setSelected('');
+    setCanClaim(false);
     return () => request.current?.abort();
   }, [revisionKey]);
   async function suggest(plan: Plan) {
@@ -35,6 +41,7 @@ export function LearningCompletionNextSteps({ plans }: { plans: Plan[] }) {
     setSelected(plan.id);
     setReply('');
     setError('');
+    setCanClaim(false);
     try {
       const value = await readApiResponse<{ reply: string }>(
         await authenticatedFetch('/api/assistant', {
@@ -45,7 +52,22 @@ export function LearningCompletionNextSteps({ plans }: { plans: Plan[] }) {
         }),
         'Next-step suggestions are unavailable. Try again.',
       );
-      if (!abort.signal.aborted) setReply(value.reply);
+      if (!abort.signal.aborted) {
+        setReply(value.reply);
+        // Canonical server discovery, never learning completion or role labels, grants actions.
+        try {
+          const navigation = await readApiResponse<{
+            canReviewOwnSkill?: boolean;
+            pages?: { url: string }[];
+          }>(
+            await authenticatedFetch('/api/assistant/navigation', { signal: abort.signal }),
+            'Skill actions could not be verified.',
+          );
+          if (!abort.signal.aborted) setCanClaim(canUseLearningClaimActions(navigation));
+        } catch {
+          /* A verified answer remains useful; unavailable actions stay hidden. */
+        }
+      }
     } catch (e) {
       if (!abort.signal.aborted) setError((e as Error).message);
     } finally {
@@ -81,20 +103,22 @@ export function LearningCompletionNextSteps({ plans }: { plans: Plan[] }) {
       {reply && (
         <div aria-live="polite">
           <AssistantRichText>{reply}</AssistantRichText>
-          <div className="learning-completion-actions">
-            <Link
-              className="secondary-button"
-              to={
-                '/my-skills?action=add' +
-                (plan?.skillId ? '&skill=' + encodeURIComponent(plan.skillId) : '')
-              }
-            >
-              Add skill <ArrowRight size={14} />
-            </Link>
-            <Link className="secondary-button" to="/my-skills?action=add">
-              Upload earned certificate <ArrowRight size={14} />
-            </Link>
-          </div>
+          {canClaim && (
+            <div className="learning-completion-actions">
+              <Link
+                className="secondary-button"
+                to={
+                  '/my-skills?action=add' +
+                  (plan?.skillId ? '&skill=' + encodeURIComponent(plan.skillId) : '')
+                }
+              >
+                Add skill <ArrowRight size={14} />
+              </Link>
+              <Link className="secondary-button" to="/my-skills?action=add">
+                Upload earned certificate <ArrowRight size={14} />
+              </Link>
+            </div>
+          )}
         </div>
       )}
       <small>Learning completion does not verify proficiency or award a certification.</small>

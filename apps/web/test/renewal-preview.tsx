@@ -76,6 +76,8 @@ window.fetch = async (input, init) => {
         },
       ],
     };
+  else if (path === '/api/assistant/navigation')
+    data = { canReviewOwnSkill: true, pages: [{ url: '/my-skills' }] };
   else if (path === '/api/assistant')
     data = {
       reply:

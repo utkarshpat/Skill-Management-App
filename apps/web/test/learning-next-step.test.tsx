@@ -1,7 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { completedLearningPlans, learningNextStepPrompt } from '../src/learning-next-step';
+import {
+  completedLearningPlans,
+  learningNextStepPrompt,
+  canUseLearningClaimActions,
+} from '../src/learning-next-step';
 import type { Plan } from '../src/Learning';
+test('claim next-step actions require canonical server capability and own skills destination', () => {
+  assert.equal(canUseLearningClaimActions({}), false);
+  assert.equal(
+    canUseLearningClaimActions({ canReviewOwnSkill: false, pages: [{ url: '/my-skills' }] }),
+    false,
+  );
+  assert.equal(canUseLearningClaimActions({ canReviewOwnSkill: true, pages: [] }), false);
+  assert.equal(
+    canUseLearningClaimActions({ canReviewOwnSkill: true, pages: [{ url: '/my-skills' }] }),
+    true,
+  );
+});
 test('next steps require every task completed and keep catalogue exploration separate from awards', () => {
   const plan = {
     id: 'plan',

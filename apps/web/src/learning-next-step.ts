@@ -1,4 +1,10 @@
 import type { Plan } from './Learning';
+export const canUseLearningClaimActions = (navigation: {
+  canReviewOwnSkill?: boolean;
+  pages?: { url: string }[];
+}) =>
+  navigation.canReviewOwnSkill === true &&
+  navigation.pages?.some(p => p.url === '/my-skills') === true;
 export const completedLearningPlans = (plans: Plan[]) =>
   plans.filter(
     p =>

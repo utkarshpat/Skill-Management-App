@@ -720,7 +720,9 @@ export class AssistantService {
         throw new AccessError(403, 'Business scope changed during this reply. Please ask again.');
       return { state, person: current };
     };
-    for (let round = 0; round < 3; round++) {
+    // Three bounded read rounds may be needed for plan -> skills -> credentials.
+    // The last round is answer-only; it cannot execute another tool or widen access.
+    for (let round = 0; round < 4; round++) {
       const current = await recheck('own_profile');
       signal.throwIfAborted();
       const fullContext = assistantCapabilities(current.state, current.person);
@@ -744,10 +746,16 @@ export class AssistantService {
         await recheck('own_profile');
         return { reply: capabilityGreeting(context), sources, mode: 'read-only' };
       }
-      const available = [
-        ...this.registry.available(current.state, current.person),
-        ...(settings.kind === 'answer' ? [] : [presentationTool]),
-      ];
+      const available =
+        round === 3
+          ? []
+          : [
+              ...this.registry.available(current.state, current.person),
+              ...(settings.kind === 'answer' ? [] : [presentationTool]),
+            ];
+      if (round === 3)
+        messages[0].content +=
+          '\nFinal answer only: use the facts already read. No more tools, writes or invented catalogue options. Explain any missing information.';
       if (Buffer.byteLength(JSON.stringify({ messages, available }), 'utf8') > 32000)
         throw new AccessError(
           422,
@@ -766,6 +774,7 @@ export class AssistantService {
           throw new AccessError(502, 'AI returned an invalid answer.');
         return { reply: answer.content, sources, mode: 'read-only' };
       }
+      if (round === 3) throw new AccessError(422, 'Please ask a more focused question.');
       if (answer.calls.length > 4 || executions + answer.calls.length > 4)
         throw new AccessError(
           422,

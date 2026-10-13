@@ -245,6 +245,42 @@ test('token metering includes tool rounds and failed attempts without exposing p
   assert.equal((recorded as { inputTokens: number | null }).inputTokens, null);
 });
 
+test('three read rounds have a tool-free final answer without allowing another action', async () => {
+  const access = await LocalAccessStore.open(),
+    actor = access.snapshot().people[0].id;
+  let round = 0;
+  let attemptExtra = false;
+  const service = new AssistantService(access, undefined, {
+    name: 'fixture',
+    complete: async (_messages, tools) => {
+      const final = ++round === 4;
+      if (final) assert.deepEqual(tools, []);
+      return final && !attemptExtra
+        ? { content: 'Grounded next steps from the authorized reads.', calls: [] }
+        : {
+            content: '',
+            calls: [
+              {
+                id: 'read-' + round,
+                type: 'function' as const,
+                function: { name: 'own_profile', arguments: '{}' },
+              },
+            ],
+          };
+    },
+  });
+  const result = await service.chat(actor, { message: 'Suggest next steps from current facts' });
+  assert.match(result.reply, /Grounded next steps/);
+  assert.equal(round, 4);
+  attemptExtra = true;
+  round = 0;
+  await assert.rejects(
+    service.chat(actor, { message: 'Suggest next steps from current facts' }),
+    /focused question/,
+  );
+  assert.equal(round, 4);
+});
+
 test('oversized tool context is rejected without truncating signed provider parts or making another call', async () => {
   const access = await LocalAccessStore.open(),
     actor = access.snapshot().people[0].id;
