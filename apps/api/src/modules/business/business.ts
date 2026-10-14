@@ -101,6 +101,11 @@ export interface BusinessDashboard {
   pageSize: number;
 }
 export interface BusinessStore {
+  peopleSearch?(
+    actor: string,
+    query: import('./people-search.js').PeopleSearchQuery,
+    exporting?: boolean,
+  ): Promise<import('./people-search.js').PeopleSearchResult>;
   recordFiles?(actor: string, kind: string, id: string): Promise<BusinessFiles>;
   file?(
     actor: string,

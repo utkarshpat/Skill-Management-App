@@ -362,21 +362,27 @@ await withDatabase(async pool => {
         assert.equal(validity.unrelated, false);
         assert.equal(validity.permanent, true);
         await request().query(
-          "UPDATE dbo.CertificationRecord SET certification_name=N'BQA Credential',provider=N'BQA Provider',expiry_date=DATEADD(day,90,CONVERT(date,SYSUTCDATETIME())) WHERE account_id=@account AND id=@renewal;EXECUTE AS USER=N'skill_management_runtime';EXEC dbo.LinkCertificationRenewal @account,@actor,@renewal,@source;REVERT;",
+          "UPDATE dbo.CertificationRecord SET certification_name=N'BQA Credential',provider=N'BQA Provider',expiry_date=DATEADD(day,90,CONVERT(date,SYSUTCDATETIME())),renewed_from_id=@source WHERE account_id=@account AND id=@renewal;EXECUTE AS USER=N'skill_management_runtime';EXEC dbo.LinkCertificationRenewal @account,@actor,@renewal,@source;REVERT;",
         );
         if (scenario === 'renewal-validity') {
           assert.ok(
             (await notifications()).some((r: any) => r.id.toLowerCase().includes(ids.certA)),
           );
+          if (info.version < 72) {
+            await request().query(
+              "UPDATE dbo.CertificationRecord SET status='SUBMITTED' WHERE account_id=@account AND id=@renewal;",
+            );
+            assert.equal(
+              (await notifications()).some((r: any) => r.id.toLowerCase().includes(ids.certA)),
+              false,
+            );
+          }
+          // Current grouped submission transitions are covered by the capability fixture.
+          // Returned renewals keep their valid identity and stop suppressing reminders.
+          // Invalid renewal dates are rejected by the API/SQL save below; the identity
+          // trigger no longer permits installing an invalid linked row as a fixture.
           await request().query(
-            "UPDATE dbo.CertificationRecord SET status='SUBMITTED' WHERE account_id=@account AND id=@renewal;",
-          );
-          assert.equal(
-            (await notifications()).some((r: any) => r.id.toLowerCase().includes(ids.certA)),
-            false,
-          );
-          await request().query(
-            'UPDATE dbo.CertificationRecord SET issue_date=DATEADD(day,-30,CONVERT(date,SYSUTCDATETIME())),expiry_date=DATEADD(day,-1,CONVERT(date,SYSUTCDATETIME())) WHERE account_id=@account AND id=@renewal;',
+            "UPDATE dbo.CertificationRecord SET status='CHANGES_REQUESTED' WHERE account_id=@account AND id=@renewal;",
           );
           assert.ok(
             (await notifications()).some((r: any) => r.id.toLowerCase().includes(ids.certA)),
@@ -410,33 +416,45 @@ await withDatabase(async pool => {
           await request().query(
             "UPDATE dbo.CertificationRecord SET status='CHANGES_REQUESTED' WHERE account_id=@account AND id=@renewal;",
           );
-          await request()
-            .input('second', sql.UniqueIdentifier, randomUUID())
-            .query(
-              "INSERT dbo.CertificationRecord(account_id,id,person_id,revision,certification_name,provider,category,issue_date,expiry_date,credential_id,credential_url,notes,status) SELECT account_id,@second,person_id,1,certification_name,provider,category,issue_date,expiry_date,'','','','DRAFT' FROM dbo.CertificationRecord WHERE account_id=@account AND id=@renewal;EXECUTE AS USER=N'skill_management_runtime';EXEC dbo.LinkCertificationRenewal @account,@actor,@second,@source;REVERT;",
+          if (info.version >= 75) {
+            // A sibling renewal now fails the semantic identity constraint at insertion.
+            await assert.rejects(
+              request()
+                .input('second', sql.UniqueIdentifier, randomUUID())
+                .query(
+                  "INSERT dbo.CertificationRecord(account_id,id,person_id,revision,certification_name,provider,category,issue_date,expiry_date,credential_id,credential_url,notes,status,renewed_from_id) SELECT account_id,@second,person_id,1,certification_name,provider,category,issue_date,expiry_date,'','','','DRAFT',@source FROM dbo.CertificationRecord WHERE account_id=@account AND id=@renewal;",
+                ),
+              (e: any) => e.number === 51014,
             );
-          await assert.rejects(
-            execute(
-              'CertificationWorkspace',
-              ids.alice,
-              {
-                id: ids.draft,
-                revision: 1,
-                fields: {
-                  certificationName: 'BQA Credential',
-                  provider: 'BQA Provider',
-                  category: 'Cloud',
-                  certificationDate: new Date().toISOString().slice(0, 10),
-                  expiryDate: null,
-                  credentialId: '',
-                  credentialUrl: '',
-                  notes: '',
+          } else {
+            await request()
+              .input('second', sql.UniqueIdentifier, randomUUID())
+              .query(
+                "INSERT dbo.CertificationRecord(account_id,id,person_id,revision,certification_name,provider,category,issue_date,expiry_date,credential_id,credential_url,notes,status,renewed_from_id) SELECT account_id,@second,person_id,1,certification_name,provider,category,issue_date,expiry_date,'','','','DRAFT',@source FROM dbo.CertificationRecord WHERE account_id=@account AND id=@renewal;EXECUTE AS USER=N'skill_management_runtime';EXEC dbo.LinkCertificationRenewal @account,@actor,@second,@source;REVERT;",
+              );
+            await assert.rejects(
+              execute(
+                'CertificationWorkspace',
+                ids.alice,
+                {
+                  id: ids.draft,
+                  revision: 1,
+                  fields: {
+                    certificationName: 'BQA Credential',
+                    provider: 'BQA Provider',
+                    category: 'Cloud',
+                    certificationDate: new Date().toISOString().slice(0, 10),
+                    expiryDate: null,
+                    credentialId: '',
+                    credentialUrl: '',
+                    notes: '',
+                  },
                 },
-              },
-              'SAVE',
-            ),
-            (e: any) => [2601, 2627].includes(e.number),
-          );
+                'SAVE',
+              ),
+              (e: any) => [2601, 2627].includes(e.number),
+            );
+          }
         }
       } else if (scenario === 'scope-and-personal') {
         const result = await read();
@@ -686,13 +704,14 @@ await withDatabase(async pool => {
               description: 'Canonical architecture skill',
               active: true,
               status: 'PUBLISHED',
-              levels: ['Awareness', 'Foundation', 'Practitioner', 'Advanced', 'Expert'].map(
-                (name, index) => ({
-                  rank: index + 1,
-                  name,
-                  description: 'Criteria ' + (index + 1),
-                }),
-              ),
+              levels: (info.version >= 74
+                ? ['Foundation', 'Autonomous', 'Experienced', 'Expert']
+                : ['Awareness', 'Foundation', 'Practitioner', 'Advanced', 'Expert']
+              ).map((name, index) => ({
+                rank: index + 1,
+                name,
+                description: 'Criteria ' + (index + 1),
+              })),
             },
           },
           'PROPOSE',
@@ -701,7 +720,7 @@ await withDatabase(async pool => {
         await execute(
           'BusinessWorkflow',
           ids.admin,
-          { id: skillRequest, revision: 1, accessRevision: rev, note: 'Review five criteria' },
+          { id: skillRequest, revision: 1, accessRevision: rev, note: 'Review published criteria' },
           'APPROVE_AMENDMENT',
         );
         const skillMaster = (
@@ -719,7 +738,7 @@ await withDatabase(async pool => {
           .input('alice', sql.UniqueIdentifier, ids.alice)
           .input('bob', sql.UniqueIdentifier, ids.bob)
           .query(
-            "INSERT dbo.SkillClaimDraft(account_id,claim_id,person_id,skill_id,revision,definition_revision,skill_name,category,claimed_rank,level_name,level_description,experience_months,description,status,submitted_at,reviewed_at) VALUES(@account,NEWID(),@alice,@skill,1,@version,N'BQA Cloud skill',N'Cloud',3,N'Practitioner',N'Criteria 3',24,N'private experience','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME(),0),(@account,NEWID(),@bob,@skill,1,@version,N'BQA Cloud skill',N'Cloud',2,N'Foundation',N'Criteria 2',12,N'private experience','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME())",
+            "INSERT dbo.SkillClaimDraft(account_id,claim_id,person_id,skill_id,revision,definition_revision,skill_name,category,claimed_rank,level_name,level_description,experience_months,description,status,submitted_at,reviewed_at) SELECT @account,NEWID(),p.id,@skill,1,@version,N'BQA Cloud skill',N'Cloud',p.rank,l.display_name,v.description,p.months,N'private experience','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME() FROM (VALUES(@alice,3,24),(@bob,2,12)) p(id,rank,months) JOIN dbo.SkillVersionCriterion v ON v.account_id=@account AND v.skill_id=@skill AND v.definition_revision=@version AND v.rank=p.rank JOIN dbo.ProficiencyLevel l ON l.framework_id=v.framework_id AND l.rank=v.rank",
           );
         const skillChoices = JSON.parse(
           (
@@ -731,7 +750,7 @@ await withDatabase(async pool => {
             )
           ).recordset[0].json,
         );
-        assert.equal(skillChoices.skills[0].levels.length, 5);
+        assert.equal(skillChoices.skills[0].levels.length, info.version >= 74 ? 4 : 5);
         assert.equal(skillChoices.skills[0].levels[2].description, 'Criteria 3');
         const demand = randomUUID();
         rev = await revision();
@@ -813,7 +832,8 @@ await withDatabase(async pool => {
         );
         assert.ok(
           historical.coverage.some(
-            (c: { rank: number; holders: number }) => c.rank === 5 && c.holders === 1,
+            (c: { rank: number; holders: number }) =>
+              c.rank === (info.version >= 74 ? 8 : 5) && c.holders === 1,
           ),
         );
         rev = await revision();
@@ -837,11 +857,12 @@ await withDatabase(async pool => {
         ).recordset[0];
         assert.equal(counts.count, 1);
         const legacyFramework = randomUUID();
-        await new sql.Request(tx)
-          .input('account', sql.UniqueIdentifier, account)
-          .input('framework', sql.UniqueIdentifier, legacyFramework)
-          .input('skill', sql.UniqueIdentifier, skillMaster.id)
-          .input('bob', sql.UniqueIdentifier, ids.bob).query(`
+        if (info.version < 74)
+          await new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .input('framework', sql.UniqueIdentifier, legacyFramework)
+            .input('skill', sql.UniqueIdentifier, skillMaster.id)
+            .input('bob', sql.UniqueIdentifier, ids.bob).query(`
           INSERT dbo.ProficiencyFramework(framework_id,account_id) VALUES(@framework,@account);
           INSERT dbo.ProficiencyLevel VALUES(@framework,8,N'Legacy stage eight',N'Custom framework; no standard equivalence defined');
           INSERT dbo.SkillDefinitionVersion(account_id,skill_id,definition_revision,framework_id,display_name,category,description,status) VALUES(@account,@skill,999991,@framework,N'Old custom skill',N'Cloud',N'Custom criteria','PUBLISHED');
@@ -866,12 +887,24 @@ await withDatabase(async pool => {
           .input('account', sql.UniqueIdentifier, account)
           .input('skill', sql.UniqueIdentifier, skillMaster.id)
           .input('secondSkill', sql.UniqueIdentifier, secondSkill)
+          .input(
+            'standardFramework',
+            sql.UniqueIdentifier,
+            info.version >= 74
+              ? '00000000-0000-4000-8000-000000000003'
+              : '00000000-0000-4000-8000-000000000002',
+          )
+          .input(
+            'standardLevel',
+            sql.NVarChar(60),
+            info.version >= 74 ? 'Experienced' : 'Practitioner',
+          )
           .input('dana', sql.UniqueIdentifier, ids.dana).query(`
           UPDATE dbo.SkillCatalogue SET display_name=N'BQA Renamed Cloud skill' WHERE account_id=@account AND skill_id=@skill;
           INSERT dbo.SkillCatalogue(account_id,skill_id,display_name,category,description,status,definition_revision) VALUES(@account,@secondSkill,N'BQA Cloud skill',N'Cloud',N'New skill with former name','PUBLISHED',999992);
-          INSERT dbo.SkillDefinitionVersion(account_id,skill_id,definition_revision,framework_id,display_name,category,description,status) VALUES(@account,@secondSkill,999992,'00000000-0000-4000-8000-000000000002',N'BQA Cloud skill',N'Cloud',N'New skill with former name','PUBLISHED');
-          INSERT dbo.SkillVersionCriterion VALUES(@account,@secondSkill,999992,'00000000-0000-4000-8000-000000000002',3,N'Practitioner criteria');
-          INSERT dbo.SkillClaimDraft(account_id,claim_id,person_id,skill_id,revision,definition_revision,skill_name,category,claimed_rank,level_name,level_description,experience_months,description,status,submitted_at,reviewed_at) VALUES(@account,NEWID(),@dana,@secondSkill,1,999992,N'BQA Cloud skill',N'Cloud',3,N'Practitioner',N'Criteria 3',24,N'Fixture','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME());
+          INSERT dbo.SkillDefinitionVersion(account_id,skill_id,definition_revision,framework_id,display_name,category,description,status) VALUES(@account,@secondSkill,999992,@standardFramework,N'BQA Cloud skill',N'Cloud',N'New skill with former name','PUBLISHED');
+          INSERT dbo.SkillVersionCriterion VALUES(@account,@secondSkill,999992,@standardFramework,3,N'Criteria 3');
+          INSERT dbo.SkillClaimDraft(account_id,claim_id,person_id,skill_id,revision,definition_revision,skill_name,category,claimed_rank,level_name,level_description,experience_months,description,status,submitted_at,reviewed_at) VALUES(@account,NEWID(),@dana,@secondSkill,1,999992,N'BQA Cloud skill',N'Cloud',3,@standardLevel,N'Criteria 3',24,N'Fixture','APPROVED',SYSUTCDATETIME(),SYSUTCDATETIME());
         `);
         await new sql.Request(tx)
           .input('account', sql.UniqueIdentifier, account)
@@ -901,12 +934,13 @@ await withDatabase(async pool => {
         assert.equal(renderedCell.holders, 1);
         const currentMonth = new Date().toISOString().slice(0, 7);
         const beforeActivity = collision.activity.find((m: any) => m.label === currentMonth);
-        await new sql.Request(tx)
-          .input('account', sql.UniqueIdentifier, account)
-          .input('cert', sql.UniqueIdentifier, ids.certA)
-          .query(
-            "UPDATE dbo.CertificationRecord SET status='SUBMITTED',submitted_at=SYSUTCDATETIME(),reviewed_at=NULL WHERE account_id=@account AND id=@cert;",
-          );
+        if (info.version < 72)
+          await new sql.Request(tx)
+            .input('account', sql.UniqueIdentifier, account)
+            .input('cert', sql.UniqueIdentifier, ids.certA)
+            .query(
+              "UPDATE dbo.CertificationRecord SET status='SUBMITTED',submitted_at=SYSUTCDATETIME(),reviewed_at=NULL WHERE account_id=@account AND id=@cert;",
+            );
         const afterActivity = JSON.parse(
           (await execute('BusinessDashboard', ids.lead, businessQuery({ dataset: 'skills' })))
             .recordset[0].json,

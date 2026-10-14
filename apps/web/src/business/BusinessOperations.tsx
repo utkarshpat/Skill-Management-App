@@ -46,6 +46,7 @@ import './business.css';
 import { BusinessRecordDate } from './BusinessRecordDate';
 import { BusinessRecordFiles } from './BusinessRecordFiles';
 import { AnalyticsOverview } from './AnalyticsOverview';
+import { peopleSearchPrompt } from './people-search-prompt';
 
 export function BusinessOperations() {
   const [params, setParams] = useSearchParams(),
@@ -468,14 +469,21 @@ function Insights({ context }: { context: BusinessContext }) {
           </button>
         </nav>
         <div className="an-navigation-actions">
-          {context.canDemandView && (
+          {context.canMatch && (
             <button
               className="secondary-button"
               onClick={() =>
-                setParams(current => updateBusinessFilters(current, { tab: 'demand' }))
+                window.dispatchEvent(
+                  new CustomEvent('assistant-context-request', {
+                    detail: {
+                      autoSend: true,
+                      prompt: peopleSearchPrompt(scopes.find(s => s.id === params.get('scopeId'))),
+                    },
+                  }),
+                )
               }
             >
-              Demand & matching <ArrowRight size={14} />
+              <Users size={15} /> Find people
             </button>
           )}
           <button

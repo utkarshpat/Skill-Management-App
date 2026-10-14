@@ -4,10 +4,18 @@ const safe = (value: unknown) => {
   const text = String(value ?? '').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '');
   return /^[\s\uFEFF]*[=+\-@]/.test(text) ? "'" + text : text;
 };
-export function reportCells(data: BusinessDashboard, query: BusinessQuery) {
-  const columns = [...new Set(data.rows.flatMap(row => Object.keys(row)))].filter(
-    key => key !== 'canViewFiles',
-  );
+interface ReportOptions {
+  columns?: string[];
+  metadata?: string[][];
+}
+export function reportCells(
+  data: BusinessDashboard,
+  query: BusinessQuery,
+  options: ReportOptions = {},
+) {
+  const columns = (
+    options.columns ?? [...new Set(data.rows.flatMap(row => Object.keys(row)))]
+  ).filter(key => key !== 'canViewFiles');
   const metadata = [
     ['Dataset', query.dataset],
     ['As of (UTC)', data.context.asOf],
@@ -29,6 +37,7 @@ export function reportCells(data: BusinessDashboard, query: BusinessQuery) {
           !['dataset', 'page', 'scopeId'].includes(key) && value !== '' && value !== undefined,
       )
       .map(([key, value]) => [key, String(value)]),
+    ...(options.metadata ?? []),
   ].map(cells => cells.map(safe));
   return {
     columns,
@@ -36,8 +45,12 @@ export function reportCells(data: BusinessDashboard, query: BusinessQuery) {
     metadata,
   };
 }
-export function businessCsv(data: BusinessDashboard, query: BusinessQuery) {
-  const { columns, rows, metadata } = reportCells(data, query);
+export function businessCsv(
+  data: BusinessDashboard,
+  query: BusinessQuery,
+  options: ReportOptions = {},
+) {
+  const { columns, rows, metadata } = reportCells(data, query, options);
   const line = (cells: string[]) => cells.map(c => '"' + c.replaceAll('"', '""') + '"').join(',');
   return '\uFEFF' + [...metadata, [], columns, ...rows].map(line).join('\r\n');
 }
@@ -48,8 +61,12 @@ const xml = (value: string) =>
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&apos;');
-export function businessXlsx(data: BusinessDashboard, query: BusinessQuery) {
-  const { columns, rows, metadata } = reportCells(data, query);
+export function businessXlsx(
+  data: BusinessDashboard,
+  query: BusinessQuery,
+  options: ReportOptions = {},
+) {
+  const { columns, rows, metadata } = reportCells(data, query, options);
   const column = (n: number) => {
     let s = '';
     for (n++; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s;

@@ -32,6 +32,7 @@ const react = {
   },
 };
 import * as model from '../../src/business/business-model.ts';
+import * as peoplePrompt from '../../src/business/people-search-prompt.ts';
 let params = new URLSearchParams('tab=insights&dataset=people');
 const deferred = [];
 const context = {
@@ -99,6 +100,7 @@ globalThis.__probe = {
   date: {},
   files: {},
   overview: {},
+  peoplePrompt,
 };
 let source = (
   await transform(
@@ -123,6 +125,7 @@ const sources = {
   './BusinessRecordDate': 'date',
   './BusinessRecordFiles': 'files',
   './AnalyticsOverview': 'overview',
+  './people-search-prompt': 'peoplePrompt',
 };
 source = source
   .replace(/import ['"]\.\/business\.css['"];?/g, '')

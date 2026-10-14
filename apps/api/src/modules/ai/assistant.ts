@@ -636,6 +636,9 @@ export class AssistantService {
               role: 'assistant' as const,
               content: result.reply,
               sources: result.sources,
+              ...('peopleSearch' in result && result.peopleSearch
+                ? { peopleSearch: result.peopleSearch }
+                : {}),
               ...(artifact ? { artifact } : {}),
             },
           ].slice(-40);
@@ -707,6 +710,7 @@ export class AssistantService {
       ...history,
     ];
     const sources: { label: string; url: string }[] = [];
+    let peopleSearch: { query: import('../business/index.js').PeopleSearchQuery } | undefined;
     let executions = 0;
     const recheck = async (name: string) => {
       const state = await readActorAccess(this.store, actorId);
@@ -772,7 +776,12 @@ export class AssistantService {
       if (!answer.calls.length) {
         if (!answer.content.trim() || answer.content.length > 12000)
           throw new AccessError(502, 'AI returned an invalid answer.');
-        return { reply: answer.content, sources, mode: 'read-only' };
+        return {
+          reply: answer.content,
+          sources,
+          mode: 'read-only',
+          ...(peopleSearch ? { peopleSearch } : {}),
+        };
       }
       if (round === 3) throw new AccessError(422, 'Please ask a more focused question.');
       if (answer.calls.length > 4 || executions + answer.calls.length > 4)
@@ -842,6 +851,20 @@ export class AssistantService {
           args,
           signal,
         );
+        if (call.function.name === 'business_people_search') {
+          const result = data as import('../business/index.js').PeopleSearchResult;
+          await recheck('business_people_search');
+          signal.throwIfAborted();
+          const hindi = /[\u0900-\u097F]|\b(bhai|chahiye|dikhao)\b/i.test(history.at(-1)!.content);
+          return {
+            reply: hindi
+              ? `${result.eligibleTotal} log ${result.required === 1 ? 'is requirement ko' : `saari ${result.required} requirements ko`} match karte hain. View results mein matching reasons aur gaps dekho${result.context?.canExport ? '; CSV ya Excel bhi download kar sakte ho' : ''}. Availability assess nahi ki gayi hai.`
+              : `${result.eligibleTotal} people meet ${result.required === 1 ? 'the requirement' : `all ${result.required} requirements`}. View results for match reasons and gaps${result.context?.canExport ? ', or download CSV/Excel' : ''}. Staffing availability is not assessed.`,
+            sources: [...sources, source],
+            mode: 'read-only',
+            peopleSearch: { query: result.query },
+          };
+        }
         if (!sources.some(item => item.label === source.label && item.url === source.url))
           sources.push(source);
         messages.push({

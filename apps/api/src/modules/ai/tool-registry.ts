@@ -1,4 +1,9 @@
-import { businessQuery, identifier, type BusinessStore } from '../business/index.js';
+import {
+  businessQuery,
+  identifier,
+  peopleSearchQuery,
+  type BusinessStore,
+} from '../business/index.js';
 import { readActorAccess } from '../access/index.js';
 import { AccessError } from '../../shared/errors.js';
 
@@ -127,6 +132,76 @@ export class ToolRegistry {
     ownOrganization?: (actor: string) => Promise<OwnOrganization>,
     capabilitySubmissions?: CapabilitySubmissionStore,
   ) {
+    if (business?.peopleSearch)
+      this.entries.set('business_people_search', {
+        definition: {
+          type: 'function',
+          function: {
+            name: 'business_people_search',
+            description:
+              'Read-only people matching without creating a demand. Resolve canonical published skill and certificate IDs with business_demand_options first. Ask essential unclear requirements and summarize scope. Uses reviewed four-level skills and current approved credentials. Missing evidence is not established, not inability; availability is not assessed. eligibleTotal and total are exact, rows are a page. The app renders verified results and export actions.',
+            parameters: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['skills', 'certifications'],
+              properties: {
+                scopeId: {
+                  type: 'string',
+                  format: 'uuid',
+                  description:
+                    'Only an authorizedScopes.id responsibility ID; omit for authorized union.',
+                },
+                skills: {
+                  type: 'array',
+                  maxItems: 20,
+                  items: {
+                    type: 'object',
+                    additionalProperties: false,
+                    required: ['id', 'minRank'],
+                    properties: {
+                      id: { type: 'string', format: 'uuid' },
+                      minRank: { type: 'integer', minimum: 1, maximum: 4 },
+                    },
+                  },
+                },
+                certifications: {
+                  type: 'array',
+                  maxItems: 20,
+                  items: { type: 'string', format: 'uuid' },
+                },
+                headcount: { type: 'integer', minimum: 1, maximum: 10000 },
+                onlyEligible: { type: 'boolean' },
+                page: { type: 'integer', minimum: 1, maximum: 10000 },
+              },
+            },
+          },
+        },
+        permission: (s, p) => can(s, p, 'matching.view') && can(s, p, 'matching.run'),
+        validate: args => ({ ...peopleSearchQuery(args) }),
+        source: { label: 'Find people · Authorized matching', url: '/business' },
+        read: async ({ person, args }) => {
+          const result = await business.peopleSearch!(person.id, peopleSearchQuery(args));
+          return {
+            query: result.query,
+            required: result.required,
+            total: result.total,
+            eligibleTotal: result.eligibleTotal,
+            asOf: result.context.asOf,
+            context: { canExport: result.context.canExport },
+            page: result.page,
+            pageSize: result.pageSize,
+            requirements: result.requirements,
+            scope: result.query.scopeId
+              ? result.context.scopes.find(s => s.id === result.query.scopeId)?.label
+              : 'All authorized scopes',
+            rows: result.rows.slice(0, 3).map(row => ({
+              ...row,
+              criteria: row.criteria.map(({ name, matched }) => ({ name, matched })),
+            })),
+            previewOnly: true,
+          };
+        },
+      });
     if (capabilitySubmissions)
       for (const view of ['mine', 'queue'] as const)
         this.entries.set(
@@ -445,6 +520,12 @@ export class ToolRegistry {
           'Read published skill and active credential requirements for a scoped demand draft. Human selection of canonical requirements and scope is mandatory; no demand is created.',
         ],
         [
+          'business_matching_options',
+          'MASTERS',
+          'matching.run',
+          'Read published catalogue skills and active credentials for conversational people matching. Search names, respect totals/pagination and resolve canonical IDs. No demand creation is necessary.',
+        ],
+        [
           'business_demands',
           'DEMANDS',
           'demand.view',
@@ -488,14 +569,33 @@ export class ToolRegistry {
           },
           source: {
             label:
-              operation === 'MASTERS' ? 'Catalogue · Master definitions' : 'Analytics · Demand',
-            url: operation === 'MASTERS' ? '/skills?tab=amendments' : '/business?tab=demand',
+              name === 'business_matching_options'
+                ? 'Find people · Published requirements'
+                : operation === 'MASTERS'
+                  ? 'Catalogue · Master definitions'
+                  : 'Analytics · Demand',
+            url:
+              name === 'business_matching_options'
+                ? '/business'
+                : operation === 'MASTERS'
+                  ? '/skills?tab=amendments'
+                  : '/business?tab=demand',
           },
           read: async ({ person, args }) => {
             const result = await business.workflow(person.id, operation, args);
             if (operation !== 'MASTERS') return result;
             return {
               ...result,
+              ...(name === 'business_matching_options'
+                ? {
+                    proficiencyLevels: [
+                      { rank: 1, name: 'Foundation' },
+                      { rank: 2, name: 'Autonomous' },
+                      { rank: 3, name: 'Experienced' },
+                      { rank: 4, name: 'Expert' },
+                    ],
+                  }
+                : {}),
               skills: (result.skills as Record<string, unknown>[]).map(
                 ({ id, name, category }) => ({ id, name, category }),
               ),

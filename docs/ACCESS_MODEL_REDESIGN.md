@@ -4,6 +4,10 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Conversational people matching — approved increment, 14 October 2026
+
+The user approved Find people in the existing AI sidebar, with conversational clarification and an in-place results/export view. Migration 082 was installed on the shared development database. It provides a stateless read through the existing canonical Business projection, actor-bound usable responsibilities, `BusinessVisiblePeople` and scope DENY rules. Matching uses approved four-level skill snapshots and current approved exact-name/provider credentials; it does not establish staffing availability, grant review authority or create a saved demand. Each result and full CSV/Excel export rechecks current capabilities and revision; export additionally requires `canExport`. Explicit malformed/foreign scopes are rejected, and no private attachment contents, draft notes or new grants are introduced. Application release remains separate from development activation. See [implementation and acceptance](CONVERSATIONAL_PEOPLE_MATCHING_2026-10-14.md).
+
 ### Renewal portfolio and learning next steps — approved increment, 13 October 2026
 
 The user approved replacing the visible current certificate version only after its renewal is approved, preserving unrenewed expired records. Migration 080 provides derived renewal lineage metadata and a current-record projection: approved descendants supersede previous versions in portfolio display, scoped analytics, matching and reminder reads; original rows, files and submission snapshots remain retained history. Draft, returned or rejected renewals do not replace the source. Renewal input preserves issuer/credential family continuity and supplies a new file, printed ID and validity dates. Existing exact assigned/current-manager, active status, DENY, no-self and revision checks remain mandatory. Manager certificate aggregates include reviewed records assigned to that same current direct manager; this does not grant individual history/file reads for another reviewer.

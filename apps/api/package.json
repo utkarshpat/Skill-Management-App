@@ -38,7 +38,8 @@
     "test:practice": "node --env-file-if-exists=.env --import tsx test/learning-practice.integration.ts",
     "test:workflows": "node --env-file-if-exists=.env --import tsx test/workflows.integration.ts",
     "test:lifecycle": "node --env-file-if-exists=.env --import tsx test/workflow-lifecycle.integration.ts",
-    "test:business": "node --env-file-if-exists=.env --import tsx test/business.integration.ts"
+    "test:business": "node --env-file-if-exists=.env --import tsx test/business.integration.ts",
+    "test:people-search": "node --env-file-if-exists=.env --import tsx test/people-search.integration.ts"
   },
   "dependencies": {
     "@azure/identity": "4.13.3",

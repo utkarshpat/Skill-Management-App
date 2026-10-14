@@ -13,11 +13,14 @@ import { authenticatedFetch } from './auth';
 import { AssistantOutput, type Artifact } from './AssistantOutput';
 import { AssistantRichText } from './AssistantRichText';
 import { AssistantDocument, type AiDocument } from './AssistantDocument';
+import { AssistantPeopleResults, type PeopleQuery } from './business/AssistantPeopleResults';
+import { peopleSearchUserText } from './business/people-search-prompt';
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   sources?: { label: string; url: string }[];
   artifact?: Artifact;
+  peopleSearch?: { query: PeopleQuery };
 }
 export function AssistantWidget() {
   const navigate = useNavigate(),
@@ -176,6 +179,7 @@ export function AssistantWidget() {
     [showHistory, setShowHistory] = useState(false);
   const [historyBusy, setHistoryBusy] = useState(false);
   const [pendingContext, setPendingContext] = useState<string>();
+  const peopleContext = useRef<string | undefined>(undefined);
   const conversationId = useRef<string | undefined>(undefined);
   const session = useRef(new AssistantSession());
   const [unread, setUnread] = useState(false);
@@ -189,6 +193,7 @@ export function AssistantWidget() {
     setError('');
     setActionNotice('');
     setPendingContext(undefined);
+    peopleContext.current = undefined;
     setShowHistory(false);
     setDocument(undefined);
   }
@@ -221,7 +226,7 @@ export function AssistantWidget() {
     },
     [],
   );
-  function prepareContext(value: unknown) {
+  function prepareContext(value: unknown, autoSend = false) {
     if (busy || actionBusy || historyBusy) return;
     const context = assistantContextPrompt(value, session.current.restartOnOpen ? '' : text);
     if (!context) return;
@@ -231,12 +236,30 @@ export function AssistantWidget() {
     if (context.needsReplacement) setPendingContext(context.prompt);
     else {
       setPendingContext(undefined);
-      setText(context.prompt);
+      if (autoSend) {
+        beginPeopleSearch(context.prompt);
+      } else {
+        peopleContext.current = undefined;
+        setText(context.prompt);
+      }
     }
+  }
+  function beginPeopleSearch(prompt: string) {
+    newChat();
+    peopleContext.current = prompt;
+    setMessages([
+      {
+        role: 'assistant',
+        content: `What work or project do you need people for? Tell me the skills or certifications you have in mind, and I’ll clarify the rest.\n\nStarting scope: ${peopleSearchUserText(prompt).replace(/^Find people in /, '')}. You can narrow it within your authorized scopes.`,
+      },
+    ]);
   }
   useEffect(() => {
     const contextual = (event: Event) =>
-      prepareContext((event as CustomEvent<{ prompt?: unknown }>).detail?.prompt);
+      prepareContext(
+        (event as CustomEvent<{ prompt?: unknown; autoSend?: boolean }>).detail?.prompt,
+        (event as CustomEvent<{ autoSend?: boolean }>).detail?.autoSend === true,
+      );
     window.addEventListener('assistant-context-request', contextual);
     return () => window.removeEventListener('assistant-context-request', contextual);
   }, [busy, actionBusy, historyBusy, text]);
@@ -246,7 +269,13 @@ export function AssistantWidget() {
   useEffect(() => {
     if (!open) return;
     const escape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !document && reviewDescription === undefined && !requestDraft) {
+      if (
+        event.key === 'Escape' &&
+        !document &&
+        reviewDescription === undefined &&
+        !requestDraft &&
+        !window.document.querySelector('dialog[open]')
+      ) {
         event.preventDefault();
         collapse();
       }
@@ -358,6 +387,15 @@ export function AssistantWidget() {
       const body = await historyRequest('/' + id, 'GET', pending.signal);
       if (pending.signal.aborted || !session.current.completion(epoch).current) return;
       conversationId.current = id;
+      peopleContext.current = [...(body.messages as ChatMessage[])]
+        .reverse()
+        .find(
+          m =>
+            m.role === 'user' &&
+            m.content.startsWith('Find people') &&
+            m.content.includes('Use conversational search, not a saved demand form.'),
+        )
+        ?.content.split('\nThe initial question')[0];
       setMessages(body.messages);
       setError(
         body.contextReset
@@ -396,6 +434,7 @@ export function AssistantWidget() {
     }
   }
   function close() {
+    peopleContext.current = undefined;
     historyController.current?.abort();
     setHistoryBusy(false);
     actionController.current?.abort();
@@ -406,9 +445,16 @@ export function AssistantWidget() {
   async function send(prompt?: string) {
     if (busy || historyBusy || actionBusy || !(prompt ?? text).trim() || !status?.configured)
       return;
+    const outgoing = peopleContext.current
+      ? `${peopleContext.current}\nThe initial question has already been asked. Use these requirements now; clarify only essential missing details.\nUser requirements:\n${(prompt ?? text).trim()}`
+      : (prompt ?? text).trim();
+    if (outgoing.length > 2000) {
+      setError('This matching request is too long. Shorten it before sending.');
+      return;
+    }
     const next: ChatMessage[] = [...messages, { role: 'user', content: (prompt ?? text).trim() }];
     setPendingContext(undefined);
-    setMessages(next);
+    setMessages(current => [...current, next.at(-1)!]);
     setText('');
     setBusy(true);
     setError('');
@@ -420,7 +466,7 @@ export function AssistantWidget() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: next.at(-1)!.content,
+          message: outgoing,
           conversationId: conversationId.current,
         }),
         signal: pending.signal,
@@ -439,6 +485,7 @@ export function AssistantWidget() {
               content: body.reply,
               sources: body.sources,
               artifact: body.artifact,
+              peopleSearch: body.peopleSearch,
             },
           ]);
         }
@@ -601,7 +648,7 @@ export function AssistantWidget() {
                 {message.role === 'assistant' ? (
                   <AssistantRichText>{message.content}</AssistantRichText>
                 ) : (
-                  <p>{message.content}</p>
+                  <p>{peopleSearchUserText(message.content)}</p>
                 )}
                 {message.artifact && (
                   <AssistantOutput
@@ -629,6 +676,9 @@ export function AssistantWidget() {
                     onDocument={content => setDocument({ content, sources: message.sources })}
                   />
                 )}{' '}
+                {message.peopleSearch && (
+                  <AssistantPeopleResults query={message.peopleSearch.query} />
+                )}
                 {message.sources?.map((source, i) => (
                   <small className="assistant-source" key={i}>
                     {source.label}
@@ -669,7 +719,12 @@ export function AssistantWidget() {
                   className="secondary-button"
                   disabled={busy || actionBusy || historyBusy}
                   onClick={() => {
-                    setText(pendingContext);
+                    if (
+                      pendingContext.startsWith('Find people') &&
+                      pendingContext.includes('Use conversational search')
+                    )
+                      beginPeopleSearch(pendingContext);
+                    else setText(pendingContext);
                     setPendingContext(undefined);
                     input.current?.focus();
                   }}

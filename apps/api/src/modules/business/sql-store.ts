@@ -5,6 +5,7 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import type { BusinessFiles } from './business.js';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
+import type { PeopleSearchQuery, PeopleSearchResult } from './people-search.js';
 import {
   identifier,
   normalizeBusinessAdministration,
@@ -138,6 +139,22 @@ export class SqlBusinessStore implements BusinessStore {
       'activity',
       'rows',
     ]);
+  }
+  async peopleSearch(actor: string, query: PeopleSearchQuery, exporting = false) {
+    const result = await this.execute<PeopleSearchResult>(
+      actor,
+      'dbo.BusinessPeopleSearch',
+      query,
+      request => request.input('export', sql.Bit, exporting),
+    );
+    result.context = normalizeBusinessCollections(result.context, ['scopes']);
+    const fresh = await this.context(actor);
+    assertBusinessScope(result.context, fresh, exporting);
+    if (!fresh.canMatch) throw new AccessError(403, 'Matching access changed.');
+    result.query = query;
+    result.rows ??= [];
+    result.requirements ??= [];
+    return result;
   }
   async change(actor: string, change: BusinessChange) {
     identifier(actor);

@@ -78,6 +78,8 @@ test('Toast success does not claim previews, AI responses or navigation are save
       '/api/assistant/navigation',
       '/api/ai/chat',
       '/api/learning/planner',
+      '/api/business/people-search',
+      '/api/business/people-search/export',
     ])
       await notifyResponse(path, 'POST', new Response('{}'));
     assert.equal(events.length, 0);

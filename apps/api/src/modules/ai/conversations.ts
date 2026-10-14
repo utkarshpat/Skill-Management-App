@@ -8,6 +8,7 @@ export interface SavedMessage {
   content: string;
   sources?: { label: string; url: string }[];
   artifact?: unknown;
+  peopleSearch?: { query: import('../business/index.js').PeopleSearchQuery };
 }
 export interface SavedConversation {
   id: string;

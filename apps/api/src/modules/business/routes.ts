@@ -7,6 +7,7 @@ import { assertBusinessScope } from './sql-store.js';
 import { businessCsv, businessXlsx } from './export.js';
 import { businessWorkflow } from './workflows.js';
 import { createHash } from 'node:crypto';
+import { peopleSearchQuery } from './people-search.js';
 export interface BusinessDependencies {
   verify: (authorization: string | undefined) => Promise<Identity>;
   resolveAccess?: (identity: Identity) => Promise<string | undefined>;
@@ -64,6 +65,87 @@ export function registerBusinessRoutes(
   app.get('/api/business/dashboard', async (req, res, next) => {
     try {
       res.json(await deps!.business!.dashboard(res.locals.businessActor, businessQuery(req.query)));
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.post('/api/business/people-search', async (req, res, next) => {
+    try {
+      if (!deps?.business?.peopleSearch)
+        throw new AccessError(503, 'People search is unavailable.');
+      res.json(
+        await deps.business.peopleSearch(res.locals.businessActor, peopleSearchQuery(req.body)),
+      );
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.post('/api/business/people-search/export', async (req, res, next) => {
+    try {
+      if (!deps?.business?.peopleSearch)
+        throw new AccessError(503, 'People search is unavailable.');
+      const { format, ...payload } = req.body ?? {};
+      if (!['csv', 'xlsx'].includes(format)) throw new AccessError(400, 'Choose CSV or Excel.');
+      const query = peopleSearchQuery(payload);
+      const result = await deps.business.peopleSearch(res.locals.businessActor, query, true);
+      const rows = result.rows.map(row => ({
+        employee: row.employee,
+        employeeCode: row.employeeCode,
+        matched: row.matched,
+        required: result.required,
+        meetsAllRequirements: row.eligible,
+        requirements: row.criteria
+          .map(c => `${c.name}: ${c.criterion} — ${c.matched ? 'Matched' : 'Not established'}`)
+          .join('; '),
+      }));
+      const data = {
+        context: result.context,
+        summary: {
+          employees: result.total,
+          certified: 0,
+          skilled: 0,
+          pending: 0,
+          expired: 0,
+          expiring: 0,
+        },
+        coverage: [],
+        distribution: [],
+        expiry: [],
+        activity: [],
+        rows,
+        total: result.total,
+        page: 1,
+        pageSize: result.pageSize,
+      };
+      const q = businessQuery({ dataset: 'people', scopeId: query.scopeId });
+      const reportOptions = {
+        columns: [
+          'employee',
+          'employeeCode',
+          'matched',
+          'required',
+          'meetsAllRequirements',
+          'requirements',
+        ],
+        metadata: [
+          ['Purpose', 'Skill and certification matching; staffing availability not assessed'],
+          ['Requested people', String(query.headcount)],
+          ['Meets all requirements', String(result.eligibleTotal)],
+          ['Result filter', query.onlyEligible ? 'Full matches only' : 'Full and partial matches'],
+          ...result.requirements.map(r => ['Requirement', `${r.name}: ${r.criterion}`]),
+        ],
+      };
+      res.setHeader('Content-Disposition', `attachment; filename="people-matching.${format}"`);
+      res.type(
+        format === 'csv'
+          ? 'text/csv; charset=utf-8'
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.send(
+        format === 'csv'
+          ? businessCsv(data, q, reportOptions)
+          : businessXlsx(data, q, reportOptions),
+      );
     } catch (error) {
       next(error);
     }

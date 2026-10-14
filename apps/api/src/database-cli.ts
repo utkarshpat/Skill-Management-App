@@ -114,6 +114,7 @@ if (command !== 'check' && command !== 'migrate') {
           [79, '079_combined_review_queue_totals.sql'],
           [80, '080_approved_renewal_portfolio.sql'],
           [81, '081_workflow_notification_details.sql'],
+          [82, '082_conversational_people_search.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();
