@@ -336,6 +336,13 @@
   background: var(--bo-accent);
   border-radius: 4px;
 }
+.bo-credential-headcount {
+  grid-column: 1 / -1;
+}
+.bo-full-coverage-scroll {
+  max-height: 560px;
+  overflow: auto;
+}
 .bo-heatmap {
   display: grid;
   gap: 10px;

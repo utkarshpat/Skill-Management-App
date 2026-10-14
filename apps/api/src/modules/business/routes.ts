@@ -8,6 +8,7 @@ import { businessCsv, businessXlsx } from './export.js';
 import { businessWorkflow } from './workflows.js';
 import { createHash } from 'node:crypto';
 import { peopleSearchQuery } from './people-search.js';
+import { coverageExport } from './coverage-export.js';
 export interface BusinessDependencies {
   verify: (authorization: string | undefined) => Promise<Identity>;
   resolveAccess?: (identity: Identity) => Promise<string | undefined>;
@@ -231,15 +232,18 @@ export function registerBusinessRoutes(
   });
   app.get('/api/business/export', async (req, res, next) => {
     try {
-      const { format, ...filters } = req.query;
+      const { format, reportKind, ...filters } = req.query;
       if (format !== 'csv' && format !== 'xlsx') throw new AccessError(400, 'Choose CSV or XLSX.');
       const actor = res.locals.businessActor,
         query = businessQuery(filters),
         data = await deps!.business!.dashboard(actor, query, true);
-      if (data.rows.length !== data.total)
+      if (!reportKind && data.rows.length !== data.total)
         throw new AccessError(503, 'The complete filtered export is unavailable.');
+      const report = reportKind ? coverageExport(data, reportKind) : { data, options: undefined };
       const body =
-        format === 'csv' ? businessCsv(data, query) : Buffer.from(businessXlsx(data, query));
+        format === 'csv'
+          ? businessCsv(report.data, query, report.options)
+          : Buffer.from(businessXlsx(report.data, query, report.options));
       assertBusinessScope(data.context, await deps!.business!.context(actor), true);
       res.setHeader(
         'Content-Type',

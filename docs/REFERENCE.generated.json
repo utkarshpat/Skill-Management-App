@@ -1,6 +1,6 @@
 {
   "version": "2026-10-14",
-  "revision": "80534ee01a3a905f",
+  "revision": "d50549c1bca221e5",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -84,7 +84,8 @@
       "079_combined_review_queue_totals.sql",
       "080_approved_renewal_portfolio.sql",
       "081_workflow_notification_details.sql",
-      "082_conversational_people_search.sql"
+      "082_conversational_people_search.sql",
+      "083_full_catalogue_coverage.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -7170,7 +7171,7 @@
       "name": "BusinessDashboard",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@payload nvarchar(max),@export bit=0",
-      "source": "database/migrations/080_approved_renewal_portfolio.sql"
+      "source": "database/migrations/083_full_catalogue_coverage.sql"
     },
     {
       "name": "BusinessScopeCovers",

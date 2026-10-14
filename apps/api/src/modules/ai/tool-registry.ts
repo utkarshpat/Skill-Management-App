@@ -480,7 +480,9 @@ export class ToolRegistry {
               ...(name === 'business_insights'
                 ? {
                     coverage: result.coverage,
-                    coverageLimit: 10,
+                    coverageComplete: result.coverageComplete === true,
+                    credentialCoverage: result.credentialCoverage ?? [],
+                    uncataloguedCredentials: result.uncataloguedCredentials ?? [],
                     distribution: result.distribution,
                     categories: result.categories ?? [],
                     comparisons: result.comparisons?.slice(0, 10) ?? [],
@@ -497,7 +499,9 @@ export class ToolRegistry {
               hasMore: result.page * result.pageSize < result.total,
               limits: [
                 'Current scope only',
-                'Coverage charts show at most 10 skills; issuer/category charts at most 15 groups. Proficiency charts and matching use the four-level framework; legacy claim snapshots are not treated as equivalent.',
+                result.coverageComplete
+                  ? 'Skill coverage includes the full filtered published four-level catalogue, including zero-holder skills. Credential counts are distinct people per credential and overlap across credentials; current holders exclude expired/superseded records. Uncatalogued or retired credentials are reported separately. Issuer/category charts show at most 15 groups. Legacy skill frameworks do not establish equivalent proficiency.'
+                  : 'Coverage charts show at most 10 skills; full catalogue/credential headcount is unavailable. Issuer/category charts show at most 15 groups. Legacy skill frameworks do not establish equivalent proficiency.',
                 'No private drafts or certificate downloads',
                 'Coverage denominator includes authorized people without reviewed claims',
                 'Business access never grants manager-review authority',

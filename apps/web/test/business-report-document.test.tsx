@@ -4,6 +4,36 @@ import vm from 'node:vm';
 import { businessReportHtml } from '../src/business/business-report-document';
 import type { BusinessDashboard } from '../src/business/business-model';
 
+test('full catalogue snapshots include zero-holder skills without inventing level zero proficiency', () => {
+  const data = {
+    context: { asOf: '2026-10-14', revision: 1 },
+    summary: { employees: 2 },
+    coverageComplete: true,
+    coverage: [{ id: 'zero', label: 'Unclaimed skill', rank: 1, holders: 0 }],
+    categories: [],
+    expiry: [],
+    activity: [],
+    distribution: [],
+    rows: [],
+    credentialCoverage: [
+      {
+        id: 'a',
+        name: 'Credential <safe>',
+        issuer: 'Oracle',
+        currentHolders: 1,
+        reviewedHolders: 2,
+        expiredHolders: 1,
+      },
+    ],
+  } as unknown as BusinessDashboard;
+  const html = businessReportHtml(data, 'Organization');
+  assert.match(html, /full published four-level catalogue/);
+  assert.match(html, /Unclaimed skill/);
+  assert.match(html, /No reviewed proficiency/);
+  assert.ok(!html.includes('L0 · Foundation'));
+  assert.match(html, /Credential &lt;safe&gt;/);
+});
+
 test('executive report scripts run and CSV preserves visible sort, real rows and formula safety', async () => {
   const data = {
     context: { asOf: '2026-10-14', revision: 1 },

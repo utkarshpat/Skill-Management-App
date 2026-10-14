@@ -47,7 +47,13 @@ export interface BusinessQuery {
   from: string;
   to: string;
   page: number;
-  sort: 'employee_asc' | 'employee_desc' | 'name_asc' | 'updated_desc' | 'expiry_asc';
+  sort:
+    | 'employee_asc'
+    | 'employee_desc'
+    | 'name_asc'
+    | 'updated_desc'
+    | 'expiry_asc'
+    | 'certified_desc';
 }
 export interface BusinessContext {
   actorId?: string;
@@ -82,7 +88,24 @@ export interface BusinessDashboard {
     expired: number;
     expiring: number;
   };
-  coverage: { id: string; label: string; holders: number; rank: number }[];
+  coverage: { id: string; label: string; category?: string; holders: number; rank: number }[];
+  coverageComplete?: boolean;
+  credentialCoverage?: {
+    id: string;
+    name: string;
+    issuer: string;
+    category: string;
+    reviewedHolders: number;
+    currentHolders: number;
+    expiredHolders: number;
+  }[];
+  uncataloguedCredentials?: {
+    name: string;
+    issuer: string;
+    reviewedHolders: number;
+    currentHolders: number;
+    expiredHolders: number;
+  }[];
   categories?: { label: string; value: number }[];
   comparisons?: {
     id: string;
@@ -183,9 +206,14 @@ export function businessQuery(value: unknown): BusinessQuery {
     status = q.status ?? '';
   const sort = q.sort ?? (dataset === 'people' ? 'employee_asc' : 'updated_desc');
   if (
-    !['employee_asc', 'employee_desc', 'name_asc', 'updated_desc', 'expiry_asc'].includes(
-      String(sort),
-    )
+    ![
+      'employee_asc',
+      'employee_desc',
+      'name_asc',
+      'updated_desc',
+      'expiry_asc',
+      'certified_desc',
+    ].includes(String(sort))
   )
     throw new AccessError(400, 'Choose a supported sort.');
   const page = Number(q.page ?? 1),
@@ -232,8 +260,8 @@ export function businessQuery(value: unknown): BusinessQuery {
   if (from && to && from > to) throw new AccessError(400, 'Start date must precede end date.');
   return {
     sort: sort as BusinessQuery['sort'],
-    ...(q.scopeId ? { scopeId: identifier(q.scopeId) } : {}),
-    ...(q.skillId ? { skillId: identifier(q.skillId) } : {}),
+    ...(q.scopeId !== undefined ? { scopeId: identifier(q.scopeId) } : {}),
+    ...(q.skillId !== undefined ? { skillId: identifier(q.skillId) } : {}),
     dataset: dataset as BusinessQuery['dataset'],
     validity: validity as BusinessQuery['validity'],
     status: String(status),

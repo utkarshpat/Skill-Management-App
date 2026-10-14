@@ -48,7 +48,24 @@ export interface BusinessDashboard {
     expired: number;
     expiring: number;
   };
-  coverage: { id: string; label: string; holders: number; rank: number }[];
+  coverage: { id: string; label: string; category?: string; holders: number; rank: number }[];
+  coverageComplete?: boolean;
+  credentialCoverage?: {
+    id: string;
+    name: string;
+    issuer: string;
+    category: string;
+    reviewedHolders: number;
+    currentHolders: number;
+    expiredHolders: number;
+  }[];
+  uncataloguedCredentials?: {
+    name: string;
+    issuer: string;
+    reviewedHolders: number;
+    currentHolders: number;
+    expiredHolders: number;
+  }[];
   categories?: { label: string; value: number }[];
   comparisons?: {
     id: string;

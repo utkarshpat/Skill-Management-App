@@ -39,6 +39,7 @@
     "test:workflows": "node --env-file-if-exists=.env --import tsx test/workflows.integration.ts",
     "test:lifecycle": "node --env-file-if-exists=.env --import tsx test/workflow-lifecycle.integration.ts",
     "test:business": "node --env-file-if-exists=.env --import tsx test/business.integration.ts",
+    "test:coverage": "node --env-file-if-exists=.env --import tsx test/coverage.integration.ts",
     "test:people-search": "node --env-file-if-exists=.env --import tsx test/people-search.integration.ts"
   },
   "dependencies": {

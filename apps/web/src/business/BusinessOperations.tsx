@@ -48,6 +48,7 @@ import { BusinessRecordDate } from './BusinessRecordDate';
 import { BusinessRecordFiles } from './BusinessRecordFiles';
 import { AnalyticsOverview } from './AnalyticsOverview';
 import { peopleSearchPrompt } from './people-search-prompt';
+import { CredentialCoverage } from './CredentialCoverage';
 
 export function BusinessOperations() {
   const [params, setParams] = useSearchParams(),
@@ -308,7 +309,7 @@ function Insights({ context }: { context: BusinessContext }) {
     return () => exportAbort.current?.abort();
   }, [key]);
 
-  const download = async (format: string) => {
+  const download = async (format: string, reportKind?: string) => {
     if (exportGuard.current || pending || !data?.context.canExport) return;
     exportGuard.current = true;
     setExporting(true);
@@ -318,6 +319,7 @@ function Insights({ context }: { context: BusinessContext }) {
     try {
       const q = new URLSearchParams(key);
       q.set('format', format);
+      if (reportKind) q.set('reportKind', reportKind);
       const response = await authenticatedFetch(
         format === 'html' ? '/api/business/report?' + key : '/api/business/export?' + q,
         {
@@ -345,7 +347,7 @@ function Insights({ context }: { context: BusinessContext }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `business-${filters.get('dataset')}.${format}`;
+      a.download = `business-${reportKind ?? filters.get('dataset')}.${format}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
@@ -1036,6 +1038,11 @@ function Insights({ context }: { context: BusinessContext }) {
                       authorized workforce members. Historical snapshots remain intact. Click any
                       cell to inspect employee claims.
                     </p>
+                    <p className="bo-note">
+                      {data.coverageComplete
+                        ? 'Full published four-level catalogue, including skills with no reviewed holders.'
+                        : 'Top reported skills only. Full catalogue reporting requires migration 083.'}
+                    </p>
                   </div>
                 </div>
                 <div className="bo-level-legend">
@@ -1054,7 +1061,20 @@ function Insights({ context }: { context: BusinessContext }) {
                 </div>
               </div>
 
-              <div className="bo-heatmap">
+              <div className="bo-export">
+                {['csv', 'xlsx'].map(format => (
+                  <button
+                    key={format}
+                    disabled={
+                      pending || exporting || !data.context.canExport || !data.coverageComplete
+                    }
+                    onClick={() => void download(format, 'skill-coverage')}
+                  >
+                    {format === 'csv' ? 'CSV' : 'Excel'}
+                  </button>
+                ))}
+              </div>
+              <div className="bo-heatmap bo-full-coverage-scroll">
                 {businessCoverageRows(data.coverage).map(({ id, label, cells }) => {
                   const rowTotal = [1, 2, 3, 4].reduce(
                     (sum, r) => sum + (cells.get(r)?.holders ?? 0),
@@ -1127,6 +1147,11 @@ function Insights({ context }: { context: BusinessContext }) {
           {/* SECTION 2: CERTIFICATIONS, PILLARS & ISSUERS */}
           {(analyticalView === 'all' || analyticalView === 'certifications') && (
             <div className="bo-chart-grid">
+              <CredentialCoverage
+                data={data}
+                pending={pending || exporting}
+                onExport={format => void download(format, 'credential-headcount')}
+              />
               {/* Certification-wise headcount / Top Issuers (Requirement H: Certification-wise headcount) */}
               <Bars
                 title="Certificates by issuer"
@@ -1422,6 +1447,9 @@ function Insights({ context }: { context: BusinessContext }) {
                   >
                     <option value="employee_asc">Employee A–Z</option>
                     <option value="employee_desc">Employee Z–A</option>
+                    {filters.get('dataset') === 'people' && data.coverageComplete && (
+                      <option value="certified_desc">Most current credentials</option>
+                    )}
                     {filters.get('dataset') !== 'people' && (
                       <>
                         <option value="name_asc">Record A–Z</option>

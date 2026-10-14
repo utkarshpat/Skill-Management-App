@@ -609,7 +609,7 @@ export function businessReportHtml(
         <span class="report-scope">${escapeHtml(scopeLabel)}</span>
       </div>
       <h1 class="report-title">Workforce Capability &amp; Intelligence Report</h1>
-      <p class="report-scope">Authorized scope snapshot. Skill charts show the returned top skill aggregates, not the full catalogue. Offline filters refine this snapshot only.</p>
+      <p class="report-scope">Authorized scope snapshot. ${data.coverageComplete ? 'Skill charts cover the full published four-level catalogue.' : 'Skill charts show the returned top skill aggregates, not the full catalogue.'} Offline filters refine this snapshot only.</p>
       <div class="report-meta-tags">
         <span class="meta-chip">📅 Generated: ${escapeHtml(atDisplay)} UTC</span>
         <span class="meta-chip">🔒 As-Of Snapshot: ${escapeHtml(data.context.asOf || atIso.slice(0, 10))}</span>
@@ -624,6 +624,8 @@ export function businessReportHtml(
   </header>
 
   <p class="report-scope">Applied filters: ${escapeHtml(appliedFilters || 'Default filters')}</p>
+  <section class="chart-card" style="margin-bottom:24px"><h2>Certification headcount</h2><p class="report-scope">Distinct employees per credential. Counts overlap across credentials. Superseded renewals do not qualify as current records.</p>
+  ${data.coverageComplete ? '<div class="table-wrap"><table><thead><tr><th>Credential</th><th>Issuer</th><th>Current holders</th><th>Reviewed holders</th><th>Expired holders</th></tr></thead><tbody>' + [...(data.credentialCoverage || []), ...(data.uncataloguedCredentials || []).map(c => ({ ...c, name: c.name + ' (uncatalogued or retired)' }))].map(c => '<tr><td>' + escapeHtml(c.name) + '</td><td>' + escapeHtml(c.issuer) + '</td><td>' + c.currentHolders + '</td><td>' + c.reviewedHolders + '</td><td>' + c.expiredHolders + '</td></tr>').join('') + '</tbody></table></div>' : '<p>Full credential reporting is not available in this snapshot.</p>'}</section>
   <!-- KPI Strip -->
   <section class="kpi-grid">
     <div class="kpi-card blue">
@@ -688,7 +690,7 @@ export function businessReportHtml(
     <div class="chart-card">
       <div class="chart-header">
         <h3>Reported Skills Proficiency Mix</h3>
-        <span>Top reported skills · reviewed skill holders by rank</span>
+        <span>${data.coverageComplete ? 'Full published catalogue' : 'Top reported skills'} · reviewed skill holders by rank</span>
       </div>
       <div class="bar-chart-wrap">
         ${[1, 2, 3, 4]
@@ -1059,7 +1061,7 @@ export function businessReportHtml(
           <td><strong>\${escapeText(s.name)}</strong></td>
           <td>
             <span class="rank-badge rank-\${s.maxRank || 1}">
-              L\${s.maxRank} · \${escapeText(LEVEL_NAMES[(s.maxRank || 1) - 1])}
+              \${s.totalHolders ? 'L' + s.maxRank + ' · ' + escapeText(LEVEL_NAMES[s.maxRank - 1]) : 'No reviewed proficiency'}
             </span>
           </td>
           <td>
@@ -1075,7 +1077,7 @@ export function businessReportHtml(
               </small>
             </div>
           </td>
-          <td><strong>L\${s.average}</strong></td>
+          <td><strong>\${s.totalHolders ? 'L' + s.average : '—'}</strong></td>
           <td><strong>\${s.totalHolders.toLocaleString()}</strong></td>
           <td>
             <div style="display:flex;align-items:center;gap:8px;">
@@ -1350,7 +1352,7 @@ function renderTableRows(
         <td><strong>${escapeHtml(s.name)}</strong></td>
         <td>
           <span class="rank-badge rank-${s.maxRank || 1}">
-            L${s.maxRank} · ${escapeHtml(LEVEL_NAMES[(s.maxRank || 1) - 1])}
+            ${s.totalHolders ? 'L' + s.maxRank + ' · ' + escapeHtml(LEVEL_NAMES[s.maxRank - 1]) : 'No reviewed proficiency'}
           </span>
         </td>
         <td>
@@ -1366,7 +1368,7 @@ function renderTableRows(
             </small>
           </div>
         </td>
-        <td><strong>L${s.average}</strong></td>
+        <td><strong>${s.totalHolders ? 'L' + s.average : '—'}</strong></td>
         <td><strong>${s.totalHolders.toLocaleString()}</strong></td>
         <td>
           <div style="display:flex;align-items:center;gap:8px;">

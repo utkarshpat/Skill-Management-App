@@ -132,6 +132,8 @@ export class SqlBusinessStore implements BusinessStore {
     assertBusinessScope(result.context, await this.context(actor), exporting);
     return normalizeBusinessCollections(result, [
       'coverage',
+      'credentialCoverage',
+      'uncataloguedCredentials',
       'distribution',
       'categories',
       'comparisons',

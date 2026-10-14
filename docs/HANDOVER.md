@@ -4,6 +4,8 @@ Version: 2026-10-14. This is the maintained project handover. The interactive re
 
 ## Executive capability intelligence and advanced HTML analytics — 14 October 2026
 
+FDD reporting follow-up (migration 083 installed on development; hosted acceptance pending): [full catalogue coverage, credential headcount and ranking](FDD_REPORTING_INCREMENT_2026-10-14.md) adds the complete filtered published four-level catalogue including zero-holder skills, distinct current/reviewed/expired holders per credential, separate uncatalogued credentials and SQL ranking before pagination. CSV/Excel and HTML snapshots preserve these aggregates; AI exposes their exact semantics. Migration 083 passed development rollback tests and was permanently committed on verified `skill-management-dev` on 14 October following explicit user authorization. Employee records and access assignments were unchanged. Company hosting/SSO and scheduler activation remain deferred.
+
 Executive analytics increment, 14 October 2026: Analytics (`/business`) offers an interactive aggregate HTML snapshot; `/skill-reviews` retains unified review and team navigation. These do not complete all FDD reporting requirements. See [the latest commit audit and FDD mapping](COMMITS_AUDIT_AND_FDD_MAPPING_2026-10-14.md) for corrected behavior and remaining gaps. Corrections are local until separately released.
 
 1. **Self-Contained Executive HTML Capability Report**:

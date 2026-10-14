@@ -100,6 +100,7 @@ globalThis.__probe = {
   date: {},
   files: {},
   overview: {},
+  credentialCoverage: {},
   peoplePrompt,
   reportDocument: { businessReportHtml: () => '' },
 };
@@ -127,6 +128,7 @@ const sources = {
   './BusinessRecordDate': 'date',
   './BusinessRecordFiles': 'files',
   './AnalyticsOverview': 'overview',
+  './CredentialCoverage': 'credentialCoverage',
   './people-search-prompt': 'peoplePrompt',
 };
 source = source
