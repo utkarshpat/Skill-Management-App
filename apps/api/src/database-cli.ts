@@ -116,6 +116,7 @@ if (command !== 'check' && command !== 'migrate') {
           [81, '081_workflow_notification_details.sql'],
           [82, '082_conversational_people_search.sql'],
           [83, '083_full_catalogue_coverage.sql'],
+          [84, '084_skill_evidence_documents.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

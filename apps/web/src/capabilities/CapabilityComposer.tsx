@@ -11,7 +11,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { compressEvidenceImage } from '../evidence-image';
+import { prepareSkillEvidenceFile } from '../evidence-image';
 import { ClaimEvidence } from '../ClaimEvidence';
 import type { Claim } from '../MySkills';
 import { FormDialog } from '../FormDialog';
@@ -298,6 +298,40 @@ export function CapabilityComposer({
       },
     ]);
   };
+  function useEvidenceAsCertificate(skill: SelectedSkill, file: File) {
+    if (working || certs.length >= 10) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setSkillDialogError(
+        'Certificates have a 5 MB limit. Choose a smaller certificate file; your evidence stays unchanged.',
+      );
+      return;
+    }
+    dirty.current = true;
+    const certificateId = crypto.randomUUID();
+    setCerts(old => [
+      ...old,
+      {
+        id: certificateId,
+        revision: 0,
+        reuse: false,
+        fields: { ...emptyCertification(), expiryDate: '' },
+        skillIds: [skill.choice.id],
+        uploaded: false,
+        file,
+      },
+    ]);
+    setPendingEvidence(old => ({
+      ...old,
+      [skill.id]: (old[skill.id] ?? []).filter(v => v !== file),
+    }));
+    setHasCertificate(true);
+    setExpandedCertificate(certificateId);
+    setEditingSkill(undefined);
+    setPage(0);
+    toast.info(
+      'Review the certificate details, or use AI autofill. The supporting skill is already linked.',
+    );
+  }
   function sync(value: Submission, restore = false) {
     version.current = value.revision;
     if (restore && value.intake) {
@@ -599,7 +633,7 @@ export function CapabilityComposer({
       if (!submit) {
         if (Object.values(pendingEvidence).some(files => files.length)) {
           setError(
-            'Complete proficiency and certificate details before saving your evidence images.',
+            'Complete proficiency and certificate details before saving your evidence files.',
           );
           return;
         }
@@ -635,12 +669,16 @@ export function CapabilityComposer({
         const current = skillRevisions.find(v => v.id === skill.id)!;
         for (const file of pendingEvidence[skill.id] ?? []) {
           setPhase(`Uploading evidence for ${skill.choice.name}-`);
-          const image = await compressEvidenceImage(file);
+          const image = await prepareSkillEvidenceFile(file);
           const uploaded = await readApiResponse<{ revision: number }>(
             await authenticatedFetch(`/api/my-skills/${skill.id}/evidence`, {
               method: 'POST',
               signal: abort.signal,
-              headers: { 'Content-Type': image.type, 'X-Claim-Revision': String(current.revision) },
+              headers: {
+                'Content-Type': image.type,
+                'X-Claim-Revision': String(current.revision),
+                'X-Evidence-File-Name': encodeURIComponent(file.name),
+              },
               body: image,
             }),
             'Draft saved, but evidence upload could not be confirmed.',
@@ -1709,24 +1747,30 @@ export function CapabilityComposer({
                         claim={{ id: s.id, revision: s.revision, evidence: s.evidence } as Claim}
                         onRevision={revision => patchSkill(s.id, { revision })}
                         onBusy={setUploadBusy}
+                        onUseAsCertificate={file => useEvidenceAsCertificate(s, file)}
                       />
                     ) : (
                       <>
                         <label className="cap-evidence-upload">
-                          <Plus size={15} /> Add evidence image
+                          <Plus size={15} /> Add evidence file
                           <input
                             type="file"
-                            accept="image/jpeg,image/png,image/webp"
+                            accept="image/jpeg,image/png,image/webp,application/pdf"
                             disabled={working || (pendingEvidence[s.id]?.length ?? 0) >= 6}
                             onChange={e => {
                               const file = e.target.files?.[0];
                               e.target.value = '';
                               if (!file) return;
                               if (
-                                !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
+                                ![
+                                  'image/jpeg',
+                                  'image/png',
+                                  'image/webp',
+                                  'application/pdf',
+                                ].includes(file.type) ||
                                 file.size > 10 * 1024 * 1024
                               ) {
-                                setSkillDialogError('Choose JPEG, PNG or WebP, up to 10 MB.');
+                                setSkillDialogError('Choose PDF, JPEG, PNG or WebP, up to 10 MB.');
                                 return;
                               }
                               dirty.current = true;
@@ -1737,12 +1781,21 @@ export function CapabilityComposer({
                             }}
                           />
                         </label>
-                        <small>JPEG, PNG or WebP - up to 10 MB - compressed when saved</small>
+                        <small>
+                          PDF, JPEG, PNG or WebP - up to 10 MB - images compressed when saved
+                        </small>
                       </>
                     )}
                     {(pendingEvidence[s.id] ?? []).map((file, index) => (
                       <div className="cap-pending-evidence" key={index}>
                         <span>{file.name}</span>
+                        <button
+                          type="button"
+                          disabled={working}
+                          onClick={() => useEvidenceAsCertificate(s, file)}
+                        >
+                          Use as certificate
+                        </button>
                         <button
                           type="button"
                           disabled={working}

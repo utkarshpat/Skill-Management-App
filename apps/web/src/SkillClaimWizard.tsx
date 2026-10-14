@@ -475,7 +475,7 @@ export function SkillClaimWizard({
                 ) : (
                   <div className="skill-guidance">
                     <Paperclip size={18} />
-                    <p>Save your draft to add compressed evidence images before submitting.</p>
+                    <p>Save your draft to attach evidence before submitting.</p>
                   </div>
                 )}
               </section>

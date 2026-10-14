@@ -1,3 +1,9 @@
+export async function prepareSkillEvidenceFile(file: File): Promise<Blob> {
+  if (!file.size || file.size > 10 * 1024 * 1024)
+    throw Error('Choose PDF, JPEG, PNG or WebP evidence up to 10 MB.');
+  if (file.type === 'application/pdf') return file;
+  return compressEvidenceImage(file);
+}
 export async function compressEvidenceImage(file: File, maxInputMb = 10): Promise<Blob> {
   if (
     !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||

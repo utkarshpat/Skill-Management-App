@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import sharp from 'sharp';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFName } from 'pdf-lib';
 import { zipSync, strToU8 } from 'fflate';
 import { BlockBlobClient, ContainerClient } from '@azure/storage-blob';
 import {
   compressEvidence,
   prepareCertificateFile,
+  prepareSkillEvidence,
   SqlBlobEvidenceStore,
   type EvidenceState,
 } from '../src/modules/skills/evidence.js';
@@ -265,3 +266,23 @@ for (const outcome of ['committed', 'unknown', 'rejected'] as const)
     else await assert.rejects(uploading);
     assert.equal(deleted, outcome === 'rejected' ? 1 : 0);
   });
+
+test('skill PDFs support 10 MB while certificates retain the 5 MB limit', async () => {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage();
+  page.node.set(
+    PDFName.of('QAData'),
+    doc.context.register(doc.context.stream(new Uint8Array(6 * 1024 * 1024))),
+  );
+  const large = Buffer.from(await doc.save());
+  const prepared = await prepareSkillEvidence(large, 'application/pdf', 'proof.pdf');
+  assert.equal(prepared.mimeType, 'application/pdf');
+  assert.equal(prepared.width, null);
+  await assert.rejects(prepareCertificateFile(large, 'application/pdf', 'proof.pdf'), /up to 5 MB/);
+  await assert.rejects(
+    prepareSkillEvidence(Buffer.alloc(10485761), 'application/pdf', 'large.pdf'),
+    /up to 10 MB/,
+  );
+  await assert.rejects(prepareSkillEvidence(Buffer.from('<svg/>'), 'image/svg+xml', 'bad.svg'));
+  await assert.rejects(prepareSkillEvidence(Buffer.from('not PDF'), 'application/pdf', 'fake.pdf'));
+});

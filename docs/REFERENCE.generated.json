@@ -1,6 +1,6 @@
 {
   "version": "2026-10-14",
-  "revision": "d50549c1bca221e5",
+  "revision": "b64ba2df156f6781",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -85,7 +85,8 @@
       "080_approved_renewal_portfolio.sql",
       "081_workflow_notification_details.sql",
       "082_conversational_people_search.sql",
-      "083_full_catalogue_coverage.sql"
+      "083_full_catalogue_coverage.sql",
+      "084_skill_evidence_documents.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -4143,6 +4144,18 @@
             "nullable": false,
             "declaration": "created_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
             "source": "050_skill_evidence.sql"
+          },
+          "mime_type": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "mime_type varchar(100) NOT NULL CONSTRAINT DF_SkillEvidenceMime084 DEFAULT 'image/webp'",
+            "source": "084_skill_evidence_documents.sql"
+          },
+          "file_name": {
+            "type": "nvarchar(255)",
+            "nullable": false,
+            "declaration": "file_name nvarchar(255) NOT NULL CONSTRAINT DF_SkillEvidenceName084 DEFAULT N'evidence.webp'",
+            "source": "084_skill_evidence_documents.sql"
           }
         },
         "pk": [
@@ -7020,8 +7033,8 @@
     {
       "name": "SkillEvidence",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL",
-      "source": "database/migrations/051_submitted_skill_evidence.sql"
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL,@mime_type varchar(100)='image/webp',@file_name nvarchar(255)=N'evidence.webp'",
+      "source": "database/migrations/084_skill_evidence_documents.sql"
     },
     {
       "name": "ReadPrimaryCapabilities",

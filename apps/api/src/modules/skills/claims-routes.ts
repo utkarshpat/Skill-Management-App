@@ -87,7 +87,7 @@ export function registerClaimsRoutes(
     app.get(root + '/:claim/evidence', async (req, res) => {
       try {
         if (!dependencies?.evidenceStore)
-          throw new AccessError(503, 'Image evidence storage is not configured.');
+          throw new AccessError(503, 'Evidence storage is not configured.');
         const state = await dependencies.evidenceStore.read(
           res.locals.claimActor,
           reviewIdentifier(req.params.claim),
@@ -108,9 +108,22 @@ export function registerClaimsRoutes(
     app.get(root + '/:claim/evidence/:image', async (req, res) => {
       try {
         if (!dependencies?.evidenceStore)
-          throw new AccessError(503, 'Image evidence storage is not configured.');
+          throw new AccessError(503, 'Evidence storage is not configured.');
+        const claimId = reviewIdentifier(req.params.claim),
+          fileId = reviewIdentifier(req.params.image);
+        const state = await dependencies.evidenceStore.read(res.locals.claimActor, claimId);
+        const item = state.items.find(item => item.id === fileId);
+        if (!item) throw new AccessError(404, 'Evidence unavailable.');
+        const mime = item.mimeType ?? 'image/webp';
+        if (!['image/webp', 'application/pdf'].includes(mime))
+          throw new AccessError(503, 'Unsupported stored evidence.');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="evidence"; filename*=UTF-8''${encodeURIComponent(item.fileName ?? 'evidence.webp')}`,
+        );
         res
-          .type('image/webp')
+          .type(mime)
           .send(
             await dependencies.evidenceStore.image(
               res.locals.claimActor,
@@ -129,19 +142,31 @@ export function registerClaimsRoutes(
   }
   app.post(
     '/api/my-skills/:claim/evidence',
-    raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '1mb' }),
+    raw({ type: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'], limit: '10mb' }),
     async (req, res) => {
       try {
         if (!dependencies?.evidenceStore)
-          throw new AccessError(503, 'Image evidence storage is not configured.');
+          throw new AccessError(503, 'Evidence storage is not configured.');
         const revision = Number(req.headers['x-claim-revision']);
         if (!Number.isSafeInteger(revision) || revision < 1 || !Buffer.isBuffer(req.body))
-          throw new AccessError(400, 'Choose an image and save the claim first.');
+          throw new AccessError(400, 'Choose a file and save the claim first.');
         const state = await dependencies.evidenceStore.upload(
           res.locals.claimActor,
           reviewIdentifier(req.params.claim),
           revision,
           req.body,
+          {
+            mimeType: String(req.headers['content-type'] ?? '').split(';')[0],
+            fileName: (() => {
+              try {
+                return decodeURIComponent(
+                  String(req.headers['x-evidence-file-name'] ?? 'evidence'),
+                );
+              } catch {
+                throw new AccessError(400, 'Invalid evidence filename.');
+              }
+            })(),
+          },
         );
         res.json({ ...state, items: state.items.map(({ blobName, ...item }) => item) });
       } catch (e) {

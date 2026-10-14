@@ -73,10 +73,10 @@ function safeCertificateName(value: string, extension: string) {
   return `${stem}.${extension}`;
 }
 
-export async function prepareCertificateFile(source: Buffer, mimeType: string, fileName: string) {
+async function prepareFile(source: Buffer, mimeType: string, fileName: string, maxBytes: number) {
   const kind = certificateTypes[mimeType];
-  if (!kind || !source.length || source.length > 5 * 1024 * 1024)
-    throw new AccessError(400, 'Choose a supported certificate file up to 5 MB.');
+  if (!kind || !source.length || source.length > maxBytes)
+    throw new AccessError(400, `Choose a supported file up to ${maxBytes / 1024 / 1024} MB.`);
   let data = source,
     storedType = mimeType,
     storedName = safeCertificateName(fileName, kind.extension),
@@ -131,6 +131,13 @@ export async function prepareCertificateFile(source: Buffer, mimeType: string, f
   }
   return { data, mimeType: storedType, fileName: storedName, width, height };
 }
+export const prepareCertificateFile = (source: Buffer, mimeType: string, fileName: string) =>
+  prepareFile(source, mimeType, fileName, 5 * 1024 * 1024);
+export async function prepareSkillEvidence(source: Buffer, mimeType: string, fileName: string) {
+  if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(mimeType))
+    throw new AccessError(400, 'Choose PDF, JPEG, PNG or WebP evidence up to 10 MB.');
+  return prepareFile(source, mimeType, fileName, 10 * 1024 * 1024);
+}
 export class SqlBlobEvidenceStore implements EvidenceStore {
   private container;
   constructor(
@@ -163,7 +170,7 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
           .input('bytes', sql.Int, item?.bytes ?? null)
           .input('width', sql.Int, item?.width ?? null)
           .input('height', sql.Int, item?.height ?? null);
-        if (this.kind === 'certification')
+        if (this.kind === 'certification' || item?.mimeType)
           request
             .input('mime_type', sql.VarChar(100), item?.mimeType ?? null)
             .input('file_name', sql.NVarChar(255), item?.fileName ?? null);
@@ -178,16 +185,16 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
       });
     } catch (e) {
       const number = (e as { number?: number }).number;
-      if (number === 2812 || number === 208)
+      if ([2812, 208, 207, 8144, 201].includes(number ?? 0))
         throw new AccessError(
           503,
-          'Image storage schema is unavailable. Apply the required migration.',
+          'Evidence storage schema is unavailable. Apply the required migration.',
         );
       if (number === 51003) throw new AccessError(403, 'Evidence access is unavailable.');
       if (number === 51009) throw new AccessError(409, 'Claim changed. Refresh before uploading.');
       if (number === 51004) throw new AccessError(404, 'Evidence unavailable.');
       if (number === 51000 || number === 547)
-        throw new AccessError(400, 'Image limit reached or invalid evidence.');
+        throw new AccessError(400, 'File limit reached or invalid evidence.');
       throw e;
     }
   }
@@ -205,13 +212,20 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
     const attachment =
       this.kind === 'certification'
         ? await prepareCertificateFile(data, file?.mimeType ?? '', file?.fileName ?? 'certificate')
-        : {
-            ...(await compressEvidence(data)),
-            mimeType: 'image/webp',
-            fileName: 'evidence.webp',
-          };
+        : file
+          ? await prepareSkillEvidence(data, file.mimeType, file.fileName)
+          : {
+              ...(await compressEvidence(data)),
+              mimeType: 'image/webp',
+              fileName: 'evidence.webp',
+            };
     const id = crypto.randomUUID(),
-      extension = this.kind === 'certification' ? '' : '.webp',
+      extension =
+        this.kind === 'certification'
+          ? ''
+          : attachment.mimeType === 'application/pdf'
+            ? '.pdf'
+            : '.webp',
       blobName = `${this.account.toLowerCase()}/${this.kind === 'certification' ? 'certifications/' : ''}${claim.toLowerCase()}/${id}${extension}`,
       blob = this.container.getBlockBlobClient(blobName);
     const properties = await this.container.getProperties();
@@ -219,7 +233,7 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
       throw new AccessError(503, 'Evidence storage must be private.');
     await blob.uploadData(attachment.data, {
       blobHTTPHeaders: {
-        blobContentType: this.kind === 'certification' ? attachment.mimeType : 'image/webp',
+        blobContentType: attachment.mimeType,
         blobCacheControl: 'private, no-store',
       },
       conditions: { ifNoneMatch: '*' },
@@ -231,9 +245,8 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
         bytes: attachment.data.length,
         width: attachment.width,
         height: attachment.height,
-        ...(this.kind === 'certification'
-          ? { mimeType: attachment.mimeType, fileName: attachment.fileName }
-          : {}),
+        mimeType: attachment.mimeType,
+        fileName: attachment.fileName,
       });
     } catch (e) {
       // SQL rejection is definite; a transport failure may arrive after commit.
@@ -256,6 +269,8 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
       .getBlockBlobClient(item.blobName)
       .downloadToBuffer(0, item.bytes);
     const current = await this.read(actor, claim);
+    if (buffer.length !== item.bytes)
+      throw new AccessError(503, 'The complete evidence file is unavailable.');
     if (!current.items.some(i => i.id === item.id && i.blobName === item.blobName))
       throw new AccessError(404, 'Evidence unavailable.');
     return buffer;

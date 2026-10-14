@@ -23,7 +23,17 @@ test('Evidence HTTP binds actor, hides blob keys and rejects anonymous, forged, 
   const payload = {
     revision: 2,
     canUpload: true,
-    items: [{ id: image, blobName: 'private/internal/key.webp', bytes: 12, width: 1, height: 1 }],
+    items: [
+      {
+        id: image,
+        blobName: 'private/internal/key.webp',
+        bytes: 12,
+        width: 1,
+        height: 1,
+        mimeType: 'image/webp',
+        fileName: 'evidence.webp',
+      },
+    ],
   };
   const evidenceStore: EvidenceStore = {
     read: async id => {
@@ -71,6 +81,13 @@ test('Evidence HTTP binds actor, hides blob keys and rejects anonymous, forged, 
       (await fetch(url + '/' + image, { headers })).headers.get('content-type'),
       'image/webp',
     );
+    payload.items[0].mimeType = 'application/pdf';
+    payload.items[0].fileName = 'proof.pdf';
+    const pdfRead = await fetch(url + '/' + image, { headers });
+    assert.equal(pdfRead.status, 200);
+    assert.equal(pdfRead.headers.get('content-type'), 'application/pdf');
+    assert.equal(pdfRead.headers.get('x-content-type-options'), 'nosniff');
+    assert.ok(pdfRead.headers.get('content-disposition')?.includes('proof.pdf'));
     assert.equal((await fetch(url.replace(claim, 'bad-id'), { headers })).status, 400);
     assert.equal(
       (
@@ -93,7 +110,7 @@ test('Evidence HTTP binds actor, hides blob keys and rejects anonymous, forged, 
       400,
     );
     assert.equal(
-      (await fetch(url, { method: 'POST', headers, body: new Uint8Array(1048577) })).status,
+      (await fetch(url, { method: 'POST', headers, body: new Uint8Array(10485761) })).status,
       413,
     );
     assert.equal(

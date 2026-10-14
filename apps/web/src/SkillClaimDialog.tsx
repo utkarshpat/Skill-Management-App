@@ -190,7 +190,7 @@ export function SkillClaimDialog({
             <RelatedCapabilities kind="SKILL" id={claim.id} />
           </section>
           <section className="claim-content-block">
-            <h3>Attached evidence images</h3>
+            <h3>Attached evidence</h3>
             <ClaimEvidence
               claim={claim}
               reviewer={review || history}
