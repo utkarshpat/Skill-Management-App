@@ -189,7 +189,7 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
     if (!this.storage) throw new AccessError(503, 'Private file storage unavailable.');
     const before = await this.files(actor, id, record),
       item = before.items.find((i: any) => i.id === certificationId(fileId));
-    if (!item || !Number.isInteger(item.bytes) || item.bytes < 1 || item.bytes > 5 * 1024 * 1024)
+    if (!item || !Number.isInteger(item.bytes) || item.bytes < 1 || item.bytes > 10 * 1024 * 1024)
       throw new AccessError(404, 'Submitted file unavailable.');
     const container = BlobServiceClient.fromConnectionString(
       this.storage.connection,

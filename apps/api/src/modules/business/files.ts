@@ -7,7 +7,7 @@ export async function readBusinessFile(
 ) {
   const before = await read();
   const item = before.items.find(i => i.id === identifier(fileId));
-  if (!item || item.bytes < 1 || item.bytes > 5 * 1024 * 1024)
+  if (!item || !Number.isInteger(item.bytes) || item.bytes < 1 || item.bytes > 10 * 1024 * 1024)
     throw new AccessError(404, 'File unavailable.');
   const data = await download(item);
   const after = await read();
