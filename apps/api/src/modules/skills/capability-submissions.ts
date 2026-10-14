@@ -1,8 +1,16 @@
 import { AccessError } from '../../shared/errors.js';
 import { claimChange } from './claims.js';
 import { certificationChange, certificationId } from './certifications.js';
+import type { UploadChunk } from './upload-chunks.js';
 export interface CapabilitySubmissionStore {
   storageConfigured?: boolean;
+  autofillPart?(
+    actor: string,
+    source: Buffer,
+    mimeType: string,
+    fileName: string,
+    part: UploadChunk,
+  ): Promise<Buffer | undefined>;
   run(actor: string, operation: string, payload: object): Promise<any>;
   stage?(
     actor: string,
@@ -12,6 +20,7 @@ export interface CapabilitySubmissionStore {
     file: Buffer,
     mimeType: string,
     fileName: string,
+    part?: UploadChunk,
   ): Promise<any>;
   stagedFiles?(actor: string, id: string, cert: string): Promise<any>;
   stagedFile?(

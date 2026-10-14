@@ -1,3 +1,4 @@
+import { uploadPrivateFile } from '../private-file-upload';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
@@ -533,7 +534,7 @@ export function CapabilityComposer({
     request.current = abort;
     try {
       const data = await readApiResponse<any>(
-        await authenticatedFetch(root + '/autofill', {
+        await uploadPrivateFile(root + '/autofill', {
           method: 'POST',
           headers: {
             'Content-Type': cert.file.type,
@@ -671,7 +672,7 @@ export function CapabilityComposer({
           setPhase(`Uploading evidence for ${skill.choice.name}-`);
           const image = await prepareSkillEvidenceFile(file);
           const uploaded = await readApiResponse<{ revision: number }>(
-            await authenticatedFetch(`/api/my-skills/${skill.id}/evidence`, {
+            await uploadPrivateFile(`/api/my-skills/${skill.id}/evidence`, {
               method: 'POST',
               signal: abort.signal,
               headers: {
@@ -697,7 +698,7 @@ export function CapabilityComposer({
         setPhase(`Uploading ${certificate.file.name}…`);
         const current = certRevisions.find(c => c.id === certificate.id)!;
         const uploaded = await readApiResponse<any>(
-          await authenticatedFetch(`/api/certifications/${certificate.id}/image`, {
+          await uploadPrivateFile(`/api/certifications/${certificate.id}/image`, {
             method: 'POST',
             headers: {
               'Content-Type': certificate.file.type,
@@ -783,7 +784,7 @@ export function CapabilityComposer({
         if (!c.file || c.uploaded) continue;
         setPhase(`Saving ${c.file.name} in your private draft…`);
         const uploaded = await readApiResponse<any>(
-          await authenticatedFetch(`${root}/${id.current}/staged/${c.id}`, {
+          await uploadPrivateFile(`${root}/${id.current}/staged/${c.id}`, {
             method: 'POST',
             headers: {
               'Content-Type': c.file.type,

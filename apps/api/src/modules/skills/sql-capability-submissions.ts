@@ -11,7 +11,32 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import { certificationId } from './certifications.js';
 import { prepareCertificateFile } from './evidence.js';
 import { randomUUID } from 'node:crypto';
+import { assembleUpload, type UploadChunk } from './upload-chunks.js';
 export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
+  async autofillPart(
+    actor: string,
+    source: Buffer,
+    mimeType: string,
+    fileName: string,
+    part: UploadChunk,
+  ) {
+    if (!this.storage) throw new AccessError(503, 'Private file storage unavailable.');
+    const container = BlobServiceClient.fromConnectionString(
+      this.storage.connection,
+    ).getContainerClient(this.storage.container);
+    return assembleUpload(
+      container,
+      this.account,
+      actor,
+      'autofill',
+      0,
+      part,
+      source,
+      mimeType,
+      fileName,
+      5 * 1024 * 1024,
+    );
+  }
   get storageConfigured() {
     return Boolean(this.storage);
   }
@@ -60,12 +85,35 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
     source: Buffer,
     mimeType: string,
     fileName: string,
+    part?: UploadChunk,
   ) {
     if (!this.storage) throw new AccessError(503, 'Private file storage unavailable.');
     const before = await this.stagedFiles(actor, id, cert);
     if (!before.canUpload) throw new AccessError(403, 'Draft file upload is not assigned.');
     if (before.revision !== revision)
       throw new AccessError(409, 'Draft changed. Reload before uploading.');
+    if (part) {
+      const container = BlobServiceClient.fromConnectionString(
+        this.storage.connection,
+      ).getContainerClient(this.storage.container);
+      const assembled = await assembleUpload(
+        container,
+        this.account,
+        actor,
+        `intake/${id}/${cert}`,
+        revision,
+        part,
+        source,
+        mimeType,
+        fileName,
+        5 * 1024 * 1024,
+      );
+      if (!assembled) return { pending: true };
+      source = assembled;
+      const current = await this.stagedFiles(actor, id, cert);
+      if (!current.canUpload || current.revision !== revision)
+        throw new AccessError(409, 'Draft changed. Reopen it before uploading.');
+    }
     const file = await prepareCertificateFile(source, mimeType, fileName),
       fileId = randomUUID();
     const blobName =

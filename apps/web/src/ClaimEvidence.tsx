@@ -1,3 +1,4 @@
+import { uploadPrivateFile } from './private-file-upload';
 import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, RefreshCw, ExternalLink, FileText } from 'lucide-react';
 import { authenticatedFetch } from './auth';
@@ -183,7 +184,7 @@ export function ClaimEvidence({
     try {
       const image = await prepareSkillEvidenceFile(file);
       if (controller.signal.aborted) return;
-      const r = await authenticatedFetch(root, {
+      const r = await uploadPrivateFile(root, {
         method: 'POST',
         signal: controller.signal,
         headers: {

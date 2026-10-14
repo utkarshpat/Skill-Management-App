@@ -1,3 +1,4 @@
+import { uploadPrivateFile } from '../private-file-upload';
 import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ExternalLink, Send, ShieldCheck, X } from 'lucide-react';
 import '../skill-wizard.css';
@@ -186,9 +187,7 @@ function ComboBox({
     }
   }
 
-  const effectivePlaceholder = customActive
-    ? 'Type custom name...'
-    : placeholder;
+  const effectivePlaceholder = customActive ? 'Type custom name...' : placeholder;
 
   return (
     <div
@@ -213,7 +212,9 @@ function ComboBox({
           aria-autocomplete="list"
           aria-expanded={open}
           aria-controls={listId}
-          aria-activedescendant={open && highlightIndex >= 0 ? `${listId}-${highlightIndex}` : undefined}
+          aria-activedescendant={
+            open && highlightIndex >= 0 ? `${listId}-${highlightIndex}` : undefined
+          }
           onKeyDown={handleKeyDown}
           onChange={e => {
             setInputVal(e.target.value);
@@ -429,7 +430,7 @@ export function CertificationDialog({
         setPhase('Uploading certificate file…');
         const root = `/api/certifications/${encodeURIComponent(id.current)}/image`;
         const result = await readApiResponse<{ revision: number }>(
-          await authenticatedFetch(root, {
+          await uploadPrivateFile(root, {
             method: 'POST',
             headers: {
               'X-Certification-Revision': String(revision.current),

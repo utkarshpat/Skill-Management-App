@@ -20,6 +20,7 @@ test('Evidence HTTP binds actor, hides blob keys and rejects anonymous, forged, 
     image = randomUUID(),
     seen: string[] = [];
   let uploads = 0;
+  let parts = 0;
   const payload = {
     revision: 2,
     canUpload: true,
@@ -36,6 +37,15 @@ test('Evidence HTTP binds actor, hides blob keys and rejects anonymous, forged, 
     ],
   };
   const evidenceStore: EvidenceStore = {
+    uploadPart: async (id, _claim, revision, data, file, part) => {
+      seen.push(id);
+      parts++;
+      assert.equal(revision, 2);
+      assert.equal(data.length, 3 * 1024 * 1024);
+      assert.equal(file.mimeType, 'application/pdf');
+      assert.equal(part.index, 0);
+      return { pending: true };
+    },
     read: async id => {
       seen.push(id);
       return payload;
@@ -126,7 +136,48 @@ test('Evidence HTTP binds actor, hides blob keys and rejects anonymous, forged, 
     assert.equal(uploads, 0);
     assert.equal((await fetch(url, { method: 'POST', headers, body: 'x' })).status, 200);
     assert.equal(uploads, 1);
+    const partHeaders = {
+      ...headers,
+      'Content-Type': 'application/pdf',
+      'X-Upload-Id': image,
+      'X-Upload-Index': '0',
+      'X-Upload-Count': '2',
+      'X-Upload-Bytes': String(3 * 1024 * 1024 + 10),
+    };
+    assert.equal(
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers: partHeaders,
+          body: new Uint8Array(3 * 1024 * 1024),
+        })
+      ).status,
+      202,
+    );
+    assert.equal(parts, 1);
+    assert.equal(
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers: { ...partHeaders, 'X-Upload-Count': '99' },
+          body: 'x',
+        })
+      ).status,
+      400,
+    );
+    assert.equal(parts, 1);
     state.people[0].overrides.push({ permission: 'skill.claim', scope: 'OWN', effect: 'DENY' });
+    assert.equal(
+      (
+        await fetch(url, {
+          method: 'POST',
+          headers: partHeaders,
+          body: new Uint8Array(3 * 1024 * 1024),
+        })
+      ).status,
+      403,
+    );
+    assert.equal(parts, 1);
     assert.equal((await fetch(url, { method: 'POST', headers, body: 'x' })).status, 403);
     assert.equal(uploads, 1);
     state.people[0].overrides.push({ permission: 'skill.view', scope: 'OWN', effect: 'DENY' });

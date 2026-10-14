@@ -1,3 +1,4 @@
+import { streamPrivateFile } from '../../shared/private-file-response.js';
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import { readActorAccess, type AccessStore } from '../access/index.js';
@@ -191,7 +192,7 @@ export function registerBusinessRoutes(
         `attachment; filename="file"; filename*=UTF-8''${encodeURIComponent(item.fileName)}`,
       );
       res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.send(data);
+      await streamPrivateFile(res, data);
     } catch (error) {
       next(error);
     }

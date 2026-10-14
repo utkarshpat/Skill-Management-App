@@ -1,4 +1,6 @@
 import { raw, type Express } from 'express';
+import { uploadChunk } from './upload-chunks.js';
+import { streamPrivateFile } from '../../shared/private-file-response.js';
 import type { EvidenceStore, EvidenceState } from './evidence.js';
 import {
   can,
@@ -234,10 +236,8 @@ export function registerCertificationRoutes(
       if (!metadata) throw new AccessError(404, 'Certificate file unavailable.');
       const data = await c.images.image(c.actor, c.id, imageId);
       await imageContext(res, c.id);
-      res
-        .setHeader('X-Content-Type-Options', 'nosniff')
-        .type(metadata.mimeType ?? 'image/webp')
-        .send(data);
+      res.setHeader('X-Content-Type-Options', 'nosniff').type(metadata.mimeType ?? 'image/webp');
+      await streamPrivateFile(res, data);
     } catch (e) {
       if (e instanceof AccessError) res.status(e.status).json({ error: { message: e.message } });
       else next(e);
@@ -277,13 +277,28 @@ export function registerCertificationRoutes(
           }
           if (method === 'delete' && !c.images.remove)
             throw new AccessError(503, 'Image removal unavailable.');
-          const state =
-            method === 'post'
+          const part = method === 'post' ? uploadChunk(req.headers) : undefined;
+          if (part && !c.images.uploadPart)
+            throw new AccessError(503, 'File part storage unavailable.');
+          const state = part
+            ? await c.images.uploadPart!(
+                c.actor,
+                c.id,
+                revision,
+                req.body,
+                { mimeType, fileName },
+                part,
+              )
+            : method === 'post'
               ? await c.images.upload(c.actor, c.id, revision, req.body, {
                   mimeType,
                   fileName,
                 })
               : await c.images.remove!(c.actor, c.id, revision);
+          if ('pending' in state) {
+            res.status(202).json(state);
+            return;
+          }
           res.json(imageState(state));
         } catch (e) {
           if (e instanceof AccessError)

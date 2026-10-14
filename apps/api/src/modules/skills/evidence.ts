@@ -4,6 +4,7 @@ import { validateCertificateDocument } from './certificate-document.js';
 import { BlobServiceClient } from '@azure/storage-blob';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
+import { assembleUpload, type UploadChunk } from './upload-chunks.js';
 export interface EvidenceItem {
   id: string;
   blobName: string;
@@ -28,6 +29,14 @@ export interface EvidenceStore {
     file?: { mimeType: string; fileName: string },
   ): Promise<EvidenceState>;
   image(actor: string, claim: string, id: string): Promise<Buffer>;
+  uploadPart?(
+    actor: string,
+    claim: string,
+    revision: number,
+    data: Buffer,
+    file: { mimeType: string; fileName: string },
+    part: UploadChunk,
+  ): Promise<EvidenceState | { pending: true }>;
   remove?(actor: string, claim: string, revision: number): Promise<EvidenceState>;
 }
 export async function compressEvidence(data: Buffer) {
@@ -200,6 +209,35 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
   }
   read(actor: string, claim: string) {
     return this.run(actor, claim);
+  }
+  async uploadPart(
+    actor: string,
+    claim: string,
+    revision: number,
+    data: Buffer,
+    file: { mimeType: string; fileName: string },
+    part: UploadChunk,
+  ) {
+    await this.run(actor, claim, 'CHECK', revision);
+    const allowed =
+      this.kind === 'skill'
+        ? ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+        : Object.keys(certificateTypes);
+    if (!allowed.includes(file.mimeType)) throw new AccessError(400, 'Choose a supported file.');
+    const source = await assembleUpload(
+      this.container,
+      this.account,
+      actor,
+      `${this.kind}/${claim}`,
+      revision,
+      part,
+      data,
+      file.mimeType,
+      file.fileName,
+      (this.kind === 'skill' ? 10 : 5) * 1024 * 1024,
+    );
+    if (!source) return { pending: true as const };
+    return this.upload(actor, claim, revision, source, file);
   }
   async upload(
     actor: string,

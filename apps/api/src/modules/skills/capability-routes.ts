@@ -1,4 +1,6 @@
 import { raw, type Express, type RequestHandler } from 'express';
+import { uploadChunk } from './upload-chunks.js';
+import { streamPrivateFile } from '../../shared/private-file-response.js';
 import { AccessError } from '../../shared/errors.js';
 import { can, readActorAccess, type AccessStore } from '../access/index.js';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
@@ -164,7 +166,12 @@ export function registerCapabilityRoutes(
           req.body,
           String(req.headers['content-type'] ?? '').split(';')[0],
           name,
+          uploadChunk(req.headers),
         );
+        if (result.pending) {
+          res.status(202).json({ pending: true });
+          return;
+        }
         res.json({
           ...result,
           items: result.items.map(({ blobName: _private, ...item }: any) => item),
@@ -216,7 +223,7 @@ export function registerCapabilityRoutes(
         'Content-Disposition',
         `attachment; filename="file"; filename*=UTF-8''${encodeURIComponent(item.fileName)}`,
       );
-      res.send(data);
+      await streamPrivateFile(res, data);
     } catch (e) {
       next(e);
     }
@@ -243,7 +250,25 @@ export function registerCapabilityRoutes(
         } catch {
           throw new AccessError(400, 'Invalid certificate filename.');
         }
-        const file = await prepareCertificateFile(req.body, mime, name);
+        let source: Buffer = req.body;
+        const part = uploadChunk(req.headers);
+        if (part) {
+          if (!deps.capabilitySubmissions?.autofillPart)
+            throw new AccessError(503, 'Private file storage unavailable.');
+          const assembled = await deps.capabilitySubmissions.autofillPart(
+            res.locals.capabilityActor,
+            source,
+            mime,
+            name,
+            part,
+          );
+          if (!assembled) {
+            res.status(202).json({ pending: true });
+            return;
+          }
+          source = assembled;
+        }
+        const file = await prepareCertificateFile(source, mime, name);
         const abort = new AbortController();
         res.on('close', () => {
           if (!res.writableEnded) abort.abort();
@@ -324,7 +349,7 @@ export function registerCapabilityRoutes(
         'Content-Disposition',
         `attachment; filename="file"; filename*=UTF-8''${encodeURIComponent(item.fileName)}`,
       );
-      res.send(data);
+      await streamPrivateFile(res, data);
     } catch (e) {
       next(e);
     }

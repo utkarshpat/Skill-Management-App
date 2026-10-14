@@ -1,5 +1,7 @@
 import { readActorAccess } from '../access/index.js';
 import { raw, type Express } from 'express';
+import { uploadChunk } from './upload-chunks.js';
+import { streamPrivateFile } from '../../shared/private-file-response.js';
 import type { EvidenceStore } from './evidence.js';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import {
@@ -122,15 +124,15 @@ export function registerClaimsRoutes(
           'Content-Disposition',
           `attachment; filename="evidence"; filename*=UTF-8''${encodeURIComponent(item.fileName ?? 'evidence.webp')}`,
         );
-        res
-          .type(mime)
-          .send(
-            await dependencies.evidenceStore.image(
-              res.locals.claimActor,
-              reviewIdentifier(req.params.claim),
-              reviewIdentifier(req.params.image),
-            ),
-          );
+        res.type(mime);
+        await streamPrivateFile(
+          res,
+          await dependencies.evidenceStore.image(
+            res.locals.claimActor,
+            reviewIdentifier(req.params.claim),
+            reviewIdentifier(req.params.image),
+          ),
+        );
       } catch (e) {
         if (e instanceof AccessError) {
           res.status(e.status).json({ error: { message: e.message } });
@@ -150,24 +152,39 @@ export function registerClaimsRoutes(
         const revision = Number(req.headers['x-claim-revision']);
         if (!Number.isSafeInteger(revision) || revision < 1 || !Buffer.isBuffer(req.body))
           throw new AccessError(400, 'Choose a file and save the claim first.');
-        const state = await dependencies.evidenceStore.upload(
-          res.locals.claimActor,
-          reviewIdentifier(req.params.claim),
-          revision,
-          req.body,
-          {
-            mimeType: String(req.headers['content-type'] ?? '').split(';')[0],
-            fileName: (() => {
-              try {
-                return decodeURIComponent(
-                  String(req.headers['x-evidence-file-name'] ?? 'evidence'),
-                );
-              } catch {
-                throw new AccessError(400, 'Invalid evidence filename.');
-              }
-            })(),
-          },
-        );
+        const file = {
+          mimeType: String(req.headers['content-type'] ?? '').split(';')[0],
+          fileName: (() => {
+            try {
+              return decodeURIComponent(String(req.headers['x-evidence-file-name'] ?? 'evidence'));
+            } catch {
+              throw new AccessError(400, 'Invalid evidence filename.');
+            }
+          })(),
+        };
+        const part = uploadChunk(req.headers);
+        const store = dependencies.evidenceStore;
+        if (part && !store.uploadPart) throw new AccessError(503, 'File part storage unavailable.');
+        const state = part
+          ? await store.uploadPart!(
+              res.locals.claimActor,
+              reviewIdentifier(req.params.claim),
+              revision,
+              req.body,
+              file,
+              part,
+            )
+          : await store.upload(
+              res.locals.claimActor,
+              reviewIdentifier(req.params.claim),
+              revision,
+              req.body,
+              file,
+            );
+        if ('pending' in state) {
+          res.status(202).json(state);
+          return;
+        }
         res.json({ ...state, items: state.items.map(({ blobName, ...item }) => item) });
       } catch (e) {
         if (e instanceof AccessError) {
