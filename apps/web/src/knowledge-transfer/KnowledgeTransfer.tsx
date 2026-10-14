@@ -83,6 +83,28 @@ const walkthroughs = [
     ],
   },
   {
+    name: 'Executive Analytics',
+    section: 'executive-capability-intelligence-and-advanced-html-analytics-14-october-2026',
+    steps: [
+      'Scope selection',
+      'Workforce baseline & KPIs',
+      'Spider radar & level mix',
+      'Complex filter hub',
+      'HTML & CSV export',
+    ],
+  },
+  {
+    name: 'Certification',
+    section: 'certification-and-directory-review-corrections-10-october-2026',
+    steps: [
+      'Upload credential',
+      'Multimodal AI autofill',
+      'Manager review queue',
+      'Calendar expiry tracking',
+      'Renewal notification loop',
+    ],
+  },
+  {
     name: 'AI explanation',
     section: 'ai-architecture-budget-memory',
     steps: [
