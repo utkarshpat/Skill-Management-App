@@ -39,6 +39,7 @@ import {
   businessCoverageRows,
   businessPeriod,
   updateBusinessFilters,
+  businessReportHtml,
   type BusinessContext,
   type BusinessDashboard,
 } from './business-model';
@@ -309,6 +310,26 @@ function Insights({ context }: { context: BusinessContext }) {
 
   const download = async (format: string) => {
     if (exportGuard.current || pending || !data?.context.canExport) return;
+    if (format === 'html') {
+      try {
+        const scopeLabel =
+          scopes.find(s => s.id === params.get('scopeId'))?.label ?? 'All authorized scopes';
+        const day = new Date().toISOString().slice(0, 10);
+        const html = businessReportHtml(data, scopeLabel, new Date());
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `workforce-capability-report-${day}.html`;
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (e) {
+        setError((e as Error).message);
+      }
+      return;
+    }
     exportGuard.current = true;
     setExporting(true);
     setError('');
@@ -469,6 +490,17 @@ function Insights({ context }: { context: BusinessContext }) {
           </button>
         </nav>
         <div className="an-navigation-actions">
+          {data?.context.canExport && (
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={pending || exporting || !data}
+              title="Download interactive executive HTML report with charts and KPIs"
+              onClick={() => void download('html')}
+            >
+              <BarChart3 size={15} /> Executive Report (.html)
+            </button>
+          )}
           {context.canMatch && (
             <button
               className="secondary-button"
@@ -1352,6 +1384,14 @@ function Insights({ context }: { context: BusinessContext }) {
                   </p>
                 </div>
                 <div className="bo-export">
+                  <button
+                    disabled={pending || exporting || !data.context.canExport}
+                    className="secondary-button"
+                    onClick={() => download('html')}
+                    title="Export self-contained interactive HTML analytics report with visual charts and KPIs"
+                  >
+                    <BarChart3 size={16} /> Interactive HTML
+                  </button>
                   <button
                     disabled={pending || exporting || !data.context.canExport}
                     className="secondary-button"

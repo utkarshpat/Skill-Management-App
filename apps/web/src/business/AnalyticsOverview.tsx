@@ -337,6 +337,13 @@ export function AnalyticsOverview({
           <div>
             <button
               disabled={pending || exporting || !data.context.canExport}
+              onClick={() => onExport('html')}
+              title="Download self-contained interactive HTML analytics report"
+            >
+              Interactive HTML
+            </button>
+            <button
+              disabled={pending || exporting || !data.context.canExport}
               onClick={() => onExport('csv')}
             >
               CSV

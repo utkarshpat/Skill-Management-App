@@ -32,13 +32,11 @@ interface Team {
 }
 export function TeamCapability({
   onReviews,
-  navigation,
   supportingContent,
   canAskAi = false,
 }: {
   canAskAi?: boolean;
   onReviews: (personId: string) => void;
-  navigation?: ReactNode;
   supportingContent?: ReactNode;
 }) {
   const [data, setData] = useState<Team>(),
@@ -166,8 +164,6 @@ export function TeamCapability({
             )}
           </form>
         )}
-
-        {navigation}
       </div>
       {loading && (
         <div className="review-loading" role="status">

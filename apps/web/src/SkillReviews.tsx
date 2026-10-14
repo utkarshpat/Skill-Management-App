@@ -239,7 +239,7 @@ export function SkillReviews({
   );
   return (
     <div className="review-shell">
-      {!(view === 'team' && data?.canViewTeam) && navigation}
+      {navigation}
       {view === 'recommendations' && data?.canRecommend ? (
         <>
           <Recommendations sentOnly />
@@ -249,7 +249,6 @@ export function SkillReviews({
         <>
           <TeamCapability
             canAskAi={Boolean(data.canAskTeamAi)}
-            navigation={navigation}
             supportingContent={teamContent}
             onReviews={id => {
               setPerson(id);

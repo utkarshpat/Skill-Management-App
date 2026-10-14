@@ -1403,14 +1403,18 @@
 .team-count.pending {
   --count-color: #b87b11;
 }
-.review-shell .team-analytics-toolbar > .review-workspace-tabs {
-  flex-shrink: 0;
-  gap: 18px;
-  border-bottom: 0;
-  overflow: visible;
+.team-analytics-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
 }
 .team-analytics-toolbar .team-search {
-  min-width: 0;
+  margin: 0;
+  max-width: 540px;
+  width: 100%;
+  background: var(--surface);
+  min-width: 260px;
 }
 .team-analytics-toolbar .team-search input {
   width: 100%;
@@ -1419,28 +1423,16 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
-.team-analytics-toolbar .review-workspace-tabs > button {
-  padding: 13px 2px;
-}
 @media (max-width: 1000px) {
   .team-analytics-toolbar {
     flex-wrap: wrap;
   }
-  .review-shell .team-analytics-toolbar > .review-workspace-tabs {
-    margin-left: auto;
-  }
   .team-analytics-toolbar .team-search {
-    flex-basis: calc(100% - 140px);
+    max-width: 100%;
+    flex-basis: 100%;
   }
 }
 @media (max-width: 600px) {
-  .review-shell .team-analytics-toolbar > .review-workspace-tabs {
-    gap: 12px;
-  }
-  .team-analytics-toolbar .review-workspace-tabs > button {
-    font-size: 13px;
-    gap: 6px;
-  }
   .team-analytics-toolbar .team-refresh {
     padding: 10px;
     font-size: 13px;
