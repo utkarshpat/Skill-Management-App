@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ConversationMemory, taskSettings, taskInstructions } from '../src/modules/ai/context.js';
+import {
+  ConversationMemory,
+  taskSettings,
+  taskInstructions,
+  conversationTaskSettings,
+} from '../src/modules/ai/context.js';
 import { UsageMeter, geminiUsage } from '../src/modules/ai/usage.js';
 import { AssistantService, configuredProvider } from '../src/modules/ai/assistant.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
@@ -84,6 +89,92 @@ test('task prompts and output caps are selective, including quiz follow-ups', ()
   assert.doesNotMatch(taskInstructions('answer'), /20 questions/);
 });
 
+test('active task survives real memory compaction, durable restore and resets with the policy', () => {
+  let memory = new ConversationMemory();
+  let id: string | undefined;
+  const requests = [
+    'Give me a 10-question quiz on networking',
+    'Explain HTTP caching in plain language',
+    'Make it shorter',
+    'Make it even shorter',
+    'Make it shorter',
+  ];
+  for (let i = 0; i < requests.length; i++) {
+    const prepared = memory.prepare(
+      'actor',
+      { message: requests[i], conversationId: id },
+      'policy',
+    );
+    assert.equal(prepared.task.kind, i === 0 ? 'quiz' : 'answer');
+    if (i === 4) assert.equal(prepared.compacted, true);
+    memory.commit(prepared, 'Response');
+    id = prepared.id;
+    if (i === 3) {
+      memory = new ConversationMemory();
+      memory.restore(prepared.id, prepared.previous);
+    }
+  }
+  const changed = memory.prepare(
+    'actor',
+    { message: 'Make it shorter', conversationId: id },
+    'new-policy',
+  );
+  assert.equal(changed.task.kind, 'answer');
+  assert.equal(changed.history.length, 1);
+});
+
+test('quiz count survives many compacted refinements but a new task resets it', () => {
+  const memory = new ConversationMemory();
+  let id: string | undefined;
+  for (const message of [
+    'Networking quiz',
+    'Make it 6',
+    ...Array(8).fill('Make it shorter'),
+    'Make it 4',
+  ]) {
+    const prepared = memory.prepare('actor', { message, conversationId: id }, 'policy');
+    assert.equal(prepared.task.kind, 'quiz');
+    assert.equal(
+      prepared.task.questionCount,
+      message === 'Networking quiz' ? 10 : message === 'Make it 4' ? 4 : 6,
+    );
+    memory.commit(prepared, 'Response');
+    id = prepared.id;
+  }
+  assert.equal(
+    memory.prepare('actor', { message: 'Show my profile', conversationId: id }, 'policy').task.kind,
+    'answer',
+  );
+});
+
+test('AssistantService consumes the active task after compaction instead of mixed quiz excerpts', async () => {
+  const store = await LocalAccessStore.open(),
+    actor = store.snapshot().people[0].id;
+  const caps: (number | undefined)[] = [];
+  const assistant = new AssistantService(store, undefined, {
+    name: 'fixture',
+    complete: async (_messages, _tools, _signal, options) => {
+      caps.push(options?.maxOutputTokens);
+      return { content: 'Fixture answer', calls: [] };
+    },
+  });
+  let conversationId: string | undefined;
+  for (const message of [
+    'Networking quiz',
+    'Explain HTTP caching in plain language',
+    'Make it shorter',
+    'Make it even shorter',
+    'Make it shorter',
+  ]) {
+    const result = await assistant.chat(actor, {
+      message,
+      ...(conversationId ? { conversationId } : {}),
+    });
+    conversationId = result.conversationId;
+  }
+  assert.deepEqual(caps, [3750, 1200, 1200, 1200, 1200]);
+});
+
 test('usage sums model rounds without double-counting cached or thought tokens; unknown remains unknown', () => {
   const meter = new UsageMeter();
   const first = meter.begin();
@@ -117,6 +208,81 @@ test('usage sums model rounds without double-counting cached or thought tokens; 
   meter.begin();
   assert.equal(meter.snapshot().inputTokens, null);
   assert.equal(geminiUsage({ promptTokenCount: -1, candidatesTokenCount: '12' }).inputTokens, null);
+});
+
+test('quiz topic clarification preserves count and explicit switches reset both memory and message history', async () => {
+  const store = await LocalAccessStore.open(),
+    actor = store.snapshot().people[0].id;
+  const artifact = {
+    kind: 'practice_quiz',
+    title: 'Networking',
+    summary: 'Practice',
+    body: '',
+    steps: [],
+    questions: Array.from({ length: 6 }, (_, i) => ({
+      prompt: `Q${i}`,
+      options: ['A', 'B', 'C', 'D'],
+      correctIndex: 0,
+      explanation: 'A',
+    })),
+  };
+  let round = 0;
+  const assistant = new AssistantService(store, undefined, {
+    name: 'fixture',
+    complete: async () =>
+      ++round === 1
+        ? { content: 'Which topic should the quiz cover?', calls: [] }
+        : {
+            content: '',
+            calls: [
+              {
+                id: 'output',
+                type: 'function',
+                function: { name: 'present_output', arguments: JSON.stringify(artifact) },
+              },
+            ],
+          },
+  });
+  const first = await assistant.chat(actor, { message: 'Give me a 6-question quiz' });
+  assert.equal(
+    (await assistant.chat(actor, { message: 'Networking', conversationId: first.conversationId }))
+      .artifact?.questions.length,
+    6,
+  );
+  const history = [
+    { role: 'user' as const, content: 'Give me a 6-question quiz' },
+    { role: 'assistant' as const, content: 'Which topic?' },
+    { role: 'user' as const, content: 'Networking' },
+  ];
+  assert.equal(conversationTaskSettings(history).questionCount, 6);
+  assert.equal(
+    conversationTaskSettings([
+      ...history,
+      { role: 'user', content: 'Make it a learning plan instead' },
+    ]).kind,
+    'draft',
+  );
+  assert.equal(
+    conversationTaskSettings([...history, { role: 'user', content: 'Show my profile' }]).kind,
+    'answer',
+  );
+
+  const memory = new ConversationMemory();
+  const quiz = memory.prepare('actor', { message: 'Give me a 6-question quiz' }, 'policy');
+  memory.commit(quiz, 'Which topic?');
+  const plan = memory.prepare(
+    'actor',
+    { message: 'Make it a learning plan instead', conversationId: quiz.id },
+    'policy',
+  );
+  assert.equal(plan.task.kind, 'draft');
+  assert.equal(plan.task.questionCount, undefined);
+  const reset = memory.prepare(
+    'actor',
+    { message: 'Networking', conversationId: quiz.id },
+    'changed-policy',
+  );
+  assert.equal(reset.task.kind, 'answer');
 });
 
 test('server-owned history handles long replies and sends compact prompts with actual usage', async () => {

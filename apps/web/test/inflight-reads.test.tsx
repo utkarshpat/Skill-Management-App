@@ -131,3 +131,42 @@ test('sharing response headers does not abort a body that is still streaming', a
   assert.equal(await bodyA, 'firstlast');
   assert.equal(await bodyB, 'firstlast');
 });
+
+test('cancellation after headers rejects only that consumer body and stops transport when all cancel', async () => {
+  let transportSignal: AbortSignal | null | undefined;
+  let complete = () => {};
+  const reads = new InflightReads(async (_path, init) => {
+    transportSignal = init?.signal;
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('first'));
+          complete = () => {
+            controller.enqueue(new TextEncoder().encode('last'));
+            controller.close();
+          };
+        },
+      }),
+    );
+  });
+  const first = new AbortController(),
+    second = new AbortController();
+  const [a, b] = await Promise.all([
+    reads.fetch('/api/file', { signal: first.signal }),
+    reads.fetch('/api/file', { signal: second.signal }),
+  ]);
+  const cancelled = a.text(),
+    continuing = b.text();
+  first.abort();
+  await assert.rejects(cancelled, { name: 'AbortError' });
+  assert.equal(transportSignal?.aborted, false);
+  complete();
+  assert.equal(await continuing, 'firstlast');
+
+  const third = new AbortController();
+  const response = await reads.fetch('/api/file', { signal: third.signal });
+  const body = response.text();
+  third.abort();
+  await assert.rejects(body, { name: 'AbortError' });
+  assert.equal(transportSignal?.aborted, true);
+});

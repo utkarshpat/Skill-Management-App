@@ -311,6 +311,48 @@ test('CSV and XLSX export every supplied row, preserve metadata and protect form
   assert.match(contextSheet, /&apos; =HYPERLINK/);
   assert.doesNotMatch(contextSheet, /\u0001/);
 });
+
+test('large complete Analytics CSV streams bytes and still rejects export revocation before delivery', async t => {
+  const s = state();
+  let current = context(),
+    revoke = false;
+  const data = dashboard();
+  data.rows = Array.from({ length: 50000 }, (_, i) => ({
+    employee: `Synthetic ${i}`,
+    employeeCode: `QA-${i}`,
+    skill: 'SQL',
+    description: 'x'.repeat(200),
+  }));
+  data.total = data.rows.length;
+  const business = {
+    context: async () => structuredClone(current),
+    dashboard: async () => {
+      const value = { ...data, context: structuredClone(current) };
+      if (revoke) current = { ...current, canExport: false };
+      return value;
+    },
+  } as unknown as BusinessStore;
+  const server = createApp({
+    verify: async () => ({ tenantId: actor, objectId: actor }),
+    resolveAccess: async () => actor,
+    profile: async () => undefined,
+    access: { snapshot: () => structuredClone(s), person: () => s.people[0], save: async () => s },
+    business,
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/business/export?dataset=skills&format=csv`;
+  const headers = { Authorization: 'Bearer trusted' };
+  const response = await fetch(url, { headers });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-length'), null);
+  assert.equal(response.headers.get('transfer-encoding'), 'chunked');
+  const csv = Buffer.from(await response.arrayBuffer());
+  assert.ok(csv.length > 4.5 * 1024 * 1024);
+  assert.ok(csv.equals(Buffer.from(businessCsv(data, businessQuery({ dataset: 'skills' })))));
+  revoke = true;
+  assert.equal((await fetch(url, { headers })).status, 403);
+});
 test('SQL JSON timestamps remain UTC and GUID normalization never changes ordinary names', () => {
   const row = readSqlJson<Record<string, string>>(
     '{"id":"AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA","name":"AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA","asOf":"2026-10-10T12:00:00.123","expiry":"2026-10-10"}',

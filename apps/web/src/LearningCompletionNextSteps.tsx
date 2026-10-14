@@ -109,12 +109,17 @@ export function LearningCompletionNextSteps({ plans }: { plans: Plan[] }) {
                 className="secondary-button"
                 to={
                   '/my-skills?action=add' +
-                  (plan?.skillId ? '&skill=' + encodeURIComponent(plan.skillId) : '')
+                  (plan?.skillId
+                    ? '&skill=' +
+                      encodeURIComponent(plan.skillId) +
+                      '&skillName=' +
+                      encodeURIComponent(plan.skillName ?? '')
+                    : '')
                 }
               >
                 Add skill <ArrowRight size={14} />
               </Link>
-              <Link className="secondary-button" to="/my-skills?action=add">
+              <Link className="secondary-button" to="/my-skills?action=add&entry=certificate">
                 Upload earned certificate <ArrowRight size={14} />
               </Link>
             </div>

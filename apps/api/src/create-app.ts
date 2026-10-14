@@ -192,7 +192,11 @@ export function createApp(
       error: { code: 'NOT_FOUND', message: 'Route not found.', requestId: res.locals.requestId },
     });
   });
-  const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+  const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
+    if (res.headersSent) {
+      next(error);
+      return;
+    }
     if (error instanceof DatabaseQuotaUnavailable) {
       res.setHeader('Retry-After', error.retryAfter);
       res.status(503).json({

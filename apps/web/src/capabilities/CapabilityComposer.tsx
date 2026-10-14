@@ -47,6 +47,9 @@ import {
 import '../certifications/certifications.css';
 import './capabilities.css';
 import { useIntakeFile } from './useIntakeFile';
+import { resolveIntakeSkill } from './intake-entry';
+import { warnUnsavedUnload } from '../unsaved-unload';
+import { restoreIntakeCertificates, certificateForAutofill } from './certificate-intake';
 const root = '/api/capability-submissions';
 async function json<T>(path: string, body?: object, signal?: AbortSignal) {
   return readApiResponse<T>(
@@ -122,7 +125,10 @@ function FileCard({
   );
 }
 export function CapabilityComposer({
-  initialCertificate: _initialCertificate = false,
+  initialCertificate = false,
+  initialSkill,
+  initialSkillDraft,
+  initialEvidenceFile,
   submissionId,
   renewal,
   initialCredential,
@@ -130,6 +136,9 @@ export function CapabilityComposer({
   onSaved,
 }: {
   initialCertificate?: boolean;
+  initialSkill?: { id?: string; name?: string };
+  initialSkillDraft?: SelectedSkill;
+  initialEvidenceFile?: File;
   submissionId?: string;
   renewal?: { id: string; fields: CertificationFields; skillIds?: string[] };
   initialCredential?: {
@@ -147,49 +156,52 @@ export function CapabilityComposer({
     version = useRef(0),
     lock = useRef(false),
     mounted = useRef(true);
-  const [page, setPage] = useState(0),
-    [hasCertificate, setHasCertificate] = useState(true),
-    [skills, setSkills] = useState<SelectedSkill[]>([]),
+  const [page, setPage] = useState(initialSkill && !initialCertificate ? 1 : 0),
+    [hasCertificate, setHasCertificate] = useState(!initialSkill || initialCertificate),
+    [skills, setSkills] = useState<SelectedSkill[]>(initialSkillDraft ? [initialSkillDraft] : []),
     [certs, setCerts] = useState<SelectedCertificate[]>(() =>
-      renewal
-        ? [
-            {
-              id: crypto.randomUUID(),
-              revision: 0,
-              reuse: false,
-              fields: renewal.fields,
-              skillIds: [],
-              uploaded: false,
-              renewedFromId: renewal.id,
-            },
-          ]
-        : initialCredential
+      initialSkill && !initialCertificate
+        ? []
+        : renewal
           ? [
-              {
-                id: initialCredential.id,
-                revision: initialCredential.revision,
-                reuse: false,
-                fields: initialCredential.fields,
-                skillIds:
-                  initialCredential.relatedSkills
-                    ?.map(s => s.skillId ?? s.id)
-                    .filter((v): v is string => Boolean(v)) ?? [],
-                uploaded: Boolean(initialCredential.hasImage),
-                ...(initialCredential.renewedFromId
-                  ? { renewedFromId: initialCredential.renewedFromId }
-                  : {}),
-              },
-            ]
-          : [
               {
                 id: crypto.randomUUID(),
                 revision: 0,
                 reuse: false,
-                fields: { ...emptyCertification(), expiryDate: '' },
+                fields: renewal.fields,
                 skillIds: [],
                 uploaded: false,
+                renewedFromId: renewal.id,
               },
-            ],
+            ]
+          : initialCredential
+            ? [
+                {
+                  id: initialCredential.id,
+                  revision: initialCredential.revision,
+                  reuse: false,
+                  fields: initialCredential.fields,
+                  skillIds:
+                    initialCredential.relatedSkills
+                      ?.map(s => s.skillId ?? s.id)
+                      .filter((v): v is string => Boolean(v)) ?? [],
+                  uploaded: Boolean(initialCredential.hasImage),
+                  ...(initialCredential.renewedFromId
+                    ? { renewedFromId: initialCredential.renewedFromId }
+                    : {}),
+                },
+              ]
+            : [
+                {
+                  id: crypto.randomUUID(),
+                  revision: 0,
+                  reuse: false,
+                  fields: { ...emptyCertification(), expiryDate: '' },
+                  skillIds: initialSkillDraft ? [initialSkillDraft.choice.id] : [],
+                  uploaded: false,
+                  file: initialEvidenceFile,
+                },
+              ],
     ),
     [busy, setBusy] = useState(false),
     [uploadBusy, setUploadBusy] = useState(false),
@@ -198,6 +210,7 @@ export function CapabilityComposer({
     [discard, setDiscard] = useState(false),
     [recovery, setRecovery] = useState(false);
   const [expandedCertificate, setExpandedCertificate] = useState<string | undefined>(certs[0]?.id);
+  const [fileRefresh, setFileRefresh] = useState(0);
   const isRenewal = Boolean(renewal) || certs.some(c => Boolean(c.renewedFromId));
   const [autofillingCertificate, setAutofillingCertificate] = useState<string>();
   const [editingSkill, setEditingSkill] = useState<string>();
@@ -218,7 +231,7 @@ export function CapabilityComposer({
     [suggestionCertificate, setSuggestionCertificate] = useState<string>(),
     [credentialSuggestion, setCredentialSuggestion] = useState<any>(),
     [catalogueError, setCatalogueError] = useState('');
-  const dirty = useRef(false),
+  const dirty = useRef(Boolean(initialSkillDraft || initialEvidenceFile)),
     request = useRef<AbortController | undefined>(undefined);
   useEffect(() => {
     mounted.current = true;
@@ -234,6 +247,12 @@ export function CapabilityComposer({
   const activeSuggestions = activeCertificateSuggestions(certs, definitions, suggestions);
   const hasUploadedCertificate = certs.some(c => Boolean(c.file || c.uploaded || c.reuse));
   const working = busy || uploadBusy || initializing || !personalReady || recovery;
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) =>
+      warnUnsavedUnload(event, dirty.current || lock.current || uploadBusy || recovery);
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [uploadBusy, recovery]);
   const patchCertificate = (certId: string, patch: Partial<SelectedCertificate>) => {
     dirty.current = true;
     const current = certs.find(c => c.id === certId);
@@ -335,20 +354,10 @@ export function CapabilityComposer({
   }
   function sync(value: Submission, restore = false) {
     version.current = value.revision;
+    if (restore) setFileRefresh(v => v + 1);
     if (restore && value.intake) {
       setSkills(value.intake.skills);
-      setCerts(
-        value.intake.certifications.map(c => ({
-          ...c,
-          file: certs.find(old => old.id === c.id)?.file,
-          uploaded: Boolean(
-            value.stagedFiles?.some(f => f.certificationId.toLowerCase() === c.id.toLowerCase()),
-          ),
-          staged: Boolean(
-            value.stagedFiles?.some(f => f.certificationId.toLowerCase() === c.id.toLowerCase()),
-          ),
-        })),
-      );
+      setCerts(restoreIntakeCertificates(value));
       setHasCertificate(value.intake.certifications.length > 0);
       setExpandedCertificate(value.intake.certifications[0]?.id);
       setPage(value.intake.certifications.length ? 0 : 1);
@@ -404,6 +413,8 @@ export function CapabilityComposer({
   useEffect(() => {
     const abort = new AbortController();
     async function bootstrap() {
+      setPersonalReady(false);
+      setError('');
       try {
         const [availability, personal] = await Promise.all([
           json<{ aiAvailable: boolean; fileAvailable: boolean }>(
@@ -455,7 +466,41 @@ export function CapabilityComposer({
               old.map(c => ({ ...c, skillIds: approved.map((s: any) => s.skillId) })),
             );
           }
-          setPersonalReady(true);
+          if (initialSkill && !submissionId && !initialSkillDraft) {
+            const choice = await resolveIntakeSkill(initialSkill, path =>
+              json(path, undefined, abort.signal),
+            );
+            if (abort.signal.aborted) return;
+            const own =
+              choice &&
+              (personal.claims ?? []).find(
+                (c: any) => c.skillId.toLowerCase() === choice.id.toLowerCase(),
+              );
+            if (!choice)
+              setError(
+                'This skill is no longer available in the published catalogue. Choose another skill.',
+              );
+            else if (own?.status === 'SUBMITTED')
+              setError('This skill is already awaiting review.');
+            else {
+              dirty.current = true;
+              setSkills([
+                {
+                  id: own?.id ?? crypto.randomUUID(),
+                  revision: own?.revision ?? 0,
+                  choice,
+                  reuse: own?.status === 'APPROVED',
+                  rank: own?.rank ?? 0,
+                  experienceMonths: own?.experienceMonths ?? 0,
+                  description: own?.description ?? '',
+                  projects: own?.projects ?? '',
+                  evidence: own?.evidence ?? '',
+                  lastUsedOn: own?.lastUsedOn?.slice(0, 10) ?? '',
+                },
+              ]);
+              setEditingSkill(choice.id);
+            }
+          }
         }
         if (submissionId) {
           const saved = await json<Submission>(root + '/' + submissionId, undefined, abort.signal);
@@ -467,8 +512,12 @@ export function CapabilityComposer({
             sync(saved, true);
           }
         }
+        if (!abort.signal.aborted) setPersonalReady(true);
       } catch (e) {
-        if (!abort.signal.aborted) setError('Your form could not open. Please try again.');
+        if (!abort.signal.aborted) {
+          setPersonalReady(false);
+          setError((e as Error).message || 'Your form could not open. Please try again.');
+        }
       } finally {
         if (!abort.signal.aborted) setInitializing(false);
       }
@@ -524,7 +573,7 @@ export function CapabilityComposer({
     };
   }, [query, cataloguePage, catalogueAttempt]);
   async function autofill(cert: SelectedCertificate) {
-    if (lock.current || !cert.file) return;
+    if (lock.current || working || (!cert.file && !cert.uploaded)) return;
     lock.current = true;
     setBusy(true);
     setAutofillingCertificate(cert.id);
@@ -533,14 +582,15 @@ export function CapabilityComposer({
     const abort = new AbortController();
     request.current = abort;
     try {
+      const file = await certificateForAutofill(cert, id.current, authenticatedFetch, abort.signal);
       const data = await readApiResponse<any>(
         await uploadPrivateFile(root + '/autofill', {
           method: 'POST',
           headers: {
-            'Content-Type': cert.file.type,
-            'X-File-Name': encodeURIComponent(cert.file.name),
+            'Content-Type': file.type,
+            'X-File-Name': encodeURIComponent(file.name),
           },
-          body: cert.file,
+          body: file,
           signal: abort.signal,
         }),
         'AI could not read this file. Continue manually.',
@@ -1091,6 +1141,7 @@ export function CapabilityComposer({
                           >
                             {page === 0 && expandedCertificate === c.id && (
                               <FileCard
+                                key={`${c.id}:${fileRefresh}`}
                                 certificate={c}
                                 busy={working}
                                 onBusy={setUploadBusy}
@@ -1119,9 +1170,13 @@ export function CapabilityComposer({
                                 <button
                                   type="button"
                                   className="admin-primary cap-autofill-btn"
-                                  disabled={working || !c.file || !aiAvailable}
+                                  disabled={working || (!c.file && !c.uploaded) || !aiAvailable}
                                   onClick={() => void autofill(c)}
-                                  title={!c.file ? 'Upload a certificate to autofill' : undefined}
+                                  title={
+                                    !c.file && !c.uploaded
+                                      ? 'Upload a certificate to autofill'
+                                      : undefined
+                                  }
                                 >
                                   <Sparkles size={14} />{' '}
                                   {autofillingCertificate === c.id

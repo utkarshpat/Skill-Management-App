@@ -14,6 +14,7 @@ export function canonicalAssistantDestination(input: string): string | undefined
       '/skill-reviews',
       '/learning',
       '/requests',
+      '/business',
     ].includes(input)
   )
     return input;

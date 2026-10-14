@@ -50,6 +50,15 @@ test('learning AI navigation requires the exact currently permitted page', () =>
   assert.equal(canonicalAssistantDestination('/learning?personId=other'), undefined);
 });
 
+test('Analytics navigation requires its exact authorized page', () => {
+  const analytics = { label: 'Analytics', url: '/business' };
+  assert.deepEqual(assistantNavigationTargets('[Analytics](/business)', [], [analytics]), [
+    analytics,
+  ]);
+  assert.deepEqual(assistantNavigationTargets('[Analytics](/business)', [], []), []);
+  assert.equal(canonicalAssistantDestination('/business?scopeId=foreign'), undefined);
+});
+
 test('workflow drafts offer explicit review without automatic submission or navigation', () => {
   for (const kind of ['request_draft', 'incident_draft'] as const) {
     const artifact = {

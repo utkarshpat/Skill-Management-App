@@ -180,6 +180,35 @@ test('quiz delivery enforces explicit, default and follow-up question counts', a
       5,
       true,
     ],
+    [
+      [
+        { role: 'user', content: 'Give me a 10-question quiz on networking' },
+        { role: 'assistant', content: 'Here are ten questions.' },
+        { role: 'user', content: 'Make it 6' },
+        { role: 'assistant', content: 'Here are six questions.' },
+        { role: 'user', content: 'Make it shorter' },
+      ],
+      6,
+      true,
+    ],
+    [
+      [
+        { role: 'user', content: 'Give me a 10-question quiz on networking' },
+        { role: 'user', content: 'Make it 6' },
+        { role: 'user', content: 'Make it 4' },
+      ],
+      6,
+      false,
+    ],
+    [
+      [
+        { role: 'user', content: 'Give me a 10-question quiz on networking' },
+        { role: 'user', content: 'Make it 6' },
+        { role: 'user', content: 'Make it 4' },
+      ],
+      4,
+      true,
+    ],
   ] as const) {
     const assistant = new AssistantService(store, undefined, {
       name: 'fixture',

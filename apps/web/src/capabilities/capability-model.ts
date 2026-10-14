@@ -118,6 +118,27 @@ export function submissionReviewState(status: string, needsReview: boolean, canD
     )[status] ?? status.replaceAll('_', ' ')
   );
 }
+
+export function submissionReviewSummary(
+  status: string | undefined,
+  items: { needsReview?: boolean }[],
+  readOnly: boolean,
+) {
+  const pendingCount = status === 'SUBMITTED' ? items.filter(item => item.needsReview).length : 0;
+  const label =
+    status === 'REVIEWED'
+      ? 'Review completed'
+      : status === 'LINKED'
+        ? 'Links saved'
+        : status === 'DRAFT'
+          ? 'Draft'
+          : !status
+            ? 'Loading request…'
+            : readOnly
+              ? 'View only'
+              : `${pendingCount} awaiting decision`;
+  return { pendingCount, canDecide: !readOnly && status === 'SUBMITTED', label };
+}
 export function relatedSkillIds(selected: string[], available: string[]) {
   return [...new Set(selected)].filter(id => available.includes(id));
 }

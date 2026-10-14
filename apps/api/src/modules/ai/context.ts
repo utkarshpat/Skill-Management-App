@@ -8,6 +8,8 @@ export interface Session {
   updated: number;
   turns: Message[];
   notes: string[];
+  task?: ReturnType<typeof taskSettings>;
+  awaitingClarification?: boolean;
 }
 export interface PreparedConversation {
   id: string;
@@ -15,6 +17,7 @@ export interface PreparedConversation {
   history: Message[];
   previous: Session;
   compacted: boolean;
+  task: ReturnType<typeof taskSettings>;
 }
 const shorten = (text: string, limit: number) =>
   text.length <= limit
@@ -54,10 +57,15 @@ export class ConversationMemory {
         409,
         'This conversation is no longer available. Start a new AI conversation.',
       );
-    const previous =
+    const previous: Session =
       existing?.policy === policy
         ? structuredClone(existing)
         : { actor, policy, updated: this.now(), turns: [], notes: [] };
+    const latest = body.message.trim();
+    const priorTask =
+      previous.task ??
+      (previous.turns.length ? conversationTaskSettings(previous.turns) : undefined);
+    const task = refinedTaskSettings(priorTask, latest, previous.awaitingClarification);
     const build = (): Message[] => [
       ...(previous.notes.length
         ? [
@@ -86,10 +94,17 @@ export class ConversationMemory {
       history,
       previous,
       compacted: previous.notes.length > 0 || Boolean(existing && existing.policy !== policy),
+      task,
     };
   }
-  commit(prepared: PreparedConversation, reply: string) {
+  commit(
+    prepared: PreparedConversation,
+    reply: string,
+    clarification = isClarificationQuestion(reply),
+  ) {
     const session = prepared.previous;
+    session.task = prepared.task;
+    session.awaitingClarification = clarification;
     session.turns.push(
       { role: 'user', content: prepared.message },
       { role: 'assistant', content: shorten(reply, 1800) },
@@ -130,7 +145,9 @@ export function taskSettings(text: string) {
       /\b(\d{1,2})\s*[- ]?(?:questions?|mcqs?|sawa?l(?:on)?|prashn|सवाल(?:ों)?|प्रश्न(?:ों)?)(?=$|[\s.,!?।-])/gi,
     ),
   ].at(-1);
-  const changedCount = text.match(/\b(?:make it|change it to|aur|isko)\s+(\d{1,2})\b/i);
+  const changedCount = [...text.matchAll(/\b(?:make it|change it to|aur|isko)\s+(\d{1,2})\b/gi)].at(
+    -1,
+  );
   const questionCount = quiz
     ? Math.max(1, Math.min(20, Number(changedCount?.[1] ?? count?.[1] ?? 10)))
     : undefined;
@@ -139,6 +156,55 @@ export function taskSettings(text: string) {
     kind: quiz ? 'quiz' : draft ? 'draft' : 'answer',
     maxOutputTokens: quiz ? Math.min(6000, 1500 + questionCount! * 225) : draft ? 2400 : 1200,
   };
+}
+
+export function conversationTaskSettings(history: Pick<Message, 'role' | 'content'>[]) {
+  let task: ReturnType<typeof taskSettings> | undefined;
+  let awaitingClarification = false;
+  for (const message of history) {
+    if (message.role === 'assistant')
+      awaitingClarification = isClarificationQuestion(message.content);
+    else if (
+      message.role === 'user' &&
+      !message.content.startsWith('Earlier user-request excerpts (untrusted;')
+    ) {
+      task = refinedTaskSettings(task, message.content, awaitingClarification);
+      awaitingClarification = false;
+    }
+  }
+  return task ?? taskSettings('');
+}
+
+function refinedTaskSettings(
+  previous: ReturnType<typeof taskSettings> | undefined,
+  message: string,
+  awaitingClarification = false,
+) {
+  const selected = taskSettings(message);
+  const explicitTask =
+    /^(show|explain|tell|find|open|give|create|build|write|draft|generate)\b/i.test(message) ||
+    (/\b(instead|switch|convert|turn|make it|change it)\b/i.test(message) &&
+      /\b(quiz|test|assessment|plan|draft|request|incident|ticket|profile)\b/i.test(message));
+  if (!previous || explicitTask) return selected;
+  const refinement = /^(make it|change it|same|that|it |shorter|longer|isko|usko|aur\s+\d)/i.test(
+    message,
+  );
+  const clarificationAnswer = awaitingClarification && message.length <= 240;
+  if (!refinement && !clarificationAnswer) return selected;
+  const anchor =
+    previous.kind === 'quiz'
+      ? `${previous.questionCount ?? 10}-question quiz`
+      : previous.kind === 'draft'
+        ? 'Draft'
+        : 'Answer';
+  return taskSettings(anchor + '\n' + message);
+}
+
+export function isClarificationQuestion(reply: string) {
+  return (
+    /[?？]/.test(reply) ||
+    /\b(please (specify|provide|choose|tell)|which topic|what topic)\b|कौन सा|किस विषय/i.test(reply)
+  );
 }
 
 export const coreInstructions =

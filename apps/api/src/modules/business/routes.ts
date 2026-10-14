@@ -143,10 +143,13 @@ export function registerBusinessRoutes(
           ? 'text/csv; charset=utf-8'
           : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       );
-      res.send(
-        format === 'csv'
-          ? businessCsv(data, q, reportOptions)
-          : businessXlsx(data, q, reportOptions),
+      await streamPrivateFile(
+        res,
+        Buffer.from(
+          format === 'csv'
+            ? businessCsv(data, q, reportOptions)
+            : businessXlsx(data, q, reportOptions),
+        ),
       );
     } catch (error) {
       next(error);
@@ -256,7 +259,7 @@ export function registerBusinessRoutes(
         'Content-Disposition',
         `attachment; filename="business-${query.dataset}.${format}"`,
       );
-      res.send(body);
+      await streamPrivateFile(res, Buffer.from(body));
     } catch (error) {
       next(error);
     }

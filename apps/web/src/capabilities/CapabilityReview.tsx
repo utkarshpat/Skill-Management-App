@@ -6,7 +6,11 @@ import { readApiResponse } from '../api-response';
 import { CapabilityEvidence } from './CapabilityEvidence';
 import { toast } from '../toast';
 import type { Submission } from './capability-model';
-import { submissionLevelName, submissionReviewState } from './capability-model';
+import {
+  submissionLevelName,
+  submissionReviewState,
+  submissionReviewSummary,
+} from './capability-model';
 import {
   AlertCircle,
   Award,
@@ -158,8 +162,11 @@ export function CapabilityReview({
 
   const skillRows = rows.filter(r => r.kind === 'SKILL');
   const certRows = rows.filter(r => r.kind === 'CERTIFICATION');
-  const pendingCount = rows.filter(r => r.needsReview).length;
-  const canDecide = !readOnly && data?.status === 'SUBMITTED';
+  const {
+    pendingCount,
+    canDecide,
+    label: summaryLabel,
+  } = submissionReviewSummary(data?.status, rows, readOnly);
 
   return (
     <FormDialog
@@ -230,7 +237,7 @@ export function CapabilityReview({
             </div>
             <div className="cap-review-summary-right">
               <span className={`cap-status-pill ${data?.status?.toLowerCase() ?? 'submitted'}`}>
-                {readOnly ? 'View only' : `${pendingCount} awaiting decision`}
+                {summaryLabel}
               </span>
             </div>
           </div>

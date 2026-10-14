@@ -104,6 +104,12 @@ export function MySkills({
   const [error, setError] = useState('');
   const [combined, setCombined] = useState(false);
   const [combinedId, setCombinedId] = useState<string>();
+  const [intakeEntry, setIntakeEntry] = useState<{
+    skill?: { id?: string; name?: string };
+    draft?: import('./capabilities/capability-model').SelectedSkill;
+    file?: File;
+    certificate?: boolean;
+  }>();
   const [submissionFailure, setSubmissionFailure] = useState<{ id: string; message: string }>();
   const [draft, setDraft] = useState<Draft>(),
     [formPage, setFormPage] = useState(0),
@@ -300,15 +306,25 @@ export function MySkills({
     const params = new URLSearchParams(location.search);
     if (!state || params.get('action') !== 'add') return;
     const suggested = params.get('skill') ?? '';
+    const skillName = params.get('skillName') ?? '';
+    const certificate = params.get('entry') === 'certificate';
     params.delete('action');
     params.delete('skill');
+    params.delete('skillName');
+    params.delete('entry');
     navigate(location.pathname + (params.size ? '?' + params : ''), { replace: true });
     if (state.canClaim) {
-      edit();
-      if (suggested) {
-        setSearch(suggested.slice(0, 100));
-        setSuggestedSkillName(suggested);
-      }
+      const isId = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(suggested);
+      setIntakeEntry({
+        certificate,
+        skill: suggested
+          ? isId
+            ? { id: suggested, name: skillName }
+            : { name: suggested }
+          : undefined,
+      });
+      setCombinedId(undefined);
+      setCombined(true);
     } else setError('Skill editing is not assigned.');
   }, [location.search, state?.canClaim]);
   useEffect(() => {
@@ -402,9 +418,9 @@ export function MySkills({
       setFormError('Use up to 2,000 characters for projects and evidence.');
       return;
     }
-    if (!draft.description.trim() || draft.description.trim().length > 2000) {
+    if (draft.description.trim().length > 2000) {
       setFormPage(1);
-      setFormError('Describe your experience using up to 2,000 characters.');
+      setFormError('Keep your experience description within 2,000 characters.');
       return;
     }
     setBusy(true);
@@ -517,11 +533,17 @@ export function MySkills({
       {combined && (
         <CapabilityComposer
           submissionId={combinedId}
+          initialSkill={intakeEntry?.skill}
+          initialSkillDraft={intakeEntry?.draft}
+          initialEvidenceFile={intakeEntry?.file}
+          initialCertificate={intakeEntry?.certificate}
           onClose={() => {
+            setIntakeEntry(undefined);
             setCombined(false);
             setCombinedId(undefined);
           }}
           onSaved={() => {
+            setIntakeEntry(undefined);
             setCombined(false);
             setCombinedId(undefined);
             void load();
@@ -621,6 +643,33 @@ export function MySkills({
           draft={draft}
           onDraft={setDraft}
           selected={selected}
+          onUseAsCertificate={
+            selected
+              ? file => {
+                  if (file.size > 5 * 1024 * 1024) {
+                    setFormError(
+                      'Certificates have a 5 MB limit. Choose a smaller file; your evidence stays unchanged.',
+                    );
+                    return;
+                  }
+                  setIntakeEntry({
+                    certificate: true,
+                    file,
+                    draft: {
+                      ...draft,
+                      choice: selected,
+                      reuse: false,
+                      lastUsedOn: draft.lastUsedOn ?? '',
+                      projects: draft.projects ?? '',
+                      evidence: draft.evidence ?? '',
+                    },
+                  });
+                  setDraft(undefined);
+                  setCombinedId(undefined);
+                  setCombined(true);
+                }
+              : undefined
+          }
           onSelect={skill => {
             setSuggestedSkillName('');
             setPicked(skill);

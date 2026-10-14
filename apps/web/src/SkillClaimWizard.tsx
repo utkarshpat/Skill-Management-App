@@ -93,6 +93,7 @@ export function SkillClaimWizard({
   onSave,
   onClose,
   aiDraft = false,
+  onUseAsCertificate,
 }: {
   draft: SkillDraft;
   onDraft: (draft: SkillDraft) => void;
@@ -112,6 +113,7 @@ export function SkillClaimWizard({
   onSave: (submit: boolean) => void;
   onClose: () => void;
   aiDraft?: boolean;
+  onUseAsCertificate?: (file: File) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const busy = saving || uploading;
@@ -471,6 +473,7 @@ export function SkillClaimWizard({
                     claim={{ ...draft, status: 'DRAFT' } as Claim}
                     onRevision={revision => onDraft({ ...draft, revision })}
                     onBusy={setUploading}
+                    onUseAsCertificate={onUseAsCertificate}
                   />
                 ) : (
                   <div className="skill-guidance">

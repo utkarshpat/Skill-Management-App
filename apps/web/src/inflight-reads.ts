@@ -58,7 +58,9 @@ export class InflightReads {
     shared.consumers++;
     return new Promise((resolve, reject) => {
       let done = false;
-      const finish = (callback: () => void) => {
+      let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+      let bodyController: ReadableStreamDefaultController<Uint8Array> | undefined;
+      const finish = (cancelled = false) => {
         if (done) return;
         done = true;
         init.signal?.removeEventListener('abort', abort);
@@ -66,11 +68,21 @@ export class InflightReads {
         if (!shared.consumers) {
           if (this.entries.get(key) === shared) this.entries.delete(key);
           // Fetch resolves at headers, before its body finishes streaming.
-          if (!shared.settled) shared.controller.abort();
+          if (cancelled || !shared.settled) shared.controller.abort();
         }
-        callback();
       };
-      const abort = () => finish(() => reject(init.signal?.reason));
+      const cancel = (reason: unknown) => {
+        if (done) return;
+        finish(true);
+        void reader?.cancel(reason).catch(() => {});
+      };
+      const abort = () => {
+        if (done) return;
+        const reason = init.signal?.reason ?? new DOMException('Aborted', 'AbortError');
+        bodyController?.error(reason);
+        cancel(reason);
+        reject(reason);
+      };
       init.signal?.addEventListener('abort', abort, { once: true });
       if (init.signal?.aborted) abort();
       shared.promise.then(
@@ -78,12 +90,49 @@ export class InflightReads {
           if (done) return;
           try {
             const cloned = response.clone();
-            finish(() => resolve(cloned));
+            if (!cloned.body) {
+              finish();
+              resolve(cloned);
+              return;
+            }
+            reader = cloned.body.getReader();
+            const body = new ReadableStream<Uint8Array>({
+              start(controller) {
+                bodyController = controller;
+              },
+              async pull(controller) {
+                try {
+                  const part = await reader!.read();
+                  if (done) return;
+                  if (part.done) {
+                    finish();
+                    controller.close();
+                  } else controller.enqueue(part.value);
+                } catch (error) {
+                  if (done) return;
+                  finish();
+                  controller.error(error);
+                }
+              },
+              cancel,
+            });
+            const wrapped = new Response(body, {
+              status: cloned.status,
+              statusText: cloned.statusText,
+              headers: cloned.headers,
+            });
+            for (const key of ['url', 'redirected', 'type'] as const)
+              Object.defineProperty(wrapped, key, { value: cloned[key] });
+            resolve(wrapped);
           } catch (error) {
-            finish(() => reject(error));
+            finish();
+            reject(error);
           }
         },
-        error => finish(() => reject(error)),
+        error => {
+          finish();
+          reject(error);
+        },
       );
     });
   }

@@ -23,7 +23,8 @@ import {
   coreInstructions,
   businessInstructions,
   taskInstructions,
-  taskSettings,
+  conversationTaskSettings,
+  isClarificationQuestion,
 } from './context.js';
 import { UsageMeter, type TokenUsage } from './usage.js';
 import {
@@ -594,7 +595,7 @@ export class AssistantService {
       });
       signal.throwIfAborted();
       release = await this.budget.acquire(actorId);
-      const result = await this.respond(actorId, request, signal, meter);
+      const result = await this.respond(actorId, request, signal, meter, prepared?.task);
       const recheckDelivery = async () => {
         signal.throwIfAborted();
         const fresh = await readActorAccess(this.store, actorId),
@@ -627,7 +628,11 @@ export class AssistantService {
               steps: artifact.steps,
             })
           : result.reply;
-        this.memory.commit(prepared, remembered);
+        this.memory.commit(
+          prepared,
+          remembered,
+          !artifact && isClarificationQuestion(result.reply),
+        );
         if (this.conversations) {
           const messages = [
             ...(saved?.context.policy === initialPolicy ? saved.messages : []),
@@ -681,7 +686,13 @@ export class AssistantService {
       }
     }
   }
-  private async respond(actorId: string, input: unknown, signal: AbortSignal, meter: UsageMeter) {
+  private async respond(
+    actorId: string,
+    input: unknown,
+    signal: AbortSignal,
+    meter: UsageMeter,
+    rememberedTask?: ReturnType<typeof conversationTaskSettings>,
+  ) {
     const history = conversation(input);
     if (!this.provider)
       throw new AccessError(
@@ -692,12 +703,7 @@ export class AssistantService {
       person = initial.people.find(item => item.id === actorId);
     if (!person || !this.registry.permits(initial, person, 'own_profile'))
       throw new AccessError(403, 'Assistant access is not assigned.');
-    const latestText = history.at(-1)!.content;
-    const followup = /^(make it|change it|same|that|it |shorter|longer|isko|usko|aur\s+\d)/i.test(
-      latestText,
-    );
-    const preceding = history.filter(message => message.role === 'user').at(-2)?.content ?? '';
-    const settings = taskSettings(followup ? preceding + '\n' + latestText : latestText);
+    const settings = rememberedTask ?? conversationTaskSettings(history);
     const messages: Message[] = [
       {
         role: 'system',
