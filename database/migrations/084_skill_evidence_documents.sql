@@ -71,7 +71,7 @@ DECLARE evidenceConsumers CURSOR LOCAL FAST_FORWARD FOR SELECT name FROM (VALUES
 DECLARE @name sysname;OPEN evidenceConsumers;FETCH NEXT FROM evidenceConsumers INTO @name;
 WHILE @@FETCH_STATUS=0 BEGIN
  SET @definition=OBJECT_DEFINITION(OBJECT_ID(N'dbo.'+@name));
- IF @definition IS NULL OR CHARINDEX(@old,@definition)=0 THROW 51000,'Expected evidence snapshot definition missing.',1;
+ IF @definition IS NULL OR (CHARINDEX(@old,@definition)=0 AND CHARINDEX(@new,@definition)=0) THROW 51000,'Expected evidence snapshot definition missing.',1;
  SET @definition=REPLACE(@definition,@old,@new);
  DECLARE @procedureStart int=CHARINDEX('PROCEDURE',UPPER(@definition));
  IF @procedureStart=0 THROW 51000,'Expected procedure declaration missing.',1;
@@ -80,6 +80,7 @@ WHILE @@FETCH_STATUS=0 BEGIN
  FETCH NEXT FROM evidenceConsumers INTO @name;
 END;CLOSE evidenceConsumers;DEALLOCATE evidenceConsumers;
 GO
+
 
 
 
