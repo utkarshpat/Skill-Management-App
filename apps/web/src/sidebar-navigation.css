@@ -165,3 +165,19 @@ html[data-theme] .admin-sidebar nav.sidebar-profile-footer {
   padding-top: 12px;
   border-top: 1px solid #334057;
 }
+
+html[data-theme] .admin-sidebar .sidebar-last-updated {
+  padding: 4px 10px 4px 12px;
+  font-size: 11px;
+  color: #8b9bb4;
+  line-height: 1.3;
+  user-select: none;
+}
+html[data-theme='light'] .admin-sidebar .sidebar-last-updated {
+  color: #64748b;
+}
+.sidebar-last-updated small {
+  display: block;
+  font-size: inherit;
+  color: inherit;
+}

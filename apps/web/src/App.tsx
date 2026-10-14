@@ -90,6 +90,13 @@ export function App() {
           if (!controller.signal.aborted && request === generation) {
             setWorkspace(body);
             setWorkspaceError('');
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('workspace-freshness', {
+                  detail: { mode: 'live', checkedAt: Date.now() },
+                }),
+              );
+            }
           }
         })
         .catch(error => {
@@ -102,6 +109,11 @@ export function App() {
     };
     const stop = startActivityRefresh(load, ['workspace-access-updated'], undefined, {
       pollMs: 300_000,
+      onStatus: status => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('workspace-freshness', { detail: status }));
+        }
+      },
     });
     return () => {
       stop();

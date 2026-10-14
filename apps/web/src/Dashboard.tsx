@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { startActivityRefresh, type RefreshStatus } from './activity-refresh';
-import { RefreshIndicator } from './RefreshIndicator';
 import './dashboard.css';
 import { DashboardQuickActions } from './DashboardQuickActions';
 import {
@@ -118,6 +117,13 @@ export function Dashboard() {
           if (!c.signal.aborted && n === generation) {
             setManifest(value);
             setError('');
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(
+                new CustomEvent('workspace-freshness', {
+                  detail: { mode: 'live', checkedAt: Date.now() },
+                }),
+              );
+            }
           }
         })
         .catch(e => {
@@ -142,7 +148,15 @@ export function Dashboard() {
         'workspace-access-updated',
       ],
       undefined,
-      { pollMs: 300_000, onStatus: setFreshness },
+      {
+        pollMs: 300_000,
+        onStatus: status => {
+          setFreshness(status);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('workspace-freshness', { detail: status }));
+          }
+        },
+      },
     );
     return () => {
       stop();
@@ -164,13 +178,6 @@ export function Dashboard() {
   const rightCards = manifest?.cards.filter(card => card.id === 'capability') ?? [];
   return (
     <div className="dashboard-workspace">
-      <div className="dashboard-heading">
-        <div>
-          <h2>Your day, in focus</h2>
-          <p>Move work forward, build skills and keep track of what changes.</p>
-        </div>
-      </div>
-      <RefreshIndicator status={freshness} />
       {error && (
         <section className="dashboard-card" role="alert">
           <h3>{manifest ? 'Dashboard refresh failed' : 'Dashboard could not be loaded'}</h3>

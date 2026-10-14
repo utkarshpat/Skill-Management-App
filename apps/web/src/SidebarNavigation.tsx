@@ -11,6 +11,9 @@ import {
   sidebarStorageKey,
 } from './sidebar-order';
 import { toast } from './toast';
+import type { RefreshStatus } from './activity-refresh';
+
+let globalFreshness: RefreshStatus | undefined = undefined;
 export interface SidebarItem {
   id: string;
   label: string;
@@ -43,6 +46,25 @@ export function SidebarNavigation({
   }));
   const [notice, setNotice] = useState(''),
     [dragView, setDragView] = useState<{ source: string; target: string }>();
+  const [freshness, setFreshness] = useState<RefreshStatus | undefined>(() => {
+    if (globalFreshness) return globalFreshness;
+    if (typeof window !== 'undefined') {
+      return { mode: 'live', checkedAt: Date.now() };
+    }
+    return undefined;
+  });
+
+  useEffect(() => {
+    const onFreshness = (event: Event) => {
+      const detail = (event as CustomEvent<RefreshStatus>).detail;
+      if (detail?.checkedAt) {
+        globalFreshness = detail;
+        setFreshness(detail);
+      }
+    };
+    window.addEventListener('workspace-freshness', onFreshness);
+    return () => window.removeEventListener('workspace-freshness', onFreshness);
+  }, []);
   const root = useRef<HTMLElement>(null),
     drag = useRef<
       | {
@@ -293,6 +315,21 @@ export function SidebarNavigation({
               {profile.active && <ChevronRight size={14} />}
             </Link>
           </div>
+          {freshness?.checkedAt && (
+            <div
+              className="sidebar-last-updated"
+              role="status"
+              title={freshness.mode === 'live' ? 'Auto-refresh while active' : undefined}
+            >
+              <small>
+                Updated{' '}
+                {new Date(freshness.checkedAt).toLocaleTimeString(undefined, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </small>
+            </div>
+          )}
         </nav>
       )}
       <p className="sr-only" role="status" aria-live="polite">
