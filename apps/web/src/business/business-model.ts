@@ -138,5 +138,3 @@ export function businessPeoplePage(rows: BusinessDashboard['rows']) {
     )
     .slice(0, 8);
 }
-
-export { businessReportHtml } from './business-report-document';

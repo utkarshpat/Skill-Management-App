@@ -256,6 +256,19 @@ export function registerBusinessRoutes(
       next(error);
     }
   });
+  app.get('/api/business/report', async (req, res, next) => {
+    try {
+      const actor = res.locals.businessActor;
+      assertBusinessScope(res.locals.businessContext, await deps!.business!.context(actor), true);
+      const query = businessQuery(req.query);
+      const data = await deps!.business!.dashboard(actor, query, true);
+      assertBusinessScope(data.context, await deps!.business!.context(actor), true);
+      // Reports contain authorized aggregates, never the paginated employee rows.
+      res.json({ ...data, rows: [], filters: query });
+    } catch (error) {
+      next(error);
+    }
+  });
   app.get('/api/business/workflow/:operation', async (req, res, next) => {
     try {
       const command = businessWorkflow(req.params.operation.toUpperCase(), req.query);

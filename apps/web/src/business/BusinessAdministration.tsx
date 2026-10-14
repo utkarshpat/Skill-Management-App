@@ -254,7 +254,7 @@ export function BusinessAdministration({
     projects = state?.projects.filter(p => p.active || p.id === project || p.id === scope) ?? [],
     nodes = state?.nodes.filter(n => n.active || n.id === scope || n.id === department) ?? [];
   return (
-    <section className="bo-panel" onChangeCapture={invalidatePreview}>
+    <section className="bo-panel bo-access-admin" onChangeCapture={invalidatePreview}>
       <div className="bo-panel-header">
         <h2>
           Access profiles
@@ -452,7 +452,10 @@ export function BusinessAdministration({
                                         {r.effect === 'DENY' ? 'Denied' : 'Allowed'}
                                       </span>
                                       <span>
-                                        {r.bundle === 'SYSTEM_ADMIN' ? 'Admin' : 'Business Analytics'} ·{' '}
+                                        {r.bundle === 'SYSTEM_ADMIN'
+                                          ? 'Admin'
+                                          : 'Business Analytics'}{' '}
+                                        ·{' '}
                                         {state.nodes.find(n => n.id === r.scopeId)?.name ??
                                           state.projects.find(n => n.id === r.scopeId)?.name ??
                                           (r.kind === 'ORGANIZATION'
@@ -552,247 +555,247 @@ export function BusinessAdministration({
                 void prepare();
               }}
             >
-            {kind === 'PROJECT' && (
-              <>
-                <label>
-                  Project
-                  <select
-                    value={id}
-                    onChange={e => {
-                      setId(e.target.value);
-                      setReason('');
-                      const p = state.projects.find(p => p.id === e.target.value);
-                      setName(p?.name ?? '');
-                      setDepartment(p?.departmentId ?? '');
-                      setActive(p?.active ?? true);
-                    }}
-                  >
-                    <option value="">New project</option>
-                    {state.projects.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                        {!p.active ? ' (inactive)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Name <span className="bo-required">*</span>
-                  <input
-                    required
-                    maxLength={100}
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Project department
-                  <select value={department} onChange={e => setDepartment(e.target.value)}>
-                    <option value="">No department binding</option>
-                    {nodes
-                      .filter(n => n.kind === 'DEPARTMENT')
-                      .map(n => (
-                        <option key={n.id} value={n.id}>
-                          {n.name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-              </>
-            )}
-            {(kind === 'MEMBERSHIP' || kind === 'RESPONSIBILITY') && (
-              <label>
-                Person <span className="bo-required">*</span>
-                <select
-                  required
-                  value={person}
-                  onChange={e => selectPerson(e.target.value)}
-                  disabled={busy || Boolean(selectedPersonId)}
-                >
-                  <option value="">Choose employee</option>
-                  {people.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} · {p.employeeCode}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {kind === 'MEMBERSHIP' && (
-              <label>
-                Project <span className="bo-required">*</span>
-                <select required value={project} onChange={e => setProject(e.target.value)}>
-                  <option value="">Choose project</option>
-                  {projects.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {kind === 'RESPONSIBILITY' && (
-              <>
-                <label>
-                  Responsibility
-                  <select
-                    value={bundle}
-                    onChange={e => {
-                      setBundle(e.target.value);
-                      if (e.target.value === 'SYSTEM_ADMIN') {
-                        setScopeKind('ORGANIZATION');
-                        setScope('');
-                      }
-                    }}
-                  >
-                    <option value="BUSINESS_OPERATIONS">Business Analytics</option>
-                    <option value="SYSTEM_ADMIN">Admin</option>
-                  </select>
-                </label>
-                <label>
-                  Scope
-                  <select
-                    disabled={bundle === 'SYSTEM_ADMIN'}
-                    value={scopeKind}
-                    onChange={e => {
-                      setScopeKind(e.target.value);
-                      setScope('');
-                    }}
-                  >
-                    {['ORGANIZATION', 'DELIVERY_UNIT', 'DEPARTMENT', 'PROJECT'].map(k => (
-                      <option key={k} value={k}>
-                        {k === 'ORGANIZATION'
-                          ? 'Organization (entire company workspace)'
-                          : k.replaceAll('_', ' ')}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {scopeKind === 'ORGANIZATION' && (
-                  <p className="bo-note">
-                    Organization covers active provisioned employees in this company workspace,
-                    across its delivery units, departments and projects. Matching denies still
-                    apply. It does not grant access to other accounts, private files or unrelated
-                    claim reviews.
-                  </p>
-                )}
-                {scopeKind !== 'ORGANIZATION' && (
+              {kind === 'PROJECT' && (
+                <>
                   <label>
-                    Scope binding <span className="bo-required">*</span>
-                    <select required value={scope} onChange={e => setScope(e.target.value)}>
-                      <option value="">Choose authorized binding</option>
-                      {(scopeKind === 'PROJECT'
-                        ? projects
-                        : nodes.filter(n => n.kind === scopeKind)
-                      ).map(n => (
-                        <option key={n.id} value={n.id}>
-                          {n.name}
+                    Project
+                    <select
+                      value={id}
+                      onChange={e => {
+                        setId(e.target.value);
+                        setReason('');
+                        const p = state.projects.find(p => p.id === e.target.value);
+                        setName(p?.name ?? '');
+                        setDepartment(p?.departmentId ?? '');
+                        setActive(p?.active ?? true);
+                      }}
+                    >
+                      <option value="">New project</option>
+                      {state.projects.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                          {!p.active ? ' (inactive)' : ''}
                         </option>
                       ))}
                     </select>
                   </label>
-                )}
+                  <label>
+                    Name <span className="bo-required">*</span>
+                    <input
+                      required
+                      maxLength={100}
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Project department
+                    <select value={department} onChange={e => setDepartment(e.target.value)}>
+                      <option value="">No department binding</option>
+                      {nodes
+                        .filter(n => n.kind === 'DEPARTMENT')
+                        .map(n => (
+                          <option key={n.id} value={n.id}>
+                            {n.name}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                </>
+              )}
+              {(kind === 'MEMBERSHIP' || kind === 'RESPONSIBILITY') && (
                 <label>
-                  Effect
-                  <select value={effect} onChange={e => setEffect(e.target.value)}>
-                    <option value="ALLOW">Allow responsibility</option>
-                    <option value="DENY">Deny in this scope</option>
+                  Person <span className="bo-required">*</span>
+                  <select
+                    required
+                    value={person}
+                    onChange={e => selectPerson(e.target.value)}
+                    disabled={busy || Boolean(selectedPersonId)}
+                  >
+                    <option value="">Choose employee</option>
+                    {people.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} · {p.employeeCode}
+                      </option>
+                    ))}
                   </select>
                 </label>
+              )}
+              {kind === 'MEMBERSHIP' && (
                 <label>
-                  Expires {effect === 'DENY' && <span className="bo-required">*</span>}
-                  <input
-                    type="datetime-local"
-                    required={effect === 'DENY' && active}
-                    value={until}
-                    onChange={e => setUntil(e.target.value)}
-                  />
+                  Project <span className="bo-required">*</span>
+                  <select required value={project} onChange={e => setProject(e.target.value)}>
+                    <option value="">Choose project</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
-                <p className="bo-note">
-                  Admin provides catalogue, audit and people/access administration plus
-                  organization-wide Business Analytics. Claim reviews still follow the assigned
-                  current manager.
-                </p>
-              </>
-            )}
-            {kind !== 'PERSONAL_BASELINE' ? (
-              <label className="bo-check">
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onChange={e => setActive(e.target.checked)}
-                />{' '}
-                Active
-              </label>
-            ) : (
-              <>
+              )}
+              {kind === 'RESPONSIBILITY' && (
+                <>
+                  <label>
+                    Responsibility
+                    <select
+                      value={bundle}
+                      onChange={e => {
+                        setBundle(e.target.value);
+                        if (e.target.value === 'SYSTEM_ADMIN') {
+                          setScopeKind('ORGANIZATION');
+                          setScope('');
+                        }
+                      }}
+                    >
+                      <option value="BUSINESS_OPERATIONS">Business Analytics</option>
+                      <option value="SYSTEM_ADMIN">Admin</option>
+                    </select>
+                  </label>
+                  <label>
+                    Scope
+                    <select
+                      disabled={bundle === 'SYSTEM_ADMIN'}
+                      value={scopeKind}
+                      onChange={e => {
+                        setScopeKind(e.target.value);
+                        setScope('');
+                      }}
+                    >
+                      {['ORGANIZATION', 'DELIVERY_UNIT', 'DEPARTMENT', 'PROJECT'].map(k => (
+                        <option key={k} value={k}>
+                          {k === 'ORGANIZATION'
+                            ? 'Organization (entire company workspace)'
+                            : k.replaceAll('_', ' ')}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {scopeKind === 'ORGANIZATION' && (
+                    <p className="bo-note">
+                      Organization covers active provisioned employees in this company workspace,
+                      across its delivery units, departments and projects. Matching denies still
+                      apply. It does not grant access to other accounts, private files or unrelated
+                      claim reviews.
+                    </p>
+                  )}
+                  {scopeKind !== 'ORGANIZATION' && (
+                    <label>
+                      Scope binding <span className="bo-required">*</span>
+                      <select required value={scope} onChange={e => setScope(e.target.value)}>
+                        <option value="">Choose authorized binding</option>
+                        {(scopeKind === 'PROJECT'
+                          ? projects
+                          : nodes.filter(n => n.kind === scopeKind)
+                        ).map(n => (
+                          <option key={n.id} value={n.id}>
+                            {n.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <label>
+                    Effect
+                    <select value={effect} onChange={e => setEffect(e.target.value)}>
+                      <option value="ALLOW">Allow responsibility</option>
+                      <option value="DENY">Deny in this scope</option>
+                    </select>
+                  </label>
+                  <label>
+                    Expires {effect === 'DENY' && <span className="bo-required">*</span>}
+                    <input
+                      type="datetime-local"
+                      required={effect === 'DENY' && active}
+                      value={until}
+                      onChange={e => setUntil(e.target.value)}
+                    />
+                  </label>
+                  <p className="bo-note">
+                    Admin provides catalogue, audit and people/access administration plus
+                    organization-wide Business Analytics. Claim reviews still follow the assigned
+                    current manager.
+                  </p>
+                </>
+              )}
+              {kind !== 'PERSONAL_BASELINE' ? (
                 <label className="bo-check">
                   <input
                     type="checkbox"
-                    checked={enabled}
-                    onChange={e => setEnabled(e.target.checked)}
+                    checked={active}
+                    onChange={e => setActive(e.target.checked)}
                   />{' '}
-                  Employee baseline
+                  Active
                 </label>
-                <p className="bo-note">
-                  Applies to {state.baselineAffectedPeople} active provisioned people and future
-                  provisioned employees. Existing explicit denies remain effective. Role names and
-                  designation do not affect this baseline.
-                </p>
-              </>
-            )}
-            <label className="bo-full">
-              Reason <span className="bo-required">*</span>
-              <textarea
-                required
-                maxLength={1000}
-                value={reason}
-                onChange={e => setReason(e.target.value)}
-                placeholder="Why is this change needed?"
-              />
-            </label>
-            <button className="primary-button" disabled={busy}>
-              {busy ? 'Checking…' : 'Preview change'}
-            </button>
-          </form>
-        </div>
-        {kind === 'MEMBERSHIP' && (
-          <div className="bo-table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Person</th>
-                  <th>Project</th>
-                  <th>State</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.memberships.map(m => (
-                  <tr key={m.personId + m.projectId}>
-                    <td>{state.people.find(p => p.id === m.personId)?.name}</td>
-                    <td>{state.projects.find(p => p.id === m.projectId)?.name}</td>
-                    <td>{m.active ? 'Active' : 'Inactive'}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={() => {
-                          selectPerson(m.personId);
-                          setPerson(m.personId);
-                          setProject(m.projectId);
-                          setActive(m.active);
-                        }}
-                      >
-                        Edit
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              ) : (
+                <>
+                  <label className="bo-check">
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      onChange={e => setEnabled(e.target.checked)}
+                    />{' '}
+                    Employee baseline
+                  </label>
+                  <p className="bo-note">
+                    Applies to {state.baselineAffectedPeople} active provisioned people and future
+                    provisioned employees. Existing explicit denies remain effective. Role names and
+                    designation do not affect this baseline.
+                  </p>
+                </>
+              )}
+              <label className="bo-full">
+                Reason <span className="bo-required">*</span>
+                <textarea
+                  required
+                  maxLength={1000}
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                  placeholder="Why is this change needed?"
+                />
+              </label>
+              <button className="primary-button" disabled={busy}>
+                {busy ? 'Checking…' : 'Preview change'}
+              </button>
+            </form>
           </div>
-        )}
+          {kind === 'MEMBERSHIP' && (
+            <div className="bo-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Person</th>
+                    <th>Project</th>
+                    <th>State</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {state.memberships.map(m => (
+                    <tr key={m.personId + m.projectId}>
+                      <td>{state.people.find(p => p.id === m.personId)?.name}</td>
+                      <td>{state.projects.find(p => p.id === m.projectId)?.name}</td>
+                      <td>{m.active ? 'Active' : 'Inactive'}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => {
+                            selectPerson(m.personId);
+                            setPerson(m.personId);
+                            setProject(m.projectId);
+                            setActive(m.active);
+                          }}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <details>
             <summary>
               Historical grants needing explicit review ({state.historicalGrantsForReview.length})
@@ -807,6 +810,7 @@ export function BusinessAdministration({
       )}
       {preview && (
         <FormDialog
+          className="bo-access-admin"
           title="Review configuration change"
           onClose={() => setPreview(undefined)}
           busy={busy}

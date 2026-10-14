@@ -4,23 +4,22 @@ Version: 2026-10-14. This is the maintained project handover. The interactive re
 
 ## Executive capability intelligence and advanced HTML analytics — 14 October 2026
 
-Executive analytics increment, 14 October 2026: Business Operations (`/business`) and Skill Reviews (`/skill-reviews`) now provide complete executive reporting, interactive capability analytics, and responsive workspace navigation.
+Executive analytics increment, 14 October 2026: Analytics (`/business`) offers an interactive aggregate HTML snapshot; `/skill-reviews` retains unified review and team navigation. These do not complete all FDD reporting requirements. See [the latest commit audit and FDD mapping](COMMITS_AUDIT_AND_FDD_MAPPING_2026-10-14.md) for corrected behavior and remaining gaps. Corrections are local until separately released.
 
 1. **Self-Contained Executive HTML Capability Report**:
-   Business Operations now offers one-click generation of a standalone, offline, zero-dependency executive analytics document (`businessReportHtml`). The document is protected by a strict Content Security Policy (`default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:`), eliminating all external CDN and font network dependencies. Formula injection protection neutralizes leading spreadsheet control characters (`=`, `+`, `-`, `@`), and sensitive individual identifiers are excluded to prevent private claim or PII leakage across aggregate tables.
+   Analytics generates a standalone offline report (`businessReportHtml`) from a fresh authenticated export-authorized aggregate read. Current scope, revision and export capability are rechecked; employee record rows are excluded. The document's Content Security Policy blocks external network dependencies. In-report CSV neutralizes formula control characters even after leading whitespace. Offline filters refine the downloaded snapshot only. Existing export-mode row limits still apply to snapshot retrieval.
 
 2. **Interactive Spider / Radar Capability Web**:
    An interactive multi-axis SVG spider chart visualizes organizational capability across the standard 4-Level Proficiency Framework (`Foundation`, `Autonomous`, `Experienced`, `Expert`). The radar provides a live dual-mode metric toggle between:
    - _Top Skills Proficiency_: Maps the weighted average level (L1–L4) across the top eight most-held capabilities.
-   - _Domain Specialization Benchmarks_: Maps relative organizational capability benchmarks across high-impact functional categories (Engineering, Cloud, Data, Security).
-     Concentric polygon grid rings, dynamic vertex hover tooltips, and responsive scale legends provide instant executive clarity.
+   - _Credential Category Record Mix_: Displays credential record categories relative to the largest returned category. This is not employee headcount, skill specialization or a canonical Pillar report.
+     Skill radar and proficiency mix use the returned top-skills aggregates, not full-catalogue coverage. Holder averages do not establish staffing availability.
 
 3. **Multi-Dimensional Complex Filter Hub & One-Click Presets**:
    The report features an integrated client-side filtering engine supporting:
    - Full-text keyword search across canonical catalogue names.
-   - Domain / Category dropdown filtering.
    - Minimum proficiency threshold gating (L1+, L2+, L3+, L4).
-   - Workforce coverage health categorization (`High >40%`, `Medium 15-40%`, `Low 5-15%`, `Critical Gaps <5%`).
+   - Coverage bands on returned skills (`High >=40%`, `Medium 15-<40%`, `Low 5-<15%`, `Below 5%`). Zero-holder catalogue skills are not supplied by the existing top-10 aggregation, so this cannot establish complete catalogue gaps.
    - One-click executive presets (`All Skills`, `Critical Gaps`, `Expert Leadership`, `High Adoption`, `Autonomous Standard`).
    - Active filter badges with instant single-filter removal (`✕`) and full reset.
    - Direct-from-report filtered CSV export (`📥 Download Filtered CSV`).

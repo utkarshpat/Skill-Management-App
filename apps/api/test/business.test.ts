@@ -255,6 +255,42 @@ test('delivery rechecks reject expired/revoked scope, changed revision and revok
   assert.throws(() => assertBusinessScope(context(), { ...context(), revision: 2 }));
   assert.throws(() => assertBusinessScope(context(), { ...context(), canExport: false }, true));
 });
+test('executive report fetch enforces fresh export access and excludes private row data', async t => {
+  const s = state();
+  let current = context(),
+    revokeDuringRead = false,
+    exporting: boolean | undefined;
+  const business = {
+    context: async () => structuredClone(current),
+    dashboard: async (_actor: string, _query: unknown, exportMode: boolean) => {
+      exporting = exportMode;
+      const value = dashboard();
+      value.context = structuredClone(current);
+      if (revokeDuringRead) current = { ...current, canExport: false };
+      return value;
+    },
+  } as unknown as BusinessStore;
+  const server = createApp({
+    verify: async () => ({ tenantId: actor, objectId: actor }),
+    resolveAccess: async () => actor,
+    profile: async () => undefined,
+    access: { snapshot: () => structuredClone(s), person: () => s.people[0], save: async () => s },
+    business,
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/business/report?dataset=people`;
+  const headers = { Authorization: 'Bearer trusted' };
+  const allowed = await fetch(url, { headers });
+  assert.equal(allowed.status, 200);
+  assert.equal(allowed.headers.get('cache-control'), 'no-store');
+  assert.deepEqual((await allowed.json()).rows, []);
+  assert.equal(exporting, true);
+  revokeDuringRead = true;
+  assert.equal((await fetch(url, { headers })).status, 403);
+  revokeDuringRead = false;
+  assert.equal((await fetch(url, { headers })).status, 403);
+});
 test('CSV and XLSX export every supplied row, preserve metadata and protect formulas', () => {
   const d = dashboard(),
     q = businessQuery({ dataset: 'certifications', scopeId: scope }),

@@ -1,3 +1,4 @@
+import { publishWorkspaceFreshness } from './workspace-freshness';
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router';
 import {
@@ -118,11 +119,7 @@ export function Dashboard() {
             setManifest(value);
             setError('');
             if (typeof window !== 'undefined') {
-              window.dispatchEvent(
-                new CustomEvent('workspace-freshness', {
-                  detail: { mode: 'live', checkedAt: Date.now() },
-                }),
-              );
+              publishWorkspaceFreshness({ mode: 'live', checkedAt: Date.now() });
             }
           }
         })
@@ -153,7 +150,7 @@ export function Dashboard() {
         onStatus: status => {
           setFreshness(status);
           if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('workspace-freshness', { detail: status }));
+            publishWorkspaceFreshness(status);
           }
         },
       },

@@ -13,7 +13,7 @@ import {
 import { toast } from './toast';
 import type { RefreshStatus } from './activity-refresh';
 
-let globalFreshness: RefreshStatus | undefined = undefined;
+import { workspaceFreshness } from './workspace-freshness';
 export interface SidebarItem {
   id: string;
   label: string;
@@ -46,21 +46,12 @@ export function SidebarNavigation({
   }));
   const [notice, setNotice] = useState(''),
     [dragView, setDragView] = useState<{ source: string; target: string }>();
-  const [freshness, setFreshness] = useState<RefreshStatus | undefined>(() => {
-    if (globalFreshness) return globalFreshness;
-    if (typeof window !== 'undefined') {
-      return { mode: 'live', checkedAt: Date.now() };
-    }
-    return undefined;
-  });
+  const [freshness, setFreshness] = useState<RefreshStatus | undefined>(workspaceFreshness);
 
   useEffect(() => {
     const onFreshness = (event: Event) => {
       const detail = (event as CustomEvent<RefreshStatus>).detail;
-      if (detail?.checkedAt) {
-        globalFreshness = detail;
-        setFreshness(detail);
-      }
+      setFreshness(detail);
     };
     window.addEventListener('workspace-freshness', onFreshness);
     return () => window.removeEventListener('workspace-freshness', onFreshness);
@@ -322,6 +313,7 @@ export function SidebarNavigation({
               title={freshness.mode === 'live' ? 'Auto-refresh while active' : undefined}
             >
               <small>
+                {freshness.mode === 'retrying' ? 'Refresh failed · ' : ''}
                 Updated{' '}
                 {new Date(freshness.checkedAt).toLocaleTimeString(undefined, {
                   hour: '2-digit',

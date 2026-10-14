@@ -21,7 +21,7 @@
 }
 
 /* --- Panel Container --- */
-.bo-panel {
+.bo-panel.bo-access-admin {
   background: var(--surface, #ffffff);
   border: 1px solid var(--line, #e5e7eb);
   border-radius: 16px;
@@ -35,15 +35,15 @@
   margin-bottom: 32px;
 }
 
-.bo-panel-header {
+.bo-panel.bo-access-admin-header {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin-bottom: 4px;
 }
 
-.bo-panel-header h2,
-.bo-panel > h2 {
+.bo-panel.bo-access-admin-header h2,
+.bo-panel.bo-access-admin > h2 {
   font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.025em;
@@ -54,7 +54,7 @@
   gap: 10px;
 }
 
-.bo-panel-badge {
+.bo-panel.bo-access-admin-badge {
   font-size: 11.5px;
   font-weight: 700;
   padding: 3px 8px;
@@ -65,7 +65,7 @@
   text-transform: uppercase;
 }
 
-.bo-note {
+.bo-access-admin .bo-note {
   color: var(--muted, #6b7280);
   font-size: 13.5px;
   line-height: 1.55;
@@ -73,7 +73,7 @@
 }
 
 /* --- Alert Messages --- */
-.bo-error {
+.bo-access-admin .bo-error {
   padding: 14px 18px;
   background: var(--bo-danger-tint);
   border: 1px solid rgba(239, 68, 68, 0.25);
@@ -87,13 +87,13 @@
   gap: 10px;
 }
 
-[data-theme='dark'] .bo-error {
+[data-theme='dark'] .bo-access-admin .bo-error {
   color: #fca5a5;
   border-color: rgba(239, 68, 68, 0.35);
 }
 
 /* --- Segmented Navigation Tabs --- */
-.bo-tabs {
+.bo-access-admin .bo-tabs {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -107,7 +107,7 @@
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
-.bo-tabs button {
+.bo-access-admin .bo-tabs button {
   background: transparent;
   color: var(--muted, #6b7280);
   border: none;
@@ -124,12 +124,12 @@
   user-select: none;
 }
 
-.bo-tabs button:hover:not([aria-current='page']) {
+.bo-access-admin .bo-tabs button:hover:not([aria-current='page']) {
   color: var(--ink, #111827);
   background: color-mix(in srgb, var(--surface) 65%, transparent);
 }
 
-.bo-tabs button[aria-current='page'] {
+.bo-access-admin .bo-tabs button[aria-current='page'] {
   color: var(--bo-accent);
   background: var(--surface, #ffffff);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -137,20 +137,22 @@
 }
 
 /* --- Access Profiles Explanation Hub --- */
-.bo-profile-help {
+.bo-access-admin .bo-profile-help {
   border: 1px solid var(--line, #e5e7eb);
   border-radius: 14px;
   background: color-mix(in srgb, var(--raised) 35%, var(--surface));
   overflow: hidden;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.bo-profile-help[open] {
+.bo-access-admin .bo-profile-help[open] {
   border-color: color-mix(in srgb, var(--bo-accent) 30%, var(--line));
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
 
-.bo-profile-help > summary {
+.bo-access-admin .bo-profile-help > summary {
   cursor: pointer;
   padding: 14px 20px;
   font-size: 13.5px;
@@ -165,22 +167,22 @@
   list-style: none;
 }
 
-.bo-profile-help > summary::-webkit-details-marker {
+.bo-access-admin .bo-profile-help > summary::-webkit-details-marker {
   display: none;
 }
 
-.bo-profile-help > summary:hover {
+.bo-access-admin .bo-profile-help > summary:hover {
   background: var(--raised, #f9fafb);
   color: var(--bo-accent);
 }
 
-.bo-profile-help-summary-content {
+.bo-access-admin .bo-profile-help-summary-content {
   display: inline-flex;
   align-items: center;
   gap: 10px;
 }
 
-.bo-profile-help-summary-icon {
+.bo-access-admin .bo-profile-help-summary-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -191,17 +193,17 @@
   color: var(--bo-accent);
 }
 
-.bo-profile-help-chevron {
+.bo-access-admin .bo-profile-help-chevron {
   color: var(--muted, #6b7280);
   transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.bo-profile-help[open] .bo-profile-help-chevron {
+.bo-access-admin .bo-profile-help[open] .bo-profile-help-chevron {
   transform: rotate(180deg);
   color: var(--bo-accent);
 }
 
-.bo-access-profiles {
+.bo-access-admin .bo-access-profiles {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
@@ -209,13 +211,16 @@
   background: color-mix(in srgb, var(--raised) 35%, var(--surface));
 }
 
-.bo-access-profiles article {
+.bo-access-admin .bo-access-profiles article {
   border: 1px solid var(--line, #e5e7eb);
   border-radius: 12px;
   padding: 16px 18px;
   background: var(--surface, #ffffff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -223,7 +228,7 @@
   overflow: hidden;
 }
 
-.bo-access-profiles article::before {
+.bo-access-admin .bo-access-profiles article::before {
   content: '';
   position: absolute;
   top: 0;
@@ -234,33 +239,33 @@
   transition: background 0.2s ease;
 }
 
-.bo-profile-card-employee::before {
+.bo-access-admin .bo-profile-card-employee::before {
   background: #0ea5e9;
 }
-.bo-profile-card-manager::before {
+.bo-access-admin .bo-profile-card-manager::before {
   background: #8b5cf6;
 }
-.bo-profile-card-analytics::before {
+.bo-access-admin .bo-profile-card-analytics::before {
   background: #10b981;
 }
-.bo-profile-card-admin::before {
+.bo-access-admin .bo-profile-card-admin::before {
   background: #f59e0b;
 }
 
-.bo-access-profiles article:hover {
+.bo-access-admin .bo-access-profiles article:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
   border-color: color-mix(in srgb, var(--bo-accent) 40%, var(--line));
 }
 
-.bo-profile-card-header {
+.bo-access-admin .bo-profile-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.bo-access-profiles h3 {
+.bo-access-admin .bo-access-profiles h3 {
   font-size: 14px;
   font-weight: 700;
   color: var(--ink, #111827);
@@ -270,7 +275,7 @@
   gap: 7px;
 }
 
-.bo-access-profiles p {
+.bo-access-admin .bo-access-profiles p {
   margin: 0;
   font-size: 12.5px;
   line-height: 1.55;
@@ -278,7 +283,7 @@
 }
 
 /* --- Search & Action Toolbar --- */
-.bo-access-toolbar {
+.bo-access-admin .bo-access-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -287,7 +292,7 @@
   margin: 4px 0 12px;
 }
 
-.bo-search-group {
+.bo-access-admin .bo-search-group {
   position: relative;
   display: flex;
   align-items: center;
@@ -295,7 +300,7 @@
   max-width: 440px;
 }
 
-.bo-search-icon {
+.bo-access-admin .bo-search-icon {
   position: absolute;
   left: 14px;
   color: var(--muted, #6b7280);
@@ -305,7 +310,7 @@
   justify-content: center;
 }
 
-.bo-search-input {
+.bo-access-admin .bo-search-input {
   width: 100%;
   height: 42px;
   padding: 0 14px 0 40px;
@@ -319,18 +324,18 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
-.bo-search-input:focus {
+.bo-access-admin .bo-search-input:focus {
   border-color: var(--bo-accent);
   background: var(--surface, #ffffff);
   box-shadow: 0 0 0 3px var(--bo-accent-ring);
   outline: none;
 }
 
-.bo-search-input::placeholder {
+.bo-access-admin .bo-search-input::placeholder {
   color: var(--muted, #9ca3af);
 }
 
-.bo-toolbar-actions {
+.bo-access-admin .bo-toolbar-actions {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -338,9 +343,9 @@
 }
 
 /* Modern secondary action buttons & links */
-.bo-action-btn,
-.bo-access-toolbar .secondary-button,
-.bo-access-toolbar a.secondary-button {
+.bo-access-admin .bo-action-btn,
+.bo-access-admin .bo-access-toolbar .secondary-button,
+.bo-access-admin .bo-access-toolbar a.secondary-button {
   height: 40px !important;
   min-height: 40px !important;
   padding: 0 16px !important;
@@ -361,9 +366,9 @@
   white-space: nowrap !important;
 }
 
-.bo-action-btn:hover:not(:disabled),
-.bo-access-toolbar .secondary-button:hover:not(:disabled),
-.bo-access-toolbar a.secondary-button:hover {
+.bo-access-admin .bo-action-btn:hover:not(:disabled),
+.bo-access-admin .bo-access-toolbar .secondary-button:hover:not(:disabled),
+.bo-access-admin .bo-access-toolbar a.secondary-button:hover {
   background: var(--raised, #f9fafb) !important;
   border-color: color-mix(in srgb, var(--ink) 25%, var(--line)) !important;
   transform: translateY(-1px);
@@ -371,14 +376,14 @@
   color: var(--ink, #111827) !important;
 }
 
-.bo-action-btn:active:not(:disabled),
-.bo-access-toolbar .secondary-button:active:not(:disabled),
-.bo-access-toolbar a.secondary-button:active {
+.bo-access-admin .bo-action-btn:active:not(:disabled),
+.bo-access-admin .bo-access-toolbar .secondary-button:active:not(:disabled),
+.bo-access-admin .bo-access-toolbar a.secondary-button:active {
   transform: translateY(0);
 }
 
 /* --- Administration Data Table --- */
-.bo-table-wrap {
+.bo-access-admin .bo-table-wrap {
   border: 1px solid var(--line, #e5e7eb);
   border-radius: 14px;
   overflow-x: auto;
@@ -387,7 +392,7 @@
   margin-bottom: 24px;
 }
 
-.bo-panel table {
+.bo-panel.bo-access-admin table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -395,7 +400,7 @@
   font-size: 13.5px;
 }
 
-.bo-panel th {
+.bo-panel.bo-access-admin th {
   background: var(--raised, #f9fafb);
   color: var(--muted, #6b7280);
   font-weight: 700;
@@ -407,39 +412,39 @@
   white-space: nowrap;
 }
 
-.bo-panel td {
+.bo-panel.bo-access-admin td {
   padding: 16px 18px;
   border-bottom: 1px solid var(--line, #e5e7eb);
   vertical-align: middle;
   color: var(--ink, #111827);
 }
 
-.bo-panel tbody tr:last-child td {
+.bo-panel.bo-access-admin tbody tr:last-child td {
   border-bottom: none;
 }
 
-.bo-panel tbody tr {
+.bo-panel.bo-access-admin tbody tr {
   transition: background 0.15s ease;
 }
 
-.bo-panel tbody tr:hover {
+.bo-panel.bo-access-admin tbody tr:hover {
   background: color-mix(in srgb, var(--raised) 50%, var(--surface));
 }
 
 /* Person cell typography & chips */
-.bo-person-cell {
+.bo-access-admin .bo-person-cell {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.bo-person-name {
+.bo-access-admin .bo-person-name {
   font-weight: 600;
   color: var(--ink, #111827);
   font-size: 14px;
 }
 
-.bo-access-code {
+.bo-access-admin .bo-access-code {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -454,20 +459,20 @@
   margin-top: 3px;
 }
 
-.bo-access-code-inactive {
+.bo-access-admin .bo-access-code-inactive {
   background: var(--bo-danger-tint);
   color: #b91c1c;
   border-color: rgba(239, 68, 68, 0.2);
 }
 
 /* Access column badges & assignments */
-.bo-badge-cell {
+.bo-access-admin .bo-badge-cell {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.bo-access-status-pill {
+.bo-access-admin .bo-access-status-pill {
   font-weight: 600;
   font-size: 13px;
   color: var(--ink, #111827);
@@ -476,7 +481,7 @@
   gap: 6px;
 }
 
-.bo-access-assignment {
+.bo-access-admin .bo-access-assignment {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -495,7 +500,7 @@
   text-align: left;
 }
 
-.bo-access-assignment:hover {
+.bo-access-admin .bo-access-assignment:hover {
   border-color: var(--bo-accent);
   background: var(--bo-accent-tint);
   color: var(--bo-accent);
@@ -503,7 +508,7 @@
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
 }
 
-.bo-access-assignment-pill {
+.bo-access-admin .bo-access-assignment-pill {
   font-size: 10.5px;
   font-weight: 700;
   padding: 2px 6px;
@@ -512,30 +517,30 @@
   letter-spacing: 0.03em;
 }
 
-.bo-assignment-allow {
+.bo-access-admin .bo-assignment-allow {
   background: var(--bo-success-tint);
   color: #059669;
 }
 
-.bo-assignment-deny {
+.bo-access-admin .bo-assignment-deny {
   background: var(--bo-danger-tint);
   color: #dc2626;
 }
 
-.bo-assignment-active {
+.bo-access-admin .bo-assignment-active {
   color: #059669;
 }
 
-.bo-assignment-expired {
+.bo-access-admin .bo-assignment-expired {
   color: #d97706;
 }
 
-.bo-assignment-inactive {
+.bo-access-admin .bo-assignment-inactive {
   color: var(--muted, #6b7280);
 }
 
 /* Action column button */
-.bo-panel td .secondary-button {
+.bo-panel.bo-access-admin td .secondary-button {
   height: 34px !important;
   min-height: 34px !important;
   padding: 0 14px !important;
@@ -553,20 +558,20 @@
   transition: all 0.18s ease !important;
 }
 
-.bo-panel td .secondary-button:hover:not(:disabled) {
+.bo-panel.bo-access-admin td .secondary-button:hover:not(:disabled) {
   background: var(--raised, #f9fafb) !important;
   border-color: color-mix(in srgb, var(--ink) 25%, var(--line)) !important;
   transform: translateY(-1px);
 }
 
-.bo-panel td .secondary-button:disabled {
+.bo-panel.bo-access-admin td .secondary-button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
   transform: none;
 }
 
 /* --- Scoped Assignment Form Card --- */
-.bo-admin-form-card {
+.bo-access-admin .bo-admin-form-card {
   border: 1px solid var(--line, #e5e7eb);
   border-radius: 14px;
   background: var(--surface, #ffffff);
@@ -578,7 +583,7 @@
   gap: 18px;
 }
 
-.bo-form-card-header {
+.bo-access-admin .bo-form-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -588,7 +593,7 @@
   border-bottom: 1px solid var(--line, #e5e7eb);
 }
 
-.bo-form-card-header h3 {
+.bo-access-admin .bo-form-card-header h3 {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -599,14 +604,14 @@
   gap: 8px;
 }
 
-.bo-admin-form {
+.bo-access-admin .bo-admin-form {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
   padding: 6px 0;
 }
 
-.bo-admin-form label {
+.bo-access-admin .bo-admin-form label {
   display: flex;
   flex-direction: column;
   gap: 7px;
@@ -616,9 +621,9 @@
   min-width: 0;
 }
 
-.bo-admin-form input,
-.bo-admin-form select,
-.bo-admin-form textarea {
+.bo-access-admin .bo-admin-form input,
+.bo-access-admin .bo-admin-form select,
+.bo-access-admin .bo-admin-form textarea {
   border: 1px solid var(--line, #e5e7eb);
   border-radius: 10px;
   background: var(--surface, #ffffff);
@@ -633,15 +638,15 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
-.bo-admin-form input:focus,
-.bo-admin-form select:focus,
-.bo-admin-form textarea:focus {
+.bo-access-admin .bo-admin-form input:focus,
+.bo-access-admin .bo-admin-form select:focus,
+.bo-access-admin .bo-admin-form textarea:focus {
   border-color: var(--bo-accent);
   box-shadow: 0 0 0 3px var(--bo-accent-ring);
   outline: none;
 }
 
-.bo-admin-form textarea {
+.bo-access-admin .bo-admin-form textarea {
   height: auto;
   min-height: 90px;
   padding: 12px 14px;
@@ -649,11 +654,11 @@
   line-height: 1.5;
 }
 
-.bo-full {
+.bo-access-admin .bo-full {
   grid-column: 1 / -1;
 }
 
-.bo-check {
+.bo-access-admin .bo-check {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
@@ -670,7 +675,7 @@
   font-weight: 600 !important;
 }
 
-.bo-check input {
+.bo-access-admin .bo-check input {
   width: 17px !important;
   height: 17px !important;
   cursor: pointer !important;
@@ -678,14 +683,14 @@
   accent-color: var(--bo-accent);
 }
 
-.bo-required {
+.bo-access-admin .bo-required {
   color: #dc2626;
   font-weight: 700;
   margin-left: 2px;
 }
 
 /* Primary submit button */
-.bo-admin-form .primary-button {
+.bo-access-admin .bo-admin-form .primary-button {
   grid-column: 1 / -1;
   height: 44px;
   padding: 0 24px;
@@ -707,17 +712,17 @@
   margin-top: 4px;
 }
 
-.bo-admin-form .primary-button:hover:not(:disabled) {
+.bo-access-admin .bo-admin-form .primary-button:hover:not(:disabled) {
   background: var(--bo-accent-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(17, 135, 138, 0.36);
 }
 
-.bo-admin-form .primary-button:active:not(:disabled) {
+.bo-access-admin .bo-admin-form .primary-button:active:not(:disabled) {
   transform: translateY(0);
 }
 
-.bo-admin-form .primary-button:disabled {
+.bo-access-admin .bo-admin-form .primary-button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
   box-shadow: none;
@@ -725,7 +730,7 @@
 }
 
 /* --- Historical Grants & Collapsible Sections --- */
-.bo-panel details:not(.bo-profile-help) {
+.bo-panel.bo-access-admin details:not(.bo-profile-help) {
   border: 1px solid var(--line, #e5e7eb);
   border-radius: 12px;
   padding: 14px 18px;
@@ -734,18 +739,18 @@
   font-size: 13px;
 }
 
-.bo-panel details:not(.bo-profile-help) summary {
+.bo-panel.bo-access-admin details:not(.bo-profile-help) summary {
   cursor: pointer;
   font-weight: 600;
   color: var(--muted, #6b7280);
   transition: color 0.15s ease;
 }
 
-.bo-panel details:not(.bo-profile-help) summary:hover {
+.bo-panel.bo-access-admin details:not(.bo-profile-help) summary:hover {
   color: var(--ink, #111827);
 }
 
-.bo-panel pre {
+.bo-panel.bo-access-admin pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   background: var(--surface, #ffffff);
@@ -759,14 +764,14 @@
 }
 
 /* --- Preview Amendment Dialog --- */
-.bo-amendment-comparison {
+.bo-access-admin .bo-amendment-comparison {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin: 18px 0;
 }
 
-.bo-amendment-comparison > section {
+.bo-access-admin .bo-amendment-comparison > section {
   border: 1px solid var(--line, #e5e7eb);
   border-radius: 12px;
   padding: 16px;
@@ -774,21 +779,21 @@
   min-width: 0;
 }
 
-.bo-amendment-comparison h3 {
+.bo-access-admin .bo-amendment-comparison h3 {
   font-size: 14px;
   font-weight: 700;
   color: var(--ink, #111827);
   margin: 0 0 12px;
 }
 
-.bo-access-summary {
+.bo-access-admin .bo-access-summary {
   display: grid;
   gap: 10px;
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.bo-access-summary > div {
+.bo-access-admin .bo-access-summary > div {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -797,12 +802,12 @@
   font-size: 13px;
 }
 
-.bo-access-summary dt {
+.bo-access-admin .bo-access-summary dt {
   color: var(--muted, #6b7280);
   font-weight: 500;
 }
 
-.bo-access-summary dd {
+.bo-access-admin .bo-access-summary dd {
   margin: 0;
   font-weight: 600;
   color: var(--ink, #111827);
@@ -811,66 +816,66 @@
 
 /* --- Responsive Media Queries --- */
 @media (max-width: 1100px) {
-  .bo-access-profiles {
+  .bo-access-admin .bo-access-profiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .bo-admin-form {
+  .bo-access-admin .bo-admin-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 700px) {
-  .bo-panel {
+  .bo-panel.bo-access-admin {
     padding: 18px;
     border-radius: 12px;
   }
-  .bo-access-profiles {
+  .bo-access-admin .bo-access-profiles {
     grid-template-columns: 1fr;
     padding: 14px;
   }
-  .bo-access-toolbar {
+  .bo-access-admin .bo-access-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
-  .bo-search-group {
+  .bo-access-admin .bo-search-group {
     max-width: 100%;
   }
-  .bo-toolbar-actions {
+  .bo-access-admin .bo-toolbar-actions {
     width: 100%;
   }
-  .bo-toolbar-actions .secondary-button {
+  .bo-access-admin .bo-toolbar-actions .secondary-button {
     flex: 1;
   }
-  .bo-admin-form {
+  .bo-access-admin .bo-admin-form {
     grid-template-columns: 1fr;
   }
-  .bo-amendment-comparison {
+  .bo-access-admin .bo-amendment-comparison {
     grid-template-columns: 1fr;
   }
 }
 
 /* --- Dark Theme Overrides --- */
-[data-theme='dark'] .bo-panel {
+[data-theme='dark'] .bo-panel.bo-access-admin {
   box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.25);
 }
 
-[data-theme='dark'] .bo-tabs button[aria-current='page'] {
+[data-theme='dark'] .bo-access-admin .bo-tabs button[aria-current='page'] {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
-[data-theme='dark'] .bo-profile-card-employee::before {
+[data-theme='dark'] .bo-access-admin .bo-profile-card-employee::before {
   background: #38bdf8;
 }
-[data-theme='dark'] .bo-profile-card-manager::before {
+[data-theme='dark'] .bo-access-admin .bo-profile-card-manager::before {
   background: #a78bfa;
 }
-[data-theme='dark'] .bo-profile-card-analytics::before {
+[data-theme='dark'] .bo-access-admin .bo-profile-card-analytics::before {
   background: #34d399;
 }
-[data-theme='dark'] .bo-profile-card-admin::before {
+[data-theme='dark'] .bo-access-admin .bo-profile-card-admin::before {
   background: #fbbf24;
 }
 
-[data-theme='dark'] .bo-access-assignment:hover {
+[data-theme='dark'] .bo-access-admin .bo-access-assignment:hover {
   background: rgba(17, 135, 138, 0.2);
 }

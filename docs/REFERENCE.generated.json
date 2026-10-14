@@ -1,6 +1,6 @@
 {
   "version": "2026-10-14",
-  "revision": "efce9f50e53c7ce7",
+  "revision": "80534ee01a3a905f",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -6363,6 +6363,12 @@
     {
       "method": "GET",
       "path": "/api/business/export",
+      "module": "business",
+      "source": "apps/api/src/modules/business/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/business/report",
       "module": "business",
       "source": "apps/api/src/modules/business/routes.ts"
     },

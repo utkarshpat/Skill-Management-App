@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { BookOpen, LayoutDashboard, UserRound } from 'lucide-react';
 import { SidebarNavigation } from '../src/SidebarNavigation';
+import { workspaceFreshness, publishWorkspaceFreshness } from '../src/workspace-freshness';
 import { personalNavigationItems } from '../src/WorkspaceNavigation';
 import {
   DEFAULT_SIDEBAR_ORDER,
@@ -13,6 +14,17 @@ import {
   readSidebarOrder,
   saveSidebarOrder,
 } from '../src/sidebar-order';
+
+test('workspace timestamps contain only confirmed checks and reset across sign-out', () => {
+  publishWorkspaceFreshness();
+  assert.equal(workspaceFreshness(), undefined);
+  publishWorkspaceFreshness({ mode: 'live', checkedAt: 123 });
+  assert.equal(workspaceFreshness()?.checkedAt, 123);
+  publishWorkspaceFreshness({ mode: 'retrying', checkedAt: 123 });
+  assert.equal(workspaceFreshness()?.mode, 'retrying');
+  publishWorkspaceFreshness();
+  assert.equal(workspaceFreshness(), undefined);
+});
 test('defaults prioritize daily work across permission combinations and put profile last', () => {
   const personal = personalNavigationItems({
     ownProfile: true,

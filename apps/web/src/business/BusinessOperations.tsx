@@ -39,10 +39,10 @@ import {
   businessCoverageRows,
   businessPeriod,
   updateBusinessFilters,
-  businessReportHtml,
   type BusinessContext,
   type BusinessDashboard,
 } from './business-model';
+import { businessReportHtml } from './business-report-document';
 import './business.css';
 import { BusinessRecordDate } from './BusinessRecordDate';
 import { BusinessRecordFiles } from './BusinessRecordFiles';
@@ -310,26 +310,6 @@ function Insights({ context }: { context: BusinessContext }) {
 
   const download = async (format: string) => {
     if (exportGuard.current || pending || !data?.context.canExport) return;
-    if (format === 'html') {
-      try {
-        const scopeLabel =
-          scopes.find(s => s.id === params.get('scopeId'))?.label ?? 'All authorized scopes';
-        const day = new Date().toISOString().slice(0, 10);
-        const html = businessReportHtml(data, scopeLabel, new Date());
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `workforce-capability-report-${day}.html`;
-        document.body.append(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-      } catch (e) {
-        setError((e as Error).message);
-      }
-      return;
-    }
     exportGuard.current = true;
     setExporting(true);
     setError('');
@@ -338,11 +318,29 @@ function Insights({ context }: { context: BusinessContext }) {
     try {
       const q = new URLSearchParams(key);
       q.set('format', format);
-      const response = await authenticatedFetch('/api/business/export?' + q, {
-        signal: abort.signal,
-      });
+      const response = await authenticatedFetch(
+        format === 'html' ? '/api/business/report?' + key : '/api/business/export?' + q,
+        {
+          signal: abort.signal,
+        },
+      );
       if (!response.ok) await readApiResponse(response, 'Export could not be generated.');
-      const blob = await response.blob();
+      const blob =
+        format === 'html'
+          ? await (async () => {
+              const fresh = await readApiResponse<BusinessDashboard>(
+                response,
+                'Report could not be generated.',
+              );
+              const scopeLabel =
+                businessScopeChoices(fresh.context.scopes, filters.get('scopeId') ?? '').find(
+                  s => s.id === filters.get('scopeId'),
+                )?.label ?? 'All authorized scopes';
+              return new Blob([businessReportHtml(fresh, scopeLabel, new Date(), key)], {
+                type: 'text/html;charset=utf-8',
+              });
+            })()
+          : await response.blob();
       if (abort.signal.aborted) return;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

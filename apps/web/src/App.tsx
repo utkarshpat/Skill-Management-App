@@ -1,3 +1,4 @@
+import { publishWorkspaceFreshness } from './workspace-freshness';
 import type { WorkspaceState } from './Workspace';
 import { administrationShellFor, isSupportedWorkspacePath } from './WorkspaceNavigation';
 import { lazy, Suspense, useEffect, useState } from 'react';
@@ -72,6 +73,7 @@ export function App() {
     setWorkspaceError('');
     if (isKnowledgeTransfer) return;
     if (session !== 'signed-in') {
+      publishWorkspaceFreshness();
       setWorkspace(undefined);
       return;
     }
@@ -91,11 +93,7 @@ export function App() {
             setWorkspace(body);
             setWorkspaceError('');
             if (typeof window !== 'undefined') {
-              window.dispatchEvent(
-                new CustomEvent('workspace-freshness', {
-                  detail: { mode: 'live', checkedAt: Date.now() },
-                }),
-              );
+              publishWorkspaceFreshness({ mode: 'live', checkedAt: Date.now() });
             }
           }
         })
@@ -111,7 +109,7 @@ export function App() {
       pollMs: 300_000,
       onStatus: status => {
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('workspace-freshness', { detail: status }));
+          publishWorkspaceFreshness(status);
         }
       },
     });

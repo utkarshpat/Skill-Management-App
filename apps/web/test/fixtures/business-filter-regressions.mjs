@@ -101,6 +101,7 @@ globalThis.__probe = {
   files: {},
   overview: {},
   peoplePrompt,
+  reportDocument: { businessReportHtml: () => '' },
 };
 let source = (
   await transform(
@@ -120,6 +121,7 @@ const sources = {
   '../auth': 'auth',
   '../api-response': 'response',
   './business-model': 'model',
+  './business-report-document': 'reportDocument',
   './BusinessAdministration': 'administration',
   './BusinessWorkflows': 'workflows',
   './BusinessRecordDate': 'date',
@@ -262,4 +264,15 @@ assert.ok(
   'Duplicate population gauge stays removed, including an empty workforce',
 );
 assert.ok(text(tree).includes('No matching records'));
+// HTML downloads must fetch a fresh server-authorized aggregate snapshot.
+button(tree, 'Interactive HTML').props.onClick();
+await tick();
+tree = render();
+assert.ok(calls.at(-1).startsWith('/api/business/report?'));
+assert.equal(button(tree, 'Interactive HTML').props.disabled, true);
+deferred[4].resolve(json({ error: { message: 'Export access revoked' } }, 403));
+await tick();
+tree = render();
+assert.ok(text(tree).includes('Export access revoked'));
+assert.equal(button(tree, 'Interactive HTML').props.disabled, false);
 console.log('Business filter lifecycle regressions passed');

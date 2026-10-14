@@ -34,6 +34,7 @@ export function businessReportHtml(
   data: BusinessDashboard,
   scopeLabel: string,
   generatedAt: Date = new Date(),
+  appliedFilters = '',
 ): string {
   const atIso = generatedAt.toISOString();
   const atDisplay = generatedAt.toLocaleString('en-US', {
@@ -53,13 +54,10 @@ export function businessReportHtml(
 
   // Level Distribution
   const distCounts = [1, 2, 3, 4].map(rank => {
-    const item = data.distribution?.find(
-      d =>
-        d.label === `L${rank}` ||
-        d.label === `Level ${rank}` ||
-        d.label.toLowerCase() === LEVEL_NAMES[rank - 1]?.toLowerCase(),
-    );
-    return item ? item.value : 0;
+    // distribution contains credential issuers, not proficiency levels.
+    return data.coverage
+      .filter(cell => cell.rank === rank)
+      .reduce((sum, cell) => sum + cell.holders, 0);
   });
   const maxDist = Math.max(1, ...distCounts);
 
@@ -611,7 +609,7 @@ export function businessReportHtml(
         <span class="report-scope">${escapeHtml(scopeLabel)}</span>
       </div>
       <h1 class="report-title">Workforce Capability &amp; Intelligence Report</h1>
-      <p class="report-scope">Enterprise-wide capability baseline, certification governance, and workforce skill distribution</p>
+      <p class="report-scope">Authorized scope snapshot. Skill charts show the returned top skill aggregates, not the full catalogue. Offline filters refine this snapshot only.</p>
       <div class="report-meta-tags">
         <span class="meta-chip">📅 Generated: ${escapeHtml(atDisplay)} UTC</span>
         <span class="meta-chip">🔒 As-Of Snapshot: ${escapeHtml(data.context.asOf || atIso.slice(0, 10))}</span>
@@ -625,6 +623,7 @@ export function businessReportHtml(
     </div>
   </header>
 
+  <p class="report-scope">Applied filters: ${escapeHtml(appliedFilters || 'Default filters')}</p>
   <!-- KPI Strip -->
   <section class="kpi-grid">
     <div class="kpi-card blue">
@@ -669,7 +668,7 @@ export function businessReportHtml(
         <div style="display:flex;align-items:center;gap:6px;">
           <select id="radarMetricSelect" class="filter-select" style="padding:4px 8px;font-size:12px;" onchange="updateRadarView()">
             <option value="topSkills">Top Skills Proficiency (Avg L1–L4)</option>
-            <option value="domains">Domain Specialization Benchmarks</option>
+            <option value="domains">Credential Category Record Mix (relative to largest category)</option>
           </select>
         </div>
       </div>
@@ -688,8 +687,8 @@ export function businessReportHtml(
     <!-- 2. Proficiency Level Distribution -->
     <div class="chart-card">
       <div class="chart-header">
-        <h3>Proficiency Level Distribution</h3>
-        <span>4-Level Framework Total Counts</span>
+        <h3>Reported Skills Proficiency Mix</h3>
+        <span>Top reported skills · reviewed skill holders by rank</span>
       </div>
       <div class="bar-chart-wrap">
         ${[1, 2, 3, 4]
@@ -795,7 +794,7 @@ export function businessReportHtml(
     <div class="filter-hub-header">
       <div>
         <h2 class="filter-hub-title">Multi-Dimensional Capability Filters</h2>
-        <p class="filter-hub-desc">Filter by proficiency threshold, domain specialization, coverage health, or search keywords</p>
+        <p class="filter-hub-desc">Filter by proficiency threshold, coverage health, or search keywords</p>
       </div>
       <div style="display:flex;gap:10px;">
         <button class="btn" onclick="resetAllFilters()">↺ Reset Filters</button>
@@ -813,14 +812,6 @@ export function businessReportHtml(
           placeholder="Search by skill name…"
           oninput="applyComplexFilters()"
         />
-      </div>
-
-      <div class="filter-field">
-        <label for="hubCategory">Domain / Category</label>
-        <select id="hubCategory" class="filter-select" onchange="applyComplexFilters()">
-          <option value="all">All Domains &amp; Categories</option>
-          ${categories.map(c => `<option value="${escapeHtml(c.label)}">${escapeHtml(c.label)} (${c.value})</option>`).join('')}
-        </select>
       </div>
 
       <div class="filter-field">
@@ -848,8 +839,8 @@ export function businessReportHtml(
       <div class="filter-field">
         <label for="hubSort">Sort Records By</label>
         <select id="hubSort" class="filter-select" onchange="applyComplexFilters()">
-          <option value="holders_desc">Verified Holders (Highest first)</option>
-          <option value="holders_asc">Verified Holders (Lowest first)</option>
+          <option value="holders_desc">Reviewed Holders (Highest first)</option>
+          <option value="holders_asc">Reviewed Holders (Lowest first)</option>
           <option value="name_asc">Skill Name (A to Z)</option>
           <option value="name_desc">Skill Name (Z to A)</option>
           <option value="level_desc">Proficiency Level (L4 to L1)</option>
@@ -889,7 +880,7 @@ export function businessReportHtml(
         <thead>
           <tr>
             <th onclick="toggleSort('name')">Skill Name ⬍</th>
-            <th onclick="toggleSort('level')">Highest Verified Level ⬍</th>
+            <th onclick="toggleSort('level')">Highest Reviewed Level ⬍</th>
             <th>4-Level Mix Breakdown (L1 | L2 | L3 | L4)</th>
             <th onclick="toggleSort('average')">Average Level ⬍</th>
             <th onclick="toggleSort('holders')">Total Holders ⬍</th>
@@ -930,7 +921,6 @@ export function businessReportHtml(
 
     if (kind === 'all') {
       document.getElementById('hubSearch').value = '';
-      document.getElementById('hubCategory').value = 'all';
       document.getElementById('hubLevel').value = 'all';
       document.getElementById('hubCoverage').value = 'all';
     } else if (kind === 'gaps') {
@@ -951,7 +941,6 @@ export function businessReportHtml(
 
   function resetAllFilters() {
     document.getElementById('hubSearch').value = '';
-    document.getElementById('hubCategory').value = 'all';
     document.getElementById('hubLevel').value = 'all';
     document.getElementById('hubCoverage').value = 'all';
     document.getElementById('hubSort').value = 'holders_desc';
@@ -976,7 +965,7 @@ export function businessReportHtml(
 
   function applyComplexFilters() {
     const query = (document.getElementById('hubSearch').value || '').trim().toLowerCase();
-    const cat = document.getElementById('hubCategory').value;
+    const cat = 'all';
     const minLevel = document.getElementById('hubLevel').value;
     const cov = document.getElementById('hubCoverage').value;
     const sortMode = document.getElementById('hubSort').value;
@@ -1023,6 +1012,7 @@ export function businessReportHtml(
 
     // Update Active Filter Badges
     renderFilterBadges(query, cat, minLevel, cov);
+    return filtered;
   }
 
   function renderFilterBadges(query, cat, minLevel, cov) {
@@ -1045,7 +1035,6 @@ export function businessReportHtml(
 
   function clearFilter(key) {
     if (key === 'query') document.getElementById('hubSearch').value = '';
-    if (key === 'cat') document.getElementById('hubCategory').value = 'all';
     if (key === 'level') document.getElementById('hubLevel').value = 'all';
     if (key === 'cov') document.getElementById('hubCoverage').value = 'all';
     applyComplexFilters();
@@ -1102,21 +1091,7 @@ export function businessReportHtml(
   }
 
   function exportFilteredCsv() {
-    const query = (document.getElementById('hubSearch').value || '').trim().toLowerCase();
-    const minLevel = document.getElementById('hubLevel').value;
-    const cov = document.getElementById('hubCoverage').value;
-
-    const filtered = REPORT_DATA.skills.filter(s => {
-      if (query && !s.name.toLowerCase().includes(query)) return false;
-      if (minLevel !== 'all' && s.maxRank < parseInt(minLevel, 10)) return false;
-      if (cov !== 'all') {
-        if (cov === 'gap' && s.covPct >= 5) return false;
-        if (cov === 'low' && (s.covPct < 5 || s.covPct >= 15)) return false;
-        if (cov === 'medium' && (s.covPct < 15 || s.covPct >= 40)) return false;
-        if (cov === 'high' && s.covPct < 40) return false;
-      }
-      return true;
-    });
+    const filtered = applyComplexFilters();
 
     const headers = ['Skill Name', 'Max Level Rank', 'L1 Holders', 'L2 Holders', 'L3 Holders', 'L4 Holders', 'Total Holders', 'Average Level', 'Coverage Pct'];
     const rows = filtered.map(s => [
@@ -1145,7 +1120,7 @@ export function businessReportHtml(
 
   function csvEscape(val) {
     let s = String(val ?? '');
-    if (/^[=+\\-@]/.test(s)) s = "'" + s;
+    if (/^\\s*[=+\\-@]/.test(s)) s = "'" + s;
     return '"' + s.replace(/"/g, '""') + '"';
   }
 
@@ -1222,7 +1197,7 @@ export function businessReportHtml(
 
   function renderCategoryRadarSvg(cats, totalEmp) {
     if (cats.length < 3) {
-      return '<p class="report-scope" style="padding:40px;text-align:center;">At least 3 domain categories are required for category radar view.</p>';
+      return '<p class="report-scope" style="padding:40px;text-align:center;">At least 3 credential categories are required for category radar view.</p>';
     }
     const count = cats.length;
     const maxVal = Math.max(1, ...cats.map(c => c.count));
