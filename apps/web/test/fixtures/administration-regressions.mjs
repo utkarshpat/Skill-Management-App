@@ -40,9 +40,11 @@ globalThis.window = {
 globalThis.document = { getElementById: () => null };
 const FormDialog = () => null,
   Link = () => null;
+const icons = new Proxy({}, { get: () => () => null });
 globalThis.__probe = {
   react,
   jsx,
+  icons,
   auth: {
     authenticatedFetch: async (...args) => {
       calls.push([args[0], args[1]?.method ?? 'GET', args[1]?.body]);
@@ -66,12 +68,14 @@ let source = (
 const sources = {
   react: 'react',
   'react/jsx-runtime': 'jsx',
+  'lucide-react': 'icons',
   '../auth': 'auth',
   '../api-response': 'response',
   '../FormDialog': 'dialog',
   'react-router': 'router',
 };
 source = source
+  .replace(/import\s+['"][^'"]+\.css['"];?/g, '')
   .replace(
     /import\s*\{([^}]+)\}\s*from\s*['"]([^'"]+)['"];?/g,
     (_all, names, path) =>

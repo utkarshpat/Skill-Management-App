@@ -32,3 +32,4 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );
 
 import './effective-access.css';
+import './business/business-administration.css';

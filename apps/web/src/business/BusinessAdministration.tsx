@@ -4,6 +4,8 @@ import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
 import { Link } from 'react-router';
 import type { BusinessContext } from './business-model';
+import { Search, ChevronDown, Plus, ShieldCheck } from 'lucide-react';
+import './business-administration.css';
 interface Administration {
   revision: number;
   personalBaseline: boolean;
@@ -253,10 +255,15 @@ export function BusinessAdministration({
     nodes = state?.nodes.filter(n => n.active || n.id === scope || n.id === department) ?? [];
   return (
     <section className="bo-panel" onChangeCapture={invalidatePreview}>
-      <h2>Access profiles</h2>
-      <p className="bo-note">
-        Choose a person, assign an access profile and scope, then preview the change.
-      </p>
+      <div className="bo-panel-header">
+        <h2>
+          Access profiles
+          <span className="bo-panel-badge">Scoped governance</span>
+        </h2>
+        <p className="bo-note">
+          Choose a person, assign an access profile and scope, then preview the change.
+        </p>
+      </div>
       {error && (
         <p role="alert" className="bo-error">
           {error}
@@ -298,49 +305,69 @@ export function BusinessAdministration({
           {kind === 'RESPONSIBILITY' && (
             <>
               <details className="bo-profile-help">
-                <summary>How access profiles work</summary>
+                <summary>
+                  <span className="bo-profile-help-summary-content">
+                    <span className="bo-profile-help-summary-icon">
+                      <ShieldCheck size={15} />
+                    </span>
+                    How access profiles work
+                  </span>
+                  <ChevronDown size={16} className="bo-profile-help-chevron" />
+                </summary>
                 <div className="bo-access-profiles">
                   {[
                     [
                       'Employee',
                       'Personal profile, skills, certifications and learning. Automatic for active employees when the baseline is enabled.',
+                      'bo-profile-card-employee',
                     ],
                     [
                       'Manager',
                       'Reviews, team insights and recommendations for current direct reports. Reporting and review checks apply.',
+                      'bo-profile-card-manager',
                     ],
                     [
                       'Business Analytics',
                       'Analytics, exports, demand and matching within an explicitly assigned scope.',
+                      'bo-profile-card-analytics',
                     ],
                     [
                       'Admin',
                       'People/access, catalogue and audit administration, plus organization-wide Business Analytics.',
+                      'bo-profile-card-admin',
                     ],
-                  ].map(([label, description]) => (
-                    <article key={label}>
-                      <h3>{label}</h3>
+                  ].map(([label, description, cardClass]) => (
+                    <article key={label} className={cardClass}>
+                      <div className="bo-profile-card-header">
+                        <h3>{label}</h3>
+                      </div>
                       <p>{description}</p>
                     </article>
                   ))}
                 </div>
               </details>
               <div className="bo-access-toolbar">
-                <label>
-                  Find person
+                <div className="bo-search-group">
+                  <span className="bo-search-icon">
+                    <Search size={16} />
+                  </span>
                   <input
+                    className="bo-search-input"
                     type="search"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    placeholder="Name or employee code"
+                    placeholder="Find person by name or employee code…"
+                    aria-label="Find person"
                   />
-                </label>
-                <Link className="secondary-button" to="/access?view=organization">
-                  Manage reporting & organization
-                </Link>
-                <Link className="secondary-button" to="/access?view=people">
-                  People, exceptions & access explanations
-                </Link>
+                </div>
+                <div className="bo-toolbar-actions">
+                  <Link className="secondary-button" to="/access?view=organization">
+                    Manage reporting & organization
+                  </Link>
+                  <Link className="secondary-button" to="/access?view=people">
+                    People, exceptions & access explanations
+                  </Link>
+                </div>
               </div>
               <div className="bo-table-wrap">
                 <table>
@@ -363,63 +390,100 @@ export function BusinessAdministration({
                       )
                       .map(p => (
                         <tr key={p.id}>
-                          <td>
-                            {p.name}
-                            <small className="bo-access-code">
+                          <td className="bo-person-cell">
+                            <span className="bo-person-name">{p.name}</span>
+                            <span
+                              className={`bo-access-code${
+                                !p.active ? ' bo-access-code-inactive' : ''
+                              }`}
+                            >
                               {p.employeeCode}
                               {!p.active ? ' · Inactive' : ''}
-                            </small>
+                            </span>
                           </td>
                           <td>
-                            {p.employeeAccess === undefined
-                              ? 'Access details unavailable'
-                              : p.employeeAccess
-                                ? 'Employee'
-                                : 'Employee access blocked'}
-                            {p.hasDirectReports && (
-                              <small className="bo-access-code">
-                                {p.managerAccess
-                                  ? 'Manager · current direct reports'
-                                  : 'Manager access blocked'}
-                              </small>
-                            )}
+                            <div className="bo-badge-cell">
+                              <span className="bo-access-status-pill">
+                                {p.employeeAccess === undefined
+                                  ? 'Access details unavailable'
+                                  : p.employeeAccess
+                                    ? 'Employee'
+                                    : 'Employee access blocked'}
+                              </span>
+                              {p.hasDirectReports && (
+                                <span className="bo-access-code">
+                                  {p.managerAccess
+                                    ? 'Manager · current direct reports'
+                                    : 'Manager access blocked'}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td>
-                            {p.analyticsAccess === undefined || p.adminAccess === undefined
-                              ? 'Access details unavailable'
-                              : p.adminAccess
-                                ? p.analyticsAccess
-                                  ? 'Admin + Business Analytics'
-                                  : 'Admin · analytics blocked'
-                                : p.analyticsAccess
-                                  ? 'Business Analytics'
-                                  : 'No business access'}
-                            {state.responsibilities
-                              .filter(r => r.personId === p.id)
-                              .map(r => (
-                                <button
-                                  className="bo-access-assignment"
-                                  key={r.id}
-                                  onClick={() => editResponsibility(r)}
-                                >
-                                  {r.bundle === 'SYSTEM_ADMIN' ? 'Admin' : 'Business Analytics'} ·{' '}
-                                  {state.nodes.find(n => n.id === r.scopeId)?.name ??
-                                    state.projects.find(n => n.id === r.scopeId)?.name ??
-                                    (r.kind === 'ORGANIZATION'
-                                      ? 'Organization'
-                                      : 'Unavailable scope')}{' '}
-                                  · {r.effect === 'DENY' ? 'Denied' : 'Allowed'} ·{' '}
-                                  {!r.active
-                                    ? 'Inactive'
-                                    : r.validUntil && Date.parse(r.validUntil) <= Date.now()
-                                      ? 'Expired'
-                                      : 'Active'}
-                                </button>
-                              ))}
+                            <div className="bo-badge-cell">
+                              <span className="bo-access-status-pill">
+                                {p.analyticsAccess === undefined || p.adminAccess === undefined
+                                  ? 'Access details unavailable'
+                                  : p.adminAccess
+                                    ? p.analyticsAccess
+                                      ? 'Admin + Business Analytics'
+                                      : 'Admin · analytics blocked'
+                                    : p.analyticsAccess
+                                      ? 'Business Analytics'
+                                      : 'No business access'}
+                              </span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                {state.responsibilities
+                                  .filter(r => r.personId === p.id)
+                                  .map(r => (
+                                    <button
+                                      className="bo-access-assignment"
+                                      key={r.id}
+                                      type="button"
+                                      onClick={() => editResponsibility(r)}
+                                    >
+                                      <span
+                                        className={`bo-access-assignment-pill ${
+                                          r.effect === 'DENY'
+                                            ? 'bo-assignment-deny'
+                                            : 'bo-assignment-allow'
+                                        }`}
+                                      >
+                                        {r.effect === 'DENY' ? 'Denied' : 'Allowed'}
+                                      </span>
+                                      <span>
+                                        {r.bundle === 'SYSTEM_ADMIN' ? 'Admin' : 'Business Analytics'} ·{' '}
+                                        {state.nodes.find(n => n.id === r.scopeId)?.name ??
+                                          state.projects.find(n => n.id === r.scopeId)?.name ??
+                                          (r.kind === 'ORGANIZATION'
+                                            ? 'Organization'
+                                            : 'Unavailable scope')}
+                                      </span>
+                                      <span
+                                        className={
+                                          !r.active
+                                            ? 'bo-assignment-inactive'
+                                            : r.validUntil && Date.parse(r.validUntil) <= Date.now()
+                                              ? 'bo-assignment-expired'
+                                              : 'bo-assignment-active'
+                                        }
+                                      >
+                                        ·{' '}
+                                        {!r.active
+                                          ? 'Inactive'
+                                          : r.validUntil && Date.parse(r.validUntil) <= Date.now()
+                                            ? 'Expired'
+                                            : 'Active'}
+                                      </span>
+                                    </button>
+                                  ))}
+                              </div>
+                            </div>
                           </td>
                           <td>
                             <button
                               className="secondary-button"
+                              type="button"
                               disabled={!p.active || busy}
                               onClick={() => {
                                 selectPerson(p.id);
@@ -428,6 +492,7 @@ export function BusinessAdministration({
                                   ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
                               }}
                             >
+                              <Plus size={14} />
                               Add access
                             </button>
                           </td>
@@ -441,28 +506,52 @@ export function BusinessAdministration({
                           .includes(search.trim().toLowerCase()),
                     ) && (
                       <tr>
-                        <td colSpan={4}>No matching people.</td>
+                        <td
+                          colSpan={4}
+                          style={{ textAlign: 'center', color: 'var(--muted)', padding: '32px' }}
+                        >
+                          No matching people found.
+                        </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
               </div>
-              <h3>{id ? 'Edit scoped assignment' : 'Add scoped assignment'}</h3>
-              {id && (
-                <button className="secondary-button" onClick={() => selectPerson(person)}>
+            </>
+          )}
+          <div className="bo-admin-form-card">
+            <div className="bo-form-card-header">
+              <h3>
+                {kind === 'RESPONSIBILITY'
+                  ? id
+                    ? 'Edit scoped assignment'
+                    : 'Add scoped assignment'
+                  : kind === 'PROJECT'
+                    ? id
+                      ? 'Edit project'
+                      : 'Add project'
+                    : kind === 'MEMBERSHIP'
+                      ? 'Project membership'
+                      : 'Employee baseline configuration'}
+              </h3>
+              {kind === 'RESPONSIBILITY' && id && (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => selectPerson(person)}
+                >
                   New assignment for this person
                 </button>
               )}
-            </>
-          )}
-          <form
-            id="bo-access-assignment-form"
-            className="bo-admin-form"
-            onSubmit={e => {
-              e.preventDefault();
-              void prepare();
-            }}
-          >
+            </div>
+            <form
+              id="bo-access-assignment-form"
+              className="bo-admin-form"
+              onSubmit={e => {
+                e.preventDefault();
+                void prepare();
+              }}
+            >
             {kind === 'PROJECT' && (
               <>
                 <label>
@@ -666,41 +755,44 @@ export function BusinessAdministration({
               {busy ? 'Checking…' : 'Preview change'}
             </button>
           </form>
-          {kind === 'MEMBERSHIP' && (
-            <div className="bo-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Person</th>
-                    <th>Project</th>
-                    <th>State</th>
-                    <th>Action</th>
+        </div>
+        {kind === 'MEMBERSHIP' && (
+          <div className="bo-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Person</th>
+                  <th>Project</th>
+                  <th>State</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state.memberships.map(m => (
+                  <tr key={m.personId + m.projectId}>
+                    <td>{state.people.find(p => p.id === m.personId)?.name}</td>
+                    <td>{state.projects.find(p => p.id === m.projectId)?.name}</td>
+                    <td>{m.active ? 'Active' : 'Inactive'}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => {
+                          selectPerson(m.personId);
+                          setPerson(m.personId);
+                          setProject(m.projectId);
+                          setActive(m.active);
+                        }}
+                      >
+                        Edit
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {state.memberships.map(m => (
-                    <tr key={m.personId + m.projectId}>
-                      <td>{state.people.find(p => p.id === m.personId)?.name}</td>
-                      <td>{state.projects.find(p => p.id === m.projectId)?.name}</td>
-                      <td>{m.active ? 'Active' : 'Inactive'}</td>
-                      <td>
-                        <button
-                          onClick={() => {
-                            selectPerson(m.personId);
-                            setPerson(m.personId);
-                            setProject(m.projectId);
-                            setActive(m.active);
-                          }}
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
           <details>
             <summary>
               Historical grants needing explicit review ({state.historicalGrantsForReview.length})
