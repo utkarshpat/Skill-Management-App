@@ -1,5 +1,7 @@
 # Follow-up audit 3 — 14 October 2026
 
+Current-status update, 15 October 2026: runtime `e0fa9a3` is deployed and the [production E2E record](PRODUCTION_E2E_2026-10-15.md) documents fresh acceptance and limits. The [current handover](HANDOVER.md#current-release-and-production-acceptance-15-october-2026) supersedes older local/pending statements for the covered features. The dated findings below remain historical evidence; no blanket go-live or issuer verification is implied.
+
 Audited the current local workspace, including the preceding unpushed fixes. Two further issues are confirmed; AI task handling has two distinct reproductions. This round does not change application code or production data.
 
 ## 1. [P2] AI task tracking mishandles clarification answers and explicit task changes

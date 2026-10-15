@@ -1,5 +1,9 @@
 # SCMD FDD mapping against the current application
 
+Current-status update, 15 October 2026: runtime `e0fa9a3` is deployed and the [production E2E record](PRODUCTION_E2E_2026-10-15.md) documents fresh acceptance and limits. The [current handover](HANDOVER.md#current-release-and-production-acceptance-15-october-2026) supersedes older local/pending statements for the covered features. The dated findings below remain historical evidence; no blanket go-live or issuer verification is implied.
+
+Four-level proficiency, governed credential-skill mappings, unified intake/review, credential identity protection, full catalogue coverage, distinct credential holders and ranking have subsequent increments. Read [the reporting follow-up](FDD_REPORTING_INCREMENT_2026-10-14.md) before treating the original gaps as remaining work. Organization-specific dimensions and operational requirements still need their own source/acceptance.
+
 Reviewed 12 October 2026 against repository commit `6d4a899121babcdcefe116fefca5a09180ebc0e1`.
 
 Current follow-up: [13 October commit audit and updated mapping](NEW_COMMITS_AUDIT_AND_FDD_2026-10-13.md) supersedes the statuses for four-level support, certification identity, unified manager navigation and redesigned analytics. The tables below remain the historical comparison at the pinned commit.

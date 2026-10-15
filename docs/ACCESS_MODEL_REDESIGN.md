@@ -4,6 +4,10 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Dated release acceptance — 15 October 2026
+
+Runtime `e0fa9a3` passed the [documented hosted demo checks](PRODUCTION_E2E_2026-10-15.md), including private-draft denials, current assigned-manager combined review, scoped submitted-file reads and four demo-account workspace projections. A manager may receive amendment discovery context with `canView=false`; Analytics dashboard access remains separately denied. These checks change no grants, scopes or baseline policy, and do not establish real SSO/admin or exhaustive authorization acceptance. Company hosting/SSO and scheduler activation remain deferred.
+
 ### Conversational people matching — approved increment, 14 October 2026
 
 The user approved Find people in the existing AI sidebar, with conversational clarification and an in-place results/export view. Migration 082 was installed on the shared development database. It provides a stateless read through the existing canonical Business projection, actor-bound usable responsibilities, `BusinessVisiblePeople` and scope DENY rules. Matching uses approved four-level skill snapshots and current approved exact-name/provider credentials; it does not establish staffing availability, grant review authority or create a saved demand. Each result and full CSV/Excel export rechecks current capabilities and revision; export additionally requires `canExport`. Explicit malformed/foreign scopes are rejected, and no private attachment contents, draft notes or new grants are introduced. Application release remains separate from development activation. See [implementation and acceptance](CONVERSATIONAL_PEOPLE_MATCHING_2026-10-14.md).

@@ -1,5 +1,7 @@
 # Repository audit — 14 October 2026
 
+Current-status update, 15 October 2026: runtime `e0fa9a3` is deployed and the [production E2E record](PRODUCTION_E2E_2026-10-15.md) documents fresh acceptance and limits. The [current handover](HANDOVER.md#current-release-and-production-acceptance-15-october-2026) supersedes older local/pending statements for the covered features. The dated findings below remain historical evidence; no blanket go-live or issuer verification is implied.
+
 Audited revision: `52bfeedc3578f75e43c046da1d775b3fa401c596`.
 
 This audit found six reproducible defects and one confirmed partial flow. No application fixes, database mutations, commits, pushes or deployments were performed during this audit. Prior production acceptance is documented separately in `EVIDENCE_PRODUCTION_ACCEPTANCE_2026-10-14.md`.

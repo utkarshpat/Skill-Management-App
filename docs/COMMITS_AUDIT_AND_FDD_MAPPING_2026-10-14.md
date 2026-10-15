@@ -1,5 +1,9 @@
 # Latest commit audit and SCMD FDD gap mapping
 
+Current-status update, 15 October 2026: runtime `e0fa9a3` is deployed and the [production E2E record](PRODUCTION_E2E_2026-10-15.md) documents fresh acceptance and limits. The [current handover](HANDOVER.md#current-release-and-production-acceptance-15-october-2026) supersedes older local/pending statements for the covered features. The dated findings below remain historical evidence; no blanket go-live or issuer verification is implied.
+
+Four-level proficiency, governed credential-skill mappings, unified intake/review, credential identity protection, full catalogue coverage, distinct credential holders and ranking have subsequent increments. Read [the reporting follow-up](FDD_REPORTING_INCREMENT_2026-10-14.md) before treating the original gaps as remaining work. Organization-specific dimensions and operational requirements still need their own source/acceptance.
+
 Reviewed on 14 October 2026 at `22d4c1d`, against the previous reviewed release `5a4ad1d`. Five newer commits were present locally and on origin/main: `55c8ebe`, `07981f7`, `a4f3b59`, `b7f7e02`, and `22d4c1d`. The working tree was clean before this audit. Corrections described below are local changes, not hosted release acceptance.
 
 The source document is `C:/Users/utpatel/Downloads/SCMD FDD V0.1.docx`. Its cover identifies Version 1.0 and Draft. Its full body and tables were extracted again for this comparison without modifying the document. Earlier user-approved choices remain authoritative: four proficiency levels, current assigned-manager review, scoped analytics, 5 MB certificate files, and deferred real SSO/company hosting. This mapping supersedes outdated status statements in the 12/13 October comparisons; those reports remain historical records.

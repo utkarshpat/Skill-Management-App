@@ -1,5 +1,9 @@
 # Evidence readiness and operator runbook
 
+Current-status update, 15 October 2026: runtime `e0fa9a3` is deployed and the [production E2E record](PRODUCTION_E2E_2026-10-15.md) documents fresh acceptance and limits. The [current handover](HANDOVER.md#current-release-and-production-acceptance-15-october-2026) supersedes older local/pending statements for the covered features. The dated findings below remain historical evidence; no blanket go-live or issuer verification is implied.
+
+Migration 084 and the evidence transport rollout are installed/accepted on the shared demo target; see [the evidence rollout](EVIDENCE_PRODUCTION_ACCEPTANCE_2026-10-14.md). Retention is still dry-run only, and actual storage inventory/recovery checks below remain pending.
+
 ## Implemented increment; release still pending
 
 Skill evidence accepts validated PDF, JPEG, PNG and WebP inputs up to 10 MB. Images are normalized to WebP, stripped of metadata and compressed to at most 1 MB. PDF bytes remain unchanged after structural validation. Certificate uploads retain the separate 5 MB limit.

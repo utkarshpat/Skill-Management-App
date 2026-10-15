@@ -1,5 +1,7 @@
 # Follow-up audit — 15 October 2026
 
+Current-status update, 15 October 2026: runtime `e0fa9a3` is deployed and the [production E2E record](PRODUCTION_E2E_2026-10-15.md) documents fresh acceptance and limits. The [current handover](HANDOVER.md#current-release-and-production-acceptance-15-october-2026) supersedes older local/pending statements for the covered features. The dated findings below remain historical evidence; no blanket go-live or issuer verification is implied.
+
 The preceding unpushed repairs remain intact. This audit confirms two additional UI issues. Application code, production records, deployment and access grants were not changed.
 
 ## 1. [P2] Unified intake does not warn before unsaved entries are lost on page unload

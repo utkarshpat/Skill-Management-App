@@ -1,5 +1,7 @@
 # Follow-up audit — 14 October 2026
 
+Current-status update, 15 October 2026: runtime `e0fa9a3` is deployed and the [production E2E record](PRODUCTION_E2E_2026-10-15.md) documents fresh acceptance and limits. The [current handover](HANDOVER.md#current-release-and-production-acceptance-15-october-2026) supersedes older local/pending statements for the covered features. The dated findings below remain historical evidence; no blanket go-live or issuer verification is implied.
+
 Audited the local workspace including the previous unpushed repairs. Three additional defects are confirmed. This audit added only a report and ignored local repro artifacts; no further application fix, push, deployment or production mutation was performed.
 
 ## 1. [P2] Recovery can show a replacement file while retaining the older stored certificate

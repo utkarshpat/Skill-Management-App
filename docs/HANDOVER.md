@@ -1,6 +1,45 @@
 # Cognitive Intelligence Lab — Project Handover
 
-Version: 2026-10-14. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
+Version: 2026-10-15. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
+
+## Current release and production acceptance — 15 October 2026
+
+This section supersedes older “pending”, “local only” and next-work statements for the specific features covered here; dated sections below remain historical implementation/acceptance records. Verified runtime release: `e0fa9a38c91c9dade99dd6b81e87bf3b77561a62` on https://skill-management-app.vercel.app. GitHub CI and Vercel Production deployment succeeded before the hosted run. This handbook update is a separate documentation release, not another runtime test or migration.
+
+### Employee and manager flow
+
+The sidebar is **Skills**, with unified certificate-first intake and a skill-without-certificate path. Upload/details, related skills and final review form three steps. Multiple credentials can support multiple canonical catalogue skills; every credential must link at least one skill. Skills may remain uncertified. Each skill has user-selected proficiency in the versioned Foundation / Autonomous / Experienced / Expert framework. Experience description is optional; projects and evidence are expandable. AI suggestions never assign proficiency or approval. A combined request receives item decisions under the exact current assigned-manager policy; reused approved records do not create new decisions.
+
+Saved intake restores private files with View/Download and preview. Explicit AI autofill can read a saved file without re-upload, shows a busy state, leaves unsupported fields blank and suggests catalogue skills. Selected skills appear once in the search area; remaining recommendations stay separate. Draft recovery locks mutation until bootstrap/reconciliation completes, and uncertain writes are reconciled rather than blindly repeated. Explicit close offers Keep editing / Discard. A native before-unload guard exists; its browser dialog was not observable in this hosted in-app-browser run, and it is not a router-wide navigation blocker.
+
+Renewal captures a new file, credential ID and dates. The old approved version remains current until renewal approval. After approval, the renewed version is current in portfolio/Analytics/matching; the prior record and immutable files/audit remain history. Unrenewed expired credentials remain visible. Manager approval and calendar validity are independent; neither establishes issuer authenticity.
+
+### Access, Analytics and AI
+
+Employee is the personal baseline; Manager is an explicit current direct-report relationship policy. Business Analytics and Admin require canonical effective access and enforced scoped responsibilities. Admin preview/recheck/transaction/audit and matching DENY rules remain mandatory. A manager may discover catalogue amendment actions without having Analytics read access. Catalogue amendments/decisions live on Skill catalogue; People & Access administration remains separate from Analytics. Do not infer authority from role names, template labels or a successful context-discovery response.
+
+Analytics (`/business`) uses server-resolved scopes and distinct employee/credential semantics, full filtered four-level catalogue coverage and global ranking before pagination. Credential counts are not multiplied by linked skills; reviewed skills and currently certified employees are independent measures. Submitted-file reads require the separate authorized scope/resource checks. CSV/XLSX use authenticated streaming after fresh access/scope checks; the 50,000-row limit remains. People matching is conversational **Find people** in the existing AI sidebar, with clarification, authorized results and export; it does not establish employee availability or require a new saved demand. Historical demand tables are not an invitation to restore removed UI paths.
+
+Core AI retains the requested task across clarifications and bounded durable context, allows explicit task switches and validates requested quiz counts. Personal/manager/Analytics tools are offered and executed under current access; no AI tool grants access, approves claims or silently saves a learning plan. Learning completion can explicitly request catalogue-based next-step suggestions; it is not proficiency verification.
+
+### Evidence, operations and release gates
+
+Migration 084 is installed on the verified shared development database used by the temporary hosted demo; installed-schema rollback checks passed in the prior evidence rollout. No migration was needed for `e0fa9a3` or this documentation refresh. This does not establish migration state for a future organizational database.
+
+Ordinary skill evidence: PDF/JPEG/PNG/WebP inputs up to 10 MB; images normalize/compress to WebP up to 1 MB. Certificates retain the separate 5 MB limit and supported PDF/JPEG/PNG/WebP/DOCX/TXT formats. Large uploads use authenticated bounded parts with revision checks; private file responses stream after authorization. Promotion of ordinary evidence to a certificate is an explicit user-confirmed workflow, limited to certificate-compatible files/sizes. Stored files remain private; AI reads require an explicit user action.
+
+Retention remains **dry-run only**. No cleanup deletion/scheduler or account-wide storage inventory/restore is claimed. See the evidence operator runbook for future retention approval and a coordinated SQL/file restore exercise. Company hosting, organization API synchronization, real SSO acceptance and production scheduler activation remain deferred by user direction. Exact-day expiry reminder logic exists for 14, 10, 7, 5, 3 and 0 days, but this run did not simulate every future date or activate a scheduler. Notifications use activity-aware polling (90 seconds), panel opening and relevant events, not a WebSocket guarantee.
+
+Local release verification passed **549 tests (6 architecture, 321 API, 222 web)**, typecheck and API/web builds. Hosted acceptance passed **18 linked evidence/review checks, 45 request/incident/learning checks and 10 renewal checks**, plus four live AI turns and a four-demo-account access matrix. Browser acceptance exercised saved-file autofill, canonical skill selection with blank experience, combined submission, required review feedback, manager approval and the owner’s “Review Completed” view with preview and feedback. No confirmed application bug or blocking UI issue was found in those exercised flows.
+
+Limits: separate HTTP sessions tested authorization, while browser users were switched sequentially; two isolated simultaneous browser profiles were not tested. Production fault injection, maximum-volume export load, native file chooser/drag-drop, comprehensive accessibility and real administrator/SSO acceptance were not performed in this run. Synthetic records remain clearly labelled QA; no real qualification or issuer verification is implied. Detailed evidence and fixture IDs: [production E2E report](PRODUCTION_E2E_2026-10-15.md). Earlier large-file/installed-schema acceptance: [evidence release record](EVIDENCE_PRODUCTION_ACCEPTANCE_2026-10-14.md).
+
+### Remaining work and handover order
+
+1. Review the current FDD follow-up records before starting work; the original 12 October mapping is historical. Full catalogue coverage, distinct credential holders and global ranking now exist; do not re-implement those as missing features.
+2. Agree authoritative organization dimensions and official catalogue/rubric content. Location/Practice/Community/Pillar source semantics, governed legacy import and remaining monthly/lead/threshold reporting/notification requirements need explicit business decisions where not already implemented.
+3. Complete measured latency/load and broader browser/accessibility acceptance, including native unload/drag-drop and isolated-session behavior. Local cancellation/streaming/race regressions are not a substitute for hosting fault tests.
+4. Before organization go-live, verify real SSO/directory mapping, session/revocation posture, scheduler ownership, monitoring/SLOs, backup/restore and approved attachment retention/scanning. Keep the current manual manager verification unless issuer integration is separately approved.
 
 ## Executive capability intelligence and advanced HTML analytics — 14 October 2026
 
@@ -94,6 +133,8 @@ The local development access store already used an atomic temporary-file replace
 Malformed or incomplete planner success responses are rejected before rendering editable tasks. Organization preview needs its server receipt; missing learning recovery/attempt bodies produce an explicit error rather than silent success. Regression gates include cross-account drafts, effective permission denial, same-ID confirmation retries, malformed roadmap bodies and atomic local persistence failure/retry. Migration registration checks accept formatting whitespace while retaining version/order assertions; SQL workflow/access checks remain unchanged.
 
 ## Release Verification & Current Status
+
+Current status is in **Current release and production acceptance — 15 October 2026** above. The following records are dated history and do not supersede that release matrix.
 
 Recorded on 6 October 2026 (Asia/Calcutta). This is dated acceptance evidence, not live health monitoring. The verified application baseline is `main` commit `e1d1f3fa42484a5131b950813d0ae0e75d717e63`, deployed as `dpl_Cn6p1hQ2S8BAeHefdEhb4HaUCrZp` on https://skill-management-app.vercel.app. Later documentation deployments carry their own commit; do not substitute this historical record for a new deployment check.
 
@@ -449,7 +490,7 @@ Current hosting is a personal/demo deployment, not enterprise production certifi
 
 Implemented hardening includes restricted runtime procedures, input validation, revision/audit checks, exact-manager policy, bounded provider context, shared request budgets and protected read tools. This does not prove all paths secure or establish an exact AI cost ceiling.
 
-Remaining work: further resource-query optimization based on measurements; measured production latency budgets; stronger demo/real SSO onboarding and revocation; company tenant/network review; secret rotation; evidence scanning, retention, delete/replace and orphan reconciliation; readiness/monitoring/alerts; backups/restore exercise; formal assessments; external calendar/rest-day scheduling; real demand/matching and wider-scope analytics; durable approved AI proposals/idempotent executors; comprehensive phone/browser accessibility acceptance.
+Remaining work: measured query/latency budgets and hosting load/fault acceptance; demo/real SSO onboarding and revocation; company tenant/network review; secret rotation; evidence scanning and an approved retention/deletion policy with actual inventory/restore verification; monitoring/alerts; formal assessments; external calendar/rest-day scheduling; unsupported future business dimensions/scopes; durable approved AI proposals/idempotent executors; comprehensive phone/browser accessibility acceptance. Scoped Analytics and conversational people matching are implemented; this does not establish staffing availability. Editable-file replacement exists, while retained historical storage objects are not automatically deleted.
 
 Unsupported grant scopes and mockup-only modules must remain unavailable. Recommendations are not verification; missing evidence is not proof of inability. Do not treat top-down hierarchy as unrestricted access. See approved baseline before implementing any new scope or approval workflow.
 
@@ -594,6 +635,8 @@ The current certification wizard has two steps: Certificate & details, then Revi
 Migration 055 requires a current persisted image for SUBMIT and SAVE_SUBMIT inside the existing authorization/revision transaction. The API independently checks image presence; list discovery suppresses submission actions for records without an image. Draft-only staging remains possible for the upload sequence and recovery from upload failure. Existing historical records are retained without automatic changes or backfill. Two new rollback cases reject missing-image submission through both operations, alongside the previous eight image scenarios. This increment supersedes the earlier optional image and three-step certification entry descriptions.
 
 ## Business Operations implementation increment
+
+Historical initial implementation record. Its installation/navigation/persisted-demand statements are superseded by the current release section above and the later approved baseline increments. Analytics, catalogue administration and people/access administration are now separate workspaces; conversational Find people replaces the old demand UI.
 
 Migrations 060–061 add explicit scoped business responsibilities, a durable opt-in Personal baseline, organization-bound System Admin, multiple project memberships, canonical business access projection, analytics/export SQL, provider/credential master amendments, scoped demands and explainable matching. They are pending permanent installation after pending migration 059. No legacy grant is automatically promoted; activate the baseline and responsibilities through reviewed admin previews.
 
