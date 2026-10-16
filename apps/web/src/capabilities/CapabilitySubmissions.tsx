@@ -6,7 +6,7 @@ import { ArrowRight, Award, CheckCircle2, Clock3, Code2, Trash2 } from 'lucide-r
 import { FormDialog } from '../FormDialog';
 import { toast } from '../toast';
 import { CapabilityReview } from './CapabilityReview';
-import { useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 import './capabilities.css';
 
 function getInitials(name?: string) {
@@ -25,6 +25,7 @@ export function CapabilitySubmissions({
   onUpdated?: () => void;
 }) {
   const [params] = useSearchParams();
+  const location = useLocation();
   const consumed = useRef<string | undefined>(undefined);
   const [removing, setRemoving] = useState<any>();
   const [removed, setRemoved] = useState<any>();
@@ -71,11 +72,12 @@ export function CapabilitySubmissions({
   }, []);
   useEffect(() => {
     const target = params.get('submission')?.toLowerCase();
-    if (target && consumed.current !== target && records.some(r => r.id === target)) {
-      consumed.current = target;
+    const navigation = location.key + ':' + target;
+    if (target && consumed.current !== navigation && records.some(r => r.id === target)) {
+      consumed.current = navigation;
       setOpened(target);
     }
-  }, [params, records]);
+  }, [params, records, location.key]);
   const done = () => {
     setOpened(undefined);
     setAttempt(v => v + 1);
@@ -169,9 +171,7 @@ export function CapabilitySubmissions({
               <div className="cap-card-title-row">
                 {review && <strong className="cap-employee-name">{record.name}</strong>}
                 {review && record.label && <span className="cap-title-sep">·</span>}
-                <span className="cap-request-label">
-                  {record.label || 'Capability submission'}
-                </span>
+                <span className="cap-request-label">{record.label || 'Capability submission'}</span>
               </div>
               <div className="cap-metadata-pills">
                 <span className="cap-meta-pill">
@@ -180,7 +180,8 @@ export function CapabilitySubmissions({
                 </span>
                 <span className="cap-meta-pill">
                   <Award size={12} aria-hidden="true" />
-                  {record.certifications} {record.certifications === 1 ? 'certificate' : 'certificates'}
+                  {record.certifications}{' '}
+                  {record.certifications === 1 ? 'certificate' : 'certificates'}
                 </span>
                 <span className={`cap-status-pill ${record.status.toLowerCase()}`}>
                   <Clock3 size={11} aria-hidden="true" />

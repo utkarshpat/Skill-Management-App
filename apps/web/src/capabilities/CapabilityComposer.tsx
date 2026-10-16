@@ -49,7 +49,11 @@ import './capabilities.css';
 import { useIntakeFile } from './useIntakeFile';
 import { resolveIntakeSkill } from './intake-entry';
 import { warnUnsavedUnload } from '../unsaved-unload';
-import { restoreIntakeCertificates, certificateForAutofill } from './certificate-intake';
+import {
+  restoreIntakeCertificates,
+  certificateForAutofill,
+  mergeCertificateAutofillFields,
+} from './certificate-intake';
 const root = '/api/capability-submissions';
 async function json<T>(path: string, body?: object, signal?: AbortSignal) {
   return readApiResponse<T>(
@@ -541,6 +545,7 @@ export function CapabilityComposer({
       )
         .then(v => {
           if (!abort.signal.aborted) {
+            loadedCataloguePage.current = cataloguePage;
             setCatalogueTotal(v.total);
             setOptions(old =>
               cataloguePage === 1
@@ -596,17 +601,7 @@ export function CapabilityComposer({
         'AI could not read this file. Continue manually.',
       );
       if (!mounted.current) return;
-      const fields = {
-        ...cert.fields,
-        ...Object.fromEntries(
-          Object.entries(data.fields).filter(
-            ([key, v]) =>
-              v !== '' &&
-              v !== null &&
-              !(cert.renewedFromId && ['certificationName', 'provider'].includes(key)),
-          ),
-        ),
-      };
+      const fields = mergeCertificateAutofillFields(cert, data.fields);
       patchCertificate(cert.id, { fields });
       const mapped = credentialSkillDefaults(definitions, fields);
       const combined = [
@@ -873,10 +868,16 @@ export function CapabilityComposer({
     }
   }
   async function recover() {
-    if (busy || uploadBusy || initializing || !personalReady) return;
+    if (lock.current || busy || uploadBusy || initializing || !personalReady) return;
+    lock.current = true;
+    const abort = new AbortController();
+    request.current = abort;
     setBusy(true);
     try {
-      const saved = await json<Submission>(root + '/' + id.current);
+      const saved = await json<Submission>(root + '/' + id.current, undefined, abort.signal);
+      if (!mounted.current || abort.signal.aborted) return;
+      if (!saved || !['DRAFT', 'SUBMITTED', 'REVIEWED', 'LINKED'].includes(saved.status))
+        throw Error('Saved submission status could not be confirmed.');
       if (saved.status !== 'DRAFT') {
         toast.info('Submission was already completed.');
         onSaved();
@@ -889,13 +890,20 @@ export function CapabilityComposer({
         'Saved draft loaded. Review your details and reselect any file whose upload was not completed.',
       );
     } catch (e) {
-      setError(
-        (e as Error).message +
-          ' If the initial save did not complete, retry with the same submission ID.',
-      );
-      setRecovery(false);
+      if (!mounted.current || abort.signal.aborted) return;
+      if ((e as { status?: number })?.status === 404 && version.current === 0 && !submissionId) {
+        setRecovery(false);
+        setError('No submission was saved. Review your entries and try saving again.');
+      } else {
+        setRecovery(true);
+        setError(
+          (e as Error).message +
+            ' Your save is still unconfirmed. Use Check saved submission again before making more changes.',
+        );
+      }
     } finally {
-      setBusy(false);
+      lock.current = false;
+      if (mounted.current) setBusy(false);
     }
   }
   const certificateFieldsUI = (c: SelectedCertificate) => (

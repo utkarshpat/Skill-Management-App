@@ -1,5 +1,24 @@
 import type { SelectedCertificate, Submission } from './capability-model';
+import type { CertificationFields } from '../certifications/types';
 import { readApiResponse } from '../api-response';
+
+export function mergeCertificateAutofillFields(
+  certificate: Pick<SelectedCertificate, 'fields' | 'renewedFromId'>,
+  fields: Partial<CertificationFields>,
+): CertificationFields {
+  return {
+    ...certificate.fields,
+    ...Object.fromEntries(
+      Object.entries(fields).filter(
+        ([key, value]) =>
+          value !== '' &&
+          value !== undefined &&
+          (value !== null || key === 'expiryDate') &&
+          !(certificate.renewedFromId && ['certificationName', 'provider'].includes(key)),
+      ),
+    ),
+  };
+}
 
 export function restoreIntakeCertificates(value: Submission): SelectedCertificate[] {
   return (value.intake?.certifications ?? []).map(c => {

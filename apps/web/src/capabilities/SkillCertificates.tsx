@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 import { Award, Eye } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
@@ -36,6 +36,7 @@ export function SkillCertificates({
   children: ReactNode;
 }) {
   const [params] = useSearchParams();
+  const location = useLocation();
   const [data, setData] = useState<CertificationPage>();
   const [loading, setLoading] = useState(enabled),
     [error, setError] = useState('');
@@ -155,18 +156,19 @@ export function SkillCertificates({
   }
   useEffect(() => {
     const target = params.get('renew') || params.get('record') || params.get('certification');
+    const navigation = location.key + ':' + target;
     if (
       !enabled ||
       !data ||
       loading ||
       !target ||
       !/^[a-f0-9-]{36}$/i.test(target) ||
-      consumed.current === target
+      consumed.current === navigation
     )
       return;
-    consumed.current = target;
+    consumed.current = navigation;
     void open(target, params.has('renew'));
-  }, [params, enabled, data, loading]);
+  }, [params, enabled, data, loading, location.key]);
   const close = () => {
     detailRequest.current?.abort();
     setOpening(false);

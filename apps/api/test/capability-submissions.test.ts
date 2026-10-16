@@ -171,6 +171,44 @@ test('AI extraction uses bounded catalogue candidates, strips invented proficien
     /access|Access|assigned/,
   );
 });
+
+test('certificate autofill distinguishes explicit non-expiring dates from unknown and invalid expiry', async () => {
+  const current = state();
+  const access = {
+    snapshot: () => structuredClone(current),
+    person: () => current.people[0],
+    save: async () => current,
+  } as AccessStore;
+  for (const [expiry, expected] of [
+    [null, null],
+    ['', ''],
+    [undefined, ''],
+    ['2027-02-30', ''],
+    ['2027-01-01', '2027-01-01'],
+  ]) {
+    const provider = {
+      name: 'gemini',
+      complete: async (messages: any[]) => {
+        assert.match(messages[0].content, /null only when explicitly non-expiring/);
+        return {
+          calls: [],
+          content: JSON.stringify({ fields: { ...fields, expiryDate: expiry }, searchTerms: [] }),
+        };
+      },
+    } as Provider;
+    const result = await new CertificateAutofillService(
+      access,
+      {} as ClaimsStore,
+      new MemoryAiBudget(),
+      provider,
+    ).extract(
+      actor,
+      { data: Buffer.from('Synthetic credential'), mimeType: 'text/plain', fileName: 'qa.txt' },
+      new AbortController().signal,
+    );
+    assert.equal(result.fields.expiryDate, expected);
+  }
+});
 test('capability HTTP binds verified actor, validates revision sets and conceals private Blob keys', async t => {
   const current = state(),
     seen: string[] = [];

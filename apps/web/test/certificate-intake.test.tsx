@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import {
   restoreIntakeCertificates,
   certificateForAutofill,
+  mergeCertificateAutofillFields,
 } from '../src/capabilities/certificate-intake';
 import type { SelectedCertificate, Submission } from '../src/capabilities/capability-model';
+import { emptyCertification } from '../src/certifications/certification-model';
 
 const certificate = (): SelectedCertificate => ({
   id: 'cert',
@@ -13,6 +15,34 @@ const certificate = (): SelectedCertificate => ({
   fields: {} as any,
   skillIds: ['skill'],
   uploaded: false,
+});
+
+test('autofill applies explicit no-expiry to blank and dated forms without treating unknown expiry as lifetime', () => {
+  for (const expiryDate of ['', '2027-01-01']) {
+    const cert = { ...certificate(), fields: { ...emptyCertification(), expiryDate } };
+    assert.equal(mergeCertificateAutofillFields(cert, { expiryDate: null }).expiryDate, null);
+    assert.equal(mergeCertificateAutofillFields(cert, { expiryDate: '' }).expiryDate, expiryDate);
+    assert.equal(mergeCertificateAutofillFields(cert, {}).expiryDate, expiryDate);
+    assert.equal(
+      mergeCertificateAutofillFields(cert, { expiryDate: '2028-02-01' }).expiryDate,
+      '2028-02-01',
+    );
+  }
+  const renewed = {
+    ...certificate(),
+    renewedFromId: 'original',
+    fields: { ...emptyCertification(), certificationName: 'Existing family', provider: 'Issuer' },
+  };
+  const fields = mergeCertificateAutofillFields(renewed, {
+    certificationName: 'Different family',
+    provider: 'Other issuer',
+    expiryDate: null,
+    credentialId: 'New ID',
+  });
+  assert.equal(fields.certificationName, 'Existing family');
+  assert.equal(fields.provider, 'Issuer');
+  assert.equal(fields.expiryDate, null);
+  assert.equal(fields.credentialId, 'New ID');
 });
 
 test('recovery discards unconfirmed local replacements and identifies only the saved staged file', () => {
