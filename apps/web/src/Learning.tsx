@@ -261,6 +261,7 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
     }
   }, [dashboardParams, state]);
   const plannerCreate = useRef<LearningPlanCreateAttempt | null>(null);
+  const pendingPlannerDraft = plannerCreate.current?.pendingDraft;
   function validate() {
     if (
       !title.trim() ||
@@ -672,9 +673,21 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
           <LearningPlanner
             today={tab === 'Calendar' ? selectedDay : today}
             initialGoal={plannerGoal}
+            initialDraft={
+              pendingPlannerDraft
+                ? {
+                    title: pendingPlannerDraft.title,
+                    goal: pendingPlannerDraft.goal,
+                    dailyMinutes: pendingPlannerDraft.dailyMinutes,
+                    startDate: pendingPlannerDraft.startDate,
+                    steps: pendingPlannerDraft.tasks,
+                    days: pendingPlannerDraft.tasks.length,
+                  }
+                : undefined
+            }
             onClose={() => {
               setPlannerGoal(undefined);
-              plannerCreate.current = null;
+              if (!plannerCreate.current?.pending) plannerCreate.current = null;
             }}
             onReview={draft => {
               openCreate(draft);

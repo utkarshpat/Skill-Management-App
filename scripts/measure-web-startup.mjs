@@ -10,6 +10,13 @@ const manifest = JSON.parse(
   await readFile(new URL('../apps/web/dist/.vite/manifest.json', import.meta.url), 'utf8'),
 );
 const flows = {
+  employeeSkills: [
+    'index.html',
+    'src/Workspace.tsx',
+    'src/CapabilityPortfolio.tsx',
+    'src/MySkills.tsx',
+    'src/AssistantWidget.tsx',
+  ],
   employeeDashboard: [
     'index.html',
     'src/Workspace.tsx',

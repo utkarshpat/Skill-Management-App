@@ -2,6 +2,8 @@ type Entry = {
   controller: AbortController;
   promise: Promise<Response>;
   consumers: number;
+  unclaimed: number;
+  response?: Response;
   settled: boolean;
 };
 
@@ -35,13 +37,15 @@ export class InflightReads {
     let entry = this.entries.get(key);
     if (!entry) {
       const controller = new AbortController();
-      entry = { controller, consumers: 0, settled: false, promise: undefined! };
+      entry = { controller, consumers: 0, unclaimed: 0, settled: false, promise: undefined! };
       const created = entry;
       entry.promise = Promise.resolve()
         .then(() => this.transport(path, { ...init, signal: controller.signal }))
         .then(
           response => {
             created.settled = true;
+            created.response = response;
+            if (!created.unclaimed) void response.body?.cancel().catch(() => {});
             return response;
           },
           error => {
@@ -56,13 +60,17 @@ export class InflightReads {
     }
     const shared = entry;
     shared.consumers++;
+    shared.unclaimed++;
     return new Promise((resolve, reject) => {
       let done = false;
+      let claimed = false;
       let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
       let bodyController: ReadableStreamDefaultController<Uint8Array> | undefined;
       const finish = (cancelled = false) => {
         if (done) return;
         done = true;
+        if (!claimed && --shared.unclaimed === 0)
+          void shared.response?.body?.cancel().catch(() => {});
         init.signal?.removeEventListener('abort', abort);
         shared.consumers--;
         if (!shared.consumers) {
@@ -89,7 +97,10 @@ export class InflightReads {
         response => {
           if (done) return;
           try {
-            const cloned = response.clone();
+            claimed = true;
+            // Give the last consumer the original branch. Leaving it unread after
+            // cloning would buffer the entire download, even for a single reader.
+            const cloned = --shared.unclaimed === 0 ? response : response.clone();
             if (!cloned.body) {
               finish();
               resolve(cloned);

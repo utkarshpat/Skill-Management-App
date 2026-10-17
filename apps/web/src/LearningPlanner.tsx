@@ -20,6 +20,7 @@ export function LearningPlanner({
   today,
   initialGoal = '',
   initialExperience = '',
+  initialDraft,
   onManual,
   onClose,
   onReview,
@@ -28,22 +29,28 @@ export function LearningPlanner({
   today: string;
   initialGoal?: string;
   initialExperience?: string;
+  /** Restore an unconfirmed calendar save so retry retains its original identity. */
+  initialDraft?: LearningRoadmap;
   onManual?: () => void;
   onClose: () => void;
   onReview: (draft: LearningRoadmap) => void;
   onConfirmSchedule?: (draft: LearningRoadmap) => Promise<boolean | void> | void;
 }) {
-  const [page, setPage] = useState(0),
-    [goal, setGoal] = useState(initialGoal),
+  const [page, setPage] = useState(initialDraft ? 2 : 0),
+    [goal, setGoal] = useState(initialDraft?.goal ?? initialGoal),
     [experience, setExperience] = useState(initialExperience),
-    [minutes, setMinutes] = useState(30),
-    [days, setDays] = useState(7),
-    [start, setStart] = useState(today);
-  const [draft, setDraft] = useState<LearningRoadmap>(),
+    [minutes, setMinutes] = useState(initialDraft?.dailyMinutes ?? 30),
+    [days, setDays] = useState(initialDraft?.days ?? 7),
+    [start, setStart] = useState(initialDraft?.startDate ?? today);
+  const [draft, setDraft] = useState<LearningRoadmap | undefined>(initialDraft),
     [feedback, setFeedback] = useState(''),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState(''),
-    [confirmationStarted, setConfirmationStarted] = useState(false);
+    [error, setError] = useState(
+      initialDraft
+        ? 'The previous save is unconfirmed. Retry confirmation to check the same plan before making changes.'
+        : '',
+    ),
+    [confirmationStarted, setConfirmationStarted] = useState(Boolean(initialDraft));
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   function valid() {
@@ -113,6 +120,8 @@ export function LearningPlanner({
       try {
         await onConfirmSchedule(draft);
       } catch (e) {
+        const status = (e as { status?: number })?.status;
+        if (status && status < 500 && status !== 409) setConfirmationStarted(false);
         setError(e instanceof Error ? e.message : 'Could not add to calendar.');
       } finally {
         setBusy(false);

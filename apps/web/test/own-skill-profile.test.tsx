@@ -47,16 +47,50 @@ test('starting a refresh aborts earlier requests and only the newest completion 
   requests.abort();
   assert.equal(requests.current(fresh), false);
 });
-test('profile refresh reads every own page and deduplicates claims', async () => {
+test('profile refresh reads every own page in order', async () => {
   const calls: number[] = [];
+  const claims = [claim, { ...claim, id: 'second' }, { ...claim, id: 'third' }];
   const result = await fetchOwnSkillProfile(async (path, init) => {
     assert.ok(init?.signal);
     const page = Number(path.split('page=')[1]);
     calls.push(page);
-    return Response.json({ ...profile, page, pageSize: 1, total: 3, claims: [claim] });
+    return Response.json({ ...profile, page, pageSize: 1, total: 3, claims: [claims[page - 1]] });
   }, new AbortController().signal);
   assert.deepEqual(calls, [1, 2, 3]);
-  assert.deepEqual(result.claims, [claim]);
+  assert.deepEqual(result.claims, claims);
+});
+test('moving pages cannot silently publish duplicate, incomplete or inconsistent profiles', async () => {
+  for (const override of [
+    { claims: [claim] },
+    { claims: [] },
+    { total: 3 },
+    { pageSize: 2 },
+    { canClaim: false },
+  ]) {
+    await assert.rejects(
+      fetchOwnSkillProfile(async path => {
+        const page = Number(path.split('page=')[1]);
+        return Response.json({
+          ...profile,
+          page,
+          pageSize: 1,
+          total: 2,
+          claims: [{ ...claim, id: page === 1 ? claim.id : 'second' }],
+          ...(page === 2 ? override : {}),
+        });
+      }, new AbortController().signal),
+      /changed while loading/,
+    );
+  }
+});
+test('a truncated first page cannot be accepted as a complete profile', async () => {
+  await assert.rejects(
+    fetchOwnSkillProfile(
+      async () => Response.json({ ...profile, claims: [claim], total: 2 }),
+      new AbortController().signal,
+    ),
+    /changed while loading/,
+  );
 });
 test('refresh failure stays a fetch failure instead of inventing a missing claim, and retry reads fresh revision', async () => {
   let attempts = 0;

@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
-import { CapabilityComposer } from './CapabilityComposer';
+import { CapabilityComposer, CapabilityReview } from './DeferredCapabilityDialogs';
 import { ArrowRight, Award, CheckCircle2, Clock3, Code2, Trash2 } from 'lucide-react';
 import { FormDialog } from '../FormDialog';
 import { toast } from '../toast';
-import { CapabilityReview } from './CapabilityReview';
 import { useLocation, useSearchParams } from 'react-router';
 import './capabilities.css';
 
@@ -73,11 +72,18 @@ export function CapabilitySubmissions({
   useEffect(() => {
     const target = params.get('submission')?.toLowerCase();
     const navigation = location.key + ':' + target;
-    if (target && consumed.current !== navigation && records.some(r => r.id === target)) {
+    // The recent list is capped at 50. Detail reads authorize the exact submission,
+    // including notification targets that have aged out of this list.
+    if (
+      !loading &&
+      target &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(target) &&
+      consumed.current !== navigation
+    ) {
       consumed.current = navigation;
       setOpened(target);
     }
-  }, [params, records, location.key]);
+  }, [params, loading, location.key]);
   const done = () => {
     setOpened(undefined);
     setAttempt(v => v + 1);

@@ -231,7 +231,7 @@ test('repeat submission and certificate notifications open once per navigation w
       location,
       enabled: true,
       data: {},
-      loading: false,
+      loading: kind === 'submission',
       records: [] as { id: string }[],
       useEffect: (fn: () => void) => fn(),
       setOpened: (id: string) => opens.push(id),
@@ -244,6 +244,7 @@ test('repeat submission and certificate notifications open once per navigation w
     if (kind === 'submission') {
       assert.equal(opens.length, 0);
       scope.records = [{ id: target }];
+      scope.loading = false;
       vm.runInNewContext(code, scope);
     }
     assert.equal(opens.length, 1);

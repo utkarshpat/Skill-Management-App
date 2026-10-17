@@ -13,7 +13,7 @@ import {
   credentialValidity,
 } from '../certifications/certification-model';
 import type { CertificationPage, CertificationRecord } from '../certifications/types';
-import { CapabilityComposer } from './CapabilityComposer';
+import { CapabilityComposer } from './DeferredCapabilityDialogs';
 import { uniqueCertificates } from './SupportingCertificates';
 import { RelatedCapabilities } from './RelatedCapabilities';
 

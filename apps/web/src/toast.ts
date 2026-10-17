@@ -20,9 +20,11 @@ export async function notifyResponse(path: string, method: string, response: Res
       'error',
     );
   } else if (
+    response.status !== 202 &&
     ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) &&
     !/^\/api\/(ai|assistant|knowledge-transfer|dev-login)(\/|$)/.test(path) &&
     !/^\/api\/business\/people-search(\/|$)/.test(path) &&
+    !/^\/api\/capability-submissions\/autofill(?:[/?]|$)/.test(path) &&
     (!/^\/api\/(my-skills|skill-reviews\/decision|workflows|recommendations|certifications|certification-recommendations)(\/|$)/.test(
       path,
     ) ||
@@ -35,7 +37,7 @@ export async function notifyResponse(path: string, method: string, response: Res
         : path.includes('/decision')
           ? 'Review saved.'
           : path.includes('/evidence')
-            ? 'Evidence image uploaded.'
+            ? 'Evidence uploaded.'
             : 'Changes saved.',
       'success',
     );

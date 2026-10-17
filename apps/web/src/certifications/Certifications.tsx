@@ -7,7 +7,7 @@ import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
 import { toast } from '../toast';
 import type { WorkspaceState } from '../Workspace';
-import { CapabilityComposer } from '../capabilities/CapabilityComposer';
+import { CapabilityComposer } from '../capabilities/DeferredCapabilityDialogs';
 import { CapabilitySubmissions } from '../capabilities/CapabilitySubmissions';
 import { CertificationReviewDialog } from './CertificationReviewDialog';
 import { RelatedCapabilities } from '../capabilities/RelatedCapabilities';

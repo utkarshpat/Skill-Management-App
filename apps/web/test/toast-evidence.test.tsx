@@ -78,11 +78,21 @@ test('Toast success does not claim previews, AI responses or navigation are save
       '/api/assistant/navigation',
       '/api/ai/chat',
       '/api/learning/planner',
+      '/api/capability-submissions/autofill',
       '/api/business/people-search',
       '/api/business/people-search/export',
     ])
       await notifyResponse(path, 'POST', new Response('{}'));
     assert.equal(events.length, 0);
+    for (const path of [
+      '/api/my-skills/123/evidence',
+      '/api/capability-submissions/123/staged/456',
+    ]) {
+      const pending = Response.json({ pending: true }, { status: 202 });
+      await notifyResponse(path, 'POST', pending);
+      assert.deepEqual(await pending.json(), { pending: true });
+    }
+    assert.equal(events.length, 0, 'Accepted upload parts are not completed saves');
     await notifyResponse('/api/learning', 'POST', new Response('{}'));
     assert.equal(events[0].message, 'Changes saved.');
     await notifyResponse(
@@ -135,7 +145,7 @@ test('Explicit feedback shares one typed event contract and covered writes avoid
       { message: 'Submitted.', kind: 'success' },
     ]);
     await notifyResponse('/api/my-skills/123/evidence', 'POST', new Response('{}'));
-    assert.equal(events[2].message, 'Evidence image uploaded.');
+    assert.equal(events[2].message, 'Evidence uploaded.');
   } finally {
     Object.assign(globalThis, { window: originalWindow, CustomEvent: originalEvent });
   }

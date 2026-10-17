@@ -105,6 +105,31 @@ test('certificate picker accepts common document formats and keeps the 5 MB limi
   );
 });
 
+test('certificate image MIME fallback reaches decoding when the browser omits its type', async () => {
+  const original = globalThis.createImageBitmap;
+  const decoded: string[] = [];
+  globalThis.createImageBitmap = async (source: ImageBitmapSource) => {
+    decoded.push((source as Blob).type);
+    throw Error('Stop at decoder');
+  };
+  try {
+    for (const [extension, type] of [
+      ['jpg', 'image/jpeg'],
+      ['png', 'image/png'],
+      ['webp', 'image/webp'],
+    ]) {
+      await assert.rejects(
+        prepareCertificateFile(new File(['image bytes'], `certificate.${extension}`)),
+        /This image could not be opened/,
+      );
+      assert.equal(decoded.at(-1), type);
+    }
+    assert.equal(decoded.length, 3);
+  } finally {
+    globalThis.createImageBitmap = original;
+  }
+});
+
 const record = (id: string): CertificationRecord => ({
   ...fields,
   id,

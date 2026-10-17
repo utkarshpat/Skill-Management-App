@@ -19,7 +19,8 @@ export async function prepareCertificateFile(source: File): Promise<File> {
   if (!mimeType || MIME_BY_EXTENSION[extension] !== mimeType)
     throw Error('Choose a PDF, JPEG, PNG, WebP, DOCX or TXT file.');
   if (mimeType.startsWith('image/')) {
-    const compressed = await compressEvidenceImage(source, 5),
+    const image = source.type ? source : new File([source], source.name, { type: mimeType });
+    const compressed = await compressEvidenceImage(image, 5),
       stem = source.name.replace(/\.[^.]*$/, '').slice(0, 220) || 'certificate';
     return new File([compressed], `${stem}.webp`, { type: 'image/webp' });
   }

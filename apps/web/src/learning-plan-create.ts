@@ -4,6 +4,7 @@ import {
   learningPlanSchedule,
   prefillLearningPlanDraft,
   type LearningPlanDraftInput,
+  type LearningPlanDraftPrefill,
 } from './learning-plan-draft';
 
 type Fetcher = (url: string, options?: RequestInit) => Promise<Response>;
@@ -29,6 +30,16 @@ export class LearningPlanCreateAttempt {
   private confirmed = false;
   get pending() {
     return Boolean(this.payload && !this.confirmed);
+  }
+  get pendingDraft(): LearningPlanDraftPrefill | undefined {
+    if (!this.pending || !this.payload) return;
+    return {
+      title: this.payload.title,
+      goal: this.payload.goal,
+      dailyMinutes: this.payload.dailyMinutes,
+      startDate: this.payload.tasks[0].plannedDate,
+      tasks: this.payload.tasks.map(task => task.title),
+    };
   }
   private running?: Promise<LearningPlanCreatePayload>;
   save(

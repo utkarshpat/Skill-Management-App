@@ -51,8 +51,26 @@ export async function fetchOwnSkillProfile(
       throw new Error('Your skill profile returned invalid pagination. Please retry.');
     return value;
   };
-  const value = await read(1),
-    claims = [...value.claims];
+  const value = await read(1);
+  const claims: Claim[] = [];
+  const ids = new Set<string>();
+  const append = (page: OwnSkillProfile) => {
+    if (
+      page.total !== value.total ||
+      page.pageSize !== value.pageSize ||
+      page.canClaim !== value.canClaim ||
+      page.claims.length !==
+        Math.min(value.pageSize, value.total - (page.page - 1) * value.pageSize)
+    )
+      throw new Error('Your skill profile changed while loading. Please refresh and retry.');
+    for (const claim of page.claims) {
+      if (ids.has(claim.id))
+        throw new Error('Your skill profile changed while loading. Please refresh and retry.');
+      ids.add(claim.id);
+      claims.push(claim);
+    }
+  };
+  append(value);
   for (let next = 2; next <= Math.ceil(value.total / value.pageSize); next += 4) {
     signal.throwIfAborted();
     const pages = await Promise.all(
@@ -61,8 +79,8 @@ export async function fetchOwnSkillProfile(
         (_, index) => read(next + index),
       ),
     );
-    for (const page of pages) claims.push(...page.claims);
+    for (const page of pages) append(page);
   }
   signal.throwIfAborted();
-  return { ...value, claims: Array.from(new Map(claims.map(claim => [claim.id, claim])).values()) };
+  return { ...value, claims };
 }

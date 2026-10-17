@@ -2,6 +2,87 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { InflightReads } from '../src/inflight-reads';
 const tick = () => new Promise<void>(resolve => setImmediate(resolve));
+
+test('streaming downloads consume the original body without retaining an unused copy', async () => {
+  for (const consumers of [1, 2]) {
+    let original: Response | undefined;
+    const reads = new InflightReads(async () => {
+      let remaining = 16;
+      original = new Response(
+        new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (remaining-- > 0) controller.enqueue(new Uint8Array(1024 * 1024));
+            else controller.close();
+          },
+        }),
+      );
+      return original;
+    });
+    const responses = await Promise.all(
+      Array.from({ length: consumers }, () => reads.fetch('/api/business/export')),
+    );
+    const sizes = await Promise.all(
+      responses.map(async response => {
+        const reader = response.body!.getReader();
+        let bytes = 0;
+        for (;;) {
+          const part = await reader.read();
+          if (part.done) return bytes;
+          bytes += part.value.byteLength;
+        }
+      }),
+    );
+    assert.deepEqual(sizes, Array(consumers).fill(16 * 1024 * 1024));
+    assert.equal(original!.bodyUsed, true, 'The original stream must be consumed too');
+  }
+});
+
+test('a cancelled last subscriber does not leave an unread original response', async () => {
+  let deliver!: (response: Response) => void;
+  const reads = new InflightReads(
+    () =>
+      new Promise(resolve => {
+        deliver = resolve;
+      }),
+  );
+  const abort = new AbortController();
+  const active = reads.fetch('/api/file');
+  const cancelled = reads.fetch('/api/file', { signal: abort.signal });
+  await tick();
+  abort.abort();
+  await assert.rejects(cancelled, { name: 'AbortError' });
+  const original = new Response('complete');
+  deliver(original);
+  assert.equal(await (await active).text(), 'complete');
+  assert.equal(original.bodyUsed, true);
+});
+
+test('a transport that resolves after all subscribers cancel releases its unused stream', async () => {
+  let deliver!: (response: Response) => void;
+  let released = false;
+  const reads = new InflightReads(
+    () =>
+      new Promise(resolve => {
+        deliver = resolve;
+      }),
+  );
+  const abort = new AbortController();
+  const pending = reads.fetch('/api/file', { signal: abort.signal });
+  await tick();
+  abort.abort();
+  await assert.rejects(pending, { name: 'AbortError' });
+  deliver(
+    new Response(
+      new ReadableStream({
+        cancel() {
+          released = true;
+        },
+      }),
+    ),
+  );
+  await tick();
+  assert.equal(released, true);
+});
 function transport() {
   const calls: {
     path: string;

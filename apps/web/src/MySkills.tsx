@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CapabilityComposer } from './capabilities/CapabilityComposer';
+import { CapabilityComposer } from './capabilities/DeferredCapabilityDialogs';
 import { CapabilitySubmissions } from './capabilities/CapabilitySubmissions';
 import { useOwnCertificates, CertificateRenewalSummary } from './capabilities/SkillCertificates';
 import { Plus } from 'lucide-react';
