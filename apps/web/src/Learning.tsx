@@ -1,5 +1,6 @@
 import { learningDraftHandoff } from './learning-draft-handoff';
 import { LearningPlanCreateAttempt } from './learning-plan-create';
+import { indexLearningTasks } from './learning-task-index';
 import { PublishedSkillPicker, type SkillOption } from './PublishedSkillPicker';
 import { createPortal } from 'react-dom';
 import { useEffect, useState, useRef, type ReactNode } from 'react';
@@ -65,8 +66,9 @@ async function read<T>(response: Response): Promise<T> {
 }
 export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement | null }) {
   const [dashboardParams, setDashboardParams] = useSearchParams();
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone,
-    today = dateInZone(new Date(), zone);
+  const now = new Date(),
+    zone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+    today = dateInZone(now, zone);
   const [state, setState] = useState<State>(),
     [error, setError] = useState(''),
     [notice, setNotice] = useState(''),
@@ -148,25 +150,19 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
     }
   }
   const plans = state?.plans ?? [],
-    all = plans.flatMap(plan => plan.tasks.map(task => ({ plan, task }))),
-    active = all.filter(x => x.plan.status === 'ACTIVE'),
-    backlog = active.filter(
-      x => !x.task.completedAt && x.task.plannedDate < dateInZone(new Date(), x.plan.timezone),
-    );
-  const completed = all.filter(x => x.task.completedAt),
-    streak = currentStreak(
-      completed.map(x => dateInZone(new Date(x.task.completedAt!), zone)),
-      today,
-    );
-  const rows = (
-    tab === 'Backlog'
+    taskIndex = indexLearningTasks(plans, now),
+    { backlog, completed } = taskIndex;
+  const streak = currentStreak(
+    completed.map(x => dateInZone(new Date(x.task.completedAt!), zone)),
+    today,
+  );
+  const rows = [
+    ...(tab === 'Backlog'
       ? backlog
-      : active.filter(
-          x =>
-            x.task.plannedDate ===
-            (tab === 'Calendar' ? selectedDay : dateInZone(new Date(), x.plan.timezone)),
-        )
-  ).sort((a, b) => a.task.plannedDate.localeCompare(b.task.plannedDate));
+      : tab === 'Calendar'
+        ? (taskIndex.tasksByDay.get(selectedDay) ?? [])
+        : taskIndex.todayTasks()),
+  ].sort((a, b) => a.task.plannedDate.localeCompare(b.task.plannedDate));
   const names = taskText
       .split('\n')
       .map(x => x.trim())
@@ -376,8 +372,8 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
                   <div>
                     <strong>{plan.title}</strong>
                     <small>
-                      {backlog.filter(x => x.plan.id === plan.id).length} overdue tasks · Rebuild
-                      the pending schedule
+                      {taskIndex.overdueByPlan.get(plan.id) ?? 0} overdue tasks · Rebuild the
+                      pending schedule
                     </small>
                   </div>
                   <button className="secondary-button" onClick={() => setRecovery(plan)}>
@@ -419,7 +415,7 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
                   ))}
                   {Array.from({ length: last }, (_, i) => {
                     const day = month + '-' + String(i + 1).padStart(2, '0'),
-                      count = active.filter(x => x.task.plannedDate === day).length;
+                      count = taskIndex.tasksByDay.get(day)?.length ?? 0;
                     return (
                       <button
                         key={day}

@@ -1,18 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Search, Pencil, Users, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
-
-interface Role {
-  id: string;
-  name: string;
-  permissions: unknown[];
-}
-interface Person {
-  id: string;
-  displayName: string;
-  employeeCode: string;
-  active: boolean;
-  roleIds: string[];
-}
+import {
+  indexAccessDirectory,
+  type DirectoryPerson as Person,
+  type DirectoryRole as Role,
+} from './access-directory-index';
 export function AccessDirectory({
   kind,
   people,
@@ -32,25 +24,19 @@ export function AccessDirectory({
     [page, setPage] = useState(1),
     [status, setStatus] = useState('');
   const query = search.trim().toLocaleLowerCase();
-  const rows =
-    kind === 'people'
-      ? people.filter(
-          item =>
-            (
-              item.displayName +
-              ' ' +
-              item.employeeCode +
-              ' ' +
-              roles
-                .filter(role => item.roleIds.includes(role.id))
-                .map(role => role.name)
-                .join(' ')
+  const index = useMemo(() => indexAccessDirectory(people, roles), [people, roles]);
+  const rows = useMemo(
+    () =>
+      kind === 'people'
+        ? index.people
+            .filter(
+              ({ person, text }) =>
+                text.includes(query) && (!status || (status === 'active') === person.active),
             )
-              .toLocaleLowerCase()
-              .includes(query) &&
-            (!status || (status === 'active') === item.active),
-        )
-      : roles.filter(item => item.name.toLocaleLowerCase().includes(query));
+            .map(({ person }) => person)
+        : index.roles.filter(({ text }) => text.includes(query)).map(({ role }) => role),
+    [index, kind, query, status],
+  );
   const pages = Math.max(1, Math.ceil(rows.length / 10)),
     current = Math.min(page, pages),
     shown = rows.slice((current - 1) * 10, current * 10);
@@ -127,9 +113,7 @@ export function AccessDirectory({
                     <div className="directory-tags">
                       {item.roleIds.length ? (
                         item.roleIds.map(id => (
-                          <span key={id}>
-                            {roles.find(role => role.id === id)?.name ?? 'Unlisted template'}
-                          </span>
+                          <span key={id}>{index.roleNames.get(id) ?? 'Unlisted template'}</span>
                         ))
                       ) : (
                         <span className="directory-unassigned">No additional templates</span>
@@ -164,7 +148,7 @@ export function AccessDirectory({
                     </div>
                   </th>
                   <td>{item.permissions.length} assignments</td>
-                  <td>{people.filter(person => person.roleIds.includes(item.id)).length} people</td>
+                  <td>{index.memberCounts.get(item.id) ?? 0} people</td>
                   <td>
                     <button
                       className="directory-edit"

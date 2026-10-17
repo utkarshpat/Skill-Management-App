@@ -1,23 +1,19 @@
-import { BusinessAdministration } from './business/BusinessAdministration';
 import { AccessAudit } from './AccessAudit';
 import type { Decision } from './EffectiveAccess';
 import { EmploymentFields, EmploymentChange, type Employment } from './EmploymentDetails';
 import { PrimaryCapabilityFields } from './PrimaryCapabilityFields';
 import { SidebarNavigation } from './SidebarNavigation';
 import { AccessDirectory } from './AccessDirectory';
-import { OrganizationSetup } from './OrganizationSetup';
-import { PersonAccessDialog } from './PersonAccessDialog';
 import { Workspace, type WorkspaceState } from './Workspace';
 import { personalNavigationItems, personalPageTitle } from './WorkspaceNavigation';
 import { readOrganizationSummary, type OrganizationSummary } from './organization-summary';
-import { SkillCatalogue } from './SkillCatalogue';
 import { FormDialog } from './FormDialog';
 import { NavigationDrawer } from './NavigationDrawer';
 import { Sidebar } from './Sidebar';
 import { NavbarAccount } from './NavbarAccount';
 import { RoleAssignments } from './RoleAssignments';
 import { PermissionEditor } from './PermissionEditor';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams, useNavigate } from 'react-router';
 import { authenticatedFetch, isDemoSession } from './auth';
 import {
@@ -33,6 +29,23 @@ import {
   Search,
   Menu,
 } from 'lucide-react';
+
+// Keep optional administration screens out of personal dashboard startup.
+// Each boundary leaves the navigation and surrounding workspace visible.
+const BusinessAdministration = lazy(() =>
+  import('./business/BusinessAdministration').then(module => ({
+    default: module.BusinessAdministration,
+  })),
+);
+const OrganizationSetup = lazy(() =>
+  import('./OrganizationSetup').then(module => ({ default: module.OrganizationSetup })),
+);
+const PersonAccessDialog = lazy(() =>
+  import('./PersonAccessDialog').then(module => ({ default: module.PersonAccessDialog })),
+);
+const SkillCatalogue = lazy(() =>
+  import('./SkillCatalogue').then(module => ({ default: module.SkillCatalogue })),
+);
 interface Assignment {
   permission: string;
   scope: 'OWN' | 'ORGANIZATION';
@@ -174,7 +187,7 @@ export function AccessAdmin({
   const [assignmentDraft, setAssignmentDraft] = useState<Record<string, string[]>>({});
   const [department, setDepartment] = useState('');
   useEffect(() => {
-    if (!state?.canManageUsers || isDemoSession()) {
+    if (personalTitle || !state?.canManageUsers || isDemoSession()) {
       setOrganization(undefined);
       setOrganizationError('');
       setOrganizationLoading(false);
@@ -201,7 +214,7 @@ export function AccessAdmin({
         if (!controller.signal.aborted) setOrganizationLoading(false);
       });
     return () => controller.abort();
-  }, [state?.revision, organizationAttempt]);
+  }, [personalTitle, state?.revision, state?.canManageUsers, organizationAttempt]);
   const [bulkReview, setBulkReview] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<string>();
   const [review, setReview] = useState<{
@@ -610,11 +623,13 @@ export function AccessAdmin({
                 ))}
               </nav>
               {tab === 'profiles' && workspaceContext?.capabilities.businessAdministration && (
-                <BusinessAdministration
-                  onSaved={() => {
-                    void load().catch(err => setError(err.message));
-                  }}
-                />
+                <Suspense fallback={<div role="status">Opening scoped access…</div>}>
+                  <BusinessAdministration
+                    onSaved={() => {
+                      void load().catch(err => setError(err.message));
+                    }}
+                  />
+                </Suspense>
               )}
             </>
           )}
@@ -730,48 +745,52 @@ export function AccessAdmin({
               )}
 
               {!personalTitle && tab === 'skills' && (
-                <SkillCatalogue
-                  amendmentsAllowed={Boolean(
-                    workspaceContext?.capabilities.amendments ||
-                    workspaceContext?.capabilities.approveAmendments,
-                  )}
-                  actionsContainer={pageActions}
-                  onChanged={() => {
-                    load().catch(err => setError(err.message));
-                  }}
-                />
+                <Suspense fallback={<div role="status">Opening catalogue…</div>}>
+                  <SkillCatalogue
+                    amendmentsAllowed={Boolean(
+                      workspaceContext?.capabilities.amendments ||
+                      workspaceContext?.capabilities.approveAmendments,
+                    )}
+                    actionsContainer={pageActions}
+                    onChanged={() => {
+                      load().catch(err => setError(err.message));
+                    }}
+                  />
+                </Suspense>
               )}
               {!personalTitle && tab === 'organization' && (
-                <OrganizationSetup
-                  actionsContainer={pageActions}
-                  onChanged={() => {
-                    load().catch(err => setError(err.message));
-                  }}
-                  onEditPerson={id => {
-                    const selected = state.people.find(item => item.id === id);
-                    if (selected) {
-                      setPerson(structuredClone(selected));
-                      setTab('people');
-                      setEditor('person');
-                      setEditorPage(1);
-                      setRolePage(0);
-                      setEditorRevision(state.revision);
-                      setError('');
-                    }
-                  }}
-                  onAssignDepartment={id => {
-                    setDepartment(id);
-                    setTab('assignments');
-                  }}
-                  roleNames={Object.fromEntries(
-                    state.people.map(item => [
-                      item.id,
-                      state.roles
-                        .filter(role => item.roleIds.includes(role.id))
-                        .map(role => role.name),
-                    ]),
-                  )}
-                />
+                <Suspense fallback={<div role="status">Opening organization…</div>}>
+                  <OrganizationSetup
+                    actionsContainer={pageActions}
+                    onChanged={() => {
+                      load().catch(err => setError(err.message));
+                    }}
+                    onEditPerson={id => {
+                      const selected = state.people.find(item => item.id === id);
+                      if (selected) {
+                        setPerson(structuredClone(selected));
+                        setTab('people');
+                        setEditor('person');
+                        setEditorPage(1);
+                        setRolePage(0);
+                        setEditorRevision(state.revision);
+                        setError('');
+                      }
+                    }}
+                    onAssignDepartment={id => {
+                      setDepartment(id);
+                      setTab('assignments');
+                    }}
+                    roleNames={Object.fromEntries(
+                      state.people.map(item => [
+                        item.id,
+                        state.roles
+                          .filter(role => item.roleIds.includes(role.id))
+                          .map(role => role.name),
+                      ]),
+                    )}
+                  />
+                </Suspense>
               )}
               {!personalTitle && tab === 'roles' && (
                 <>
@@ -880,48 +899,52 @@ export function AccessAdmin({
                   const selected = state.people.find(item => item.id === selectedPerson);
                   if (!selected) return null;
                   return (
-                    <PersonAccessDialog
-                      key={selected.id}
-                      person={selected}
-                      roles={state.roles}
-                      catalogue={state.catalogue}
-                      organization={organization}
-                      people={state.people}
-                      canManageUsers={state.canManageUsers}
-                      canViewAudit={state.canViewAudit}
-                      endpoint={endpoint}
-                      revision={state.revision}
-                      busy={busy}
-                      error={error}
-                      onReload={async () => {
-                        await load();
-                        setError('');
-                      }}
-                      onClose={() => setSelectedPerson(undefined)}
-                      onApplyChange={previewPersonChange}
-                      onFullEdit={personToEdit => {
-                        setSelectedPerson(undefined);
-                        setPerson(structuredClone(personToEdit));
-                        setEditor('person');
-                        setEditorPage(0);
-                        setEditorRevision(state.revision);
-                      }}
-                      onManageOrganization={() => {
-                        setSelectedPerson(undefined);
-                        setTab('organization');
-                      }}
-                      businessAdministrationNode={
-                        workspaceContext?.capabilities.businessAdministration ? (
-                          <BusinessAdministration
-                            key={selected.id}
-                            selectedPersonId={selected.id}
-                            onSaved={() => {
-                              void load().catch(err => setError(err.message));
-                            }}
-                          />
-                        ) : undefined
-                      }
-                    />
+                    <Suspense fallback={<div role="status">Opening person access…</div>}>
+                      <PersonAccessDialog
+                        key={selected.id}
+                        person={selected}
+                        roles={state.roles}
+                        catalogue={state.catalogue}
+                        organization={organization}
+                        people={state.people}
+                        canManageUsers={state.canManageUsers}
+                        canViewAudit={state.canViewAudit}
+                        endpoint={endpoint}
+                        revision={state.revision}
+                        busy={busy}
+                        error={error}
+                        onReload={async () => {
+                          await load();
+                          setError('');
+                        }}
+                        onClose={() => setSelectedPerson(undefined)}
+                        onApplyChange={previewPersonChange}
+                        onFullEdit={personToEdit => {
+                          setSelectedPerson(undefined);
+                          setPerson(structuredClone(personToEdit));
+                          setEditor('person');
+                          setEditorPage(0);
+                          setEditorRevision(state.revision);
+                        }}
+                        onManageOrganization={() => {
+                          setSelectedPerson(undefined);
+                          setTab('organization');
+                        }}
+                        businessAdministrationNode={
+                          workspaceContext?.capabilities.businessAdministration ? (
+                            <Suspense fallback={<div role="status">Opening scoped access…</div>}>
+                              <BusinessAdministration
+                                key={selected.id}
+                                selectedPersonId={selected.id}
+                                onSaved={() => {
+                                  void load().catch(err => setError(err.message));
+                                }}
+                              />
+                            </Suspense>
+                          ) : undefined
+                        }
+                      />
+                    </Suspense>
                   );
                 })()}
               {bulkReview && (

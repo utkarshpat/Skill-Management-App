@@ -91,6 +91,48 @@ test('hidden tabs do not query; deferred changes refresh when visible again', as
   assert.equal(calls, 2);
   stop();
 });
+
+test('completed feed reads notify other screens without refetching themselves; independent changes still recheck', async () => {
+  const env = environment();
+  let calls = 0,
+    received = 0,
+    publishedUpdate: Event | undefined,
+    release: () => void = () => {};
+  env.window.addEventListener('notifications-remote-updated', () => received++);
+  const stop = startActivityRefresh(
+    async () => {
+      calls++;
+      if (calls === 2) {
+        publishedUpdate = new Event('notifications-remote-updated');
+        env.window.dispatchEvent(publishedUpdate);
+      }
+      if (calls === 3)
+        await new Promise<void>(resolve => {
+          release = resolve;
+        });
+    },
+    ['notifications-remote-updated', 'notifications-updated'],
+    env,
+    { ignoreEvent: event => event === publishedUpdate },
+  );
+  await settle();
+  assert.equal(calls, 1);
+  env.window.dispatchEvent(new Event('notifications-updated'));
+  await settle();
+  assert.equal(received, 1, 'other screens receive the feed change');
+  assert.equal(calls, 2, 'publishing the completed read must not queue a third read');
+  env.window.dispatchEvent(new Event('notifications-remote-updated'));
+  await settle();
+  assert.equal(calls, 3, 'a new cross-tab event still refreshes');
+  env.window.dispatchEvent(new Event('notifications-remote-updated'));
+  release();
+  await settle();
+  assert.equal(calls, 4, 'an independent change during a read still queues a recheck');
+  stop();
+  env.window.dispatchEvent(new Event('notifications-updated'));
+  await settle();
+  assert.equal(calls, 4);
+});
 test('failed refresh does not start a retry loop and cleanup suppresses queued work', async () => {
   const env = environment();
   let calls = 0;

@@ -11,6 +11,7 @@ import type {
 } from '../src/modules/access/index.js';
 import { createApp } from '../src/create-app.js';
 import { AccessError } from '../src/shared/errors.js';
+import type { LearningPlan } from '../src/modules/learning/index.js';
 const actor = '00000000-0000-4000-8000-000000000001';
 test('pending dashboard counts combined requests once and uses full queue total beyond bounded previews', async () => {
   const { state, person } = fixture([
@@ -80,6 +81,60 @@ const own = (permission: Assignment['permission']): Assignment => ({
   permission,
   scope: 'OWN',
   effect: 'ALLOW',
+});
+
+test('dashboard learning reuses timezone dates within a read and recomputes them after midnight', async () => {
+  const { state, person } = fixture([own('learning.view')]);
+  const plans: LearningPlan[] = Array.from({ length: 8 }, (_, n) => ({
+    id: `p${n}`,
+    revision: 1,
+    title: `Plan ${n}`,
+    goal: 'Learn',
+    timezone: n % 2 ? 'America/Los_Angeles' : 'Asia/Kolkata',
+    dailyMinutes: 30,
+    targetDate: '2026-10-17',
+    status: 'ACTIVE',
+    tasks: [{ id: `t${n}`, title: 'Task', plannedDate: '2026-10-17', estimatedMinutes: 30 }],
+  }));
+  const source: DashboardSources = {
+    learning: { read: async () => ({ plans, canManage: false }), change: async () => {} },
+  };
+  const native = Intl.DateTimeFormat;
+  let formatters = 0;
+  Intl.DateTimeFormat = new Proxy(native, {
+    construct(target, args) {
+      formatters++;
+      return Reflect.construct(target, args);
+    },
+  });
+  try {
+    const before = await loadDashboardCard(
+      'learning',
+      actor,
+      state,
+      person,
+      source,
+      new Date('2026-10-17T18:29:59Z'),
+    );
+    assert.ok('today' in before && 'overdue' in before);
+    assert.equal(before.today, 8);
+    assert.equal(before.overdue, 0);
+    assert.equal(formatters, 2, 'one formatter per distinct plan timezone');
+    const after = await loadDashboardCard(
+      'learning',
+      actor,
+      state,
+      person,
+      source,
+      new Date('2026-10-17T18:30:00Z'),
+    );
+    assert.ok('today' in after && 'overdue' in after);
+    assert.equal(after.today, 4);
+    assert.equal(after.overdue, 4);
+    assert.equal(formatters, 4, 'date results do not survive a dashboard read');
+  } finally {
+    Intl.DateTimeFormat = native;
+  }
 });
 
 test('dashboard overview replaces five requests with one, shares learning only within that request', async t => {

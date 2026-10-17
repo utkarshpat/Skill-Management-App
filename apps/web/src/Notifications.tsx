@@ -42,7 +42,8 @@ export function Notifications({ id }: { id: string }) {
   useEffect(() => {
     const controller = new AbortController();
     let running = false,
-      signature: string | undefined;
+      signature: string | undefined,
+      publishedUpdate: Event | undefined;
     const load = async () => {
       if (running || document.visibilityState === 'hidden') return;
       running = true;
@@ -66,8 +67,10 @@ export function Notifications({ id }: { id: string }) {
           setError('');
           if (body.partial) return false;
           const next = JSON.stringify([body.personId, body.items]);
-          if (signature !== undefined && signature !== next)
-            window.dispatchEvent(new Event('notifications-remote-updated'));
+          if (signature !== undefined && signature !== next) {
+            publishedUpdate = new Event('notifications-remote-updated');
+            window.dispatchEvent(publishedUpdate);
+          }
           signature = next;
         }
       } catch (error) {
@@ -93,7 +96,11 @@ export function Notifications({ id }: { id: string }) {
         'learning-updated',
       ],
       undefined,
-      { pollMs: 90_000, onStatus: setFreshness },
+      {
+        pollMs: 90_000,
+        onStatus: setFreshness,
+        ignoreEvent: event => event === publishedUpdate,
+      },
     );
     return () => {
       stop();

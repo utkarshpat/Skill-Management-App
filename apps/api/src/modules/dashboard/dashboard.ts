@@ -192,13 +192,18 @@ export function dashboardManifest(
 }
 function learningSummary(plans: LearningPlan[], at: Date) {
   const active = plans.filter(p => p.status === 'ACTIVE');
+  const todayByZone = new Map<string, string>();
   const all = active.flatMap(plan => {
-    const today = new Intl.DateTimeFormat('en-CA', {
-      timeZone: plan.timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(at);
+    let today = todayByZone.get(plan.timezone);
+    if (today === undefined) {
+      today = new Intl.DateTimeFormat('en-CA', {
+        timeZone: plan.timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(at);
+      todayByZone.set(plan.timezone, today);
+    }
     return plan.tasks.map(task => ({ plan, task, today }));
   });
   const urgency = (x: (typeof all)[number]) =>

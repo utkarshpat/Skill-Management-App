@@ -2,11 +2,10 @@ import { businessDraftHandoff, type BusinessDraft } from './business/business-dr
 import { learningDraftHandoff } from './learning-draft-handoff';
 import { AssistantSession } from './assistant-session';
 import { assistantContextPrompt } from './assistant-context';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
-import { RequestComposer } from './RequestComposer';
 import { requestRead, type RequestOptions } from './request-model';
-import { MySkills, type SkillSaveResult } from './MySkills';
+import type { SkillSaveResult } from './MySkills';
 import { assistantNavigationTargets, type AssistantPage } from './assistant-actions';
 import { Bot, X, Send, RotateCcw, History, Trash2, ChevronRight } from 'lucide-react';
 import { authenticatedFetch } from './auth';
@@ -15,6 +14,11 @@ import { AssistantRichText } from './AssistantRichText';
 import { AssistantDocument, type AiDocument } from './AssistantDocument';
 import { AssistantPeopleResults, type PeopleQuery } from './business/AssistantPeopleResults';
 import { peopleSearchUserText } from './business/people-search-prompt';
+// Draft editors are needed only after the employee chooses to review a draft.
+const MySkills = lazy(() => import('./MySkills').then(module => ({ default: module.MySkills })));
+const RequestComposer = lazy(() =>
+  import('./RequestComposer').then(module => ({ default: module.RequestComposer })),
+);
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -829,26 +833,30 @@ export function AssistantWidget() {
       </div>
       {document && <AssistantDocument document={document} onClose={() => setDocument(undefined)} />}{' '}
       {reviewDescription !== undefined && (
-        <MySkills
-          reviewRequest={{
-            description: reviewDescription,
-            onClose: () => setReviewDescription(undefined),
-            onSaved: skillSaved,
-          }}
-        />
+        <Suspense fallback={<div role="status">Opening skill review…</div>}>
+          <MySkills
+            reviewRequest={{
+              description: reviewDescription,
+              onClose: () => setReviewDescription(undefined),
+              onSaved: skillSaved,
+            }}
+          />
+        </Suspense>
       )}{' '}
       {requestDraft && (
-        <RequestComposer
-          options={requestDraft.options}
-          draft={requestDraft}
-          onClose={() => setRequestDraft(undefined)}
-          onSaved={() => {
-            setRequestDraft(undefined);
-            setActionNotice('Request submitted. Your recipient has been notified.');
-            window.dispatchEvent(new Event('requests-updated'));
-            window.dispatchEvent(new Event('notifications-updated'));
-          }}
-        />
+        <Suspense fallback={<div role="status">Opening request review…</div>}>
+          <RequestComposer
+            options={requestDraft.options}
+            draft={requestDraft}
+            onClose={() => setRequestDraft(undefined)}
+            onSaved={() => {
+              setRequestDraft(undefined);
+              setActionNotice('Request submitted. Your recipient has been notified.');
+              window.dispatchEvent(new Event('requests-updated'));
+              window.dispatchEvent(new Event('notifications-updated'));
+            }}
+          />
+        </Suspense>
       )}
     </>
   );

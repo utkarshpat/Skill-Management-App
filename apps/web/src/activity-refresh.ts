@@ -14,6 +14,9 @@ interface Options {
   pollMs?: number;
   idleMs?: number;
   onStatus?: (status: RefreshStatus) => void;
+  // A projection may publish its completed read to other subscribers without
+  // treating that exact event as another invalidation of its own data.
+  ignoreEvent?: (event: Event) => boolean;
 }
 // Timers run only while this tab is visible, focused and recently used.
 // Projection freshness never replaces execution-time API/SQL authorization.
@@ -142,7 +145,9 @@ export function startActivityRefresh(
     if (visible()) focus();
     else plan();
   };
-  const changed = () => refresh(true);
+  const changed = (event: Event) => {
+    if (!options.ignoreEvent?.(event)) refresh(true);
+  };
   environment.window.addEventListener('focus', focus);
   environment.window.addEventListener('blur', blur);
   environment.document.addEventListener('visibilitychange', visibility);
