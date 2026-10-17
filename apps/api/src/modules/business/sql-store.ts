@@ -5,6 +5,7 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import type { BusinessFiles } from './business.js';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
+import { PrivateFileStorage, type StorageOptions } from '../../shared/private-files.js';
 import type { PeopleSearchQuery, PeopleSearchResult } from './people-search.js';
 import {
   identifier,
@@ -29,11 +30,15 @@ export function assertBusinessScope(
     throw new AccessError(409, 'Scope changed during this read. Refresh before continuing.');
 }
 export class SqlBusinessStore implements BusinessStore {
+  private storage?: { connection: string; container: string };
+  private managed?: PrivateFileStorage;
   constructor(
     private accountId: string,
-    private storage?: { connection: string; container: string },
+    storage?: StorageOptions,
   ) {
     identifier(accountId);
+    if (storage && 'provider' in storage) this.managed = new PrivateFileStorage(accountId, storage);
+    else this.storage = storage;
   }
   async recordFiles(actor: string, kind: string, id: string): Promise<BusinessFiles> {
     if (!['skills', 'certifications'].includes(kind))
@@ -53,10 +58,16 @@ export class SqlBusinessStore implements BusinessStore {
     return normalizeBusinessCollections(result, ['items']);
   }
   async file(actor: string, kind: string, id: string, fileId: string) {
-    if (!this.storage) throw new AccessError(503, 'Private file storage is not configured.');
+    if (!this.storage && !this.managed)
+      throw new AccessError(503, 'Private file storage is not configured.');
     return readBusinessFile(
       () => this.recordFiles(actor, kind, id),
       async item => {
+        if (this.managed)
+          return this.managed.read(
+            { actor, context: kind === 'skills' ? 'business-skill' : 'business-cert', record: id },
+            item.id,
+          );
         const container = BlobServiceClient.fromConnectionString(
           this.storage!.connection,
         ).getContainerClient(this.storage!.container);

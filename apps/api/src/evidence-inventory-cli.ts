@@ -14,6 +14,43 @@ async function main() {
   const account = process.env.ACCESS_ACCOUNT_ID?.toLowerCase(),
     connection = process.env.EVIDENCE_STORAGE_CONNECTION_STRING,
     containerName = process.env.EVIDENCE_STORAGE_CONTAINER;
+  if (
+    (process.env.STORAGE_IS_SQL !== undefined || process.env.EVIDENCE_STORAGE_PROVIDER) &&
+    account &&
+    /^[0-9a-f-]{36}$/.test(account)
+  ) {
+    const report = await withDatabase(async pool => {
+      const result = await pool.request().input('account', sql.UniqueIdentifier, account).query(`
+        SELECT file_id,object_key,provider,bytes,file_name,original_name,created_at
+        FROM dbo.PrivateFileObject WHERE account_id=@account ORDER BY created_at,file_id;
+        SELECT COUNT(*) AS retained_parts,COALESCE(SUM(CONVERT(bigint,DATALENGTH(content))),0) AS retained_bytes,
+        SUM(CASE WHEN created_at<DATEADD(hour,-24,SYSUTCDATETIME()) THEN 1 ELSE 0 END) AS expired_parts
+        FROM dbo.PrivateUploadPart WHERE account_id=@account;
+      `);
+      const sets = result.recordsets as sql.IRecordSet<any>[];
+      return {
+        mode: 'dry-run',
+        deleted: 0,
+        objects: sets[0],
+        staging: sets[1][0],
+        retention: 'All registered versions and staging parts retained; deletion policy deferred.',
+        scope: 'Registry inventory only; legacy Blob objects outside the registry are not scanned.',
+        recovery: 'SQL backups/restore and optional Blob recovery require separate verification.',
+      };
+    });
+    const file = new URL('../../../.local/private-files-dry-run.json', import.meta.url);
+    await fs.mkdir(new URL('.', file), { recursive: true });
+    await fs.writeFile(file, JSON.stringify(report, null, 2));
+    console.log(
+      JSON.stringify({
+        mode: report.mode,
+        registered: report.objects.length,
+        deleted: 0,
+        report: '.local/private-files-dry-run.json',
+      }),
+    );
+    return;
+  }
   if (!account || !/^[0-9a-f-]{36}$/.test(account) || !connection || !containerName)
     throw Error('Configure the account and private evidence storage before inventory.');
   const prefix = account + '/';

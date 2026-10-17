@@ -5,6 +5,11 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
 import { assembleUpload, type UploadChunk } from './upload-chunks.js';
+import {
+  PrivateFileStorage,
+  privateStorageConfig,
+  type PrivateStorageConfig,
+} from '../../shared/private-files.js';
 export interface EvidenceItem {
   id: string;
   blobName: string;
@@ -151,14 +156,16 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
   private container;
   constructor(
     private account: string,
-    connection: string,
-    container: string,
+    connection?: string,
+    container?: string,
     private kind: 'skill' | 'certification' = 'skill',
   ) {
     this.container =
-      BlobServiceClient.fromConnectionString(connection).getContainerClient(container);
+      connection && container
+        ? BlobServiceClient.fromConnectionString(connection).getContainerClient(container)
+        : undefined!;
   }
-  private async run(
+  protected async run(
     actor: string,
     claim: string,
     operation = 'READ',
@@ -318,10 +325,95 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
     return this.run(actor, claim, 'REMOVE', revision);
   }
 }
+export class ManagedEvidenceStore extends SqlBlobEvidenceStore {
+  private files: PrivateFileStorage;
+  constructor(
+    private storageAccount: string,
+    config: PrivateStorageConfig,
+    private fileKind: 'skill' | 'certification' = 'skill',
+  ) {
+    super(storageAccount, undefined, undefined, fileKind);
+    this.files = new PrivateFileStorage(storageAccount, config);
+  }
+  override async upload(
+    actor: string,
+    claim: string,
+    revision: number,
+    data: Buffer,
+    file?: { mimeType: string; fileName: string },
+  ) {
+    await this.run(actor, claim, 'CHECK', revision);
+    const prepared =
+      this.fileKind === 'certification'
+        ? await prepareCertificateFile(data, file?.mimeType ?? '', file?.fileName ?? 'certificate')
+        : file
+          ? await prepareSkillEvidence(data, file.mimeType, file.fileName)
+          : {
+              ...(await compressEvidence(data)),
+              mimeType: 'image/webp',
+              fileName: 'evidence.webp',
+            };
+    const id = crypto.randomUUID();
+    try {
+      await this.files.save(
+        { actor, context: this.fileKind, record: claim },
+        { ...prepared, id, revision, fileName: file?.fileName ?? prepared.fileName },
+      );
+    } catch (error) {
+      const current = await this.read(actor, claim).catch(() => undefined);
+      if (current?.items.some(i => i.id === id)) return current;
+      throw error;
+    }
+    return this.read(actor, claim);
+  }
+  override async uploadPart(
+    actor: string,
+    claim: string,
+    revision: number,
+    data: Buffer,
+    file: { mimeType: string; fileName: string },
+    part: UploadChunk,
+  ) {
+    await this.run(actor, claim, 'CHECK', revision);
+    const complete = await this.files.assemble(
+      actor,
+      `${this.fileKind}/${claim}`,
+      revision,
+      part,
+      data,
+      file.mimeType,
+      file.fileName,
+      (this.fileKind === 'skill' ? 10 : 5) * 1024 * 1024,
+    );
+    if (!complete) return { pending: true as const };
+    return this.upload(actor, claim, revision, complete, file);
+  }
+  override async image(actor: string, claim: string, id: string) {
+    const before = await this.read(actor, claim),
+      item = before.items.find(i => i.id === id.toLowerCase());
+    if (!item) throw new AccessError(404, 'Evidence unavailable.');
+    const data = await this.files.read({ actor, context: this.fileKind, record: claim }, item.id);
+    const after = await this.read(actor, claim);
+    if (
+      !after.items.some(
+        i => i.id === item.id && i.blobName === item.blobName && i.bytes === data.length,
+      )
+    )
+      throw new AccessError(409, 'File changed during download.');
+    return data;
+  }
+}
 export function configuredEvidence(
   env: NodeJS.ProcessEnv,
   kind: 'skill' | 'certification' = 'skill',
 ) {
+  if (
+    env.ACCESS_ACCOUNT_ID &&
+    (env.STORAGE_IS_SQL !== undefined || env.EVIDENCE_STORAGE_PROVIDER)
+  ) {
+    const config = privateStorageConfig(env);
+    return config ? new ManagedEvidenceStore(env.ACCESS_ACCOUNT_ID, config, kind) : undefined;
+  }
   return env.ACCESS_ACCOUNT_ID &&
     env.EVIDENCE_STORAGE_CONNECTION_STRING &&
     env.EVIDENCE_STORAGE_CONTAINER

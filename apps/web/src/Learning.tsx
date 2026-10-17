@@ -3,7 +3,7 @@ import { LearningPlanCreateAttempt } from './learning-plan-create';
 import { indexLearningTasks } from './learning-task-index';
 import { PublishedSkillPicker, type SkillOption } from './PublishedSkillPicker';
 import { createPortal } from 'react-dom';
-import { useEffect, useState, useRef, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { learningView, learningTabSearch } from './learning-navigation';
 import {
@@ -20,18 +20,28 @@ import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { FormDialog } from './FormDialog';
 import './learning.css';
-import { Recommendations } from './Recommendations';
 import { LearningHome } from './LearningHome';
-import { LearningSession } from './LearningSession';
-import { LearningPlanner } from './LearningPlanner';
-import { LearningRecovery } from './LearningRecovery';
-import { SkillGrowthJourney } from './SkillGrowthJourney';
 import {
   learningPlanSchedule,
   prefillLearningPlanDraft,
   learningDraftReviewable,
   type LearningPlanDraftInput,
 } from './learning-plan-draft';
+const Recommendations = lazy(() =>
+  import('./Recommendations').then(module => ({ default: module.Recommendations })),
+);
+const LearningSession = lazy(() =>
+  import('./LearningSession').then(module => ({ default: module.LearningSession })),
+);
+const LearningPlanner = lazy(() =>
+  import('./LearningPlanner').then(module => ({ default: module.LearningPlanner })),
+);
+const LearningRecovery = lazy(() =>
+  import('./LearningRecovery').then(module => ({ default: module.LearningRecovery })),
+);
+const SkillGrowthJourney = lazy(() =>
+  import('./SkillGrowthJourney').then(module => ({ default: module.SkillGrowthJourney })),
+);
 export interface Task {
   id: string;
   title: string;
@@ -328,7 +338,11 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
             </button>
           ))}
         </nav>
-        {tab === 'Recommendations' && <Recommendations onAccepted={() => setAttempt(n => n + 1)} />}
+        {tab === 'Recommendations' && (
+          <Suspense fallback={<p role="status">Loading recommendations…</p>}>
+            <Recommendations onAccepted={() => setAttempt(n => n + 1)} />
+          </Suspense>
+        )}
         {state && (
           <>
             <LearningHome
@@ -356,14 +370,16 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
               onTab={setTab}
             />
             {tab === 'Growth journey' && (
-              <SkillGrowthJourney
-                plans={plans}
-                canManage={state.canManage}
-                onContinue={(plan, task) => setDetail({ plan, task })}
-                onResume={plan =>
-                  void change({ action: 'RESUME', id: plan.id, revision: plan.revision })
-                }
-              />
+              <Suspense fallback={<p role="status">Loading growth journey…</p>}>
+                <SkillGrowthJourney
+                  plans={plans}
+                  canManage={state.canManage}
+                  onContinue={(plan, task) => setDetail({ plan, task })}
+                  onResume={plan =>
+                    void change({ action: 'RESUME', id: plan.id, revision: plan.revision })
+                  }
+                />
+              </Suspense>
             )}
             {tab === 'Backlog' &&
               state.canManage &&
@@ -632,49 +648,53 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
         </p>
       )}
       {recovery && (
-        <LearningRecovery
-          plan={recovery}
-          onClose={() => setRecovery(undefined)}
-          onSaved={() => {
-            setRecovery(undefined);
-            setAttempt(n => n + 1);
-            setNotice('Recovery saved. Your pending tasks have a new schedule.');
-            setTab('Calendar');
-            setSelectedDay(dateInZone(new Date(), recovery.timezone));
-            setMonth(dateInZone(new Date(), recovery.timezone).slice(0, 7));
-          }}
-          onReload={() => {
-            setRecovery(undefined);
-            setAttempt(n => n + 1);
-          }}
-        />
+        <Suspense fallback={<p role="status">Opening learning recovery…</p>}>
+          <LearningRecovery
+            plan={recovery}
+            onClose={() => setRecovery(undefined)}
+            onSaved={() => {
+              setRecovery(undefined);
+              setAttempt(n => n + 1);
+              setNotice('Recovery saved. Your pending tasks have a new schedule.');
+              setTab('Calendar');
+              setSelectedDay(dateInZone(new Date(), recovery.timezone));
+              setMonth(dateInZone(new Date(), recovery.timezone).slice(0, 7));
+            }}
+            onReload={() => {
+              setRecovery(undefined);
+              setAttempt(n => n + 1);
+            }}
+          />
+        </Suspense>
       )}
       {plannerGoal !== undefined && (
-        <LearningPlanner
-          today={tab === 'Calendar' ? selectedDay : today}
-          initialGoal={plannerGoal}
-          onClose={() => {
-            setPlannerGoal(undefined);
-            plannerCreate.current = null;
-          }}
-          onReview={draft => {
-            openCreate(draft);
-            setPlannerGoal(undefined);
-          }}
-          onConfirmSchedule={async draft => {
-            if (!state?.canManage) throw Error('Learning editing is not assigned.');
-            plannerCreate.current ??= new LearningPlanCreateAttempt();
-            const saved = await plannerCreate.current.save(draft, zone, authenticatedFetch);
-            setAttempt(n => n + 1);
-            window.dispatchEvent(new Event('learning-updated'));
-            setPlannerGoal(undefined);
-            plannerCreate.current = null;
-            setSelectedDay(saved.tasks[0].plannedDate);
-            setMonth(saved.tasks[0].plannedDate.slice(0, 7));
-            setTab('Calendar');
-            setNotice(`Plan created. ${saved.tasks.length} tasks added to your calendar.`);
-          }}
-        />
+        <Suspense fallback={<p role="status">Opening learning planner…</p>}>
+          <LearningPlanner
+            today={tab === 'Calendar' ? selectedDay : today}
+            initialGoal={plannerGoal}
+            onClose={() => {
+              setPlannerGoal(undefined);
+              plannerCreate.current = null;
+            }}
+            onReview={draft => {
+              openCreate(draft);
+              setPlannerGoal(undefined);
+            }}
+            onConfirmSchedule={async draft => {
+              if (!state?.canManage) throw Error('Learning editing is not assigned.');
+              plannerCreate.current ??= new LearningPlanCreateAttempt();
+              const saved = await plannerCreate.current.save(draft, zone, authenticatedFetch);
+              setAttempt(n => n + 1);
+              window.dispatchEvent(new Event('learning-updated'));
+              setPlannerGoal(undefined);
+              plannerCreate.current = null;
+              setSelectedDay(saved.tasks[0].plannedDate);
+              setMonth(saved.tasks[0].plannedDate.slice(0, 7));
+              setTab('Calendar');
+              setNotice(`Plan created. ${saved.tasks.length} tasks added to your calendar.`);
+            }}
+          />
+        </Suspense>
       )}
       {creating && (
         <FormDialog
@@ -905,19 +925,21 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
         />
       )}
       {detail && (
-        <LearningSession
-          plan={detail.plan}
-          task={detail.task}
-          canManage={Boolean(state?.canManage)}
-          onClose={() => setDetail(undefined)}
-          onComplete={(minutes, notes) => {
-            setEditing({ ...detail, action: 'LOG' });
-            setActual(minutes);
-            setNotes(notes);
-            setFormError('');
-            setDetail(undefined);
-          }}
-        />
+        <Suspense fallback={<p role="status">Opening task session…</p>}>
+          <LearningSession
+            plan={detail.plan}
+            task={detail.task}
+            canManage={Boolean(state?.canManage)}
+            onClose={() => setDetail(undefined)}
+            onComplete={(minutes, notes) => {
+              setEditing({ ...detail, action: 'LOG' });
+              setActual(minutes);
+              setNotes(notes);
+              setFormError('');
+              setDetail(undefined);
+            }}
+          />
+        </Suspense>
       )}
       {editing && (
         <FormDialog

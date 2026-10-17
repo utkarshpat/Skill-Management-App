@@ -4,6 +4,10 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Provider-neutral private files — approved local increment, 17 October 2026
+
+The user approved Azure SQL binary storage with retained Blob switching support and employee-derived filenames. Migration 085 adds a per-file registry, transactional content/association and durable upload staging. Read authorization remains in the same owner/assigned-current-manager/intake/submission/scoped-Analytics SQL procedures, which now optionally return their authorized metadata as an internal manifest. The new byte-read procedure resolves that manifest before selecting a file; a file ID, caller context or provider cannot grant authority. SQL runtime receives only explicit procedure grants, without direct file table access. Eleven rollback-only SQL scenarios passed on the existing development test database. The operator reports installing 085 and manually deploying to organization development; HTTP smoke checks passed, while authenticated hosted file acceptance remains pending. [Implementation and rollout](PRIVATE_FILE_STORAGE_2026-10-17.md).
+
 ### Dated release acceptance — 15 October 2026
 
 Runtime `e0fa9a3` passed the [documented hosted demo checks](PRODUCTION_E2E_2026-10-15.md), including private-draft denials, current assigned-manager combined review, scoped submitted-file reads and four demo-account workspace projections. A manager may receive amendment discovery context with `canView=false`; Analytics dashboard access remains separately denied. These checks change no grants, scopes or baseline policy, and do not establish real SSO/admin or exhaustive authorization acceptance. Company hosting/SSO and scheduler activation remain deferred.

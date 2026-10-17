@@ -23,6 +23,12 @@ const flows = {
     'src/Dashboard.tsx',
     'src/AssistantWidget.tsx',
   ],
+  employeeLearning: [
+    'index.html',
+    'src/Workspace.tsx',
+    'src/Learning.tsx',
+    'src/AssistantWidget.tsx',
+  ],
 };
 for (const [flow, entries] of Object.entries(flows)) {
   const seen = new Set();

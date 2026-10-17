@@ -41,6 +41,7 @@
     "test:business": "node --env-file-if-exists=.env --import tsx test/business.integration.ts",
     "evidence:inventory": "node --env-file-if-exists=.env --import tsx src/evidence-inventory-cli.ts --dry-run",
     "test:skill-documents": "node --env-file-if-exists=.env --import tsx test/skill-documents.integration.ts",
+    "test:private-files": "node --env-file-if-exists=.env --import tsx test/private-files.integration.ts",
     "test:coverage": "node --env-file-if-exists=.env --import tsx test/coverage.integration.ts",
     "test:people-search": "node --env-file-if-exists=.env --import tsx test/people-search.integration.ts"
   },

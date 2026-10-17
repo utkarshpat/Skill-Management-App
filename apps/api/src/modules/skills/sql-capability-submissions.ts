@@ -12,7 +12,10 @@ import { certificationId } from './certifications.js';
 import { prepareCertificateFile } from './evidence.js';
 import { randomUUID } from 'node:crypto';
 import { assembleUpload, type UploadChunk } from './upload-chunks.js';
+import { PrivateFileStorage, type StorageOptions } from '../../shared/private-files.js';
 export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
+  private storage?: { connection: string; container: string };
+  private managed?: PrivateFileStorage;
   async autofillPart(
     actor: string,
     source: Buffer,
@@ -20,6 +23,17 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
     fileName: string,
     part: UploadChunk,
   ) {
+    if (this.managed)
+      return this.managed.assemble(
+        actor,
+        'autofill',
+        0,
+        part,
+        source,
+        mimeType,
+        fileName,
+        5 * 1024 * 1024,
+      );
     if (!this.storage) throw new AccessError(503, 'Private file storage unavailable.');
     const container = BlobServiceClient.fromConnectionString(
       this.storage.connection,
@@ -38,12 +52,15 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
     );
   }
   get storageConfigured() {
-    return Boolean(this.storage);
+    return Boolean(this.storage || this.managed);
   }
   constructor(
     private account: string,
-    private storage?: { connection: string; container: string },
-  ) {}
+    storage?: StorageOptions,
+  ) {
+    if (storage && 'provider' in storage) this.managed = new PrivateFileStorage(account, storage);
+    else this.storage = storage;
+  }
   private async intakeFiles(
     actor: string,
     id: string,
@@ -87,6 +104,44 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
     fileName: string,
     part?: UploadChunk,
   ) {
+    if (this.managed) {
+      const before = await this.stagedFiles(actor, id, cert);
+      if (!before.canUpload) throw new AccessError(403, 'Draft file upload is not assigned.');
+      if (before.revision !== revision)
+        throw new AccessError(409, 'Draft changed. Reload before uploading.');
+      if (part) {
+        const full = await this.managed.assemble(
+          actor,
+          `intake/${id}/${cert}`,
+          revision,
+          part,
+          source,
+          mimeType,
+          fileName,
+          5 * 1024 * 1024,
+        );
+        if (!full) return { pending: true };
+        source = full;
+      }
+      const prepared = await prepareCertificateFile(source, mimeType, fileName),
+        fileId = randomUUID();
+      try {
+        await this.managed.save(
+          {
+            actor,
+            context: 'intake',
+            record: certificationId(cert),
+            submission: certificationId(id),
+          },
+          { ...prepared, id: fileId, revision, fileName },
+        );
+      } catch (error) {
+        const current = await this.stagedFiles(actor, id, cert).catch(() => undefined);
+        if (current?.items.some((i: any) => i.id === fileId)) return current;
+        throw error;
+      }
+      return this.stagedFiles(actor, id, cert);
+    }
     if (!this.storage) throw new AccessError(503, 'Private file storage unavailable.');
     const before = await this.stagedFiles(actor, id, cert);
     if (!before.canUpload) throw new AccessError(403, 'Draft file upload is not assigned.');
@@ -140,17 +195,18 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
     });
   }
   async stagedFile(actor: string, id: string, cert: string, fileId: string) {
-    if (!this.storage) throw new AccessError(503, 'Private file storage unavailable.');
+    if (!this.storage && !this.managed)
+      throw new AccessError(503, 'Private file storage unavailable.');
     const before = await this.stagedFiles(actor, id, cert),
       item = before.items.find((i: any) => i.id === certificationId(fileId));
     if (!item || item.bytes < 1 || item.bytes > 5 * 1024 * 1024)
       throw new AccessError(404, 'Draft file unavailable.');
-    const container = BlobServiceClient.fromConnectionString(
-      this.storage.connection,
-    ).getContainerClient(this.storage.container);
-    if ((await container.getProperties()).blobPublicAccess)
-      throw new AccessError(503, 'Private storage required.');
-    const data = await container.getBlockBlobClient(item.blobName).downloadToBuffer(0, item.bytes),
+    const data = this.managed
+        ? await this.managed.read(
+            { actor, context: 'intake', record: cert, submission: id },
+            fileId,
+          )
+        : await this.legacyDownload(item),
       after = await this.stagedFiles(actor, id, cert);
     if (
       !after.items.some(
@@ -160,6 +216,15 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
       throw new AccessError(409, 'Draft file changed during download.');
     if (data.length !== item.bytes) throw new AccessError(503, 'Complete draft file unavailable.');
     return { data, item };
+  }
+  private async legacyDownload(item: { blobName: string; bytes: number }) {
+    if (!this.storage) throw new AccessError(503, 'Private file storage unavailable.');
+    const container = BlobServiceClient.fromConnectionString(
+      this.storage.connection,
+    ).getContainerClient(this.storage.container);
+    if ((await container.getProperties()).blobPublicAccess)
+      throw new AccessError(503, 'Private storage required.');
+    return container.getBlockBlobClient(item.blobName).downloadToBuffer(0, item.bytes);
   }
   async files(actor: string, id: string, record: string) {
     try {
@@ -186,17 +251,15 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
     }
   }
   async file(actor: string, id: string, record: string, fileId: string) {
-    if (!this.storage) throw new AccessError(503, 'Private file storage unavailable.');
+    if (!this.storage && !this.managed)
+      throw new AccessError(503, 'Private file storage unavailable.');
     const before = await this.files(actor, id, record),
       item = before.items.find((i: any) => i.id === certificationId(fileId));
     if (!item || !Number.isInteger(item.bytes) || item.bytes < 1 || item.bytes > 10 * 1024 * 1024)
       throw new AccessError(404, 'Submitted file unavailable.');
-    const container = BlobServiceClient.fromConnectionString(
-      this.storage.connection,
-    ).getContainerClient(this.storage.container);
-    if ((await container.getProperties()).blobPublicAccess)
-      throw new AccessError(503, 'Private storage is required.');
-    const data = await container.getBlockBlobClient(item.blobName).downloadToBuffer(0, item.bytes);
+    const data = this.managed
+      ? await this.managed.read({ actor, context: 'submission', record, submission: id }, fileId)
+      : await this.legacyDownload(item);
     const after = await this.files(actor, id, record);
     if (
       after.workspaceRevision !== before.workspaceRevision ||

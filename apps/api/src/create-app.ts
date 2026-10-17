@@ -1,5 +1,6 @@
 import { registerBusinessRoutes, type BusinessDependencies } from './modules/business/index.js';
 import { startRequestTiming } from './shared/request-timing.js';
+import { registerWebHosting } from './shared/web-hosting.js';
 import {
   registerCapabilityRoutes,
   type CapabilityDependencies,
@@ -72,6 +73,7 @@ export type AppDependencies = IdentityDependencies &
 export function createApp(
   dependencies?: AppDependencies,
   options: {
+    webRoot?: string;
     developmentStore?: AccessStore;
     hostedDemo?: HostedDemoConfig;
     onRequestTiming?: (metric: {
@@ -91,7 +93,24 @@ export function createApp(
   const store = options.developmentStore;
   const demo = store ? createDevelopmentSessions(store, Date.now, options.hostedDemo) : undefined;
   app.disable('x-powered-by');
-  app.use(helmet());
+  app.use(
+    helmet(
+      options.webRoot
+        ? {
+            contentSecurityPolicy: {
+              directives: {
+                // Authorized private files become local object URLs in the browser.
+                // PDF.js reads those URLs and image previews display them directly.
+                connectSrc: ["'self'", 'blob:', 'https://login.microsoftonline.com'],
+                imgSrc: ["'self'", 'data:', 'blob:'],
+                frameSrc: ["'self'", 'https://login.microsoftonline.com'],
+                workerSrc: ["'self'", 'blob:'],
+              },
+            },
+          }
+        : undefined,
+    ),
+  );
   app.use((req, res, next) => {
     res.locals.requestId = randomUUID();
     res.setHeader('X-Request-Id', res.locals.requestId);
@@ -187,6 +206,7 @@ export function createApp(
       },
     });
   });
+  if (options.webRoot) registerWebHosting(app, options.webRoot);
   app.use((_req, res) => {
     res.status(404).json({
       error: { code: 'NOT_FOUND', message: 'Route not found.', requestId: res.locals.requestId },

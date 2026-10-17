@@ -1,11 +1,14 @@
 import { SqlBusinessStore } from './modules/business/index.js';
+import { fileURLToPath } from 'node:url';
 import { SqlAiBudget } from './modules/ai/budget.js';
 import { KnowledgeTransferService } from './modules/knowledge-transfer/index.js';
 import { SqlRecommendationStore } from './modules/recommendations/index.js';
 import { SqlOrganizationStore } from './modules/organization/sql-store.js';
 import { createApp } from './create-app.js';
 import { SqlWorkflowStore } from './modules/workflows/index.js';
-import { identityConfig, tokenVerifier } from './modules/identity/index.js';
+import { identityConfig } from './modules/identity/index.js';
+import { applicationDependencies } from './application-dependencies.js';
+import { privateStorageConfig } from './shared/private-files.js';
 import { ownProfile } from './modules/identity/index.js';
 import { closeRuntimeDatabase } from './shared/database.js';
 import { developmentLoginEnabled, hostedDemoConfig } from './modules/identity/index.js';
@@ -59,6 +62,15 @@ const claims = process.env.ACCESS_ACCOUNT_ID
   : undefined;
 const evidenceStore = configuredEvidence(process.env);
 const certificationImages = configuredEvidence(process.env, 'certification');
+const fileStorage =
+  process.env.STORAGE_IS_SQL !== undefined || process.env.EVIDENCE_STORAGE_PROVIDER
+    ? privateStorageConfig(process.env)
+    : process.env.EVIDENCE_STORAGE_CONNECTION_STRING && process.env.EVIDENCE_STORAGE_CONTAINER
+      ? {
+          connection: process.env.EVIDENCE_STORAGE_CONNECTION_STRING,
+          container: process.env.EVIDENCE_STORAGE_CONTAINER,
+        }
+      : undefined;
 const certifications = process.env.ACCESS_ACCOUNT_ID
   ? new SqlCertificationStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
@@ -78,28 +90,12 @@ const workflows = process.env.ACCESS_ACCOUNT_ID
   ? new SqlWorkflowStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
 const business = process.env.ACCESS_ACCOUNT_ID
-  ? new SqlBusinessStore(
-      process.env.ACCESS_ACCOUNT_ID,
-      process.env.EVIDENCE_STORAGE_CONNECTION_STRING && process.env.EVIDENCE_STORAGE_CONTAINER
-        ? {
-            connection: process.env.EVIDENCE_STORAGE_CONNECTION_STRING,
-            container: process.env.EVIDENCE_STORAGE_CONTAINER,
-          }
-        : undefined,
-    )
+  ? new SqlBusinessStore(process.env.ACCESS_ACCOUNT_ID, fileStorage)
   : undefined;
 const provider = configuredProvider(process.env),
   aiBudget = access ? new SqlAiBudget(process.env.ACCESS_ACCOUNT_ID!) : undefined;
 const capabilitySubmissions = process.env.ACCESS_ACCOUNT_ID
-  ? new SqlCapabilitySubmissionStore(
-      process.env.ACCESS_ACCOUNT_ID,
-      process.env.EVIDENCE_STORAGE_CONNECTION_STRING && process.env.EVIDENCE_STORAGE_CONTAINER
-        ? {
-            connection: process.env.EVIDENCE_STORAGE_CONNECTION_STRING,
-            container: process.env.EVIDENCE_STORAGE_CONTAINER,
-          }
-        : undefined,
-    )
+  ? new SqlCapabilitySubmissionStore(process.env.ACCESS_ACCOUNT_ID, fileStorage)
   : undefined;
 const certificateAutofill =
   access && claims && aiBudget && provider
@@ -168,34 +164,34 @@ const recovery =
       )
     : undefined;
 const app = createApp(
-  config
-    ? {
-        verify: tokenVerifier(config),
-        access,
-        organization,
-        business,
-        ownOrganization: organization?.ownOrganization.bind(organization),
-        assistant,
-        knowledgeTransfer,
-        catalogue,
-        claims,
-        certifications,
-        capabilitySubmissions,
-        certificateAutofill: certificateAutofill?.extract.bind(certificateAutofill),
-        certificationRecommendations,
-        evidenceStore,
-        certificationImages,
-        learning,
-        practice,
-        planner,
-        recovery,
-        workflows,
-        recommendations,
-        resolveAccess: access ? identity => access.resolveIdentity(identity) : undefined,
-        profile: employeeProfile,
-      }
-    : undefined,
+  applicationDependencies(config, Boolean(developmentStore), {
+    access,
+    organization,
+    business,
+    ownOrganization: organization?.ownOrganization.bind(organization),
+    assistant,
+    knowledgeTransfer,
+    catalogue,
+    claims,
+    certifications,
+    capabilitySubmissions,
+    certificateAutofill: certificateAutofill?.extract.bind(certificateAutofill),
+    certificationRecommendations,
+    evidenceStore,
+    certificationImages,
+    learning,
+    practice,
+    planner,
+    recovery,
+    workflows,
+    recommendations,
+    resolveAccess: access ? identity => access.resolveIdentity(identity) : undefined,
+    profile: employeeProfile,
+  }),
   {
+    ...(process.env.SERVE_WEB === 'true'
+      ? { webRoot: fileURLToPath(new URL('../../web/dist/', import.meta.url)) }
+      : {}),
     developmentStore,
     hostedDemo,
     ...(process.env.HTTP_TIMING_ENABLED === 'true'
@@ -209,7 +205,7 @@ const app = createApp(
 // Vercel owns the listener and lifecycle; local/Azure Node hosting keeps its server.
 export default app;
 if (process.env.VERCEL !== '1') {
-  const host = process.env.HOST ?? '127.0.0.1';
+  const host = process.env.HOST ?? (process.env.WEBSITE_HOSTNAME ? '0.0.0.0' : '127.0.0.1');
   const server = app.listen(port, host, () => {
     console.log(`Capability API: http://${host}:${port}`);
   });

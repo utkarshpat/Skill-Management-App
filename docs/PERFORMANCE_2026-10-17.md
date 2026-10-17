@@ -71,8 +71,43 @@ Validation passed: all 233 web tests, 19 dashboard API tests, both workspace typ
 
 ## Remaining profiling targets
 
-- **SQL cold connection/database wake:** earlier read-only measurements in HANDOVER.md showed roughly 55-second cold reads versus subsecond warm reads. This historical result has not been remeasured for the current hosting/database setup. Correlate existing request/database timing spans with database resume activity before adjusting infrastructure.
+- **SQL cold connection/database wake:** the fresh development benchmark below confirms a 53.3-second first read versus subsecond warm reads. Correlate request/database timing spans with database resume activity before adjusting infrastructure. This is a local CLI measurement against development SQL, not a hosted browser timing.
 - **Complete certificate portfolio assembly:** `loadCertificationPortfolio` still reads every authorized page before exposing portfolio counts, with two pages per batch. Latency and response work grow with page count. A server-side aggregate plus genuinely paginated details would require a separate current-access/revision-consistent endpoint/SQL contract; raising browser concurrency alone does not resolve it.
 - **Dashboard source fan-out:** a fully eligible attention card can query skill reviews, combined submissions, certification reviews, learning and four workflow kind/status combinations. The two-connection runtime pool bounds SQL execution. Measure actual query counts and queue waits before consolidating reads; preserve source failure reporting, assigned-review policy and final access rechecks.
 
 These are code-level or historical profiling candidates, not newly measured hosted bottlenecks. Existing unrelated hosting/private-file changes were retained.
+
+## Deferred learning tools and fresh database measurements
+
+Learning now imports recommendations, growth journey, planner, recovery and task session code only when the corresponding view/action is opened. Local loading boundaries preserve surrounding learning navigation and current plans. Existing creation/confirmation callbacks and backend permission checks are unchanged. Optional tool styles are also deferred.
+
+The repeatable `node scripts/measure-web-startup.mjs` report now includes the employee learning route's static JavaScript dependency graph:
+
+| Employee learning startup       |  Before |   After |
+| ------------------------------- | ------: | ------: |
+| JavaScript bytes, uncompressed  | 469,123 | 418,140 |
+| JavaScript bytes, gzip per file | 149,917 | 135,981 |
+| JavaScript chunks               |      32 |      29 |
+
+This is a 10.9% reduction in route startup JavaScript, or 9.3% in compressed bytes. Opening deferred tools still downloads their code. All 233 web tests, web typechecking, production build, architecture and formatting checks passed. No deployment was performed.
+
+The existing read-only `npm run bench:access -w apps/api` ran against the configured `skill-management-dev` SQL database on 17 October, starting at 14:10:47 IST (`2026-10-17T08:40:47.084Z` for Azure log correlation). It returned timings/counts only and closed its process-local connection pool afterward:
+
+| Operation                                 | Local observations                                               |
+| ----------------------------------------- | ---------------------------------------------------------------- |
+| First connection plus full workspace read | 53,319 ms; two driver retries                                    |
+| Initial connection phase                  | 46,237 ms, including 1,357 ms token acquisition across two calls |
+| First operation phase                     | 7,075 ms                                                         |
+| Warm workspace reads                      | 182, 222, 206 ms                                                 |
+| Warm actor context, manager               | 181, 125, 102 ms                                                 |
+| Warm actor context, personal              | 102, 102, 102 ms                                                 |
+| Full audit benchmark                      | 1,200 ms; 771 rows; 821,366 bytes                                |
+| Existing paginated audit read             | 130 ms; 25 rows; 5,683 bytes                                     |
+
+Connection/acquire/token spans overlap and must not be added together. Operation spans include driver checkout and adapter work, not SQL-engine time alone. The full-audit comparison is benchmark evidence; the application already uses paginated audit reads and excludes full audit payloads from ordinary access snapshots.
+
+Alternating warm validation samples had medians of 308 ms with a query probe and 206 ms with socket validation. Socket validation is already the application default; this is a fresh confirmation, not a new optimization in this pass. The workspace held 17 people and no legacy templates, so these results do not establish enterprise-scale or hosted p95 performance.
+
+A read-only Azure management query after the benchmark observed the database Online in Southeast Asia, GeneralPurpose/Gen5, configured capacity 2, minimum capacity 0.5 and auto-pause delay 60 minutes. These observations identify cold connection handling as a major measured target; connection timing alone does not prove which portion was database resume. No database tier, auto-pause, pool-size, billing setting, data or permissions were changed. The measurement applies to the existing development database, not the separate organization-hosting proposal.
+
+The initial database activity-log read contained only a database-write Started/Succeeded pair around 14:11:32 IST, which was insufficient to establish resume. A later read returned explicit `ResumeDatabase` Started/Succeeded events with `Caller=Login` and a provider-reported **42.6917076-second auto-resume** overlapping the measured connection. Auto-resume is now verified as the dominant cause. A new process against the online database took 6.617 seconds with zero retries, followed by a 198 ms warm read. See [the verification record and attribution limits](SQL_COLD_START_VERIFICATION_2026-10-17.md). No infrastructure settings were changed.

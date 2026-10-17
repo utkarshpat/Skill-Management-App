@@ -1,6 +1,6 @@
 {
-  "version": "2026-10-15",
-  "revision": "da621bc40075434f",
+  "version": "2026-10-17",
+  "revision": "50357f9d932fbf61",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -86,7 +86,8 @@
       "081_workflow_notification_details.sql",
       "082_conversational_people_search.sql",
       "083_full_catalogue_coverage.sql",
-      "084_skill_evidence_documents.sql"
+      "084_skill_evidence_documents.sql",
+      "085_private_file_storage.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -6181,6 +6182,288 @@
         ],
         "indexes": [],
         "domain": "Business Operations"
+      },
+      "PrivateFileCounter": {
+        "source": "085_private_file_storage.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "kind": {
+            "type": "varchar(12)",
+            "nullable": false,
+            "declaration": "kind varchar(12) NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "last_number": {
+            "type": "bigint",
+            "nullable": false,
+            "declaration": "last_number bigint NOT NULL CHECK(last_number>0)",
+            "source": "085_private_file_storage.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "person_id",
+          "kind"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "085_private_file_storage.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,person_id,kind)",
+            "source": "085_private_file_storage.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "085_private_file_storage.sql"
+          },
+          {
+            "sql": "CHECK(kind IN('cert','evidence'))",
+            "source": "085_private_file_storage.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Private files"
+      },
+      "PrivateFileObject": {
+        "source": "085_private_file_storage.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "file_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "file_id uniqueidentifier NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "object_key": {
+            "type": "varchar(160)",
+            "nullable": false,
+            "declaration": "object_key varchar(160) NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "provider": {
+            "type": "varchar(12)",
+            "nullable": false,
+            "declaration": "provider varchar(12) NOT NULL CHECK(provider IN('sql','azure-blob'))",
+            "source": "085_private_file_storage.sql"
+          },
+          "bytes": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "bytes int NOT NULL CHECK(bytes BETWEEN 1 AND 10485760)",
+            "source": "085_private_file_storage.sql"
+          },
+          "sha256": {
+            "type": "binary(32)",
+            "nullable": false,
+            "declaration": "sha256 binary(32) NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "file_name": {
+            "type": "nvarchar(255)",
+            "nullable": false,
+            "declaration": "file_name nvarchar(255) NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "original_name": {
+            "type": "nvarchar(255)",
+            "nullable": false,
+            "declaration": "original_name nvarchar(255) NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "mime_type": {
+            "type": "varchar(100)",
+            "nullable": false,
+            "declaration": "mime_type varchar(100) NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "content": {
+            "type": "varbinary(max)",
+            "nullable": true,
+            "declaration": "content varbinary(max) NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "created_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "created_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "085_private_file_storage.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "file_id"
+        ],
+        "unique": [
+          [
+            "account_id",
+            "object_key"
+          ]
+        ],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "085_private_file_storage.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,file_id)",
+            "source": "085_private_file_storage.sql"
+          },
+          {
+            "sql": "UNIQUE(account_id,object_key)",
+            "source": "085_private_file_storage.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "085_private_file_storage.sql"
+          },
+          {
+            "sql": "CHECK(provider='sql' AND content IS NOT NULL AND DATALENGTH(content)=bytes OR provider='azure-blob' AND content IS NULL)",
+            "source": "085_private_file_storage.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Private files"
+      },
+      "PrivateUploadPart": {
+        "source": "085_private_file_storage.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "actor_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "actor_id uniqueidentifier NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "binding": {
+            "type": "binary(32)",
+            "nullable": false,
+            "declaration": "binding binary(32) NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "part_index": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "part_index int NOT NULL CHECK(part_index BETWEEN 0 AND 3)",
+            "source": "085_private_file_storage.sql"
+          },
+          "part_count": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "part_count int NOT NULL CHECK(part_count BETWEEN 1 AND 4)",
+            "source": "085_private_file_storage.sql"
+          },
+          "total_bytes": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "total_bytes int NOT NULL CHECK(total_bytes BETWEEN 1 AND 10485760)",
+            "source": "085_private_file_storage.sql"
+          },
+          "content": {
+            "type": "varbinary(max)",
+            "nullable": false,
+            "declaration": "content varbinary(max) NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "sha256": {
+            "type": "binary(32)",
+            "nullable": false,
+            "declaration": "sha256 binary(32) NOT NULL",
+            "source": "085_private_file_storage.sql"
+          },
+          "created_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "created_at datetime2(7) NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "085_private_file_storage.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "actor_id",
+          "binding",
+          "part_index"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "actor_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "085_private_file_storage.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id,actor_id,binding,part_index)",
+            "source": "085_private_file_storage.sql"
+          },
+          {
+            "sql": "FOREIGN KEY(account_id,actor_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "085_private_file_storage.sql"
+          },
+          {
+            "sql": "CHECK(DATALENGTH(content) BETWEEN 1 AND 3145728)",
+            "source": "085_private_file_storage.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Private files"
       }
     },
     "views": {
@@ -7033,8 +7316,8 @@
     {
       "name": "SkillEvidence",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL,@mime_type varchar(100)='image/webp',@file_name nvarchar(255)=N'evidence.webp'",
-      "source": "database/migrations/084_skill_evidence_documents.sql"
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL,@mime_type varchar(100)='image/webp',@file_name nvarchar(255)=N'evidence.webp', @private_manifest nvarchar(max)=NULL OUTPUT",
+      "source": "database/migrations/085_private_file_storage.sql"
     },
     {
       "name": "ReadPrimaryCapabilities",
@@ -7057,8 +7340,8 @@
     {
       "name": "CertificationImage",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL,\n @mime_type varchar(100)=NULL,@file_name nvarchar(255)=NULL",
-      "source": "database/migrations/056_certificate_files.sql"
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@claim_id uniqueidentifier,@operation varchar(8)='READ',\n @expected_revision int=NULL,@evidence_id uniqueidentifier=NULL,@blob_name varchar(160)=NULL,@bytes int=NULL,@width int=NULL,@height int=NULL,\n @mime_type varchar(100)=NULL,@file_name nvarchar(255)=NULL, @private_manifest nvarchar(max)=NULL OUTPUT",
+      "source": "database/migrations/085_private_file_storage.sql"
     },
     {
       "name": "LinkCertificationRenewal",
@@ -7231,8 +7514,8 @@
     {
       "name": "BusinessRecordFiles",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@kind varchar(20),@id uniqueidentifier",
-      "source": "database/migrations/070_business_submitted_files.sql"
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@kind varchar(20),@id uniqueidentifier, @private_manifest nvarchar(max)=NULL OUTPUT",
+      "source": "database/migrations/085_private_file_storage.sql"
     },
     {
       "name": "CapabilitySubmissionWorkspace",
@@ -7243,8 +7526,8 @@
     {
       "name": "CapabilitySubmissionFiles",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@id uniqueidentifier,@record_id uniqueidentifier",
-      "source": "database/migrations/071_linked_capability_submissions.sql"
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@id uniqueidentifier,@record_id uniqueidentifier, @private_manifest nvarchar(max)=NULL OUTPUT",
+      "source": "database/migrations/085_private_file_storage.sql"
     },
     {
       "name": "ReadCapabilitySubmissionNotifications",
@@ -7255,8 +7538,8 @@
     {
       "name": "CapabilityIntakeFiles",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@id uniqueidentifier,@certification_id uniqueidentifier,@operation varchar(8)='READ',@payload nvarchar(max)=N'{}'",
-      "source": "database/migrations/071_linked_capability_submissions.sql"
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@id uniqueidentifier,@certification_id uniqueidentifier,@operation varchar(8)='READ',@payload nvarchar(max)=N'{}', @private_manifest nvarchar(max)=NULL OUTPUT",
+      "source": "database/migrations/085_private_file_storage.sql"
     },
     {
       "name": "CertificationIdentityText",
@@ -7281,6 +7564,30 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@payload nvarchar(max),@export bit=0",
       "source": "database/migrations/082_conversational_people_search.sql"
+    },
+    {
+      "name": "PrivateFileNameToken",
+      "kind": "FUNCTION",
+      "signature": "(@value nvarchar(200)) RETURNS nvarchar(100)",
+      "source": "database/migrations/085_private_file_storage.sql"
+    },
+    {
+      "name": "SavePrivateFile",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@context varchar(20),@record_id uniqueidentifier,\n @submission_id uniqueidentifier=NULL,@expected_revision int,@file_id uniqueidentifier,@provider varchar(12),\n @bytes int,@sha256 binary(32),@mime_type varchar(100),@original_name nvarchar(255),\n @content varbinary(max)=NULL,@width int=NULL,@height int=NULL",
+      "source": "database/migrations/085_private_file_storage.sql"
+    },
+    {
+      "name": "ReadPrivateFile",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@context varchar(20),@record_id uniqueidentifier,\n @file_id uniqueidentifier,@submission_id uniqueidentifier=NULL",
+      "source": "database/migrations/085_private_file_storage.sql"
+    },
+    {
+      "name": "StagePrivateUpload",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@binding binary(32),@part_index int,@part_count int,@total_bytes int,@content varbinary(max)",
+      "source": "database/migrations/085_private_file_storage.sql"
     }
   ],
   "groups": {
@@ -7358,6 +7665,11 @@
       "AiConversation",
       "AiAccountBudget",
       "AiActorBudget"
+    ],
+    "Private files": [
+      "PrivateFileCounter",
+      "PrivateFileObject",
+      "PrivateUploadPart"
     ]
   }
 }
