@@ -1,5 +1,17 @@
 # Startup performance — 17 October 2026
 
+## Certificate portfolio consistency and skill lookup
+
+Certificate LIST responses now carry `snapshotRevision`. The API brackets the SQL LIST with fresh canonical workspace/access projections and rejects a changed revision with HTTP 409 before returning any records. Existing SQL LIST takes the account workspace lock; certificate decisions, renewal/link publication and ordinary attachment mutations advance that workspace revision in their transactions. No new SQL grants, query-supplied authority or database migration are introduced. The token is a consistency marker, never authorization, and applies to supported application writes rather than out-of-band administrator SQL edits.
+
+Complete portfolio assembly accepts only pages with the same revision, totals, page sizes and capability flags. Same-count concurrent decisions can no longer silently mix states. A conflict restarts at page one at most twice (three attempts total), discarding all earlier pages. Each two-page batch settles before another attempt starts, retaining bounded concurrency. Authorization failures take precedence over conflicts; 401/403/other failures and cancellation are not retried. Continuous workspace mutations can still exhaust retries and show a refresh message. This is optimistic consistency, not a retained historical database snapshot.
+
+SkillsProfileView memoizes one certificate-by-skill index per current portfolio array. It preserves case-insensitive certificate/link deduplication, record order and approved-renewal replacement semantics. Supporting rows use that index instead of deduplicating and scanning all certificates for each skill. No personal records or permission decisions are cached across accounts or portfolio updates.
+
+The portfolio still downloads all authorized pages for its existing filters/counts. Server-side summaries plus paginated UI details remain a separate endpoint/UI redesign, not an implemented optimization in this increment. Skills fetch concurrency (four), certificate concurrency (two) and the SQL pool maximum (two) are unchanged; no queue-wait/load measurements or infrastructure change were performed in this fix. Deploy the API and frontend together because portfolio assembly requires the new server-issued marker.
+
+Validation passed 336 API tests, 254 web tests and seven architecture/packaging checks, both workspace typechecks and production builds. Regressions cover same-count decision changes, bounded retries, missing tokens, cancellation, draining outstanding reads, denial precedence, fresh API permission checks and certificate-index deduplication/order. No organization deployment, live SQL concurrency exercise or authenticated hosted acceptance was performed for this increment.
+
 ## Pre-push performance review
 
 Reviewed the lazy import boundaries, organization-fetch cancellation and dependencies, directory index freshness and ordering, notification event identity, learning task grouping and timezone formatter lifetime. No confirmed functional regression was found in these changes. The performance commit excludes the separate local hosting/private-file implementation; its settings and SQL migration are not prerequisites for these optimizations.

@@ -100,6 +100,7 @@ export function registerCertificationRoutes(
       };
       if (query.view === 'queue' && !canReviewAssigned(state, actor))
         throw new AccessError(403, 'Assigned certification review is unavailable.');
+      const snapshotRevision = state.revision;
       const result = await deps!.certifications!.read(actor.id, query);
       ({ state, actor } = await context(actor.id));
       if (query.view === 'queue' && !canReviewAssigned(state, actor))
@@ -112,8 +113,16 @@ export function registerCertificationRoutes(
         throw new AccessError(403, 'Review assignments changed. Refresh the queue.');
       if (query.view === 'mine' && result.records.some(r => r.personId !== actor.id))
         throw new AccessError(403, 'Personal certification scope changed.');
+      // LIST holds the workspace lock in SQL. Bracket it with canonical access
+      // revisions so the page and its permission projection share one revision.
+      if (state.revision !== snapshotRevision)
+        throw new AccessError(
+          409,
+          'Certification portfolio changed while loading. Retry the read.',
+        );
       res.json({
         ...result,
+        snapshotRevision,
         page: query.page,
         pageSize: 25,
         canManage: can(state, actor, 'skill.claim', true),

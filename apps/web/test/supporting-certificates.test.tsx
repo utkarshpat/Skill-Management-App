@@ -5,6 +5,7 @@ import {
   SupportingCertificates,
   certificatesForSkill,
   uniqueCertificates,
+  indexCertificatesBySkill,
 } from '../src/capabilities/SupportingCertificates';
 import type { CertificationRecord } from '../src/certifications/types';
 
@@ -19,6 +20,36 @@ const certificate = {
     { id: 'api', name: 'API' },
   ],
 } as CertificationRecord;
+
+test('shared skill index deduplicates links and IDs, preserves order and refreshes changed input', () => {
+  const records = [
+    certificate,
+    {
+      ...certificate,
+      id: certificate.id.toUpperCase(),
+      relatedSkills: [
+        { id: 'AZURE', name: 'Azure' },
+        { id: 'azure', name: 'Azure' },
+      ],
+    },
+    { ...certificate, id: 'old', supersededById: 'new' },
+    { ...certificate, id: 'second' },
+  ];
+  const index = indexCertificatesBySkill(records);
+  for (const skill of ['azure', 'api', 'missing']) {
+    const expected = uniqueCertificates(records).filter(
+      r => !r.supersededById && r.relatedSkills?.some(s => s.id.toLowerCase() === skill),
+    );
+    assert.deepEqual(index.get(skill) ?? [], expected);
+  }
+  assert.equal(index.get('azure')!.length, 2);
+  assert.equal(indexCertificatesBySkill([]).size, 0);
+  assert.equal(indexCertificatesBySkill([{ ...certificate, relatedSkills: [] }]).size, 0);
+  const html = renderToStaticMarkup(
+    <SupportingCertificates records={[]} index={index} skillId="AZURE" onOpen={() => {}} />,
+  );
+  assert.match(html, /2 certificates/);
+});
 test('approved renewal replaces supporting display; expired unrenewed records remain', () => {
   const renewed = { ...certificate, id: 'new', credentialId: 'new-id', expiryDate: '2028-10-01' };
   const old = { ...certificate, supersededById: 'new' };

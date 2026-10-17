@@ -34,6 +34,7 @@ export interface CertificationRecord extends CertificationFields {
   reviewAccess?: { allowed: boolean; reasonCode: string };
 }
 export interface CertificationPage {
+  snapshotRevision?: number;
   canUploadImage?: boolean;
   records: CertificationRecord[];
   total: number;

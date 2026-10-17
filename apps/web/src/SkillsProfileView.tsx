@@ -25,7 +25,10 @@ import {
   AlertCircle,
   Plus,
 } from 'lucide-react';
-import { SupportingCertificates } from './capabilities/SupportingCertificates';
+import {
+  SupportingCertificates,
+  indexCertificatesBySkill,
+} from './capabilities/SupportingCertificates';
 import type { CertificationRecord } from './certifications/types';
 import type { Claim } from './MySkills';
 
@@ -90,6 +93,7 @@ export function SkillsProfileView({
     setPage(1);
   }, [initialStatus]);
   const index = useMemo(() => createSkillProfileIndex(claims), [claims]);
+  const certificateIndex = useMemo(() => indexCertificatesBySkill(certificates), [certificates]);
   const { approved, pending, drafts, attention, categories, levels, categoryCounts } = index;
   const filtered = useMemo(
     () => filterSkillProfile(index, { query, category, status, rank, tab }),
@@ -371,6 +375,7 @@ export function SkillsProfileView({
                     {onCertificate && (
                       <SupportingCertificates
                         records={certificates}
+                        index={certificateIndex}
                         skillId={claim.skillId}
                         disabled={loading}
                         onOpen={onCertificate}

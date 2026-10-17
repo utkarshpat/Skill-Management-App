@@ -144,6 +144,7 @@ const record = (id: string): CertificationRecord => ({
   canReview: false,
 });
 const page = (records: CertificationRecord[], total = records.length): CertificationPage => ({
+  snapshotRevision: 1,
   records,
   total,
   page: 1,
@@ -257,6 +258,98 @@ test('portfolio pages load in bounded parallel batches and preserve page orderin
     records.map(row => row.id),
   );
   assert.equal(maximum, 2);
+});
+
+test('portfolio retries from page one after same-count concurrent decisions without mixing revisions', async () => {
+  const old = Array.from({ length: 26 }, (_, i) => record(String(i)));
+  const updated = old.map(r => ({ ...r, status: 'REJECTED' as const }));
+  const calls: number[] = [];
+  let attempt = 0;
+  const result = await loadCertificationPortfolio(async n => {
+    calls.push(n);
+    if (n === 1) attempt++;
+    const revision = attempt === 1 && n === 1 ? 1 : 2;
+    const records = revision === 1 ? old : updated;
+    return {
+      ...page(records.slice((n - 1) * 25, n * 25), 26),
+      page: n,
+      snapshotRevision: revision,
+    };
+  }, new AbortController().signal);
+  assert.deepEqual(calls, [1, 2, 1, 2]);
+  assert.equal(result.snapshotRevision, 2);
+  assert.ok(result.records.every(r => r.status === 'REJECTED'));
+});
+
+test('portfolio retries are bounded and never retry denied reads', async () => {
+  for (const status of [401, 403, 409, 503]) {
+    let calls = 0;
+    await assert.rejects(
+      loadCertificationPortfolio(async () => {
+        calls++;
+        throw Object.assign(Error('Unavailable'), { status });
+      }, new AbortController().signal),
+    );
+    assert.equal(calls, status === 409 ? 3 : 1);
+  }
+  let attempts = 0;
+  const records = Array.from({ length: 26 }, (_, i) => record(String(i)));
+  await assert.rejects(
+    loadCertificationPortfolio(async n => {
+      if (n === 1) attempts++;
+      return {
+        ...page(records.slice((n - 1) * 25, n * 25), 26),
+        page: n,
+        snapshotRevision: attempts * 2 + n,
+      };
+    }, new AbortController().signal),
+    /changed while loading/,
+  );
+  assert.equal(attempts, 3);
+});
+
+test('portfolio drains an in-flight batch and gives denial precedence over a conflict', async () => {
+  let finish!: () => void;
+  let firstPages = 0;
+  const records = Array.from({ length: 51 }, (_, i) => record(String(i)));
+  const pending = loadCertificationPortfolio(async n => {
+    if (n === 1) {
+      firstPages++;
+      return page(records.slice(0, 25), 51);
+    }
+    if (n === 2) throw Object.assign(Error('Changed'), { status: 409 });
+    await new Promise<void>(resolve => {
+      finish = resolve;
+    });
+    throw Object.assign(Error('Denied'), { status: 403 });
+  }, new AbortController().signal);
+  const rejected = assert.rejects(pending, { status: 403 });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(firstPages, 1, 'No restart while a prior batch is still running');
+  finish();
+  await rejected;
+  assert.equal(firstPages, 1);
+});
+
+test('portfolio rejects missing revision and stops retries on cancellation', async () => {
+  await assert.rejects(
+    loadCertificationPortfolio(
+      async () => ({ ...page([]), snapshotRevision: undefined }),
+      new AbortController().signal,
+    ),
+    /unavailable/,
+  );
+  const controller = new AbortController();
+  let calls = 0;
+  await assert.rejects(
+    loadCertificationPortfolio(async () => {
+      calls++;
+      controller.abort();
+      throw Object.assign(Error('Conflict'), { status: 409 });
+    }, controller.signal),
+    { name: 'AbortError' },
+  );
+  assert.equal(calls, 1);
 });
 
 test('portfolio loading rejects inconsistent page identity, capabilities and page lengths', async () => {

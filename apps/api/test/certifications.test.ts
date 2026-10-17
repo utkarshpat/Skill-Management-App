@@ -138,6 +138,44 @@ async function fixture() {
   return { store, state, owner, manager, unrelated, record };
 }
 
+test('certificate list issues only revision-consistent pages and rechecks access before delivery', async () => {
+  const f = await fixture();
+  let mode = 'stable';
+  const server = createApp({
+    verify: async () => ({ tenantId: 'test', objectId: 'test' }),
+    resolveAccess: async () => f.owner.id,
+    profile: async () => undefined,
+    access: f.store,
+    certifications: {
+      read: async () => {
+        if (mode !== 'stable') f.state.revision++;
+        if (mode === 'denied') f.owner.active = false;
+        return { records: [f.record], total: 1 };
+      },
+      get: async () => f.record,
+      change: async () => {},
+      notifications: async () => [],
+    },
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  const read = () =>
+    fetch(base + '/api/certifications?view=mine', { headers: { Authorization: 'Bearer test' } });
+  try {
+    const stable = await read();
+    assert.equal(stable.status, 200);
+    assert.equal((await stable.json()).snapshotRevision, f.state.revision);
+    mode = 'changed';
+    const changed = await read();
+    assert.equal(changed.status, 409);
+    assert.equal('records' in (await changed.json()), false);
+    mode = 'denied';
+    assert.equal((await read()).status, 403, 'Revocation must not become a retryable conflict');
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+
 test('exact credential recovery reads require active own scope and recheck revocation without writes', async () => {
   const f = await fixture();
   let actor = f.owner.id,

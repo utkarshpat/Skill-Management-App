@@ -2,6 +2,10 @@
 
 Version: 2026-10-17. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
 
+## Certificate portfolio consistency — 17 October 2026
+
+Certificate pages now expose a server-issued workspace revision after before/after access checks. The frontend combines only matching revisions and retries the whole read at most twice when concurrent mutations conflict, without retrying access denials or increasing its two-request batch size. A shared certificate-by-skill display index avoids repeated portfolio scans. These changes preserve owner/assigned-manager policies and add no SQL migration or grants. They require deploying the API and frontend together; hosted concurrency acceptance remains pending. Server-side summary/paginated-detail redesign is still deferred. See [performance and consistency details](PERFORMANCE_2026-10-17.md).
+
 ## Organization acceptance and person-preview correction — 17 October 2026
 
 The [organization Azure acceptance report](AZURE_E2E_ACCEPTANCE_2026-10-17.md) and retained local journals supersede earlier pending hosted-file statements for the specifically exercised paths: demo-account authorization, linked skill/certificate uploads and exact downloads, immutable submitted files, assigned-manager review, renewal, scoped Analytics/export, catalogue governance, workflows/learning and four AI responses. The recorded automated suite passed 574 checks (7 packaging/architecture, 334 API, 233 web). This is bounded development acceptance; it does not prove the storage provider or real employee SSO, production load, restore or retention readiness.
