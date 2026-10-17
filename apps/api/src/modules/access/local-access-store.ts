@@ -360,6 +360,9 @@ export class LocalAccessStore {
           ...employmentDetails(body, previous),
           ...primaryCapabilityDetails(body, previous),
           active: body.active,
+          // Baseline and scoped responsibilities come from the trusted snapshot,
+          // not from the person-edit payload or its template assignments.
+          ...(previous?.business ? { business: structuredClone(previous.business) } : {}),
           ...(previous?.entraObjectId ? { entraObjectId: previous.entraObjectId } : {}),
           ...(previous?.hasDirectReports !== undefined
             ? { hasDirectReports: previous.hasDirectReports }

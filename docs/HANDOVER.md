@@ -2,6 +2,12 @@
 
 Version: 2026-10-17. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
 
+## Organization acceptance and person-preview correction — 17 October 2026
+
+The [organization Azure acceptance report](AZURE_E2E_ACCEPTANCE_2026-10-17.md) and retained local journals supersede earlier pending hosted-file statements for the specifically exercised paths: demo-account authorization, linked skill/certificate uploads and exact downloads, immutable submitted files, assigned-manager review, renewal, scoped Analytics/export, catalogue governance, workflows/learning and four AI responses. The recorded automated suite passed 574 checks (7 packaging/architecture, 334 API, 233 web). This is bounded development acceptance; it does not prove the storage provider or real employee SSO, production load, restore or retention readiness.
+
+Two corrections require the next manual deployment and hosted recheck. The private-preview CSP change is already committed; the prior hosted browser still showed its old preview failure during acceptance. Person edit simulation now preserves only the existing trusted baseline/scoped-responsibility projection, preventing false no-op permission removals and false last-admin errors while ignoring caller-supplied authority. Current-revision preview/recheck and the actual SQL transaction remain mandatory. No hosted person/access save was performed during that audit. Fresh local access regression tests and API typechecks passed before packaging; no new SQL migration is needed beyond 085.
+
 ## Organization hosting and storage rollout — 17 October 2026
 
 Same-origin Linux App Service hosting and explicitly configured temporary login composition are implemented. The operator reports applying migration 085 and manually deploying `skills-appservice-9c85260489af.zip` with `STORAGE_IS_SQL=true`, following managed-identity runtime binding and import of 16 development fixture users excluding Vimmi. Old testing hosting/database remain available. SQL resource authentication is separate from employee SSO, which remains deferred. These operator reports do not establish authenticated hosted end-to-end acceptance.

@@ -249,6 +249,77 @@ test('preview has no side effects, binds actor/revision/exact input and preserve
     /unsupported assignments/,
   );
 });
+test('person preview preserves server-owned baseline and responsibilities without accepting caller projections', async () => {
+  const state = fixture();
+  const admin = state.people[0];
+  admin.roleIds = [];
+  admin.business = {
+    personalBaseline: true,
+    systemAdmin: true,
+    scopes: [],
+    view: true,
+    export: true,
+    manage: true,
+    amend: true,
+  };
+  const body = {
+    kind: 'person',
+    revision: state.revision,
+    id: admin.id,
+    displayName: admin.displayName,
+    employeeCode: admin.employeeCode,
+    active: true,
+    roleIds: [],
+    overrides: [],
+  };
+  const original = structuredClone(state);
+  const preview = await previewAccessChange(state, admin.id, body);
+  assert.deepEqual(preview.impacts[0].changes, []);
+  assert.deepEqual(state, original);
+  await recheckAccessChange(state, admin.id, { ...body, previewReceipt: preview.receipt });
+  const saved = await LocalAccessStore.fromState(state).save(admin.id, {
+    ...body,
+    business: { ...admin.business, personalBaseline: false, systemAdmin: false },
+  });
+  assert.deepEqual(saved.people[0].business, admin.business);
+  assert.equal(effectiveAccess(saved, saved.people[0], 'permissions.manage').allowed, true);
+  await assert.rejects(
+    previewAccessChange(state, admin.id, { ...body, active: false }),
+    /administrator/,
+  );
+
+  state.people.push({
+    id: 'employee',
+    displayName: 'Employee',
+    employeeCode: 'E',
+    active: true,
+    roleIds: [],
+    overrides: [],
+    business: {
+      ...admin.business,
+      systemAdmin: false,
+      view: false,
+      export: false,
+      manage: false,
+      amend: false,
+    },
+  });
+  const employee = state.people[1];
+  const injected = await LocalAccessStore.fromState(state).save(admin.id, {
+    ...employee,
+    kind: 'person',
+    revision: state.revision,
+    business: admin.business,
+  });
+  assert.deepEqual(injected.people.find(p => p.id === employee.id)!.business, employee.business);
+  const inactive = await previewAccessChange(state, admin.id, {
+    ...employee,
+    kind: 'person',
+    revision: state.revision,
+    active: false,
+  });
+  assert.ok(inactive.impacts[0].changes.some(d => d.action === 'profile.view' && !d.allowed));
+});
 test('new exceptions require documented future expiry; legacy exceptions may be retained', async () => {
   const store = await LocalAccessStore.open(),
     state = store.snapshot(),
