@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createSkillProfileIndex, filterSkillProfile } from './skill-profile-index';
 
 import {
   Layers,
@@ -88,24 +89,11 @@ export function SkillsProfileView({
     setTab('all');
     setPage(1);
   }, [initialStatus]);
-  const approved = claims.filter(c => c.status === 'APPROVED').length,
-    pending = claims.filter(c => c.status === 'SUBMITTED').length,
-    drafts = claims.filter(c => c.status === 'DRAFT').length,
-    attention = claims.filter(c => ['CHANGES_REQUESTED', 'REJECTED'].includes(c.status)).length;
-  const categories = Array.from(new Set(claims.map(c => c.category))).sort(),
-    levels = Array.from(new Set(claims.map(c => c.rank))).sort((a, b) => a - b);
-  const filtered = claims.filter(
-    c =>
-      (!query ||
-        [c.skillName ?? '', c.category ?? '', c.levelName ?? ''].some(text =>
-          text.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
-        )) &&
-      (!category || category === c.category) &&
-      (!status || status === c.status) &&
-      (!rank || Number(rank) === c.rank) &&
-      (tab === 'all' ||
-        (tab === 'reviewed' && c.status === 'APPROVED') ||
-        (tab === 'attention' && ['DRAFT', 'CHANGES_REQUESTED', 'REJECTED'].includes(c.status))),
+  const index = useMemo(() => createSkillProfileIndex(claims), [claims]);
+  const { approved, pending, drafts, attention, categories, levels, categoryCounts } = index;
+  const filtered = useMemo(
+    () => filterSkillProfile(index, { query, category, status, rank, tab }),
+    [index, query, category, status, rank, tab],
   );
   const count = filtered.length,
     totalPages = Math.max(1, Math.ceil(count / size)),
@@ -120,9 +108,6 @@ export function SkillsProfileView({
       setTab('all');
       change();
     };
-  const categoryCounts = categories
-    .map(name => ({ name, count: claims.filter(c => c.category === name).length }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   const distribution = [
     { label: 'Manager reviewed', count: approved, color: 'var(--skill-reviewed)' },
     { label: 'Pending review', count: pending, color: 'var(--skill-pending)' },

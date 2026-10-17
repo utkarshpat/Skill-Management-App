@@ -111,3 +111,24 @@ Alternating warm validation samples had medians of 308 ms with a query probe and
 A read-only Azure management query after the benchmark observed the database Online in Southeast Asia, GeneralPurpose/Gen5, configured capacity 2, minimum capacity 0.5 and auto-pause delay 60 minutes. These observations identify cold connection handling as a major measured target; connection timing alone does not prove which portion was database resume. No database tier, auto-pause, pool-size, billing setting, data or permissions were changed. The measurement applies to the existing development database, not the separate organization-hosting proposal.
 
 The initial database activity-log read contained only a database-write Started/Succeeded pair around 14:11:32 IST, which was insufficient to establish resume. A later read returned explicit `ResumeDatabase` Started/Succeeded events with `Caller=Login` and a provider-reported **42.6917076-second auto-resume** overlapping the measured connection. Auto-resume is now verified as the dominant cause. A new process against the online database took 6.617 seconds with zero retries, followed by a 198 ms warm read. See [the verification record and attribution limits](SQL_COLD_START_VERIFICATION_2026-10-17.md). No infrastructure settings were changed.
+
+## Short-idle connection churn and catalogue delay
+
+The prior 10-second physical connection idle timeout caused new TCP/TDS connection setup between ordinary interactions, even though the database and API process remained online. A read-only process-local A/B benchmark compared that timeout with 60-second retention. Each variant warmed the same pool, waited 13 seconds and ran the same workspace read. Diagnostic connection-create events counted actual physical connections without logging payloads or identities.
+
+| After approximately 13 seconds idle | 10-second retention | 60-second retention |
+| ----------------------------------- | ------------------: | ------------------: |
+| Workspace read                      |         1,173.86 ms |           199.89 ms |
+| New physical connections            |                   1 |                   0 |
+| Token credential calls              |         1 (0.68 ms) |                   0 |
+| Immediate following read            |           163.62 ms |           207.29 ms |
+
+The near-zero cached token acquisition time in the reconnecting variant indicates the approximately one-second penalty was predominantly outside token acquisition. These are one local paired sample per variant, not hosted latency percentiles. They establish observed connection churn at the old threshold and its absence in the retained-connection variant; they do not prove a fixed latency improvement for every request.
+
+The local default idle retention is now 60,000 ms, with `AZURE_SQL_POOL_IDLE_TIMEOUT_MS` accepting explicit integers from 1,000 through 300,000 ms. Set 10,000 to restore the earlier behavior. Pool minimum zero, maximum two, TLS, socket-health validation, current API/SQL authorization and mutation behavior are unchanged. Connections are released after idle retention; there is no permanent minimum connection, background keep-alive or prewarming request. Keeping idle sessions longer can postpone eligibility for database auto-pause. This change does not remove the serverless database's resume interval, and Azure service/billing settings were not changed.
+
+Reproduce the paired read-only check with `npm run bench:connection-idle -w apps/api`. It alters only its own CLI driver's retention setting, restores that setting and closes its pool before exiting.
+
+Skill catalogue reads also previously applied a 200 ms timer to initial load, pagination and retry, as well as search typing. Those non-search reads now use a zero-delay timer. A changed search still waits 200 ms, and cleanup still cancels the pending timer and aborts the prior request. A regression verifies initial/page/retry timing, typing debounce, timer cancellation and rejection of stale results. The removed 200 ms is a configured scheduling delay, not a measured end-to-end network saving.
+
+Validation on the current working tree passed: the full automated suite (7 repository checks, 335 API tests and 249 web tests), both workspace builds/typechecks, architecture and formatting checks. Unrelated concurrent profile/portfolio changes were retained. This pass changes local source/defaults only; no deployment or live Azure configuration update was performed.

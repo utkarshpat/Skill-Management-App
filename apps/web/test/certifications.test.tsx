@@ -157,7 +157,7 @@ test('portfolio counts use every authorized page and reject changing, incomplete
   const requested: number[] = [];
   const result = await loadCertificationPortfolio(async n => {
     requested.push(n);
-    return page(records.slice((n - 1) * 25, n * 25), 26);
+    return { ...page(records.slice((n - 1) * 25, n * 25), 26), page: n };
   }, new AbortController().signal);
   assert.equal(result.records.length, 26);
   assert.deepEqual(requested, [1, 2]);
@@ -239,7 +239,7 @@ test('portfolio pages load in bounded parallel batches and preserve page orderin
       await new Promise<void>(resolve => waiting.set(n, resolve));
       active--;
     }
-    return page(records.slice((n - 1) * 25, n * 25), 101);
+    return { ...page(records.slice((n - 1) * 25, n * 25), 101), page: n };
   }, new AbortController().signal);
   const tick = () => new Promise<void>(resolve => setImmediate(resolve));
   await tick();
@@ -257,6 +257,41 @@ test('portfolio pages load in bounded parallel batches and preserve page orderin
     records.map(row => row.id),
   );
   assert.equal(maximum, 2);
+});
+
+test('portfolio loading rejects inconsistent page identity, capabilities and page lengths', async () => {
+  const records = Array.from({ length: 26 }, (_, i) => record(String(i)));
+  for (const override of [
+    { page: 1 },
+    { canManage: false },
+    { canSubmitNew: false },
+    { canReview: true },
+    { canUploadImage: true },
+    { canRecommend: true },
+    { canViewRecommendations: true },
+  ]) {
+    await assert.rejects(
+      loadCertificationPortfolio(
+        async n => ({
+          ...page(records.slice((n - 1) * 25, n * 25), 26),
+          page: n,
+          ...(n === 2 ? override : {}),
+        }),
+        new AbortController().signal,
+      ),
+      /changed while loading/,
+    );
+  }
+  await assert.rejects(
+    loadCertificationPortfolio(
+      async n => ({
+        ...page(n === 1 ? records.slice(0, 24) : records.slice(24), 26),
+        page: n,
+      }),
+      new AbortController().signal,
+    ),
+    /changed while loading/,
+  );
 });
 
 test('renewal deep links normalize SQL UUID casing and reject invalid identifiers', async () => {

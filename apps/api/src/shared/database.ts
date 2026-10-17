@@ -22,6 +22,15 @@ export function databaseConfig(env: NodeJS.ProcessEnv): sql.config {
   const validation = env.AZURE_SQL_CONNECTION_VALIDATION?.trim() || 'socket';
   if (!['socket', 'query'].includes(validation))
     throw new Error('AZURE_SQL_CONNECTION_VALIDATION must be socket or query.');
+  const idleSetting = env.AZURE_SQL_POOL_IDLE_TIMEOUT_MS?.trim();
+  const idleTimeoutMillis = idleSetting ? Number(idleSetting) : 60_000;
+  if (
+    (idleSetting && !/^\d+$/.test(idleSetting)) ||
+    !Number.isInteger(idleTimeoutMillis) ||
+    idleTimeoutMillis < 1_000 ||
+    idleTimeoutMillis > 300_000
+  )
+    throw new Error('AZURE_SQL_POOL_IDLE_TIMEOUT_MS must be an integer from 1000 to 300000.');
   return {
     server,
     database,
@@ -35,7 +44,9 @@ export function databaseConfig(env: NodeJS.ProcessEnv): sql.config {
     validateConnection: validation === 'query' ? true : 'socket',
     connectionTimeout: 30000,
     requestTimeout: 30000,
-    pool: { min: 0, max: 2, idleTimeoutMillis: 10000 },
+    // Reuse connections between ordinary page interactions without keeping
+    // any connections permanently open or sending background keep-alives.
+    pool: { min: 0, max: 2, idleTimeoutMillis },
   };
 }
 

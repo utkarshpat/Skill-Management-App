@@ -77,6 +77,7 @@ export function SkillCertificates({
       setOpening(false);
       setViewing(undefined);
       setEditing(undefined);
+      setDetailError('');
       setData(undefined);
       return () => abort.abort();
     }
@@ -96,8 +97,13 @@ export function SkillCertificates({
       .catch(e => {
         if (!abort.signal.aborted) {
           setData(undefined);
-          setViewing(undefined);
-          setEditing(undefined);
+          if (e.status === 401 || e.status === 403) {
+            detailRequest.current?.abort();
+            setOpening(false);
+            setViewing(undefined);
+            setEditing(undefined);
+            setDetailError('');
+          }
           setError(e.message);
         }
       })

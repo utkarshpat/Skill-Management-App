@@ -163,26 +163,31 @@ function SkillDefinitions({
   const [editorPage, setEditorPage] = useState(0),
     [levelIndex, setLevelIndex] = useState(0);
   const query = () => new URLSearchParams({ search, status, page: String(page) }).toString();
+  const requestedSearch = useRef(search);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError('');
-    const timer = setTimeout(() => {
-      authenticatedFetch(
-        '/api/skills?' + new URLSearchParams({ search, status, page: String(page) }),
-        { signal: controller.signal },
-      )
-        .then(responseBody)
-        .then(body => {
-          if (!controller.signal.aborted) setState(body);
-        })
-        .catch(err => {
-          if (!controller.signal.aborted) setError(err.message);
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false);
-        });
-    }, 200);
+    const timer = setTimeout(
+      () => {
+        requestedSearch.current = search;
+        authenticatedFetch(
+          '/api/skills?' + new URLSearchParams({ search, status, page: String(page) }),
+          { signal: controller.signal },
+        )
+          .then(responseBody)
+          .then(body => {
+            if (!controller.signal.aborted) setState(body);
+          })
+          .catch(err => {
+            if (!controller.signal.aborted) setError(err.message);
+          })
+          .finally(() => {
+            if (!controller.signal.aborted) setLoading(false);
+          });
+      },
+      search === requestedSearch.current ? 0 : 200,
+    );
     return () => {
       clearTimeout(timer);
       controller.abort();

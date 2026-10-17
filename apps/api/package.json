@@ -19,6 +19,7 @@
     "test:primary-capability": "node --env-file-if-exists=.env --import tsx test/primary-capability.integration.ts",
     "test:actor-access": "node --env-file-if-exists=.env --import tsx test/actor-access.integration.ts",
     "bench:access": "node --env-file-if-exists=.env --import tsx test/access-read-benchmark.ts",
+    "bench:connection-idle": "node --env-file-if-exists=.env --import tsx test/connection-idle-benchmark.ts",
     "test:reviews": "node --env-file-if-exists=.env --import tsx test/reviews.integration.ts",
     "test:evidence-snapshot": "node --env-file-if-exists=.env --import tsx test/evidence-snapshot.integration.ts",
     "test:review-access": "node --env-file-if-exists=.env --import tsx test/review-access.integration.ts",
