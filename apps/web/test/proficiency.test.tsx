@@ -1,70 +1,33 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ProficiencyEditor } from '../src/ProficiencyEditor';
-import { standardLevels, isStandardFramework } from '../src/proficiency';
+import { CommonProficiency } from '../src/CommonProficiency';
+import { commonLevels, proficiencyNames } from '../src/proficiency';
+import { commonLevels as serverLevels } from '../../api/src/modules/skills/proficiency';
 
-test('four-level model maps by rank without mutating source criteria', () => {
-  const legacy = standardLevels().map(level => ({
-    ...level,
-    name: level.rank === 2 ? 'Beginner' : level.rank === 3 ? 'Intermediate' : level.name,
-    description: 'Criteria ' + level.rank,
-  }));
-  const copy = structuredClone(legacy),
-    mapped = standardLevels(legacy);
+test('the shared four-level rubric matches the server and each caller gets an independent copy', () => {
+  const levels = commonLevels();
+  assert.deepEqual(levels, serverLevels());
   assert.deepEqual(
-    mapped.map(level => level.name),
-    ['Foundation', 'Autonomous', 'Experienced', 'Expert'],
+    levels.map(l => l.name),
+    proficiencyNames,
   );
-  assert.deepEqual(
-    mapped.map(level => level.description),
-    ['', '', '', ''],
-  );
-  assert.deepEqual(legacy, copy);
-  assert.equal(isStandardFramework(legacy), false);
-  assert.equal(isStandardFramework(mapped), true);
-  assert.equal(isStandardFramework(mapped.slice(0, 3)), false);
-  assert.equal(standardLevels(legacy.slice(0, 2))[2].description, '');
+  levels[0].description = 'Changed locally';
+  assert.notEqual(commonLevels()[0].description, levels[0].description);
 });
-test('criteria editor explains fixed levels and publication requirements, with no scale mutation controls', () => {
-  const html = renderToStaticMarkup(
-    <ProficiencyEditor
-      levels={standardLevels()}
-      selected={2}
-      onSelect={() => {}}
-      onChange={() => {}}
-      published
-    />,
-  );
-  assert.match(html, /aria-label="Four-level proficiency model"/);
-  assert.match(html, /Criteria for Experienced/);
-  assert.match(html, /<textarea required=""/);
-  assert.match(html, /required for all four levels/);
-  assert.doesNotMatch(html, /Add level|Remove level|<input/);
-  const draft = renderToStaticMarkup(
-    <ProficiencyEditor
-      levels={standardLevels()}
-      selected={0}
-      onSelect={() => {}}
-      onChange={() => {}}
-      published={false}
-    />,
-  );
-  assert.doesNotMatch(draft, /<textarea required/);
+
+test('common criteria are readable without per-skill editing or scale mutation controls', () => {
+  const html = renderToStaticMarkup(<CommonProficiency />);
+  for (const level of commonLevels()) assert.ok(html.includes(level.description));
+  assert.match(html, /shared and cannot be edited/);
+  assert.doesNotMatch(html, /<textarea|<input|Add level|Remove level/);
 });
-test('legacy alignment is explicit and explains snapshots and missing or removed ranks', () => {
-  const legacy = standardLevels().map(level => ({ ...level, name: 'Old ' + level.rank }));
-  const props = { selected: 0, onSelect: () => {}, onChange: () => {}, published: true };
-  const before = renderToStaticMarkup(<ProficiencyEditor {...props} levels={legacy} />);
-  assert.match(before, /Align to four levels/);
-  assert.match(before, /write/);
-  assert.match(before, /old ranks are not converted/);
-  const after = renderToStaticMarkup(
-    <ProficiencyEditor {...props} levels={standardLevels(legacy)} original={legacy} />,
+
+test('the shared rubric matches the versioned SQL framework without changing historical definitions', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(
+    new URL('../../../database/migrations/074_four_level_proficiency.sql', import.meta.url),
+    'utf8',
   );
-  assert.match(after, /Alignment is ready to save/);
-  assert.match(after, /claim snapshots remain unchanged/);
-  assert.doesNotMatch(after, /Align to four levels<\/button>/);
-  assert.match(before, /Saved: Old 2/);
-  assert.match(after, /Saved: Old 2/);
+  for (const level of commonLevels()) assert.ok(source.includes(level.description));
 });

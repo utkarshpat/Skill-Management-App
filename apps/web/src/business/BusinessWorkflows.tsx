@@ -14,6 +14,13 @@ import {
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
+import { CommonProficiency } from '../CommonProficiency';
+import { commonLevels } from '../proficiency';
+import {
+  CatalogueCertificationPicker,
+  type CatalogueCertification,
+} from '../CatalogueCertificationPicker';
+import '../catalogue.css';
 import type { BusinessContext } from './business-model';
 interface Master {
   catalogueRevision?: number;
@@ -26,6 +33,7 @@ interface Master {
   active?: boolean;
   levels?: { rank: number; description: string }[];
   relatedSkillIds?: string[];
+  relatedCertifications?: CatalogueCertification[];
 }
 interface Masters {
   revision: number;
@@ -126,7 +134,8 @@ export function BusinessWorkflows({
     [category, setCategory] = useState(''),
     [description, setDescription] = useState(''),
     [provider, setProvider] = useState(''),
-    [criteria, setCriteria] = useState(['', '', '', '']),
+    [relatedCertifications, setRelatedCertifications] = useState<CatalogueCertification[]>([]),
+    [suggestSkills, setSuggestSkills] = useState(false),
     [relatedSkillIds, setRelatedSkillIds] = useState<string[]>([]),
     [reason, setReason] = useState(''),
     [active, setActive] = useState(true),
@@ -259,6 +268,8 @@ export function BusinessWorkflows({
     setProviderName('');
     setType('CERTIFICATION');
     setRelatedSkillIds([]);
+    setRelatedCertifications([]);
+    setSuggestSkills(false);
     setPreview(undefined);
     setDecision(undefined);
     setError('');
@@ -275,7 +286,6 @@ export function BusinessWorkflows({
     setMasterSearch('');
     setMasterTerm('');
     setMasterPage(1);
-    setCriteria(['', '', '', '']);
   };
   async function prepare(command: { operation: string; payload: Record<string, unknown> }) {
     if (guard.current) return;
@@ -349,7 +359,10 @@ export function BusinessWorkflows({
           category,
           description,
           providerId: provider,
-          criteria,
+          criteria: commonLevels().map(level => level.description),
+          ...(type === 'SKILL'
+            ? { relatedCertificationIds: relatedCertifications.map(c => c.id) }
+            : {}),
           ...(type === 'CERTIFICATION' ? { relatedSkillIds } : {}),
           reason,
           active,
@@ -418,11 +431,13 @@ export function BusinessWorkflows({
           masters?.certificationTotal ?? 0,
           masters?.skillTotal ?? 0,
         )
-      : amendmentStep === 1 || type === 'PROVIDER'
-        ? (masters?.providerTotal ?? 0)
-        : type === 'SKILL'
-          ? (masters?.skillTotal ?? 0)
-          : (masters?.certificationTotal ?? 0);
+      : amendmentStep === 1 && type === 'CERTIFICATION'
+        ? Math.max(masters?.providerTotal ?? 0, masters?.skillTotal ?? 0)
+        : amendmentStep === 1 || type === 'PROVIDER'
+          ? (masters?.providerTotal ?? 0)
+          : type === 'SKILL'
+            ? (masters?.skillTotal ?? 0)
+            : (masters?.certificationTotal ?? 0);
   const typeLabel = type === 'SKILL' ? 'Skill' : type === 'PROVIDER' ? 'Provider' : 'Certification';
   function resetSelection(nextType: string, nextMode: 'new' | 'edit') {
     if (nextType === type && nextMode === amendmentMode) return;
@@ -435,8 +450,9 @@ export function BusinessWorkflows({
     setDescription('');
     setProvider('');
     setProviderName('');
-    setCriteria(['', '', '', '']);
     setRelatedSkillIds([]);
+    setRelatedCertifications([]);
+    setSuggestSkills(false);
     setActive(true);
     setMasterSearch('');
     setMasterTerm('');
@@ -454,13 +470,10 @@ export function BusinessWorkflows({
     setDescription(item?.description ?? '');
     setRelatedSkillIds((item?.relatedSkillIds ?? []).map(id => id.toLowerCase()));
     setActive(item?.active ?? true);
-    setCriteria(
-      [1, 2, 3, 4].map(rank =>
-        item?.levels?.length === 4
-          ? (item.levels.find(l => l.rank === rank)?.description ?? '')
-          : '',
-      ),
+    setRelatedCertifications(
+      (item?.relatedCertifications ?? []).map(c => ({ ...c, id: c.id.toLowerCase() })),
     );
+    setSuggestSkills(!!item?.relatedSkillIds?.length);
   }
   function nextAmendmentStep() {
     if (amendmentMode === 'edit' && !target) {
@@ -812,7 +825,13 @@ export function BusinessWorkflows({
       )}
       {composing && !preview && (
         <FormDialog
-          title={view === 'amendments' ? 'New catalogue request' : 'New scoped demand'}
+          title={
+            view === 'amendments'
+              ? amendmentStep === 0
+                ? 'Add or amend a catalogue entry'
+                : `${amendmentMode === 'new' ? 'Add' : 'Amend'} ${typeLabel.toLowerCase()}`
+              : 'New scoped demand'
+          }
           className={view === 'amendments' ? 'bo-amendment-dialog' : ''}
           subtitle={
             view === 'amendments'
@@ -958,7 +977,7 @@ export function BusinessWorkflows({
                     {view === 'demand'
                       ? 'Search approved definitions'
                       : amendmentStep === 1
-                        ? 'Find an approved provider'
+                        ? 'Find approved providers or related skills'
                         : `Find an existing ${typeLabel.toLowerCase()}`}
                   </label>
                   <div className="bo-search-field-wrap">
@@ -979,7 +998,7 @@ export function BusinessWorkflows({
                         view === 'demand'
                           ? 'Skill, credential or provider…'
                           : amendmentStep === 1
-                            ? 'Search provider name…'
+                            ? 'Search provider or skill name…'
                             : `Search ${typeLabel.toLowerCase()} name…`
                       }
                     />
@@ -1074,6 +1093,13 @@ export function BusinessWorkflows({
                   <input
                     required
                     maxLength={view === 'demand' ? 150 : 100}
+                    placeholder={
+                      type === 'CERTIFICATION'
+                        ? 'e.g. Oracle Cloud Infrastructure Foundations Associate'
+                        : type === 'SKILL'
+                          ? 'e.g. Oracle HCM'
+                          : 'e.g. Oracle'
+                    }
                     value={name}
                     onChange={e => setName(e.target.value)}
                   />
@@ -1088,41 +1114,6 @@ export function BusinessWorkflows({
                       onChange={e => setCategory(e.target.value)}
                     />
                   </label>
-                )}
-                {view === 'amendments' && type === 'CERTIFICATION' && (
-                  <fieldset className="bo-panel">
-                    <legend>Related catalogue skills</legend>
-                    <p className="bo-note">
-                      Suggest these skills when this credential is selected. Employees confirm each
-                      skill and its proficiency. Use the catalogue search above for more skills.
-                    </p>
-                    <span>{relatedSkillIds.length}/20 selected</span>
-                    <div className="bo-mapping-options">
-                      {(masters?.skills ?? [])
-                        .filter(skill => skill.active !== false)
-                        .map(skill => (
-                          <label key={skill.id}>
-                            <input
-                              type="checkbox"
-                              checked={relatedSkillIds.includes(skill.id.toLowerCase())}
-                              disabled={
-                                busy ||
-                                (!relatedSkillIds.includes(skill.id.toLowerCase()) &&
-                                  relatedSkillIds.length >= 20)
-                              }
-                              onChange={e =>
-                                setRelatedSkillIds(previous =>
-                                  e.target.checked
-                                    ? [...previous, skill.id.toLowerCase()]
-                                    : previous.filter(id => id !== skill.id.toLowerCase()),
-                                )
-                              }
-                            />
-                            {skill.name}
-                          </label>
-                        ))}
-                    </div>
-                  </fieldset>
                 )}
                 {view === 'amendments' && type === 'CERTIFICATION' && (
                   <label>
@@ -1169,6 +1160,91 @@ export function BusinessWorkflows({
                     onChange={e => setDescription(e.target.value)}
                   />
                 </label>
+                {view === 'amendments' && type === 'CERTIFICATION' && (
+                  <fieldset className="bo-panel catalogue-association">
+                    <legend>Associated catalogue skills - Optional</legend>
+                    <p className="bo-note">
+                      Suggest these skills when this credential is selected. Employees confirm each
+                      skill and its proficiency. They may skip these suggestions, choose any other
+                      published skill, or add extra skills. A certification claim still needs at
+                      least one linked skill.
+                    </p>
+                    <div className="catalogue-choice-row">
+                      <label>
+                        <input
+                          type="radio"
+                          name="certification-skill-suggestions"
+                          checked={!suggestSkills}
+                          onChange={() => {
+                            setSuggestSkills(false);
+                            setRelatedSkillIds([]);
+                          }}
+                        />
+                        No default skill suggestions
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="certification-skill-suggestions"
+                          checked={suggestSkills}
+                          onChange={() => setSuggestSkills(true)}
+                        />
+                        Suggest related skills
+                      </label>
+                    </div>
+                    {suggestSkills && (
+                      <>
+                        <span>{relatedSkillIds.length}/20 selected</span>
+                        <div className="catalogue-selected">
+                          {relatedSkillIds.map(id => (
+                            <button
+                              type="button"
+                              className="secondary-button"
+                              key={id}
+                              onClick={() =>
+                                setRelatedSkillIds(previous => previous.filter(v => v !== id))
+                              }
+                            >
+                              Remove{' '}
+                              {masters?.skills.find(skill => skill.id.toLowerCase() === id)?.name ??
+                                'selected skill'}{' '}
+                              x
+                            </button>
+                          ))}
+                        </div>
+                        <div className="bo-mapping-options">
+                          {(masters?.skills ?? [])
+                            .filter(skill => skill.active !== false)
+                            .map(skill => (
+                              <label key={skill.id}>
+                                <input
+                                  type="checkbox"
+                                  checked={relatedSkillIds.includes(skill.id.toLowerCase())}
+                                  disabled={
+                                    busy ||
+                                    (!relatedSkillIds.includes(skill.id.toLowerCase()) &&
+                                      relatedSkillIds.length >= 20)
+                                  }
+                                  onChange={e =>
+                                    setRelatedSkillIds(previous =>
+                                      e.target.checked
+                                        ? [...previous, skill.id.toLowerCase()]
+                                        : previous.filter(id => id !== skill.id.toLowerCase()),
+                                    )
+                                  }
+                                />
+                                {skill.name}
+                              </label>
+                            ))}
+                        </div>
+                        <p className="bo-note">
+                          Use the catalogue search above to find more skills. Selections stay
+                          selected across search results.
+                        </p>
+                      </>
+                    )}
+                  </fieldset>
+                )}
                 {view === 'amendments' ? (
                   <>
                     <label className="bo-check">
@@ -1179,22 +1255,16 @@ export function BusinessWorkflows({
                       />{' '}
                       Keep this entry available in the catalogue
                     </label>
-                    {type === 'SKILL' &&
-                      ['Foundation', 'Autonomous', 'Experienced', 'Expert'].map((label, i) => (
-                        <label key={label} className="bo-full">
-                          L{i + 1} · {label} <span className="bo-required">*</span>
-                          <textarea
-                            required
-                            maxLength={1000}
-                            value={criteria[i]}
-                            onChange={e =>
-                              setCriteria(values =>
-                                values.map((v, index) => (index === i ? e.target.value : v)),
-                              )
-                            }
-                          />
-                        </label>
-                      ))}
+                    {type === 'SKILL' && (
+                      <div className="bo-full">
+                        <CommonProficiency />
+                        <CatalogueCertificationPicker
+                          value={relatedCertifications}
+                          onChange={setRelatedCertifications}
+                          disabled={busy}
+                        />
+                      </div>
+                    )}
                     <label className="bo-full">
                       Why is this change needed? <span className="bo-required">*</span>
                       <textarea
@@ -1437,7 +1507,18 @@ export function BusinessWorkflows({
               context={context}
             />
           ) : (
-            <DefinitionPreview details={preview.details} masters={masters} context={context} />
+            <DefinitionPreview
+              details={preview.details}
+              masters={
+                masters
+                  ? {
+                      ...masters,
+                      certifications: [...relatedCertifications, ...masters.certifications],
+                    }
+                  : undefined
+              }
+              context={context}
+            />
           )}
           {error && (
             <p role="alert" className="bo-error">
@@ -1547,10 +1628,33 @@ function DefinitionPreview({
     { skills: { id: string; minRank: number }[]; certifications: string[] } | undefined;
   const levels = d.levels as { rank: number; description: string }[] | undefined;
   const mappings = d.relatedSkillIds as string[] | undefined;
+  const credentialMappings = d.relatedCertificationIds as string[] | undefined;
+  const credentialDetails = d.relatedCertificationDetails as
+    { id: string; name: string }[] | undefined;
+  const skillDetails = d.relatedSkillDetails as { id: string; name: string }[] | undefined;
   return (
     <div className="bo-page bo-review">
       <h3>{String(d.name ?? d.title ?? 'Reviewed decision')}</h3>
       <dl>
+        {credentialMappings && (
+          <>
+            <dt>Associated certifications</dt>
+            <dd>
+              {credentialMappings.length
+                ? credentialMappings
+                    .map(
+                      id =>
+                        credentialDetails?.find(c => c.id.toLowerCase() === id.toLowerCase())
+                          ?.name ??
+                        masters?.certifications.find(c => c.id.toLowerCase() === id.toLowerCase())
+                          ?.name ??
+                        `Catalogue certification (${id})`,
+                    )
+                    .join(', ')
+                : 'No certification suggestions'}
+            </dd>
+          </>
+        )}
         {mappings && (
           <>
             <dt>Related skills</dt>
@@ -1559,8 +1663,11 @@ function DefinitionPreview({
                 ? mappings
                     .map(
                       id =>
+                        skillDetails?.find(skill => skill.id.toLowerCase() === id.toLowerCase())
+                          ?.name ??
                         masters?.skills.find(skill => skill.id.toLowerCase() === id.toLowerCase())
-                          ?.name ?? 'Catalogue skill (rechecked before approval)',
+                          ?.name ??
+                        `Catalogue skill (${id})`,
                     )
                     .join(', ')
                 : 'No default skill suggestions'}
@@ -1624,11 +1731,15 @@ function DefinitionPreview({
           </>
         )}
       </dl>
-      {levels?.map(l => (
-        <p key={l.rank}>
-          <strong>L{l.rank}</strong> · {l.description}
-        </p>
-      ))}
+      {levels && (
+        <>
+          <CommonProficiency />
+          <p className="bo-note">
+            Catalogue saves use this common framework. Existing employee claims and historical
+            snapshots keep their saved criteria.
+          </p>
+        </>
+      )}
       {requirements && (
         <>
           <h4>Explicit requirements</h4>

@@ -1,6 +1,10 @@
 # Cognitive Intelligence Lab — Project Handover
 
-Version: 2026-10-17. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
+Version: 2026-10-19. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
+
+## Catalogue forms and common criteria - 19 October 2026
+
+The local catalogue increment replaces per-skill rubric editing with a common read-only four-level reference, simplifies skill creation to one form and adds optional certification associations from the skill side. Certification/provider catalogue creation retains its existing amendment and approval path. Catalogue links remain suggestions: a personal certification submission still needs a linked skill, while employees may choose other published skills and extra skills. Migration 086 normalizes future writes, validates reciprocal links transactionally, audits changes and rejects conflicting amendments without rewriting historical claims or changing access rules. Organization deployment remains pending. See [implementation and rollout](CATALOGUE_FORMS_2026-10-19.md).
 
 ## Certificate portfolio consistency — 17 October 2026
 

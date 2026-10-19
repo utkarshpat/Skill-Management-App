@@ -389,3 +389,22 @@ test('certificate AI can return several canonical skills, bounded to six without
   );
   assert.equal(result.fields.rank, undefined);
 });
+
+test('certificate claims still need a linked skill and allow independently chosen extra skills', () => {
+  assert.throws(() => capabilityCommand({ ...command(), skills: [] }), /1.10 skills/);
+  assert.throws(
+    () =>
+      capabilityCommand({
+        ...command(),
+        certifications: [{ ...command().certifications[0], skillIds: [] }],
+      }),
+    /at least one/,
+  );
+  const extra = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const selected = command();
+  selected.skills.push({ ...selected.skills[0], id: extra, skillId: extra });
+  selected.certifications[0].skillIds = [extra];
+  const result = capabilityCommand(selected);
+  assert.equal(result.skills.length, 2);
+  assert.deepEqual(result.certifications[0].skillIds, [extra]);
+});

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { AccessError } from '../../shared/errors.js';
-import { hasStandardProficiency } from './proficiency.js';
+import { hasStandardProficiency, commonLevels } from './proficiency.js';
 
 export type SkillStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 export interface SkillLevel {
@@ -9,6 +9,7 @@ export interface SkillLevel {
   description: string;
 }
 export interface CatalogueSkill {
+  relatedCertifications?: CatalogueCredential[];
   businessCode?: string | null;
   definitionRevision?: number;
   id: string;
@@ -32,8 +33,24 @@ export interface CatalogueState {
   skills: CatalogueSkill[];
 }
 export interface CatalogueStore {
+  certifications?(
+    actorId: string,
+    query: CatalogueQuery,
+  ): Promise<{
+    revision: number;
+    total: number;
+    page: number;
+    pageSize: number;
+    certifications: CatalogueCredential[];
+  }>;
   read(actorId: string, query: CatalogueQuery): Promise<CatalogueState>;
   save(actorId: string, input: unknown): Promise<void>;
+}
+export interface CatalogueCredential {
+  id: string;
+  name: string;
+  provider: string;
+  active: boolean;
 }
 export const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const statuses = ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
@@ -90,6 +107,16 @@ export function catalogueChange(input: unknown) {
       400,
       'Use exactly four levels: Foundation, Autonomous, Experienced and Expert.',
     );
+  const relatedCertificationIds = body.relatedCertificationIds;
+  if (
+    relatedCertificationIds !== undefined &&
+    (!Array.isArray(relatedCertificationIds) ||
+      relatedCertificationIds.length > 20 ||
+      relatedCertificationIds.some(id => typeof id !== 'string' || !uuid.test(id)) ||
+      new Set(relatedCertificationIds.map(id => id.toLowerCase())).size !==
+        relatedCertificationIds.length)
+  )
+    throw new AccessError(400, 'Choose up to twenty distinct catalogue certifications.');
   return {
     revision: Number(body.revision),
     targetId: body.id === undefined ? randomUUID() : String(body.id).toLowerCase(),
@@ -99,7 +126,14 @@ export function catalogueChange(input: unknown) {
       category: text(body.category, 80, true, true),
       description: text(body.description, 2000, published),
       status: body.status as SkillStatus,
-      levels,
+      levels: commonLevels(),
+      ...(relatedCertificationIds !== undefined
+        ? {
+            relatedCertificationIds: (relatedCertificationIds as string[]).map(id =>
+              id.toLowerCase(),
+            ),
+          }
+        : {}),
     },
   };
 }

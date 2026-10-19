@@ -1068,3 +1068,39 @@ test('credential follow-up tools return scoped records and unambiguous responsib
   );
   assert.equal(reads, 1, 'Revocation must stop the next record read');
 });
+
+test('skill amendment criteria are common and certification associations remain optional, bounded and skill-specific', () => {
+  const id = '11111111-1111-4111-8111-111111111111';
+  const command = {
+    id,
+    revision: 1,
+    type: 'SKILL',
+    name: 'SQL',
+    category: 'Data',
+    description: 'Query data',
+    criteria: ['One', 'Two', 'Three', 'Four'],
+    reason: 'Catalogue improvement',
+  };
+  const definition = businessWorkflow('PROPOSE', { ...command, relatedCertificationIds: [id] })
+    .payload.definition as any;
+  assert.equal(
+    definition.levels[0].description,
+    'Understands fundamentals and completes routine work with guidance.',
+  );
+  assert.deepEqual(definition.relatedCertificationIds, [id]);
+  assert.equal(
+    'relatedCertificationIds' in (businessWorkflow('PROPOSE', command).payload.definition as any),
+    false,
+  );
+  for (const relatedCertificationIds of [
+    null,
+    'invalid',
+    ['invalid'],
+    [id, id],
+    Array(21).fill(id),
+  ])
+    assert.throws(() => businessWorkflow('PROPOSE', { ...command, relatedCertificationIds }));
+  assert.throws(() =>
+    businessWorkflow('PROPOSE', { ...command, type: 'PROVIDER', relatedCertificationIds: [] }),
+  );
+});

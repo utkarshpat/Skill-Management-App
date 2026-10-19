@@ -1,5 +1,6 @@
 import { AccessError } from '../../shared/errors.js';
 import { identifier } from './business.js';
+import { commonLevels } from '../../shared/proficiency.js';
 const text = (v: unknown, max: number, required = false) => {
   if (typeof v !== 'string' || v.trim().length > max || (required && !v.trim()))
     throw new AccessError(400, 'Complete the required fields.');
@@ -29,6 +30,7 @@ export function businessWorkflow(
       'providerId',
       'criteria',
       'relatedSkillIds',
+      'relatedCertificationIds',
       'reason',
     ],
     APPROVE_AMENDMENT: ['id', 'revision', 'note'],
@@ -95,14 +97,21 @@ export function businessWorkflow(
     } else if (q.relatedSkillIds !== undefined) {
       throw new AccessError(400, 'Related skill mappings belong to credential definitions.');
     }
+    if (q.type !== 'SKILL' && q.relatedCertificationIds !== undefined)
+      throw new AccessError(400, 'Certification suggestions belong to skills.');
     if (q.type === 'SKILL') {
       if (!Array.isArray(q.criteria) || q.criteria.length !== 4)
         throw new AccessError(400, 'Describe all four skill proficiency levels.');
-      payload.levels = ['Foundation', 'Autonomous', 'Experienced', 'Expert'].map((name, index) => ({
-        rank: index + 1,
-        name,
-        description: text((q.criteria as unknown[])[index], 1000, true),
-      }));
+      (q.criteria as unknown[]).forEach(value => text(value, 1000, true));
+      payload.levels = commonLevels();
+      if (q.relatedCertificationIds !== undefined) {
+        if (!Array.isArray(q.relatedCertificationIds) || q.relatedCertificationIds.length > 20)
+          throw new AccessError(400, 'Choose up to twenty related certifications.');
+        const ids = q.relatedCertificationIds.map(identifier).map(id => id.toLowerCase());
+        if (new Set(ids).size !== ids.length)
+          throw new AccessError(400, 'Choose each certification once.');
+        payload.relatedCertificationIds = ids;
+      }
       payload.status = q.active === false ? 'ARCHIVED' : 'PUBLISHED';
     }
     return {

@@ -9,6 +9,7 @@ import {
   type CatalogueQuery,
   type CatalogueSkill,
   type SkillLevel,
+  type CatalogueCredential,
 } from './skill-catalogue.js';
 export class SqlCatalogueStore implements CatalogueStore {
   constructor(private accountId: string) {
@@ -29,6 +30,7 @@ export class SqlCatalogueStore implements CatalogueStore {
           sql.IRecordSet<{ revision: number; canManage: boolean; total: number }>,
           sql.IRecordSet<Omit<CatalogueSkill, 'levels'>>,
           sql.IRecordSet<SkillLevel & { skillId: string }>,
+          sql.IRecordSet<CatalogueCredential & { skillId: string }>,
         ];
         return {
           ...sets[0][0],
@@ -37,6 +39,9 @@ export class SqlCatalogueStore implements CatalogueStore {
           skills: sets[1].map(item => ({
             ...item,
             id: item.id.toLowerCase(),
+            relatedCertifications: (sets[3] ?? [])
+              .filter(c => c.skillId.toLowerCase() === item.id.toLowerCase())
+              .map(({ skillId, ...c }) => ({ ...c, id: c.id.toLowerCase() })),
             levels: sets[2]
               .filter(level => level.skillId === item.id)
               .map(({ rank, name, description }) => ({ rank, name, description })),
@@ -61,6 +66,31 @@ export class SqlCatalogueStore implements CatalogueStore {
           .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(change.payload))
           .execute('dbo.SaveSkillCatalogue'),
       );
+    } catch (error) {
+      throw catalogueError(error);
+    }
+  }
+  async certifications(actorId: string, query: CatalogueQuery) {
+    try {
+      return await withRuntimeDatabase(async pool => {
+        const result = await pool
+          .request()
+          .input('account_id', sql.UniqueIdentifier, this.accountId)
+          .input('actor_id', sql.UniqueIdentifier, actorId)
+          .input('query', sql.NVarChar(100), query.search)
+          .input('page', sql.Int, query.page)
+          .execute('dbo.ReadCatalogueCertifications');
+        const sets = result.recordsets as unknown as [
+          sql.IRecordSet<{ revision: number; total: number }>,
+          sql.IRecordSet<CatalogueCredential>,
+        ];
+        return {
+          ...sets[0][0],
+          page: query.page,
+          pageSize: 25,
+          certifications: sets[1].map(c => ({ ...c, id: c.id.toLowerCase() })),
+        };
+      });
     } catch (error) {
       throw catalogueError(error);
     }

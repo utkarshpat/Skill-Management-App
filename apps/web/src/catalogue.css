@@ -1,0 +1,118 @@
+.catalogue-editor .dialog-field-grid {
+  align-items: start;
+}
+.catalogue-framework,
+.catalogue-association {
+  border: 1px solid var(--line, #cbd5e1);
+  border-radius: 14px;
+  padding: 20px;
+  margin: 16px 0;
+  min-width: 0;
+}
+.catalogue-framework h3 {
+  margin: 0 0 8px;
+}
+.catalogue-framework p,
+.catalogue-association p {
+  color: var(--muted, #64748b);
+  line-height: 1.55;
+}
+.catalogue-framework-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.catalogue-framework-grid article {
+  border-radius: 10px;
+  background: var(--raised, #f1f5f9);
+  padding: 16px;
+}
+.catalogue-framework-grid h4 {
+  margin: 8px 0;
+}
+.catalogue-framework-grid p {
+  margin: 0;
+}
+.catalogue-level {
+  color: var(--accent-ink, #008b8d);
+  font-weight: 700;
+}
+.catalogue-choice-row,
+.catalogue-selected,
+.catalogue-picker-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+}
+.catalogue-choice-row label,
+.catalogue-option-list label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.catalogue-choice-row input,
+.catalogue-option-list input {
+  width: auto;
+  flex-shrink: 0;
+}
+.catalogue-option-list {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 4px;
+}
+.catalogue-option-list label {
+  border: 1px solid var(--line, #cbd5e1);
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.catalogue-option-list small {
+  display: block;
+  color: var(--muted, #64748b);
+  margin-top: 4px;
+}
+.catalogue-entry-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.catalogue-association {
+  grid-column: 1/-1;
+}
+@media (max-width: 600px) {
+  .catalogue-framework-grid {
+    grid-template-columns: 1fr;
+  }
+  .catalogue-framework,
+  .catalogue-association {
+    padding: 14px;
+  }
+}
+
+.form-dialog .access-form .catalogue-choice-row input[type='radio'] {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+  margin: 0;
+  flex: 0 0 16px;
+  accent-color: var(--accent-ink);
+}
+.catalogue-framework-reference summary {
+  cursor: pointer;
+  color: var(--accent-ink);
+  padding: 8px 0;
+  font-weight: 600;
+}
+
+.form-dialog .access-form .catalogue-choice-row label,
+.form-dialog .access-form .catalogue-option-list label,
+.form-dialog .access-form .bo-mapping-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

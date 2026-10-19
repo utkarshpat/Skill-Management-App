@@ -493,7 +493,7 @@ export class AssistantService {
                   label: 'Design a catalogue skill',
                   destination: '/skills',
                   prompt:
-                    'Help me draft a catalogue skill definition and proficiency criteria, then guide me through reviewing and saving it.',
+                    'Help me draft a catalogue skill name, category and description using the shared proficiency framework, then guide me through optional certification associations and saving it.',
                 },
               ]
             : []),

@@ -4,6 +4,10 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Catalogue form refinement - approved local increment, 19 October 2026
+
+The user approved common proficiency criteria, optional skill/certification catalogue suggestions and improved add/amend forms while retaining current permissions. Migration 086 keeps direct skill writes behind `skill.catalogue.manage` and preserves credential/provider request and approval policies. Associations never require employees to claim mapped skills, assign ranks or grant review authority. Personal combined submissions still require at least one skill and a selected-skill link for every certification; other/additional published skills remain selectable. Future catalogue saves use the existing common rubric; historical claim and definition snapshots remain retained. Organization rollout is pending. [Implementation and validation](CATALOGUE_FORMS_2026-10-19.md).
+
 ### Provider-neutral private files — approved local increment, 17 October 2026
 
 The user approved Azure SQL binary storage with retained Blob switching support and employee-derived filenames. Migration 085 adds a per-file registry, transactional content/association and durable upload staging. Read authorization remains in the same owner/assigned-current-manager/intake/submission/scoped-Analytics SQL procedures, which now optionally return their authorized metadata as an internal manifest. The new byte-read procedure resolves that manifest before selecting a file; a file ID, caller context or provider cannot grant authority. SQL runtime receives only explicit procedure grants, without direct file table access. Eleven rollback-only SQL scenarios passed on the existing development test database. The operator reports installing 085 and manually deploying to organization development; HTTP smoke checks passed, while authenticated hosted file acceptance remains pending. [Implementation and rollout](PRIVATE_FILE_STORAGE_2026-10-17.md).

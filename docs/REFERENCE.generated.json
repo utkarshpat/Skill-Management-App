@@ -1,6 +1,6 @@
 {
-  "version": "2026-10-17",
-  "revision": "0910a2c56271f307",
+  "version": "2026-10-19",
+  "revision": "e30806f11ded35f0",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -87,7 +87,8 @@
       "082_conversational_people_search.sql",
       "083_full_catalogue_coverage.sql",
       "084_skill_evidence_documents.sql",
-      "085_private_file_storage.sql"
+      "085_private_file_storage.sql",
+      "086_catalogue_forms_shared_criteria.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -7060,6 +7061,12 @@
       "source": "apps/api/src/modules/skills/routes.ts"
     },
     {
+      "method": "GET",
+      "path": "/api/skills/certifications",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/routes.ts"
+    },
+    {
       "method": "POST",
       "path": "/api/skills",
       "module": "skills",
@@ -7143,13 +7150,13 @@
       "name": "ReadSkillCatalogue",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,\n @query nvarchar(100)=N'',@status varchar(20)='',@page int=1",
-      "source": "database/migrations/012_versioned_skill_framework.sql"
+      "source": "database/migrations/086_catalogue_forms_shared_criteria.sql"
     },
     {
       "name": "SaveSkillCatalogue",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,\n @target_id uniqueidentifier,@is_new bit,@payload nvarchar(max)",
-      "source": "database/migrations/074_four_level_proficiency.sql"
+      "source": "database/migrations/086_catalogue_forms_shared_criteria.sql"
     },
     {
       "name": "ReadOwnSkillClaims",
@@ -7588,6 +7595,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@binding binary(32),@part_index int,@part_count int,@total_bytes int,@content varbinary(max)",
       "source": "database/migrations/085_private_file_storage.sql"
+    },
+    {
+      "name": "ReadCatalogueCertifications",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@query nvarchar(100)=N'',@page int=1",
+      "source": "database/migrations/086_catalogue_forms_shared_criteria.sql"
     }
   ],
   "groups": {

@@ -7,7 +7,7 @@ import {
   seedPlan,
   alignmentPlan,
 } from '../src/modules/skills/enterprise-seed.js';
-import { proficiencyNames } from '../src/modules/skills/proficiency.js';
+import { proficiencyNames, commonLevels } from '../src/modules/skills/proficiency.js';
 import type { CatalogueSkill } from '../src/modules/skills/skill-catalogue.js';
 const source = JSON.parse(
   await readFile(
@@ -48,7 +48,7 @@ test('enterprise seed has 70 definitions, ten categories and four skill-specific
     Object.assign(source, backup);
   }
 });
-test('alignment maps all four ranks, retains metadata/criteria, leaves sources immutable and is idempotent', () => {
+test('alignment maps to common criteria, retains metadata and historical sources, and is idempotent', () => {
   const seed = validateEnterpriseSeed(source),
     skill: CatalogueSkill = {
       ...seedPayload(seed, seed.skills[0]),
@@ -71,7 +71,7 @@ test('alignment maps all four ranks, retains metadata/criteria, leaves sources i
   );
   assert.deepEqual(
     changes[0].payload.levels.map(level => level.description),
-    skill.levels.map(level => level.description),
+    commonLevels().map(level => level.description),
   );
   assert.deepEqual(skill, before);
   assert.equal(alignmentPlan([{ ...skill, ...changes[0].payload }]).length, 0);

@@ -3,8 +3,13 @@ import { createPortal } from 'react-dom';
 import { Plus, Search, BookOpen } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { FormDialog } from './FormDialog';
-import { ProficiencyEditor } from './ProficiencyEditor';
-import { isStandardFramework, standardLevels } from './proficiency';
+import { CommonProficiency } from './CommonProficiency';
+import {
+  CatalogueCertificationPicker,
+  type CatalogueCertification,
+} from './CatalogueCertificationPicker';
+import './catalogue.css';
+import { commonLevels } from './proficiency';
 import { useSearchParams } from 'react-router';
 import { readApiResponse } from './api-response';
 import { BusinessWorkflows } from './business/BusinessWorkflows';
@@ -45,7 +50,7 @@ export function SkillCatalogue({
               setParams(next);
             }}
           >
-            Amendments
+            Certifications & amendments
           </button>
         </nav>
       )}
@@ -104,6 +109,7 @@ interface Level {
   description: string;
 }
 interface Skill {
+  relatedCertifications?: CatalogueCertification[];
   businessCode?: string | null;
   definitionRevision?: number;
   id?: string;
@@ -126,7 +132,8 @@ const blank = (): Skill => ({
   category: '',
   description: '',
   status: 'DRAFT',
-  levels: standardLevels(),
+  levels: commonLevels(),
+  relatedCertifications: [],
 });
 async function responseBody(response: Response) {
   const body = await response.json().catch(() => undefined);
@@ -160,8 +167,7 @@ function SkillDefinitions({
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
-  const [editorPage, setEditorPage] = useState(0),
-    [levelIndex, setLevelIndex] = useState(0);
+  const [editorPage, setEditorPage] = useState(0);
   const query = () => new URLSearchParams({ search, status, page: String(page) }).toString();
   const requestedSearch = useRef(search);
   useEffect(() => {
@@ -196,7 +202,6 @@ function SkillDefinitions({
   function create() {
     if (!state?.canManage) return;
     setEditorPage(0);
-    setLevelIndex(0);
     setError('');
     setDraft(blank());
     setDraftRevision(state.revision);
@@ -205,30 +210,23 @@ function SkillDefinitions({
   }
   function choose(skill: Skill) {
     setEditorPage(0);
-    setLevelIndex(0);
-    setDraft(structuredClone(skill));
+    setDraft({
+      ...structuredClone(skill),
+      ...(state?.canManage ? { levels: commonLevels() } : {}),
+    });
     setDraftRevision(state!.revision);
     setError('');
     setNotice('');
   }
-  function levels(next: Level[]) {
-    if (draft)
-      setDraft({ ...draft, levels: next.map((level, index) => ({ ...level, rank: index + 1 })) });
-  }
   async function save() {
     if (!draft || !state?.canManage || busy) return;
-    if (!isStandardFramework(draft.levels)) {
-      setEditorPage(1);
-      setError('Align this definition to the four-level proficiency model before saving.');
-      return;
-    }
-    const invalid = draft.levels.findIndex(
-      level => !level.name.trim() || (draft.status === 'PUBLISHED' && !level.description.trim()),
-    );
-    if (invalid >= 0) {
-      setEditorPage(1);
-      setLevelIndex(invalid);
-      setError('Enter skill-specific criteria for every proficiency level before publishing.');
+    if (
+      !draft.name.trim() ||
+      !draft.category.trim() ||
+      (draft.status === 'PUBLISHED' && !draft.description.trim())
+    ) {
+      setError('Enter a skill name and category, and a description before publishing.');
+      if (!draft.name.trim()) nameInput.current?.focus();
       return;
     }
     setBusy(true);
@@ -240,7 +238,12 @@ function SkillDefinitions({
         await authenticatedFetch('/api/skills', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...draft, revision: draftRevision }),
+          body: JSON.stringify({
+            ...draft,
+            levels: commonLevels(),
+            relatedCertificationIds: (draft.relatedCertifications ?? []).map(c => c.id),
+            revision: draftRevision,
+          }),
         }),
       );
       saved = true;
@@ -408,7 +411,19 @@ function SkillDefinitions({
         {draft && (
           <FormDialog
             readOnly={!state?.canManage}
-            title={state?.canManage ? (draft.id ? 'Edit skill' : 'Create skill') : draft.name}
+            title={
+              state?.canManage
+                ? draft.id
+                  ? 'Edit catalogue skill'
+                  : 'Add catalogue skill'
+                : draft.name
+            }
+            className="catalogue-editor"
+            subtitle={
+              state?.canManage
+                ? 'Define the skill once. Employees claim their own proficiency and supporting certifications separately.'
+                : undefined
+            }
             busy={busy}
             onClose={() => setDraft(undefined)}
             formId={state?.canManage ? 'skill-editor' : undefined}
@@ -430,7 +445,7 @@ function SkillDefinitions({
                   <button
                     type="submit"
                     form="skill-editor"
-                    className="microsoft-button"
+                    className="primary-button"
                     disabled={busy || loading}
                   >
                     {busy ? 'Saving…' : 'Save skill'}
@@ -442,7 +457,7 @@ function SkillDefinitions({
               state?.canManage
                 ? [
                     {
-                      label: 'Details',
+                      label: 'Skill details',
                       content: (
                         <>
                           <div className="dialog-field-grid">
@@ -452,6 +467,7 @@ function SkillDefinitions({
                                 ref={nameInput}
                                 required
                                 maxLength={100}
+                                placeholder="e.g. Oracle HCM"
                                 value={draft.name}
                                 onChange={event => setDraft({ ...draft, name: event.target.value })}
                               />
@@ -462,6 +478,7 @@ function SkillDefinitions({
                                 required
                                 maxLength={80}
                                 list="skill-categories"
+                                placeholder="e.g. Enterprise applications"
                                 value={draft.category}
                                 onChange={event =>
                                   setDraft({ ...draft, category: event.target.value })
@@ -487,6 +504,7 @@ function SkillDefinitions({
                               required={draft.status === 'PUBLISHED'}
                               maxLength={2000}
                               rows={3}
+                              placeholder="Describe the capability and where it is used."
                               value={draft.description}
                               onChange={event =>
                                 setDraft({ ...draft, description: event.target.value })
@@ -509,20 +527,24 @@ function SkillDefinitions({
                               <option value="ARCHIVED">Archived</option>
                             </select>
                           </label>
+                          <CatalogueCertificationPicker
+                            value={draft.relatedCertifications ?? []}
+                            disabled={busy}
+                            onChange={relatedCertifications =>
+                              setDraft({ ...draft, relatedCertifications })
+                            }
+                          />
+                          {draft.id && (
+                            <p className="access-help">
+                              Saving uses the common four-level criteria. Previous employee claims
+                              and historical versions keep their saved criteria.
+                            </p>
+                          )}
+                          <details className="catalogue-framework-reference">
+                            <summary>View the common proficiency criteria</summary>
+                            <CommonProficiency />
+                          </details>
                         </>
-                      ),
-                    },
-                    {
-                      label: 'Proficiency levels',
-                      content: (
-                        <ProficiencyEditor
-                          levels={draft.levels}
-                          original={state.skills.find(skill => skill.id === draft.id)?.levels}
-                          selected={levelIndex}
-                          onSelect={setLevelIndex}
-                          onChange={levels}
-                          published={draft.status === 'PUBLISHED'}
-                        />
                       ),
                     },
                   ]

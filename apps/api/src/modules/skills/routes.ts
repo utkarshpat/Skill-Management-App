@@ -81,6 +81,27 @@ export function registerRoutes(
       throw error;
     }
   });
+  app.get('/api/skills/certifications', async (req, res) => {
+    try {
+      if (!dependencies?.catalogue?.certifications)
+        throw new AccessError(503, 'Catalogue certification choices are unavailable.');
+      res.json(
+        await dependencies.catalogue.certifications(
+          res.locals.catalogueActor,
+          catalogueQuery(req.query),
+        ),
+      );
+    } catch (error) {
+      if (!(error instanceof AccessError)) throw error;
+      res.status(error.status).json({
+        error: {
+          code: 'CATALOGUE_REQUEST_REJECTED',
+          message: error.message,
+          requestId: res.locals.requestId,
+        },
+      });
+    }
+  });
   app.post('/api/skills', async (req, res) => {
     try {
       if (!dependencies?.catalogue)

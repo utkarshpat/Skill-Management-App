@@ -118,6 +118,7 @@ if (command !== 'check' && command !== 'migrate') {
           [83, '083_full_catalogue_coverage.sql'],
           [84, '084_skill_evidence_documents.sql'],
           [85, '085_private_file_storage.sql'],
+          [86, '086_catalogue_forms_shared_criteria.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

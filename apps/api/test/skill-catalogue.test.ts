@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import { catalogueChange, catalogueQuery } from '../src/modules/skills/skill-catalogue.js';
 import { createApp } from '../src/create-app.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
-import { proficiencyNames } from '../src/modules/skills/proficiency.js';
+import { proficiencyNames, commonLevels } from '../src/modules/skills/proficiency.js';
 
 const input = () => ({
   revision: 1,
@@ -134,6 +134,11 @@ test('catalogue HTTP binds Microsoft actor, checks independent permissions and r
       return actor;
     },
     catalogue: {
+      certifications: async (id, query) => {
+        assert.equal(id, actor);
+        assert.equal(query.search, 'Oracle');
+        return { revision: 1, total: 0, page: query.page, pageSize: 25, certifications: [] };
+      },
       read: async (id, query) => {
         assert.equal(id, actor);
         reads++;
@@ -160,6 +165,13 @@ test('catalogue HTTP binds Microsoft actor, checks independent permissions and r
   try {
     assert.equal((await fetch(url)).status, 401);
     assert.equal(reads, 0);
+    assert.equal((await fetch(url + '/certifications')).status, 401);
+    const certificationChoices = await fetch(
+      url + '/certifications?search=Oracle&actorId=attacker&accountId=foreign',
+      { headers },
+    );
+    assert.equal(certificationChoices.status, 200);
+    assert.equal(certificationChoices.headers.get('cache-control'), 'no-store');
     const read = await fetch(url, { headers });
     assert.equal(read.status, 200);
     assert.equal(read.headers.get('cache-control'), 'no-store');
@@ -210,6 +222,7 @@ test('catalogue HTTP binds Microsoft actor, checks independent permissions and r
       effect: 'DENY',
     });
     assert.equal((await fetch(url, { headers })).status, 403);
+    assert.equal((await fetch(url + '/certifications?search=Oracle', { headers })).status, 403);
     current.people[0].active = false;
     assert.equal((await fetch(url, { headers })).status, 403);
     outage = true;
@@ -220,5 +233,30 @@ test('catalogue HTTP binds Microsoft actor, checks independent permissions and r
     await new Promise<void>((resolve, reject) =>
       server.close(error => (error ? reject(error) : resolve())),
     );
+  }
+});
+
+test('catalogue writes use shared criteria and bound optional certifications without trusting caller fields', () => {
+  const credential = '11111111-1111-4111-8111-111111111111';
+  const saved = catalogueChange({ ...input(), relatedCertificationIds: [credential] });
+  assert.deepEqual(saved.payload.levels, commonLevels());
+  assert.deepEqual(saved.payload.relatedCertificationIds, [credential]);
+  assert.deepEqual(
+    catalogueChange({ ...input(), relatedCertificationIds: [] }).payload.relatedCertificationIds,
+    [],
+  );
+  assert.equal(
+    'relatedCertificationIds' in catalogueChange(input()).payload,
+    false,
+    'older clients preserve existing mappings',
+  );
+  for (const relatedCertificationIds of [
+    null,
+    'invalid',
+    ['invalid'],
+    [credential, credential.toUpperCase()],
+    Array(21).fill(credential),
+  ]) {
+    assert.throws(() => catalogueChange({ ...input(), relatedCertificationIds }));
   }
 });
