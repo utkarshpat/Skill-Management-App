@@ -124,7 +124,7 @@ export function catalogueChange(input: unknown) {
     payload: {
       name: text(body.name, 100, true, true),
       category: text(body.category, 80, true, true),
-      description: text(body.description, 2000, published),
+      description: text(body.description ?? '', 2000, false),
       status: body.status as SkillStatus,
       levels: commonLevels(),
       ...(relatedCertificationIds !== undefined

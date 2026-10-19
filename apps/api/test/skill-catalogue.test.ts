@@ -33,7 +33,8 @@ test('catalogue validates publication criteria, sequential unique levels, bounde
     }).payload.description,
     '',
   );
-  assert.throws(() => catalogueChange({ ...input(), description: '' }), /required/);
+  assert.equal(catalogueChange({ ...input(), description: '' }).payload.description, '');
+  assert.equal(catalogueChange({ ...input(), description: undefined }).payload.description, '');
   assert.throws(
     () =>
       catalogueChange({

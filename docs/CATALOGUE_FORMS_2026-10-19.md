@@ -1,10 +1,10 @@
 # Catalogue forms and shared proficiency criteria
 
-Status: implemented locally. Migration 086 and the matching API/frontend release are required; organization deployment and hosted acceptance remain pending.
+Status: migration 086 was reported installed on organization development. The follow-up described below requires migration 087 and its matching API/frontend release; 087 rollout and hosted acceptance remain pending.
 
 ## Approved behavior
 
-- Direct skill creation/editing retains `skill.catalogue.manage`. Certification/provider entries retain the existing amendment and approval workflow. No role receives new authority.
+- Direct skill creation/editing retains `skill.catalogue.manage`. Migration 086 used certification/provider amendment approval; the approved 087 follow-up below additionally allows direct writes under the existing full catalogue approval authority. Request-only users retain amendment approval. No grants or scopes change.
 - Skill add/edit uses one form with details, optional associated certifications and a read-only common proficiency reference. Certification amendments explicitly offer no default skill suggestions or optional related skills. Skill amendments use the same common criteria and optional certification picker.
 - Catalogue associations are suggestions. Personal combined submissions still require 1–10 skills, and every certification must link to at least one selected skill. Employees may skip mapped suggestions, choose another published skill and add extra skills. No automatic claim, proficiency assignment or approval is introduced.
 
@@ -39,3 +39,24 @@ Automated coverage includes API normalization, bounded association input, unchan
 ## Release re-audit
 
 The pre-release audit found that credential-side approval could exceed the skill-side twenty-certification limit. Migration 086 now checks the inverse relation before replacing credential mappings, without blocking an existing link simply because it is already at the limit. Rollback tests cover rejection of a twenty-first certification and successful skill amendment approval. The hosting ZIP contains application sources, not database migrations: apply the separately supplied target-guarded SSMS migration/ledger script before uploading the ZIP. Remote build and `npm start` remain required.
+
+## Follow-up: direct catalogue management (migration 087)
+
+The user approved optional descriptions with examples, explicit Add skill/Add certification entry points, footer draft/publish actions, and direct certification add/edit for users already authorized to approve catalogue changes. Migration 086 was reported installed on organization development (latest 86, 85 ledger rows; 065 is reserved). Migration 087 and this follow-up application build have not been installed there.
+
+- Skills, Certifications and Amendments are separate catalogue sections. Certification definitions can have zero suggested skills. Combined personal certificate claims still require at least one linked skill; suggestions never restrict other published skills.
+- Skill description is optional in API, forms and SQL. The exact legacy publication-description CHECK is removed; name/category, valid status and four common proficiency criteria remain enforced. Historical versions and employee claims are unchanged. Draft, publish and archive are explicit footer actions.
+- Existing certification edits retain their issuer automatically. New certifications choose an existing issuer, or an authorized administrator enters a missing issuer in the same form. SQL reuses the matching issuer or creates it atomically with the certificate. There is no separate Add provider entry point for administrators and no inference from certificate titles.
+- Direct `SAVE_MASTER` uses the existing full catalogue approval bundle: own profile access, permissions administration, people administration, audit access, catalogue management and no matching request-approval DENY. API preview, confirmation and SQL recheck current authority. A skill-management grant alone does not grant direct certification writes. Request-only users still submit an amendment for approval.
+- Saves lock the account workspace, validate account-bound definitions and published mappings, recheck revision, transact and audit. Intent receipts support retries without duplicate entries. Recovery rechecks current authority and exact normalized input. Direct saves create no amendment request or claim. The generic direct skill path retains its skill audit and reserves a second revision for its intent receipt.
+- Run migration 087 before the corresponding web/API release. Do not rerun 086 or import old test data. Manual SSMS rollout remains an operator action; local SQL acceptance uses the original development test database and rolls everything back.
+
+Validation commands: `npm run typecheck`, `npm test`, `npm run architecture:check`, `npm run build`, `npm run docs:check`. SQL follow-up: set `RUN_DIRECT_CATALOGUE_SQL_TESTS=1` and run `node --env-file-if-exists=apps/api/.env --import tsx apps/api/test/direct-catalogue.integration.ts`. Hosted acceptance remains pending.
+
+Follow-up verification: 601 automated checks passed (340 API, 254 web, 7 architecture/packaging unit checks). Local browser fixtures verified optional skill description, footer actions, direct certification preview with an inline issuer and no suggested skill, and request-only catalogue actions. These checks use synthetic browser data and do not establish hosted acceptance. Nine rollback-only SQL scenarios passed on `skill-management-dev`, including issuer reuse, no-skill certification, optional description, valid mapping preservation/clearing, foreign mapping rejection, stale revision, unauthorized writes, exact retry binding and current DENY/deactivation during recovery.
+
+### Organization migration recovery, 19 October 2026
+
+The operator supplied ledger version 086 and the full installed `SaveSkillCatalogue` definition. Whitespace-normalized comparison matched reviewed 086 plus the optional-description procedure patch exactly; no need to replay 086. The first 087 script incorrectly required that optional-description change to be absent. The corrected first batch accepts either the original reviewed guard or its already patched form, preserves an already compatible procedure, drops only the exact legacy description CHECK if still present, and rejects unrecognized procedure definitions. The outer target, predecessor, transaction and ledger checks remain intact. User execution and final 087 acceptance are still pending. The application ZIP is unchanged by this migration-only correction.
+
+Recovery verification: all twelve rollback SQL scenarios passed, including a prepatched procedure with the legacy table check still present, the already completed description batch replayed twice, and rejection of an unrelated procedure definition. Original procedures were verified restored after rollback. The corrected target-guarded SSMS artifact is `artifacts/org-dev-migration-087-fixed-b6a442d8c49d.sql`; its three decoded SQL batches match the tested source exactly. Existing ZIP `skills-appservice-ab9535c47820.zip` remains the application release for this migration.

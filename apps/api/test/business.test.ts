@@ -620,6 +620,49 @@ test('HTTP preview and execution bind actor and reject forged receipts and chang
       'General view/manage access must not advertise an individually denied action',
     );
   current = { ...current, canApprove: true };
+  const direct = {
+    operation: 'SAVE_MASTER',
+    payload: {
+      id: scope,
+      revision: 1,
+      type: 'CERTIFICATION',
+      name: 'QA credential',
+      category: 'QA',
+      providerName: 'QA issuer',
+      relatedSkillIds: [],
+    },
+  };
+  const directPreviewResponse = await fetch(root + '/workflow/preview', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(direct),
+  });
+  assert.equal(directPreviewResponse.status, 200);
+  const directPreview = await directPreviewResponse.json();
+  assert.equal(directPreview.details.definition.providerName, 'QA issuer');
+  current = { ...current, canApprove: false };
+  assert.equal(
+    (
+      await fetch(root + '/workflow', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ...direct, previewReceipt: directPreview.receipt }),
+      })
+    ).status,
+    403,
+  );
+  current = { ...current, canApprove: true };
+  assert.equal(
+    (
+      await fetch(root + '/workflow', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ ...direct, previewReceipt: directPreview.receipt }),
+      })
+    ).status,
+    200,
+  );
+
   for (const [operation, status] of [
     ['APPROVE_AMENDMENT', 409],
     ['REJECT_AMENDMENT', 200],
@@ -1102,5 +1145,34 @@ test('skill amendment criteria are common and certification associations remain 
     assert.throws(() => businessWorkflow('PROPOSE', { ...command, relatedCertificationIds }));
   assert.throws(() =>
     businessWorkflow('PROPOSE', { ...command, type: 'PROVIDER', relatedCertificationIds: [] }),
+  );
+});
+
+test('direct catalogue commands support an inline issuer but never guess, mix or forward unsupported fields', () => {
+  const base = {
+    id: scope,
+    revision: 1,
+    type: 'CERTIFICATION',
+    name: 'QA certification',
+    category: 'QA',
+    providerName: ' Oracle ',
+    relatedSkillIds: [],
+  };
+  const definition = businessWorkflow('SAVE_MASTER', base).payload.definition as Record<
+    string,
+    unknown
+  >;
+  assert.equal(definition.providerName, 'Oracle');
+  assert.equal(definition.description, '');
+  assert.throws(() => businessWorkflow('SAVE_MASTER', { ...base, providerId: person }));
+  assert.throws(() => businessWorkflow('SAVE_MASTER', { ...base, providerName: '' }));
+  assert.throws(() => businessWorkflow('SAVE_MASTER', { ...base, type: 'SKILL' }));
+  assert.throws(() => businessWorkflow('PROPOSE', base));
+  assert.throws(() => businessWorkflow('SAVE_MASTER', { ...base, actorId: actor }));
+  const { providerName: _unused, ...existing } = base;
+  assert.equal(
+    (businessWorkflow('SAVE_MASTER', { ...existing, providerId: person }).payload.definition as any)
+      .providerId,
+    person,
   );
 });

@@ -1,6 +1,6 @@
 {
   "version": "2026-10-19",
-  "revision": "e30806f11ded35f0",
+  "revision": "61c40781fb787f88",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -88,7 +88,8 @@
       "083_full_catalogue_coverage.sql",
       "084_skill_evidence_documents.sql",
       "085_private_file_storage.sql",
-      "086_catalogue_forms_shared_criteria.sql"
+      "086_catalogue_forms_shared_criteria.sql",
+      "087_direct_catalogue_management.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -7601,6 +7602,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@query nvarchar(100)=N'',@page int=1",
       "source": "database/migrations/086_catalogue_forms_shared_criteria.sql"
+    },
+    {
+      "name": "SaveCatalogueMaster",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(30),@payload nvarchar(max)",
+      "source": "database/migrations/087_direct_catalogue_management.sql"
     }
   ],
   "groups": {

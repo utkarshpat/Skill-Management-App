@@ -108,11 +108,14 @@ const read = <T,>(operation: string, query = '') =>
 export function BusinessWorkflows({
   context,
   view,
+  catalogueMode = false,
 }: {
   context: BusinessContext;
   view: 'amendments' | 'demand';
+  catalogueMode?: boolean;
 }) {
   const [params, setParams] = useSearchParams();
+  const directCatalogue = view === 'amendments' && context.canApprove;
   const [requestDetail, setRequestDetail] = useState<Amendment>();
   const [requestError, setRequestError] = useState('');
   const [amendmentStep, setAmendmentStep] = useState(0);
@@ -190,6 +193,7 @@ export function BusinessWorkflows({
     const abort = new AbortController();
     setError('');
     setList(undefined);
+    if (catalogueMode) return;
     authenticatedFetch(
       '/api/business/workflow/' +
         (view === 'amendments' ? 'amendments' : 'demands') +
@@ -205,7 +209,7 @@ export function BusinessWorkflows({
         if (!abort.signal.aborted) setError(e.message);
       });
     return () => abort.abort();
-  }, [view, page, attempt]);
+  }, [view, catalogueMode, page, attempt]);
   useEffect(() => {
     const refresh = () => setAttempt(n => n + 1);
     const visible = () => {
@@ -287,6 +291,15 @@ export function BusinessWorkflows({
     setMasterTerm('');
     setMasterPage(1);
   };
+  useEffect(() => {
+    if (params.get('add') !== 'certification' || !masters) return;
+    const next = new URLSearchParams(params);
+    next.delete('add');
+    setParams(next, { replace: true });
+    if (!context.canAmend && !context.canApprove) return;
+    start();
+    setAmendmentStep(1);
+  }, [params, masters, context.canAmend, context.canApprove, setParams]);
   async function prepare(command: { operation: string; payload: Record<string, unknown> }) {
     if (guard.current) return;
     guard.current = true;
@@ -349,7 +362,7 @@ export function BusinessWorkflows({
     if (!masters) return;
     if (view === 'amendments')
       void prepare({
-        operation: 'PROPOSE',
+        operation: directCatalogue ? 'SAVE_MASTER' : 'PROPOSE',
         payload: {
           id: intent.current,
           revision: selectedMaster?.catalogueRevision ?? masters.revision,
@@ -358,7 +371,9 @@ export function BusinessWorkflows({
           name,
           category,
           description,
-          providerId: provider,
+          ...(type === 'CERTIFICATION' && provider === '__new__' && directCatalogue
+            ? { providerName }
+            : { providerId: provider }),
           criteria: commonLevels().map(level => level.description),
           ...(type === 'SKILL'
             ? { relatedCertificationIds: relatedCertifications.map(c => c.id) }
@@ -393,7 +408,7 @@ export function BusinessWorkflows({
       return;
     }
     if (
-      (draft.kind === 'amendment_draft' && !context.canAmend) ||
+      (draft.kind === 'amendment_draft' && !context.canAmend && !context.canApprove) ||
       (draft.kind === 'demand_draft' && !context.canDemandCreate)
     ) {
       setError('This draft is no longer permitted.');
@@ -414,6 +429,7 @@ export function BusinessWorkflows({
     masters,
     context.actorId,
     context.canAmend,
+    context.canApprove,
     context.canDemandCreate,
     view,
     setParams,
@@ -490,25 +506,59 @@ export function BusinessWorkflows({
     <section className="bo-panel">
       <div className="bo-record-heading">
         <div>
-          <h2>{view === 'amendments' ? 'Catalogue requests' : 'Demand & matching'}</h2>
+          <h2>
+            {catalogueMode
+              ? 'Certifications'
+              : view === 'amendments'
+                ? 'Catalogue requests'
+                : 'Demand & matching'}
+          </h2>
           <p className="bo-note">
             {view === 'amendments'
-              ? 'Request a new skill, certification or provider, or suggest an update to an existing entry. System Admin reviews requests before the catalogue changes.'
+              ? directCatalogue
+                ? 'Add or amend catalogue definitions directly. Personal claims still follow their existing review process.'
+                : 'Request a catalogue addition or amendment. An authorized administrator reviews it before the catalogue changes.'
               : 'Match explicit requirements against reviewed skills and current reviewed credentials. Missing evidence means “not established”; availability is not assessed.'}
           </p>
         </div>
+        {catalogueMode && directCatalogue && (
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              next.delete('tab');
+              next.delete('request');
+              next.set('add', 'skill');
+              setParams(next);
+            }}
+          >
+            Add skill
+          </button>
+        )}
         <button
           type="button"
           className="primary-button"
           disabled={
             !masters ||
-            !list ||
-            (view === 'amendments' ? !context.canAmend : !context.canDemandCreate)
+            (!catalogueMode && !list) ||
+            (view === 'amendments'
+              ? !context.canAmend && !context.canApprove
+              : !context.canDemandCreate)
           }
-          onClick={start}
+          onClick={() => {
+            start();
+            if (catalogueMode || directCatalogue) setAmendmentStep(1);
+          }}
         >
           <Plus size={15} aria-hidden="true" />
-          {view === 'amendments' ? 'New catalogue request' : 'New demand'}
+          {view === 'amendments'
+            ? directCatalogue
+              ? 'Add certification'
+              : catalogueMode
+                ? 'Request certification'
+                : 'New catalogue request'
+            : 'New demand'}
         </button>
       </div>
       {error && (
@@ -528,8 +578,119 @@ export function BusinessWorkflows({
           </button>
         </p>
       )}
-      {!list && !error && <div className="bo-skeleton" aria-label="Loading workflow records" />}
-      {list && (
+      {catalogueMode && (
+        <>
+          <div className="bo-record-filters">
+            <input
+              aria-label="Search catalogue certifications"
+              placeholder="Search certification or issuer"
+              value={masterSearch}
+              maxLength={100}
+              onChange={e => setMasterSearch(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  setMasterTerm(masterSearch);
+                  setMasterPage(1);
+                }
+              }}
+            />
+            <button
+              className="secondary-button"
+              onClick={() => {
+                setMasterTerm(masterSearch);
+                setMasterPage(1);
+              }}
+            >
+              Search
+            </button>
+          </div>
+          {!masters && !error && <p role="status">Loading certifications...</p>}
+          {masters && (
+            <>
+              <div className="bo-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Certification</th>
+                      <th>Issuer</th>
+                      <th>Category</th>
+                      <th>Availability</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {masters.certifications.map(c => (
+                      <tr key={c.id}>
+                        <td>
+                          <strong>{c.name}</strong>
+                          {c.description && <p>{c.description}</p>}
+                          <small>{c.relatedSkillIds?.length ?? 0} suggested skills</small>
+                        </td>
+                        <td>{c.provider}</td>
+                        <td>{c.category}</td>
+                        <td>{c.active === false ? 'Retired' : 'Available'}</td>
+                        <td>
+                          <button
+                            className="secondary-button"
+                            onClick={() => {
+                              start();
+                              setType('CERTIFICATION');
+                              setAmendmentMode('edit');
+                              setTarget(c.id);
+                              setSelectedMaster({ ...c, catalogueRevision: masters.revision });
+                              setName(c.name);
+                              setCategory(c.category ?? '');
+                              setDescription(c.description ?? '');
+                              setProvider(c.providerId ?? '');
+                              setProviderName(c.provider ?? '');
+                              setRelatedSkillIds(
+                                (c.relatedSkillIds ?? []).map(id => id.toLowerCase()),
+                              );
+                              setSuggestSkills(!!c.relatedSkillIds?.length);
+                              setActive(c.active !== false);
+                              setAmendmentStep(1);
+                            }}
+                          >
+                            {directCatalogue ? 'Edit certification' : 'Request amendment'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!masters.certifications.length && (
+                  <p className="bo-empty">
+                    No matching certifications. Try another search or add a new entry.
+                  </p>
+                )}
+              </div>
+              <footer className="bo-pagination">
+                <span>
+                  {masters.certificationTotal} certifications - page {masterPage}
+                </span>
+                <button
+                  className="secondary-button"
+                  disabled={masterPage <= 1}
+                  onClick={() => setMasterPage(n => n - 1)}
+                >
+                  Previous
+                </button>
+                <button
+                  className="secondary-button"
+                  disabled={masterPage * masters.pageSize >= masters.certificationTotal}
+                  onClick={() => setMasterPage(n => n + 1)}
+                >
+                  Next
+                </button>
+              </footer>
+            </>
+          )}
+        </>
+      )}
+      {!catalogueMode && !list && !error && (
+        <div className="bo-skeleton" aria-label="Loading workflow records" />
+      )}
+      {!catalogueMode && list && (
         <>
           <div className="bo-table-wrap">
             <table>
@@ -835,7 +996,9 @@ export function BusinessWorkflows({
           className={view === 'amendments' ? 'bo-amendment-dialog' : ''}
           subtitle={
             view === 'amendments'
-              ? 'Suggest a catalogue change. This does not add a credential to your personal profile.'
+              ? directCatalogue
+                ? 'Save directly to the catalogue after reviewing your changes.'
+                : 'Suggest a catalogue change. This does not add a credential to your personal profile.'
               : undefined
           }
           page={view === 'amendments' ? amendmentStep : undefined}
@@ -877,7 +1040,7 @@ export function BusinessWorkflows({
                   disabled={busy || (amendmentMode === 'edit' && (!target || !masters))}
                   onClick={nextAmendmentStep}
                 >
-                  Next: request details <ArrowRight size={14} aria-hidden="true" />
+                  Next: entry details <ArrowRight size={14} aria-hidden="true" />
                 </button>
               ) : (
                 <button
@@ -887,7 +1050,11 @@ export function BusinessWorkflows({
                   type="submit"
                   form="business-compose"
                 >
-                  {view === 'amendments' ? 'Preview request' : 'Review proposal'}{' '}
+                  {view === 'amendments'
+                    ? directCatalogue
+                      ? 'Review changes'
+                      : 'Preview request'
+                    : 'Review proposal'}{' '}
                   <ArrowRight size={14} aria-hidden="true" />
                 </button>
               )}
@@ -895,12 +1062,13 @@ export function BusinessWorkflows({
           }
         >
           {view === 'amendments' && (
-            <div className="bo-amendment-progress" aria-label="Request steps">
+            <div
+              className="bo-amendment-progress"
+              aria-label={directCatalogue ? 'Catalogue save steps' : 'Request steps'}
+            >
               <span aria-current={amendmentStep === 0 ? 'step' : undefined}>1 · Choose change</span>
-              <span aria-current={amendmentStep === 1 ? 'step' : undefined}>
-                2 · Request details
-              </span>
-              <span>3 · Preview & submit</span>
+              <span aria-current={amendmentStep === 1 ? 'step' : undefined}>2 · Entry details</span>
+              <span>{directCatalogue ? '3 · Review & save' : '3 · Preview & submit'}</span>
             </div>
           )}
           <div className="bo-page bo-admin-form">
@@ -912,7 +1080,10 @@ export function BusinessWorkflows({
                   role="group"
                   aria-label="Catalogue entry type"
                 >
-                  {['SKILL', 'CERTIFICATION', 'PROVIDER'].map(value => (
+                  {(directCatalogue
+                    ? ['SKILL', 'CERTIFICATION']
+                    : ['SKILL', 'CERTIFICATION', 'PROVIDER']
+                  ).map(value => (
                     <button
                       type="button"
                       key={value}
@@ -962,9 +1133,11 @@ export function BusinessWorkflows({
                     : `Add a new ${typeLabel.toLowerCase()}`}
                 </strong>
                 <p>
-                  {amendmentMode === 'edit'
-                    ? 'The existing catalogue entry stays unchanged until an administrator approves your request.'
-                    : 'Your request will be reviewed before this entry appears in the catalogue.'}
+                  {directCatalogue
+                    ? 'Review and confirm to save this catalogue entry. No amendment request is created.'
+                    : amendmentMode === 'edit'
+                      ? 'The existing catalogue entry stays unchanged until an administrator approves your request.'
+                      : 'Your request will be reviewed before this entry appears in the catalogue.'}
                 </p>
               </section>
             )}
@@ -1129,11 +1302,14 @@ export function BusinessWorkflows({
                       }}
                     >
                       <option value="">Choose approved provider</option>
-                      {provider && !masters?.providers.some(p => p.id === provider) && (
-                        <option value={provider}>
-                          {providerName || 'Previously selected provider'}
-                        </option>
-                      )}
+                      {directCatalogue && <option value="__new__">Enter a new issuer</option>}
+                      {provider &&
+                        provider !== '__new__' &&
+                        !masters?.providers.some(p => p.id === provider) && (
+                          <option value={provider}>
+                            {providerName || 'Previously selected provider'}
+                          </option>
+                        )}
                       {masters?.providers
                         .filter(p => p.active !== false)
                         .map(p => (
@@ -1143,18 +1319,36 @@ export function BusinessWorkflows({
                         ))}
                     </select>
                     <span className="bo-note">
-                      Use the provider search above if it is not listed. If the provider is missing
-                      from the catalogue, request that provider first.
+                      {directCatalogue
+                        ? 'Choose the issuing organization. A new issuer is saved with this certification; an existing matching issuer is reused.'
+                        : 'Use the provider search above. If the issuer is missing, request that provider first.'}
                     </span>
                   </label>
                 )}
-                <label className="bo-full">
-                  Description{' '}
-                  {view === 'amendments' && type === 'SKILL' && (
-                    <span className="bo-required">*</span>
+                {view === 'amendments' &&
+                  type === 'CERTIFICATION' &&
+                  directCatalogue &&
+                  provider === '__new__' && (
+                    <label>
+                      New issuer name
+                      <input
+                        aria-label="New issuer name"
+                        required
+                        maxLength={100}
+                        placeholder="e.g. Oracle"
+                        value={providerName}
+                        onChange={e => setProviderName(e.target.value)}
+                      />
+                    </label>
                   )}
+                <label className="bo-full">
+                  Description - Optional
                   <textarea
-                    required={view === 'amendments' && type === 'SKILL'}
+                    placeholder={
+                      type === 'CERTIFICATION'
+                        ? 'e.g. Validates foundational knowledge of Oracle Cloud services.'
+                        : 'e.g. Configure Oracle HCM employee records and core HR workflows.'
+                    }
                     maxLength={2000}
                     value={description}
                     onChange={e => setDescription(e.target.value)}
@@ -1266,9 +1460,15 @@ export function BusinessWorkflows({
                       </div>
                     )}
                     <label className="bo-full">
-                      Why is this change needed? <span className="bo-required">*</span>
+                      {directCatalogue ? (
+                        'Change note - Optional'
+                      ) : (
+                        <>
+                          Why is this change needed? <span className="bo-required">*</span>
+                        </>
+                      )}
                       <textarea
-                        required
+                        required={!directCatalogue}
                         maxLength={1000}
                         value={reason}
                         onChange={e => setReason(e.target.value)}
@@ -1461,6 +1661,7 @@ export function BusinessWorkflows({
                 {(
                   {
                     PROPOSE: 'Submit amendment request',
+                    SAVE_MASTER: 'Save catalogue entry',
                     SAVE_DEMAND: 'Create demand',
                     APPROVE_AMENDMENT: 'Approve amendment',
                     REJECT_AMENDMENT: 'Reject amendment',
@@ -1475,18 +1676,27 @@ export function BusinessWorkflows({
             Review the details before confirming. The app checks that your access and the record are
             still current, and records the change in history.
           </p>
-          {preview.command.operation === 'PROPOSE' && (
+          {['PROPOSE', 'SAVE_MASTER'].includes(preview.command.operation) && (
             <section className="bo-amendment-summary">
               <strong>
-                {preview.command.payload.targetId
-                  ? 'Request to update an existing entry'
-                  : 'Request to add a new entry'}
+                {preview.command.operation === 'SAVE_MASTER'
+                  ? preview.command.payload.targetId
+                    ? 'Update catalogue entry'
+                    : 'Add catalogue entry'
+                  : preview.command.payload.targetId
+                    ? 'Request to update an existing entry'
+                    : 'Request to add a new entry'}
               </strong>
-              <p>
-                Submitting sends this request to System Admin. The catalogue changes only after
-                approval.
-              </p>
-              {type === 'CERTIFICATION' && providerName && <p>Provider: {providerName}</p>}
+              {preview.command.operation === 'PROPOSE' && (
+                <p>
+                  Submitting sends this request to an authorized administrator. The catalogue
+                  changes only after approval.
+                </p>
+              )}
+              {type === 'CERTIFICATION' && providerName && <p>Issuer: {providerName}</p>}
+              {preview.command.operation === 'SAVE_MASTER' && (
+                <p>This saves directly to the catalogue. No amendment request is created.</p>
+              )}
               {selectedMaster && (
                 <details>
                   <summary>Current catalogue details</summary>

@@ -39,6 +39,7 @@ export function businessWorkflow(
     MATCHES: ['id', 'page'],
     SHORTLIST: ['id', 'personId', 'revision', 'note'],
   };
+  keys.SAVE_MASTER = [...keys.PROPOSE, 'providerName'];
   if (
     typeof operation !== 'string' ||
     !keys[operation] ||
@@ -73,7 +74,7 @@ export function businessWorkflow(
       },
     };
   }
-  if (operation === 'PROPOSE') {
+  if (operation === 'PROPOSE' || operation === 'SAVE_MASTER') {
     if (q.active !== undefined && typeof q.active !== 'boolean')
       throw new AccessError(400, 'Choose definition state.');
     if (!['SKILL', 'CERTIFICATION', 'PROVIDER'].includes(String(q.type)))
@@ -81,11 +82,15 @@ export function businessWorkflow(
     const payload: Record<string, unknown> = {
       name: text(q.name, 100, true),
       category: text(q.category ?? '', 80, q.type !== 'PROVIDER'),
-      description: text(q.description ?? '', 2000, q.type === 'SKILL'),
+      description: text(q.description ?? '', 2000),
       active: q.active !== false,
     };
     if (q.type === 'CERTIFICATION') {
-      payload.providerId = identifier(q.providerId);
+      if (operation === 'SAVE_MASTER' && q.providerName !== undefined) {
+        if (q.providerId)
+          throw new AccessError(400, 'Choose a provider or enter a new provider name.');
+        payload.providerName = text(q.providerName, 100, true);
+      } else payload.providerId = identifier(q.providerId);
       if (q.relatedSkillIds !== undefined) {
         if (!Array.isArray(q.relatedSkillIds) || q.relatedSkillIds.length > 20)
           throw new AccessError(400, 'Choose up to twenty related catalogue skills.');
@@ -97,6 +102,8 @@ export function businessWorkflow(
     } else if (q.relatedSkillIds !== undefined) {
       throw new AccessError(400, 'Related skill mappings belong to credential definitions.');
     }
+    if (q.providerName !== undefined && q.type !== 'CERTIFICATION')
+      throw new AccessError(400, 'Provider names belong to certifications.');
     if (q.type !== 'SKILL' && q.relatedCertificationIds !== undefined)
       throw new AccessError(400, 'Certification suggestions belong to skills.');
     if (q.type === 'SKILL') {
@@ -122,7 +129,7 @@ export function businessWorkflow(
         type: q.type,
         targetId: q.targetId ? identifier(q.targetId) : null,
         isNew: !q.targetId,
-        reason: text(q.reason, 1000, true),
+        reason: text(q.reason ?? '', 1000, operation === 'PROPOSE'),
         definition: payload,
       },
     };

@@ -4,6 +4,10 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Direct catalogue management - approved follow-up, 19 October 2026
+
+Migration 087 adds direct catalogue certification writes for actors with the already implemented full catalogue approval bundle, including own-profile prerequisites and request-approval DENY checks. It does not add grants or scopes. API Preview/Recheck and SQL Transaction/Audit checks remain mandatory; recovery requires the same current authority and exact normalized command. Request-only users retain the existing amendment approval flow. Administrators can save an issuer inline with a certification, atomically reusing an existing issuer where appropriate. Descriptions become optional, and catalogue mappings remain suggestions; personal certificate claim links and manager review policy are unchanged. This follow-up is local work; organization 086 was reported installed, while 087 rollout remains pending. [Details](CATALOGUE_FORMS_2026-10-19.md).
+
 ### Catalogue form refinement - approved local increment, 19 October 2026
 
 The user approved common proficiency criteria, optional skill/certification catalogue suggestions and improved add/amend forms while retaining current permissions. Migration 086 keeps direct skill writes behind `skill.catalogue.manage` and preserves credential/provider request and approval policies. Associations never require employees to claim mapped skills, assign ranks or grant review authority. Personal combined submissions still require at least one skill and a selected-skill link for every certification; other/additional published skills remain selectable. Future catalogue saves use the existing common rubric; historical claim and definition snapshots remain retained. Organization rollout is pending. [Implementation and validation](CATALOGUE_FORMS_2026-10-19.md).

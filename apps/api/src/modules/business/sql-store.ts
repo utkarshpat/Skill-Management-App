@@ -191,9 +191,14 @@ export class SqlBusinessStore implements BusinessStore {
     const before = await this.context(actor);
     const result = await this.execute<Record<string, unknown> | null>(
       actor,
-      'dbo.BusinessWorkflowRecovery',
+      operation === 'SAVE_MASTER' ? 'dbo.SaveCatalogueMaster' : 'dbo.BusinessWorkflowRecovery',
       payload,
-      request => request.input('operation', sql.VarChar(30), operation),
+      request =>
+        request.input(
+          'operation',
+          sql.VarChar(30),
+          operation === 'SAVE_MASTER' ? 'RECOVER_MASTER' : operation,
+        ),
     );
     const after = await this.context(actor);
     if (
@@ -223,7 +228,7 @@ export class SqlBusinessStore implements BusinessStore {
     const before = reading ? await this.context(actor) : undefined;
     const result = await this.execute<Record<string, unknown>>(
       actor,
-      'dbo.BusinessWorkflow',
+      operation === 'SAVE_MASTER' ? 'dbo.SaveCatalogueMaster' : 'dbo.BusinessWorkflow',
       payload,
       request => request.input('operation', sql.VarChar(30), operation),
     );

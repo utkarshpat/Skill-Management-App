@@ -38,9 +38,6 @@ test('enterprise seed has 70 definitions, ten categories and four skill-specific
     () => {
       source.skills[1].criteria[0].rank = 2;
     },
-    () => {
-      source.skills[1].description = '';
-    },
   ]) {
     const backup = structuredClone(source);
     edit();

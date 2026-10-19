@@ -305,6 +305,7 @@ export function registerBusinessRoutes(
     const current = await deps!.business!.context(actor);
     if (
       (['PROPOSE'].includes(command.operation) && !current.canAmend) ||
+      (command.operation === 'SAVE_MASTER' && !current.canApprove) ||
       (command.operation === 'SAVE_DEMAND' && !current.canDemandCreate) ||
       (command.operation === 'SHORTLIST' && !current.canShortlist) ||
       (['APPROVE_AMENDMENT', 'REJECT_AMENDMENT'].includes(command.operation) && !current.canApprove)
@@ -319,7 +320,7 @@ export function registerBusinessRoutes(
         'The catalogue entry changed after this request. Reject it with feedback and ask for a fresh request.',
       );
     if (
-      ['PROPOSE', 'SAVE_DEMAND'].includes(command.operation) &&
+      ['PROPOSE', 'SAVE_MASTER', 'SAVE_DEMAND'].includes(command.operation) &&
       current.revision !== command.payload.revision
     )
       throw new AccessError(409, 'Configuration changed. Reload before previewing.');

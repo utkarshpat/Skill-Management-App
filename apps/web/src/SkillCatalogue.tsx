@@ -26,7 +26,9 @@ export function SkillCatalogue({
   amendmentsAllowed?: boolean;
 }) {
   const [params, setParams] = useSearchParams();
-  const amendments = amendmentsAllowed && params.get('tab') === 'amendments';
+  const amendments =
+    amendmentsAllowed && ['amendments', 'certifications'].includes(params.get('tab') ?? '');
+  const certifications = params.get('tab') === 'certifications';
   return (
     <>
       {amendmentsAllowed && (
@@ -43,27 +45,45 @@ export function SkillCatalogue({
             Skills
           </button>
           <button
-            aria-current={amendments ? 'page' : undefined}
+            aria-current={certifications ? 'page' : undefined}
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              next.set('tab', 'certifications');
+              next.delete('request');
+              setParams(next);
+            }}
+          >
+            Certifications
+          </button>
+          <button
+            aria-current={amendments && !certifications ? 'page' : undefined}
             onClick={() => {
               const next = new URLSearchParams(params);
               next.set('tab', 'amendments');
               setParams(next);
             }}
           >
-            Certifications & amendments
+            Amendments
           </button>
         </nav>
       )}
       {amendments ? (
-        <CatalogueAmendments />
+        <CatalogueAmendments
+          key={certifications ? 'certifications' : 'amendments'}
+          certifications={certifications}
+        />
       ) : (
-        <SkillDefinitions actionsContainer={actionsContainer} onChanged={onChanged} />
+        <SkillDefinitions
+          actionsContainer={actionsContainer}
+          onChanged={onChanged}
+          certificationsAllowed={amendmentsAllowed}
+        />
       )}
     </>
   );
 }
 
-function CatalogueAmendments() {
+function CatalogueAmendments({ certifications }: { certifications: boolean }) {
   const [context, setContext] = useState<BusinessContext>();
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -98,7 +118,7 @@ function CatalogueAmendments() {
   if (!context) return <p role="status">Loading catalogue amendments…</p>;
   return (
     <div className="bo-page">
-      <BusinessWorkflows context={context} view="amendments" />
+      <BusinessWorkflows context={context} view="amendments" catalogueMode={certifications} />
     </div>
   );
 }
@@ -151,10 +171,28 @@ async function responseBody(response: Response) {
 function SkillDefinitions({
   actionsContainer,
   onChanged,
+  certificationsAllowed,
 }: {
   actionsContainer: HTMLElement | null;
   onChanged?: () => void;
+  certificationsAllowed: boolean;
 }) {
+  const [params, setParams] = useSearchParams();
+  const [certificationAccess, setCertificationAccess] = useState<BusinessContext>();
+  useEffect(() => {
+    if (!certificationsAllowed) return;
+    const abort = new AbortController();
+    authenticatedFetch('/api/business/context', { signal: abort.signal })
+      .then(r => readApiResponse<BusinessContext>(r, 'Catalogue actions are unavailable.'))
+      .then(c => {
+        if (!abort.signal.aborted) setCertificationAccess(c);
+      })
+      .catch(() => {
+        if (!abort.signal.aborted) setCertificationAccess(undefined);
+      });
+    return () => abort.abort();
+  }, [certificationsAllowed]);
+
   const [state, setState] = useState<State>(),
     [search, setSearch] = useState(''),
     [status, setStatus] = useState(''),
@@ -218,14 +256,10 @@ function SkillDefinitions({
     setError('');
     setNotice('');
   }
-  async function save() {
+  async function save(nextStatus: Skill['status'] = draft?.status ?? 'DRAFT') {
     if (!draft || !state?.canManage || busy) return;
-    if (
-      !draft.name.trim() ||
-      !draft.category.trim() ||
-      (draft.status === 'PUBLISHED' && !draft.description.trim())
-    ) {
-      setError('Enter a skill name and category, and a description before publishing.');
+    if (!draft.name.trim() || !draft.category.trim()) {
+      setError('Enter a skill name and category.');
       if (!draft.name.trim()) nameInput.current?.focus();
       return;
     }
@@ -240,6 +274,7 @@ function SkillDefinitions({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...draft,
+            status: nextStatus,
             levels: commonLevels(),
             relatedCertificationIds: (draft.relatedCertifications ?? []).map(c => c.id),
             revision: draftRevision,
@@ -261,12 +296,36 @@ function SkillDefinitions({
       setBusy(false);
     }
   }
-  const actions = state?.canManage ? (
-    <button className="admin-primary" disabled={busy || loading} onClick={create}>
-      <Plus size={17} />
-      New skill
-    </button>
-  ) : null;
+  useEffect(() => {
+    if (params.get('add') !== 'skill' || !state || loading) return;
+    if (state.canManage) create();
+    const next = new URLSearchParams(params);
+    next.delete('add');
+    setParams(next, { replace: true });
+  }, [params, state, loading, setParams]);
+  const actions = (
+    <>
+      {state?.canManage && (
+        <button className="admin-primary" disabled={busy || loading} onClick={create}>
+          <Plus size={17} />
+          Add skill
+        </button>
+      )}
+      {(certificationAccess?.canApprove || certificationAccess?.canAmend) && (
+        <button
+          className="secondary-button"
+          onClick={() => {
+            const next = new URLSearchParams(params);
+            next.set('tab', 'certifications');
+            next.set('add', 'certification');
+            setParams(next);
+          }}
+        >
+          {certificationAccess?.canApprove ? 'Add certification' : 'Request certification'}
+        </button>
+      )}
+    </>
+  );
   return (
     <>
       {actionsContainer ? createPortal(actions, actionsContainer) : actions}
@@ -427,7 +486,7 @@ function SkillDefinitions({
             busy={busy}
             onClose={() => setDraft(undefined)}
             formId={state?.canManage ? 'skill-editor' : undefined}
-            onSubmit={() => void save()}
+            onSubmit={() => void save('PUBLISHED')}
             page={editorPage}
             onPageChange={setEditorPage}
             message={error && <p role="alert">{error}</p>}
@@ -443,12 +502,30 @@ function SkillDefinitions({
                     Cancel
                   </button>
                   <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={busy || loading}
+                    onClick={() => void save('DRAFT')}
+                  >
+                    Save draft
+                  </button>
+                  {draft.id && (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={busy || loading}
+                      onClick={() => void save('ARCHIVED')}
+                    >
+                      Archive skill
+                    </button>
+                  )}
+                  <button
                     type="submit"
                     form="skill-editor"
                     className="primary-button"
                     disabled={busy || loading}
                   >
-                    {busy ? 'Saving…' : 'Save skill'}
+                    {busy ? 'Saving…' : 'Publish skill'}
                   </button>
                 </>
               ) : undefined
@@ -499,33 +576,16 @@ function SkillDefinitions({
                             </p>
                           )}
                           <label>
-                            Description
+                            Description - Optional
                             <textarea
-                              required={draft.status === 'PUBLISHED'}
                               maxLength={2000}
                               rows={3}
-                              placeholder="Describe the capability and where it is used."
+                              placeholder="e.g. Configure Oracle HCM employee records and core HR workflows."
                               value={draft.description}
                               onChange={event =>
                                 setDraft({ ...draft, description: event.target.value })
                               }
                             />
-                          </label>
-                          <label>
-                            Status
-                            <select
-                              value={draft.status}
-                              onChange={event =>
-                                setDraft({
-                                  ...draft,
-                                  status: event.target.value as Skill['status'],
-                                })
-                              }
-                            >
-                              <option value="DRAFT">Draft</option>
-                              <option value="PUBLISHED">Published</option>
-                              <option value="ARCHIVED">Archived</option>
-                            </select>
                           </label>
                           <CatalogueCertificationPicker
                             value={draft.relatedCertifications ?? []}
