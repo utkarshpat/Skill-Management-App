@@ -1,6 +1,6 @@
 {
-  "version": "2026-10-17",
-  "revision": "0910a2c56271f307",
+  "version": "2026-10-19",
+  "revision": "0c0d2e0ced0b6ba5",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -6714,6 +6714,18 @@
     {
       "method": "POST",
       "path": "/api/dev-login/people",
+      "module": "identity",
+      "source": "apps/api/src/modules/identity/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dev-login/session",
+      "module": "identity",
+      "source": "apps/api/src/modules/identity/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dev-login/renew",
       "module": "identity",
       "source": "apps/api/src/modules/identity/routes.ts"
     },

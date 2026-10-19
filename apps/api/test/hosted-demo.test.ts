@@ -11,6 +11,113 @@ const hosted = {
   accessCode: 'test-access-code-with-high-entropy',
   sessionSecret: 'test-signing-secret-with-at-least-32-characters',
 };
+
+test('activity renewal retains the same person, enforces idle expiry and an eight-hour absolute limit', async () => {
+  const store = await LocalAccessStore.open();
+  const person = store.snapshot().people[0];
+  let now = 1000;
+  const sessions = createDevelopmentSessions(store, () => now, hosted);
+  const started = now;
+  let cookie = (await sessions.issue(person.id))!;
+  const request = () =>
+    ({
+      get: (key: string) =>
+        key.toLowerCase() === 'host'
+          ? 'demo.example'
+          : key.toLowerCase() === 'cookie'
+            ? `skill_dev_session=${cookie}`
+            : undefined,
+    }) as Request;
+  assert.equal(sessions.timing(request())!.expiresAt, now + sessions.lifetime);
+  for (let i = 0; i < 31; i++) {
+    now += 15 * 60_000;
+    const next = await sessions.renew(request());
+    assert.ok(next);
+    cookie = next.value;
+    assert.equal(sessions.subject(request()), person.id);
+    assert.equal(next.absoluteExpiresAt, started + sessions.maxLifetime);
+    assert.ok(next.expiresAt <= next.absoluteExpiresAt);
+  }
+  assert.equal(sessions.timing(request())!.expiresAt, started + sessions.maxLifetime);
+  now = started + sessions.maxLifetime;
+  assert.equal(await sessions.renew(request()), undefined);
+  cookie = (await sessions.issue(person.id))!;
+  now += sessions.lifetime;
+  assert.equal(await sessions.renew(request()), undefined, 'Idle expiry cannot be revived');
+});
+
+test('renewal/status endpoints retain cookie protections, reject cross-origin and do not expose a roster', async () => {
+  const store = await LocalAccessStore.open();
+  const person = store.snapshot().people[0];
+  const runtimeHosted = { ...hosted };
+  const server = createApp(undefined, {
+    developmentStore: store,
+    hostedDemo: runtimeHosted,
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  runtimeHosted.origin = base.replace('http:', 'https:');
+  const headers = {
+    Origin: runtimeHosted.origin,
+    'Content-Type': 'application/json',
+  };
+  try {
+    assert.equal(
+      (await fetch(base + '/api/dev-login/renew', { method: 'POST', headers })).status,
+      401,
+    );
+    const login = await fetch(base + '/api/dev-login', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ personId: person.id, accessCode: hosted.accessCode }),
+    });
+    const cookie = login.headers.get('set-cookie')!.split(';')[0];
+    const before = await fetch(base + '/api/dev-login/session', {
+      headers: { ...headers, Cookie: cookie },
+    });
+    assert.equal(before.status, 200);
+    assert.equal(
+      before.headers.get('set-cookie'),
+      null,
+      'Polling status must never extend cookies',
+    );
+    assert.deepEqual(Object.keys(await before.json()).sort(), ['absoluteExpiresAt', 'expiresAt']);
+    const bad = await fetch(base + '/api/dev-login/renew', {
+      method: 'POST',
+      headers: { ...headers, Cookie: cookie, Origin: 'https://evil.example' },
+    });
+    assert.equal(bad.status, 403);
+    const renewed = await fetch(base + '/api/dev-login/renew', {
+      method: 'POST',
+      headers: { ...headers, Cookie: cookie },
+      body: JSON.stringify({ personId: 'not-the-actor' }),
+    });
+    assert.equal(renewed.status, 200);
+    const setCookie = renewed.headers.get('set-cookie')!;
+    assert.match(setCookie, /HttpOnly/);
+    assert.match(setCookie, /Secure/);
+    assert.match(setCookie, /SameSite=Strict/);
+    assert.match(setCookie, /Path=\/api/);
+    const newCookie = setCookie.split(';')[0];
+    const profile = await fetch(base + '/api/me', { headers: { ...headers, Cookie: newCookie } });
+    assert.equal(profile.status, 200);
+    assert.equal((await profile.json()).profile.id, person.id);
+    const state = store.snapshot();
+    state.people[0].active = false;
+    store.person = () => undefined;
+    assert.equal(
+      (
+        await fetch(base + '/api/dev-login/renew', {
+          method: 'POST',
+          headers: { ...headers, Cookie: newCookie },
+        })
+      ).status,
+      401,
+    );
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
 test('hosted demo is separately opt-in and rejects incomplete or non-HTTPS configuration', () => {
   assert.equal(hostedDemoConfig({ NODE_ENV: 'production' }), undefined);
   assert.throws(() => hostedDemoConfig({ NODE_ENV: 'production', HOSTED_DEMO_LOGIN: 'true' }));

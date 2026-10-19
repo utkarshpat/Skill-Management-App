@@ -94,6 +94,35 @@ export function registerRoutes(
       requiresAccessCode: demo!.requiresAccessCode,
     });
   });
+  // Explicit activity renewal only: ordinary reads/polling never renew cookies.
+  app.get('/api/dev-login/session', async (req, res) => {
+    const person = await demo!.person(req);
+    const timing = demo!.timing(req);
+    if (!person || !timing) {
+      res.status(401).json({ error: { message: 'Your demo session ended. Sign in again.' } });
+      return;
+    }
+    res.json(timing);
+  });
+  app.post('/api/dev-login/renew', async (req, res) => {
+    if (!demo!.mutationAllowed(req)) {
+      res.sendStatus(403);
+      return;
+    }
+    const renewed = await demo!.renew(req);
+    if (!renewed) {
+      res.status(401).json({ error: { message: 'Your demo session ended. Sign in again.' } });
+      return;
+    }
+    res.cookie(demo!.cookieName, renewed.value, {
+      httpOnly: true,
+      secure: demo!.secure,
+      sameSite: 'strict',
+      path: '/api',
+      maxAge: Math.max(0, renewed.expiresAt - Date.now()),
+    });
+    res.json({ expiresAt: renewed.expiresAt, absoluteExpiresAt: renewed.absoluteExpiresAt });
+  });
   app.post('/api/dev-login', async (req, res) => {
     if (!demo!.mutationAllowed(req) || !demo!.authorizeCode(req.body?.accessCode)) {
       res.sendStatus(403);

@@ -16,6 +16,7 @@ import {
   refreshDevelopmentLogin,
 } from './auth';
 import { DevelopmentLogin } from './DevelopmentLogin';
+import { DemoSessionNotice } from './DemoSessionNotice';
 import { BookOpen, BriefcaseBusiness, Compass, Layers3, ListChecks, Users } from 'lucide-react';
 
 const KnowledgeTransfer = lazy(() =>
@@ -122,10 +123,10 @@ export function App() {
     let active = true;
     const expired = () => {
       setSessionNotice(
-        'Your development session expired or the API restarted. Choose a test person to open a new demo session.',
+        'Your demo session ended. Sign in again to continue. Saved work is still available.',
       );
       toast.error(
-        'Your development session expired or the API restarted. Choose a test person to open a new demo session.',
+        'Your demo session ended. Sign in again to continue. Saved work is still available.',
       );
       setSession('loading');
       refreshDevelopmentLogin()
@@ -172,15 +173,18 @@ export function App() {
     );
   if (session === 'signed-in' && isKnowledgeTransfer)
     return (
-      <Suspense
-        fallback={
-          <div className="session-loading" role="status">
-            Opening project handover…
-          </div>
-        }
-      >
-        <KnowledgeTransfer />
-      </Suspense>
+      <>
+        <DemoSessionNotice />
+        <Suspense
+          fallback={
+            <div className="session-loading" role="status">
+              Opening project handover…
+            </div>
+          }
+        >
+          <KnowledgeTransfer />
+        </Suspense>
+      </>
     );
   if (session === 'signed-in' && !workspace)
     return (
@@ -195,12 +199,16 @@ export function App() {
         )}
       </div>
     );
-  const refreshWarning =
-    workspace && workspaceError ? (
-      <div className="workspace-refresh-warning" role="alert">
-        {workspaceError} <button onClick={() => setWorkspaceAttempt(n => n + 1)}>Retry</button>
-      </div>
-    ) : null;
+  const refreshWarning = (
+    <>
+      <DemoSessionNotice />
+      {workspace && workspaceError ? (
+        <div className="workspace-refresh-warning" role="alert">
+          {workspaceError} <button onClick={() => setWorkspaceAttempt(n => n + 1)}>Retry</button>
+        </div>
+      ) : null}
+    </>
+  );
   if (
     session === 'signed-in' &&
     administrationShellFor(pathname, Boolean(workspace?.capabilities.administration))

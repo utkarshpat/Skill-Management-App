@@ -40,9 +40,10 @@ export function createDevelopmentSessions(
   now = Date.now,
   hosted?: HostedDemoConfig,
 ) {
-  const sessions = new Map<string, { personId: string; expires: number }>();
+  const sessions = new Map<string, { personId: string; started: number; expires: number }>();
   const cookieName = 'skill_dev_session';
   const lifetime = 30 * 60 * 1000;
+  const maxLifetime = 8 * 60 * 60 * 1000;
   const requestAllowed = (req: Request) =>
     hosted ? req.get('host') === new URL(hosted.origin).host : localRequest(req);
   const mutationAllowed = (req: Request) =>
@@ -66,18 +67,20 @@ export function createDevelopmentSessions(
   const sweep = () => {
     for (const [key, session] of sessions) if (session.expires <= now()) sessions.delete(key);
   };
-  const subject = (req: Request) => {
+  const session = (req: Request, issuedToken?: string) => {
     sweep();
     if (!requestAllowed(req)) return undefined;
-    const value = token(req);
+    const value = issuedToken ?? token(req);
     if (!value) return undefined;
-    if (!hosted) return sessions.get(value)?.personId;
+    if (!hosted) return sessions.get(value);
     if (value.length > 1024) return undefined;
     const [payload, mac, ...extra] = value.split('.');
     if (!payload || !mac || extra.length || !constantMatch(mac, signature(payload)))
       return undefined;
     try {
       const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+      // Existing 30-minute cookies can renew without forcing a rollout logout.
+      const started = data.started ?? data.issued;
       if (
         data.version !== 1 ||
         data.origin !== hosted.origin ||
@@ -86,14 +89,23 @@ export function createDevelopmentSessions(
         !Number.isSafeInteger(data.expires) ||
         data.issued > now() ||
         data.expires <= now() ||
-        data.expires - data.issued !== lifetime
+        !Number.isSafeInteger(started) ||
+        started > data.issued ||
+        data.expires <= data.issued ||
+        data.expires - data.issued > lifetime ||
+        data.expires > started + maxLifetime
       )
         return undefined;
-      return data.personId as string;
+      return {
+        personId: data.personId as string,
+        started: started as number,
+        expires: data.expires as number,
+      };
     } catch {
       return undefined;
     }
   };
+  const subject = (req: Request) => session(req)?.personId;
   const person = async (req: Request) => {
     const id = subject(req);
     const user = id ? await store.person(id) : undefined;
@@ -102,6 +114,13 @@ export function createDevelopmentSessions(
   return {
     cookieName,
     lifetime,
+    maxLifetime,
+    timing(req: Request) {
+      const current = session(req);
+      return current
+        ? { expiresAt: current.expires, absoluteExpiresAt: current.started + maxLifetime }
+        : undefined;
+    },
     person,
     requestAllowed,
     mutationAllowed,
@@ -116,28 +135,54 @@ export function createDevelopmentSessions(
       );
     },
     subject,
-    async issue(id: string) {
+    async issue(id: string, startedAt?: number) {
       sweep();
       const user = await store.person(id);
-      if (!user || !user.active || user.entraObjectId || (!hosted && sessions.size >= 100))
+      const issued = now(),
+        started = startedAt ?? issued;
+      if (
+        !user ||
+        !user.active ||
+        user.entraObjectId ||
+        issued >= started + maxLifetime ||
+        (!hosted && sessions.size >= 100 && startedAt === undefined)
+      )
         return undefined;
       if (hosted) {
-        const issued = now();
         const payload = Buffer.from(
           JSON.stringify({
             version: 1,
             personId: id,
             origin: hosted.origin,
             issued,
-            expires: issued + lifetime,
+            started,
+            expires: Math.min(issued + lifetime, started + maxLifetime),
             nonce: randomBytes(16).toString('hex'),
           }),
         ).toString('base64url');
         return payload + '.' + signature(payload);
       }
       const value = randomBytes(32).toString('hex');
-      sessions.set(value, { personId: id, expires: now() + lifetime });
+      sessions.set(value, {
+        personId: id,
+        started,
+        expires: Math.min(issued + lifetime, started + maxLifetime),
+      });
       return value;
+    },
+    async renew(req: Request) {
+      const current = session(req);
+      if (!current) return undefined;
+      const value = await this.issue(current.personId, current.started);
+      if (!value) return undefined;
+      const renewed = session(req, value);
+      if (!renewed) return undefined;
+      this.revoke(req);
+      return {
+        value,
+        expiresAt: renewed.expires,
+        absoluteExpiresAt: current.started + maxLifetime,
+      };
     },
     revoke(req: Request) {
       const value = token(req);

@@ -30,6 +30,18 @@ const microsoft = createMicrosoftSession(async () => {
 const scopes = [`api://${api}/access_as_user`];
 let ready: Promise<void> | undefined;
 let demoSession = false;
+let demoSigningOut = false;
+let pendingDemoRenewal: Promise<Response> | undefined;
+export async function demoSessionFetch(input: RequestInfo | URL, init?: RequestInit) {
+  if (demoSigningOut) throw Error('Signing out.');
+  const pending = fetch(input, init);
+  if (String(input).endsWith('/api/dev-login/renew')) pendingDemoRenewal = pending;
+  try {
+    return await pending;
+  } finally {
+    if (pendingDemoRenewal === pending) pendingDemoRenewal = undefined;
+  }
+}
 export let developmentLoginState: DemoLoginState = { status: 'error', people: [], signedIn: false };
 let discovery: Promise<DemoLoginState> | undefined;
 let sessionSync: ReturnType<typeof connectDemoSessionChanges> | undefined;
@@ -54,6 +66,12 @@ export function refreshDevelopmentLogin() {
 }
 export function isDemoSession() {
   return demoSession;
+}
+export function expireDemoSession() {
+  if (!demoSession) return;
+  demoSession = false;
+  reads.invalidate();
+  window.dispatchEvent(new Event('development-session-expired'));
 }
 export async function unlockDemoPeople(accessCode: string) {
   const response = await fetch('/api/dev-login/people', {
@@ -114,10 +132,18 @@ export async function signOut() {
   }
   await initializeAuth();
   if (demoSession) {
-    const response = await fetch('/api/dev-login', { method: 'DELETE' });
-    if (!response.ok) throw new Error('Sign-out failed.');
-    demoSessionSync().changed();
-    window.location.assign('/');
+    // A pending renewal must set its cookie before DELETE clears it, not after.
+    demoSigningOut = true;
+    try {
+      await pendingDemoRenewal?.catch(() => undefined);
+      const response = await fetch('/api/dev-login', { method: 'DELETE' });
+      if (!response.ok) throw new Error('Sign-out failed.');
+      demoSession = false;
+      demoSessionSync().changed();
+      window.location.assign('/');
+    } finally {
+      demoSigningOut = false;
+    }
     return;
   }
   await microsoft.client?.logoutRedirect({ account: microsoft.client.getActiveAccount() });
@@ -155,8 +181,7 @@ export async function authenticatedFetch(path: string, init: RequestInit = {}) {
       : AbortSignal.timeout(90000),
   });
   if (wasDemo && response.status === 401) {
-    demoSession = false;
-    window.dispatchEvent(new Event('development-session-expired'));
+    expireDemoSession();
   }
   void notifyResponse(path, (init.method ?? 'GET').toUpperCase(), response);
   return response;
