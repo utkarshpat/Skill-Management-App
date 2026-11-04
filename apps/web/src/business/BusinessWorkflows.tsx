@@ -140,6 +140,7 @@ export function BusinessWorkflows({
     [relatedCertifications, setRelatedCertifications] = useState<CatalogueCertification[]>([]),
     [suggestSkills, setSuggestSkills] = useState(false),
     [relatedSkillIds, setRelatedSkillIds] = useState<string[]>([]),
+    [knownSkillNames, setKnownSkillNames] = useState<Record<string, string>>({}),
     [reason, setReason] = useState(''),
     [active, setActive] = useState(true),
     [scope, setScope] = useState(''),
@@ -240,7 +241,14 @@ export function BusinessWorkflows({
     )
       .then(r => readApiResponse<Masters>(r, 'Master choices are unavailable.'))
       .then(choices => {
-        if (!abort.signal.aborted) setMasters(choices);
+        if (!abort.signal.aborted) {
+          setMasters(choices);
+          setKnownSkillNames(prev => {
+            const next = { ...prev };
+            for (const skill of choices.skills ?? []) next[skill.id.toLowerCase()] = skill.name;
+            return next;
+          });
+        }
       })
       .catch(e => {
         if (!abort.signal.aborted) setError(e.message);
@@ -548,16 +556,16 @@ export function BusinessWorkflows({
           }
           onClick={() => {
             start();
-            if (catalogueMode || directCatalogue) setAmendmentStep(1);
+            if (catalogueMode) setAmendmentStep(1);
           }}
         >
           <Plus size={15} aria-hidden="true" />
           {view === 'amendments'
-            ? directCatalogue
-              ? 'Add certification'
-              : catalogueMode
-                ? 'Request certification'
-                : 'New catalogue request'
+            ? catalogueMode
+              ? directCatalogue
+                ? 'Add certification'
+                : 'Request certification'
+              : 'New catalogue request'
             : 'New demand'}
         </button>
       </div>
@@ -1080,10 +1088,7 @@ export function BusinessWorkflows({
                   role="group"
                   aria-label="Catalogue entry type"
                 >
-                  {(directCatalogue
-                    ? ['SKILL', 'CERTIFICATION']
-                    : ['SKILL', 'CERTIFICATION', 'PROVIDER']
-                  ).map(value => (
+                  {(['SKILL', 'CERTIFICATION', 'PROVIDER'] as const).map(value => (
                     <button
                       type="button"
                       key={value}
@@ -1401,6 +1406,7 @@ export function BusinessWorkflows({
                             >
                               Remove{' '}
                               {masters?.skills.find(skill => skill.id.toLowerCase() === id)?.name ??
+                                knownSkillNames[id] ??
                                 'selected skill'}{' '}
                               x
                             </button>

@@ -714,7 +714,7 @@ export function CapabilityComposer({
       for (const skill of skills) {
         const current = skillRevisions.find(v => v.id === skill.id)!;
         for (const file of pendingEvidence[skill.id] ?? []) {
-          setPhase(`Uploading evidence for ${skill.choice.name}-`);
+          setPhase(`Uploading evidence for ${skill.choice.name}…`);
           const image = await prepareSkillEvidenceFile(file);
           const uploaded = await readApiResponse<{ revision: number }>(
             await uploadPrivateFile(`/api/my-skills/${skill.id}/evidence`, {

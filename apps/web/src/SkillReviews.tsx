@@ -256,7 +256,7 @@ export function SkillReviews({
               setPage(1);
               setQuery('');
               setSearch('');
-              setView('queue');
+              changeView('queue');
             }}
           />
         </>
@@ -270,7 +270,11 @@ export function SkillReviews({
           )}
           <details
             open={
-              !unified || Boolean(data?.total) || status !== 'SUBMITTED' || params.has('claim')
+              !unified ||
+              Boolean(data?.total) ||
+              filtered ||
+              Boolean(search) ||
+              params.has('claim')
                 ? true
                 : undefined
             }

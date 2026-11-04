@@ -29,6 +29,9 @@ export function CatalogueCertificationPicker({
   const [choices, setChoices] = useState<Choices>(),
     [error, setError] = useState('');
   useEffect(() => {
+    if (value.length > 0) setEnabled(true);
+  }, [value.length]);
+  useEffect(() => {
     if (!enabled) return;
     const abort = new AbortController();
     setChoices(undefined);
