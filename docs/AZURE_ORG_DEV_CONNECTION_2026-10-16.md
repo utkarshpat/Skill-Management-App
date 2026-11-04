@@ -1,5 +1,9 @@
 # Organization development connection — 16 October 2026
 
+> Current status — 5 November 2026: see [current company operations](CURRENT_OPERATIONS.md) and [SSO/bulk provisioning](REAL_USER_SSO.md). Company hosting/sign-in are observed and the operator reports bulk binding complete; older deferred/demo steps below are historical. Live upstream directory synchronization remains unimplemented. Keep KT enabled.
+
+Historical provider references describe the original dated acceptance only. Current provider setup and parity checks are documented in [Azure AI Foundry integration](AZURE_AI_FOUNDRY.md).
+
 ## Latest rollout update — 17 October 2026
 
 This update supersedes the earlier preparation/pending statements below for completed operator steps. The operator reports installing migration 085 (expected total 84 migration records; 065 is absent), retaining the 16 imported development people excluding Vimmi, setting `STORAGE_IS_SQL=true` and manually deploying `skills-appservice-9c85260489af.zip`. Package SHA-256: `9c85260489af8347588fc0a2d160b505163a18e0217b9cb2cf906dee81c477cb`. This source ZIP includes uncommitted changes based on `003ad3d`; it is not proof of a committed release identity or of the exact files running on the server.
@@ -56,7 +60,7 @@ This is local preparation, not evidence of an App Service deployment, real SSO o
 
 1. Develop and test on the existing isolated testing setup with synthetic or explicitly approved sanitized data. Never copy real organization employee records, files, tokens or credentials back into personal hosting.
 2. Pin the tested commit/tag. Run the release checks and prepare an organization-specific build/configuration from that commit. Vite Entra IDs/redirects are build-time configuration, so the test environment's frontend bundle is not automatically a valid organization artifact.
-3. Validate the actual target adapters too: a test against Blob-backed attachments does not establish SQL-binary storage acceptance, and a Gemini reply does not establish Azure AI parity. Exercise SQL-binary upload/review/snapshot/preview and Azure-specific integrations with isolated test data before release.
+3. Validate the actual target adapters too: a test against Blob-backed attachments does not establish SQL-binary storage acceptance, and a the then-configured external AI provider reply does not establish Azure AI parity. Exercise SQL-binary upload/review/snapshot/preview and Azure-specific integrations with isolated test data before release.
 4. Record the artifact hash, commit, intended target/schema version and manual release checklist. Take the organization's approved pre-release backup; review compatibility with the previous app version and execute only reviewed target migrations, using a separate setup identity.
 5. Upload/release manually through the approved App Service deployment channel, with a maintenance window if there is no tested slot-based path. Never upload personal `.env` files or replace the organization's runtime identity with developer credentials.
 6. Run target smoke/E2E checks after deployment. Keep the previous artifact/configuration for rollback; code rollback is safe only when compatible with the resulting schema. A database restore can lose post-backup writes and is an explicitly coordinated recovery operation.

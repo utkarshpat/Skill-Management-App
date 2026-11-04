@@ -6,8 +6,8 @@ import {
   taskInstructions,
   conversationTaskSettings,
 } from '../src/modules/ai/context.js';
-import { UsageMeter, geminiUsage } from '../src/modules/ai/usage.js';
-import { AssistantService, configuredProvider } from '../src/modules/ai/assistant.js';
+import { UsageMeter, responsesUsage } from '../src/modules/ai/usage.js';
+import { AssistantService } from '../src/modules/ai/assistant.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
 
 test('conversation memory is actor-bound, expires, rejects forged history and resets on policy change', () => {
@@ -179,35 +179,35 @@ test('usage sums model rounds without double-counting cached or thought tokens; 
   const meter = new UsageMeter();
   const first = meter.begin();
   first(
-    geminiUsage({
-      promptTokenCount: 100,
-      candidatesTokenCount: 20,
-      thoughtsTokenCount: 5,
-      cachedContentTokenCount: 40,
-      totalTokenCount: 125,
+    responsesUsage({
+      input_tokens: 100,
+      output_tokens: 25,
+      output_tokens_details: { reasoning_tokens: 5 },
+      input_tokens_details: { cached_tokens: 40 },
+      total_tokens: 125,
     }),
   );
   const second = meter.begin();
   second(
-    geminiUsage({
-      promptTokenCount: 50,
-      candidatesTokenCount: 10,
-      thoughtsTokenCount: 0,
-      cachedContentTokenCount: 0,
-      totalTokenCount: 60,
+    responsesUsage({
+      input_tokens: 50,
+      output_tokens: 10,
+      output_tokens_details: { reasoning_tokens: 0 },
+      input_tokens_details: { cached_tokens: 0 },
+      total_tokens: 60,
     }),
   );
   assert.deepEqual(meter.snapshot(), {
     modelCalls: 2,
     inputTokens: 150,
-    outputTokens: 30,
+    outputTokens: 35,
     thinkingTokens: 5,
     cachedInputTokens: 40,
     totalTokens: 185,
   });
   meter.begin();
   assert.equal(meter.snapshot().inputTokens, null);
-  assert.equal(geminiUsage({ promptTokenCount: -1, candidatesTokenCount: '12' }).inputTokens, null);
+  assert.equal(responsesUsage({ input_tokens: -1, output_tokens: '12' }).inputTokens, null);
 });
 
 test('quiz topic clarification preserves count and explicit switches reset both memory and message history', async () => {
@@ -302,10 +302,10 @@ test('server-owned history handles long replies and sends compact prompts with a
       return {
         content: 'Long answer ' + 'a'.repeat(5000),
         calls: [],
-        usage: geminiUsage({
-          promptTokenCount: 100,
-          candidatesTokenCount: 50,
-          totalTokenCount: 150,
+        usage: responsesUsage({
+          input_tokens: 100,
+          output_tokens: 50,
+          total_tokens: 150,
         }),
       };
     },
@@ -323,38 +323,6 @@ test('server-owned history handles long replies and sends compact prompts with a
   assert.ok(requests[0].system.length < 2500);
 });
 
-test('Gemini honors response budget and reports usage even when a billed reply is truncated', async () => {
-  let captured: Record<string, unknown> = {};
-  let received: unknown;
-  const provider = configuredProvider({ GEMINI_API: 'synthetic' }, async (_url, options) => {
-    captured = JSON.parse(String(options?.body));
-    return Response.json({
-      usageMetadata: { promptTokenCount: 20, totalTokenCount: 30 },
-      candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: 'partial' }] } }],
-    });
-  });
-  await assert.rejects(
-    provider!.complete(
-      [
-        { role: 'user', content: 'Earlier untrusted excerpts' },
-        { role: 'user', content: 'Help' },
-      ],
-      [],
-      AbortSignal.timeout(1000),
-      {
-        maxOutputTokens: 1200,
-        onUsage: usage => {
-          received = usage;
-        },
-      },
-    ),
-  );
-  assert.equal((captured.generationConfig as { maxOutputTokens: number }).maxOutputTokens, 1200);
-  assert.equal((captured.contents as { parts: unknown[] }[]).length, 1);
-  assert.equal((captured.contents as { parts: unknown[] }[])[0].parts.length, 2);
-  assert.equal((received as { inputTokens: number }).inputTokens, 20);
-});
-
 test('token metering includes tool rounds and failed attempts without exposing prompts', async () => {
   const access = await LocalAccessStore.open(),
     actor = access.snapshot().people[0].id;
@@ -366,10 +334,10 @@ test('token metering includes tool rounds and failed attempts without exposing p
     {
       name: 'fixture',
       complete: async () => {
-        const usage = geminiUsage({
-          promptTokenCount: 100,
-          candidatesTokenCount: 10,
-          totalTokenCount: 110,
+        const usage = responsesUsage({
+          input_tokens: 100,
+          output_tokens: 10,
+          total_tokens: 110,
         });
         return round++ === 0
           ? {

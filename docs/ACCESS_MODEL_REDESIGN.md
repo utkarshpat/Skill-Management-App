@@ -1,5 +1,7 @@
 # Access management: approved baseline
 
+Current rollout note — 5 November 2026: [company operations](CURRENT_OPERATIONS.md) records the completed demo-data cutover, observed Microsoft sign-in and operator-reported bulk employee binding. Identity provisioning does not broaden this policy. The two-project view/export-only lead grant remains pending. Dated acceptance/pending statements below retain their original environment and date.
+
 Status: user-approved Access Management baseline as of 4 October 2026. Development activation on 10 October 2026: migrations 059–064 are installed on `skill-management-dev`, the default Personal Workspace baseline is enabled, and verified existing administrator Utkarsh Patel has an explicit organization-bound System Admin responsibility. Other environments and hosted acceptance remain separate release steps. Future UI, backend, dashboard and AI access work must follow this contract. Approval of the design does not mean every scope or evaluator is implemented, and does not migrate production grants or replace currently enforced SQL checks. Named people and departments in the supplied specification are illustrative; actual relationships must come from current stored records.
 
 ## Locked invariants

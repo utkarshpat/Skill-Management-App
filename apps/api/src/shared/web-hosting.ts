@@ -1,4 +1,5 @@
 import express, { type Express } from 'express';
+import compression from 'compression';
 import { accessSync, constants, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 
@@ -10,6 +11,9 @@ export function registerWebHosting(app: Express, directory: string) {
   if (!statSync(index).isFile()) throw new Error('Built web index is unavailable.');
 
   app.use(
+    // Registered after API routes: negotiate compression only for public web
+    // responses. Keep immutable asset caching and the SPA's no-store policy.
+    compression(),
     express.static(root, {
       index: false,
       redirect: false,

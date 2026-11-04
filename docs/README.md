@@ -1,15 +1,19 @@
 # Documentation index
 
-Updated: 15 October 2026. Read the current handover before older dated reports. Documentation describes repository behavior and dated acceptance, not continuous production health or enterprise certification.
+Updated: 5 November 2026. Read [current company operations](CURRENT_OPERATIONS.md) and the maintained handover before older dated reports. Documentation describes repository behavior and dated acceptance, not continuous production health or enterprise certification.
 
 | Reference                                                                                     | Purpose                                                                                                          |
 | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| [Current company operations](CURRENT_OPERATIONS.md)                                           | Current evidence, environment, SSO/bulk provisioning, KT enabled, remaining acceptance                           |
+| [Real-user SSO and provisioning](REAL_USER_SSO.md)                                            | Runtime configuration, shared registration, reviewed bulk mapping and binding audits                             |
+| [Real-user cutover](REAL_USER_CUTOVER.md)                                                     | Completed cutover evidence, source/audit retention and historical preparation                                    |
+| [Azure AI Foundry integration](AZURE_AI_FOUNDRY.md)                                           | Responses API, company model deployment, Entra/managed identity, extraction parity and rollout checks            |
 | [Project handover](HANDOVER.md)                                                               | Current release, implemented flows, architecture, operations, remaining work and temporary KT removal            |
 | [Approved access baseline](ACCESS_MODEL_REDESIGN.md)                                          | Authority for access constraints; effective server/SQL checks remain canonical                                   |
 | [Production E2E — 15 October](PRODUCTION_E2E_2026-10-15.md)                                   | Runtime `e0fa9a3`, 73 lifecycle checks, live AI, role matrix, browser acceptance and exact limits                |
 | [Evidence production acceptance](EVIDENCE_PRODUCTION_ACCEPTANCE_2026-10-14.md)                | Installed migration 084, private large-file transport and hosted evidence rollout                                |
 | [Evidence operator runbook](EVIDENCE_READINESS_2026-10-14.md)                                 | Dry-run inventory, retention decision, coordinated recovery and remaining operational checks                     |
-| [Organization onboarding/SSO](ORGANIZATION_ONBOARDING_AND_SSO_REQUIREMENTS.md)                | Deferred organizational integration prerequisites                                                                |
+| [Organization onboarding/SSO](ORGANIZATION_ONBOARDING_AND_SSO_REQUIREMENTS.md)                | Historical prerequisites; current rollout is in the SSO/current operations guides                                |
 | [Directory integration boundary](EMPLOYEE_DIRECTORY_INTEGRATION.md)                           | Stored employee provider and future upstream adapter without authority drift                                     |
 | [Azure migration runbook](AZURE_MIGRATION_RUNBOOK.md)                                         | Environment migration, data/files, runtime identity, rollback and acceptance                                     |
 | [Organization Azure development](AZURE_ORG_DEV_CONNECTION_2026-10-16.md)                      | Approved UK South development, same-origin hosting preparation, SQL binary storage decision and connection gates |
@@ -36,4 +40,4 @@ The same generator updates `REFERENCE.generated.json` from reviewed repository m
 
 ## Deferred and unverified
 
-Organization hosting/SSO/directory synchronization and scheduler activation remain deferred. Retention is dry-run only. Real account-wide storage inventory, coordinated SQL/file restore, native unload/drag-drop, isolated simultaneous browser sessions and hosting load/fault tests require separate evidence. Manual manager approval does not establish issuer authenticity. See the E2E report for the exact tested boundary.
+Company hosting and verified Microsoft sign-in have been observed; bulk binding is operator-reported complete. Final role/employee acceptance, directory synchronization and scheduler activation remain outstanding. Retention is dry-run only. Real account-wide storage inventory, coordinated SQL/file restore, native unload/drag-drop, isolated simultaneous browser sessions and hosting load/fault tests require separate evidence. Manual manager approval does not establish issuer authenticity. See the E2E report for the exact tested boundary.

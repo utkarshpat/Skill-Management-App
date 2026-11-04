@@ -6,6 +6,7 @@ import {
   type CapabilityDependencies,
 } from './modules/skills/capability-routes.js';
 import { randomUUID } from 'node:crypto';
+import type { IdentityConfig } from './modules/identity/auth.js';
 import express, { type ErrorRequestHandler } from 'express';
 import helmet from 'helmet';
 import { DatabaseQuotaUnavailable } from './shared/database-availability.js';
@@ -76,6 +77,7 @@ export function createApp(
     webRoot?: string;
     developmentStore?: AccessStore;
     hostedDemo?: HostedDemoConfig;
+    identityConfig?: IdentityConfig;
     onRequestTiming?: (metric: {
       requestId: string;
       method: string;
@@ -137,6 +139,21 @@ export function createApp(
   // Combined drafts carry bounded details for up to twenty items, including catalogue criteria.
   app.use('/api/capability-submissions', express.json({ limit: '1mb' }));
   app.use(express.json({ limit: '128kb' }));
+  // Public registration identifiers only. Keep browser/API settings aligned at runtime.
+  app.get('/api/auth/config', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const config = options.identityConfig;
+    res.json(
+      config
+        ? {
+            enabled: true,
+            tenantId: config.tenantId,
+            apiClientId: config.apiClientId,
+            webClientId: config.webClientId,
+          }
+        : { enabled: false },
+    );
+  });
   identityRoutes(
     app,
     dependencies

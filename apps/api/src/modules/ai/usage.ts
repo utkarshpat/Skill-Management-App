@@ -7,27 +7,30 @@ export interface TokenUsage {
 }
 const count = (value: unknown) =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
-export function geminiUsage(value: unknown): TokenUsage {
+export function responsesUsage(value: unknown): TokenUsage {
   const data = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
+  const input = data.input_tokens_details as Record<string, unknown> | undefined;
+  const output = data.output_tokens_details as Record<string, unknown> | undefined;
   return {
-    inputTokens: count(data.promptTokenCount),
-    outputTokens: count(data.candidatesTokenCount),
-    thinkingTokens: count(data.thoughtsTokenCount),
-    cachedInputTokens: count(data.cachedContentTokenCount),
-    totalTokens: count(data.totalTokenCount),
+    inputTokens: count(data.input_tokens),
+    // Responses output_tokens already includes reasoning; never add it twice.
+    outputTokens: count(data.output_tokens),
+    thinkingTokens: count(output?.reasoning_tokens),
+    cachedInputTokens: count(input?.cached_tokens),
+    totalTokens: count(data.total_tokens),
   };
 }
 export class UsageMeter {
   private calls: TokenUsage[] = [];
   begin() {
     const index = this.calls.length;
-    this.calls.push(geminiUsage(undefined));
+    this.calls.push(responsesUsage(undefined));
     return (usage: TokenUsage) => {
       this.calls[index] = usage;
     };
   }
   record(usage?: TokenUsage) {
-    this.calls.push(usage ?? geminiUsage(undefined));
+    this.calls.push(usage ?? responsesUsage(undefined));
   }
   snapshot() {
     const sum = (key: keyof TokenUsage) =>

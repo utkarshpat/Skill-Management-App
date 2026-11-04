@@ -46,6 +46,10 @@ const access = process.env.ACCESS_ACCOUNT_ID
   : undefined;
 const hostedDemo = hostedDemoConfig(process.env);
 const developmentStore = hostedDemo || developmentLoginEnabled(process.env) ? access : undefined;
+if (config && (hostedDemo || developmentLoginEnabled(process.env)))
+  throw new Error(
+    'Disable HOSTED_DEMO_LOGIN and DEV_DIRECT_LOGIN before enabling Microsoft sign-in.',
+  );
 const organization = process.env.ACCESS_ACCOUNT_ID
   ? new SqlOrganizationStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
@@ -194,6 +198,7 @@ const app = createApp(
       : {}),
     developmentStore,
     hostedDemo,
+    identityConfig: config,
     ...(process.env.HTTP_TIMING_ENABLED === 'true'
       ? {
           onRequestTiming: (metric: object) =>

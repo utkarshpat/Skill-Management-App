@@ -1,8 +1,16 @@
 # Cognitive Intelligence Lab — Project Handover
 
-Version: 2026-10-19. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
+Version: 2026-11-05. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
 
-## Catalogue forms and common criteria - 19 October 2026
+## Current company operations — 5 November 2026
+
+[Current operations](CURRENT_OPERATIONS.md) and [SSO/provisioning](REAL_USER_SSO.md) supersede dated demo/deferred instructions below. Company App Service and restricted managed-identity SQL are configured; supplied inventory confirmed migration 087. The user screenshot confirmed the dummy-data cutover at revision 76: 20 real profiles, two projects, 19 reporting links and archived historical audit/grants. Microsoft login's verified-identity screen was observed. Twenty unique exact roster-email / directory-UPN mappings were prepared; the user reports bulk binding complete, with final commit output/revision and individual access acceptance still unverified independently.
+
+Azure GPT-6 Luna Responses/managed identity is user-reported working. Demo login is disabled, obsolete demo secrets are retired and KT remains enabled by explicit instruction. Browser registration IDs now come from `/api/auth/config`; no VITE Entra settings are consumed. The shared GatePass India registration is an explicit temporary choice. No automatic email linking, live directory sync or in-app binding approval is implemented. The two-project view/export-only capability-lead grant remains pending.
+
+Latest runtime checks: 608 (7 architecture/packaging, 346 API, 255 web), typecheck and builds passed. Operational SQL passed T-SQL 160 parsing; company SQL mutations were performed by the operator, not the agent. Setup audit tables are operations-only and are absent from the migration-generated schema explorer. Historical reports below preserve their original evidence; personal/demo deployment URLs and deferred statements there do not describe current company status.
+
+## Catalogue forms and common criteria - 19 October 2026 (historical)
 
 The catalogue uses a common read-only four-level rubric and optional skill/certification suggestions. Organization migration 086 was reported installed. The approved local 087 follow-up makes descriptions optional, moves skill draft/publish actions to the footer, separates Skills/Certifications/Amendments and adds direct certification writes with inline issuer creation/reuse under the existing full catalogue approval authority. Request-only users retain amendment approval. Personal certificate submissions still require a linked skill and permit other published skills and extra skills. Historical claims and manager review rules are unchanged. Migration 087 and the matching application release remain pending. See [implementation and rollout](CATALOGUE_FORMS_2026-10-19.md).
 
@@ -26,7 +34,7 @@ After the reported manual deployment, independent HTTP checks returned 200 for t
 
 Frontend performance changes defer optional editors/admin and learning panels, index directory display/search data, skip unused organization projection reads on personal routes, avoid self-triggered notification refreshes and reuse bounded timezone formatters. They do not cache authorization decisions. Validation passed 333 API tests, 233 web tests, typechecks/builds and architecture checks; learning startup JavaScript measured 418,140 bytes in the static dependency graph, not hosted timing. See [performance measurements and limits](PERFORMANCE_2026-10-17.md). The separate [SQL cold-start investigation](SQL_COLD_START_VERIFICATION_2026-10-17.md) concerns the original testing database, not organization SQL.
 
-## Current release and production acceptance — 15 October 2026
+## Historical release and production acceptance — 15 October 2026
 
 This section supersedes older “pending”, “local only” and next-work statements for the specific features covered here; dated sections below remain historical implementation/acceptance records. Verified runtime release: `e0fa9a38c91c9dade99dd6b81e87bf3b77561a62` on https://skill-management-app.vercel.app. GitHub CI and Vercel Production deployment succeeded before the hosted run. This handbook update is a separate documentation release, not another runtime test or migration.
 
@@ -158,7 +166,7 @@ Malformed or incomplete planner success responses are rejected before rendering 
 
 ## Release Verification & Current Status
 
-Current status is in **Current release and production acceptance — 15 October 2026** above. The following records are dated history and do not supersede that release matrix.
+Current status is in **Current company operations — 5 November 2026** above. The following records are dated history and do not supersede that release matrix.
 
 Recorded on 6 October 2026 (Asia/Calcutta). This is dated acceptance evidence, not live health monitoring. The verified application baseline is `main` commit `e1d1f3fa42484a5131b950813d0ae0e75d717e63`, deployed as `dpl_Cn6p1hQ2S8BAeHefdEhb4HaUCrZp` on https://skill-management-app.vercel.app. Later documentation deployments carry their own commit; do not substitute this historical record for a new deployment check.
 
@@ -219,7 +227,7 @@ Request path: Browser → same-origin route → identity validation → effectiv
 
 | Boundary         | Responsibility                                                               | Must never cross                                                    |
 | ---------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Browser          | MSAL SPA sign-in, forms, presentation, explicit review                       | SQL credentials, Gemini keys, arbitrary actor authority             |
+| Browser          | MSAL SPA sign-in, forms, presentation, explicit review                       | SQL credentials, provider keys, arbitrary actor authority           |
 | API identity     | Verify delegated token or gated demo session, resolve person/account         | Treat caller-provided person ID as authenticated actor              |
 | Effective access | Implemented action, grant/deny, scope, relationship and workflow explanation | Infer permissions from organizational title                         |
 | SQL runtime      | Execute guarded procedures under restricted principal                        | Direct unrestricted table access or developer setup identity        |
@@ -401,7 +409,7 @@ Notifications aggregate addressed profile-change, review, workflow and recommend
 
 ## AI Architecture, Budget & Memory
 
-AssistantService owns bounded read orchestration. Provider is selected server-side by AI_PROVIDER/AI_MODEL; Gemini is the current deployment family. The repository default Gemini model is `gemini-3.8-flash`; an environment override can change it. Never claim the live exact model from source defaults alone. Azure/OpenAI-compatible and loopback-only Ollama adapters also exist.
+AssistantService owns bounded read orchestration. Provider is explicitly selected server-side by AI_PROVIDER/AI_MODEL. The Azure adapter uses Responses API and supports Entra/managed-identity authentication, task-specific output budgets, usage reporting and user-selected certificate PDF/image extraction. The configured company deployment is `gpt-6-luna`; Playground success does not establish application or hosted acceptance. The previous external provider and its implicit selection/configuration have been removed. OpenAI-compatible and loopback-only Ollama alternatives remain. See [Azure AI Foundry integration](AZURE_AI_FOUNDRY.md) for configuration, identity separation and acceptance requirements; never infer the live exact model from source alone.
 
 Tool registry permits only server-registered read tools. It derives actor from authenticated context, validates tool arguments, filters discovery by current access and rechecks before/after retrieval and before returning generated output. The model cannot pass another person's actor or execute SQL/writes. Profile, own skills/learning, catalogue criteria, participant workflow detail/recipient search and eligible assigned reviews are bounded projections, not unrestricted database exports.
 
@@ -460,17 +468,17 @@ Responses include an X-Request-Id; structured errors include correlation where s
 
 Use Node 24, npm workspaces and the pinned package lock. Copy `apps/api/.env.example` into ignored `apps/api/.env`, and web example into ignored `apps/web/.env.local`. Never commit real values. `npm ci` installs; `npm run dev` starts API 3001 and Vite 5173. Registered local Microsoft SPA callback uses localhost:5173; API liveness uses 127.0.0.1:3001/api/health.
 
-| Configuration names                                                                                        | Purpose / handling                                                                                |
-| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| VITE_ENTRA_TENANT_ID, VITE_ENTRA_WEB_CLIENT_ID, VITE_ENTRA_API_CLIENT_ID, VITE_AUTH_REDIRECT_URI           | Public SPA registration identifiers/callback; never provider/SQL secrets                          |
-| ENTRA_TENANT_ID, ENTRA_API_CLIENT_ID, ENTRA_WEB_CLIENT_ID                                                  | Server delegated-token validation configuration                                                   |
-| ACCESS_ACCOUNT_ID                                                                                          | Explicit provisioned workspace account UUID; not chosen by browser/model                          |
-| AZURE_SQL_SERVER, AZURE_SQL_DATABASE                                                                       | Target SQL endpoint/database                                                                      |
-| AZURE_SQL_RUNTIME_AUTH, AZURE_SQL_CLIENT_ID, AZURE_SQL_CLIENT_SECRET, AZURE_SQL_MANAGED_IDENTITY_CLIENT_ID | Restricted runtime credential; managed identity for future Azure hosting                          |
-| AI_PROVIDER, AI_MODEL, AI_ENDPOINT, AI_API_KEY, GEMINI_API / GEMINI_API_KEY                                | Server-only model configuration; never VITE variables                                             |
-| EVIDENCE_STORAGE_CONNECTION_STRING, EVIDENCE_STORAGE_CONTAINER                                             | Server-only private Blob configuration; never expose credentials or raw blob paths to the browser |
-| DEV_DIRECT_LOGIN                                                                                           | Development-only direct login flag, false in production                                           |
-| HOSTED_DEMO_LOGIN, PUBLIC_APP_ORIGIN, DEMO_LOGIN_ACCESS_CODE, DEMO_SESSION_SECRET                          | Temporary gated hosted demo; exact trusted origin and server-only secrets                         |
+| Configuration names                                                                                                                               | Purpose / handling                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| ENTRA_TENANT_ID, ENTRA_API_CLIENT_ID, ENTRA_WEB_CLIENT_ID                                                                                         | Server-validated public IDs served by /api/auth/config; callback is current origin plus /; no VITE Entra configuration |
+| ENTRA_TENANT_ID, ENTRA_API_CLIENT_ID, ENTRA_WEB_CLIENT_ID                                                                                         | Server delegated-token validation configuration                                                                        |
+| ACCESS_ACCOUNT_ID                                                                                                                                 | Explicit provisioned workspace account UUID; not chosen by browser/model                                               |
+| AZURE_SQL_SERVER, AZURE_SQL_DATABASE                                                                                                              | Target SQL endpoint/database                                                                                           |
+| AZURE_SQL_RUNTIME_AUTH, AZURE_SQL_CLIENT_ID, AZURE_SQL_CLIENT_SECRET, AZURE_SQL_MANAGED_IDENTITY_CLIENT_ID                                        | Restricted runtime credential; managed identity for future Azure hosting                                               |
+| AI_PROVIDER, AI_MODEL, AI_ENDPOINT, AI_AZURE_AUTH, AI_AZURE_TENANT_ID, AI_AZURE_MANAGED_IDENTITY_CLIENT_ID, AI_AZURE_REASONING_EFFORT, AI_API_KEY | Server-only model configuration; never VITE variables                                                                  |
+| EVIDENCE_STORAGE_CONNECTION_STRING, EVIDENCE_STORAGE_CONTAINER                                                                                    | Server-only private Blob configuration; never expose credentials or raw blob paths to the browser                      |
+| DEV_DIRECT_LOGIN                                                                                                                                  | Development-only direct login flag, false in production                                                                |
+| HOSTED_DEMO_LOGIN, PUBLIC_APP_ORIGIN, DEMO_LOGIN_ACCESS_CODE, DEMO_SESSION_SECRET                                                                 | Temporary gated hosted demo; exact trusted origin and server-only secrets                                              |
 
 SQL setup commands use developer DefaultAzureCredential and close their connections. Runtime uses a separate restricted principal with procedure execution permissions. `npm run db:check -w apps/api` reports schema versions. `db:migrate` applies reviewed outstanding migrations via one worker with transactional version checks; migration 001 owns its initialization transaction. `access:import` is an explicit provisioning operation, never ordinary sign-in onboarding. Do not rerun seed/import tools casually against an existing live account.
 
@@ -510,11 +518,11 @@ Rollback: inspect the exact failed deployment, revert application commit or prom
 
 ## Risks, Gaps & Production Readiness
 
-Current hosting is a personal/demo deployment, not enterprise production certification. Temporary demo-login PIN attempt throttling and durable signed-session revocation remain deferred by explicit user direction. Hosted logout does not revoke an already copied signed cookie for its remaining fixed lifetime; account activity/current permission checks still apply. Do not silently claim these issues fixed.
+Current company hosting/evidence is recorded in CURRENT_OPERATIONS.md; enterprise production certification is not claimed. The following temporary-demo limitations apply only where that optional mode is enabled. Temporary demo-login PIN attempt throttling and durable signed-session revocation remain deferred by explicit user direction. Hosted logout does not revoke an already copied signed cookie for its remaining fixed lifetime; account activity/current permission checks still apply. Do not silently claim these issues fixed.
 
 Implemented hardening includes restricted runtime procedures, input validation, revision/audit checks, exact-manager policy, bounded provider context, shared request budgets and protected read tools. This does not prove all paths secure or establish an exact AI cost ceiling.
 
-Remaining work: measured query/latency budgets and hosting load/fault acceptance; demo/real SSO onboarding and revocation; company tenant/network review; secret rotation; evidence scanning and an approved retention/deletion policy with actual inventory/restore verification; monitoring/alerts; formal assessments; external calendar/rest-day scheduling; unsupported future business dimensions/scopes; durable approved AI proposals/idempotent executors; comprehensive phone/browser accessibility acceptance. Scoped Analytics and conversational people matching are implemented; this does not establish staffing availability. Editable-file replacement exists, while retained historical storage objects are not automatically deleted.
+Remaining work: measured query/latency budgets and hosting load/fault acceptance; post-binding Admin/Manager/employee acceptance and lifecycle/revocation automation; company tenant/network review; secret rotation; evidence scanning and an approved retention/deletion policy with actual inventory/restore verification; monitoring/alerts; formal assessments; external calendar/rest-day scheduling; unsupported future business dimensions/scopes; durable approved AI proposals/idempotent executors; comprehensive phone/browser accessibility acceptance. Scoped Analytics and conversational people matching are implemented; this does not establish staffing availability. Editable-file replacement exists, while retained historical storage objects are not automatically deleted.
 
 Unsupported grant scopes and mockup-only modules must remain unavailable. Recommendations are not verification; missing evidence is not proof of inability. Do not treat top-down hierarchy as unrestricted access. See approved baseline before implementing any new scope or approval workflow.
 

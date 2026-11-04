@@ -171,6 +171,7 @@ test('model adapter never exposes upstream credentials or error response text', 
       AI_PROVIDER: 'azure',
       AI_MODEL: 'example',
       AI_API_KEY: 'secret-value',
+      AI_AZURE_AUTH: 'api-key',
       AI_ENDPOINT: 'https://example.openai.azure.com',
     },
     async () => new Response('secret-value and internal details', { status: 401 }),
@@ -180,7 +181,7 @@ test('model adapter never exposes upstream credentials or error response text', 
     provider.complete([{ role: 'user', content: 'Hi' }], [], AbortSignal.timeout(1000)),
     error =>
       error instanceof AccessError &&
-      error.status === 502 &&
+      error.status === 503 &&
       !error.message.includes('secret-value'),
   );
 });

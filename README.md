@@ -2,22 +2,30 @@
 
 Permission-driven workforce capability and learning platform. React/TypeScript + Vite frontend, modular Express API and restricted Azure SQL procedures. Node 24; dependencies pinned in `package-lock.json`.
 
-## Current release — 15 October 2026
+## Current company setup — 5 November 2026
+
+Read [current operations](docs/CURRENT_OPERATIONS.md) first. Company Azure hosting uses restricted managed-identity SQL and Azure GPT-6 Luna. The dummy-data cutover was confirmed committed: 20 real profiles, two projects and 19 manager links. Microsoft sign-in/verified identity was observed; the user reports completing reviewed bulk identity binding. Final bulk outcome and Admin/Manager/employee workspace acceptance remain unverified independently. Keep both demo-login flags false and Knowledge Transfer enabled. The capability-lead restricted view/export grant remains pending.
+
+Latest runtime validation: 608 checks (7 architecture/packaging, 346 API, 255 web), typecheck and builds passed. [SSO/bulk provisioning](docs/REAL_USER_SSO.md) replaces individual SQL onboarding for the 20-user roster. No automatic runtime email linking or HR synchronization is implemented.
+
+## Historical release acceptance — 15 October 2026
 
 Runtime `e0fa9a3` is deployed on the temporary hosted demo. Local verification: 549 tests, typecheck and API/web build passed. Production acceptance: 73 lifecycle checks, four live AI turns and four demo-account access checks, plus employee/manager browser acceptance. See the [exact E2E coverage and limitations](docs/PRODUCTION_E2E_2026-10-15.md); this is not enterprise go-live sign-off.
 
-Skills and certificates use one intake/review flow. Renewal replaces the visible current credential only after approval while retaining history. Analytics and conversational Find people use canonical server-enforced scope; catalogue amendments and People & Access administration are separate workspaces. Skill evidence supports PDF/images up to 10 MB; certificates retain a 5 MB limit. Retention is dry-run only. Organization hosting/SSO, directory synchronization, scheduler activation and actual recovery drills remain deferred.
+Skills and certificates use one intake/review flow. Renewal replaces the visible current credential only after approval while retaining history. Analytics and conversational Find people use canonical server-enforced scope; catalogue amendments and People & Access administration are separate workspaces. Skill evidence supports PDF/images up to 10 MB; certificates retain a 5 MB limit. Retention is dry-run only. For current company hosting/SSO status see Current company setup above; directory synchronization, scheduler activation and recovery drills remain outstanding.
 
 The [documentation index](docs/README.md) identifies current references versus dated audit records. `/knowledgetransfer` is generated from the maintained handover, approved access baseline and runbooks; regenerate it with `npm run docs:generate` after edits.
 
 ## Project reference
+
+- [Azure AI Foundry integration](docs/AZURE_AI_FOUNDRY.md): GPT-6 Luna Responses adapter, Entra/managed identity setup, certificate extraction and rollout acceptance.
 
 - [Employee directory integration](docs/EMPLOYEE_DIRECTORY_INTEGRATION.md): provider boundary for current DB employee details and a future organisation API; preserves local identity, permissions and reporting authority.
 
 - [Complete project handover](docs/HANDOVER.md): requirements, architecture, module ownership, workflows, AI, schema, deployment, testing, limitations and removal instructions.
 - [Azure migration with data](docs/AZURE_MIGRATION_RUNBOOK.md): step-by-step free-offer eligibility, SQL export/import, private evidence copy, identity/runtime remapping, deployment, acceptance and rollback. A paused source needs a verified backup or must resume before full export.
 - [Approved Access Management baseline](docs/ACCESS_MODEL_REDESIGN.md): mandatory policy for access-related changes. Approved target scopes are distinct from implemented enforcement.
-- [Interactive knowledge transfer](https://skill-management-app.vercel.app/knowledgetransfer): authenticated temporary reader, searchable chapters, schema/FK explorer, API/SQL inventory and source-grounded AI guide.
+- [Interactive knowledge transfer](https://ssskillmgmtappwebappdev-dugxhfchcbhsc3gv.uksouth-01.azurewebsites.net/knowledgetransfer): authenticated temporary reader, searchable chapters, schema/FK explorer, API/SQL inventory and source-grounded AI guide.
 
 The handover replaces obsolete topic documents. Source code, validators and migrations remain authoritative for exact contracts. The schema explorer reconstructs repository migrations; it does not introspect the live database.
 
@@ -69,7 +77,7 @@ Python 3 generates the KT bundle from the maintained handbook, approved baseline
 
 Root `vercel.json` deploys services `api` (public `/api` and `/api/*`) and `web` (remaining paths) on one domain. No internal bindings are needed: browser requests use same-origin API routes. Main-branch pushes trigger deployment; verify Ready for the exact commit and smoke-test the hosted workflows.
 
-KT is isolated in `apps/web/src/knowledge-transfer` and `apps/api/src/modules/knowledge-transfer`. Set **`KNOWLEDGE_TRANSFER_ENABLED=false`** in API deployment configuration and redeploy to disable its protected reader/AI endpoints. Removing it needs no SQL rollback, data deletion, new grants or core chat changes. Follow the handover's **Temporary Feature Removal** checklist and retain the permanent documentation.
+KT is currently **enabled by user instruction** (`KNOWLEDGE_TRANSFER_ENABLED=true`). It is isolated in `apps/web/src/knowledge-transfer` and `apps/api/src/modules/knowledge-transfer`. Only when subsequently instructed to retire it, set `KNOWLEDGE_TRANSFER_ENABLED=false` and redeploy to disable its protected reader/AI endpoints. Removal needs no SQL rollback, data deletion, new grants or core chat changes. Follow the handover's **Temporary Feature Removal** checklist and retain the permanent documentation.
 
 [Organization onboarding & SSO checklist](docs/ORGANIZATION_ONBOARDING_AND_SSO_REQUIREMENTS.md) distinguishes the data request from implemented provisioning/import behavior and records the current redirect, identity and effective-access contract.
 

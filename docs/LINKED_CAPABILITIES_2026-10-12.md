@@ -1,5 +1,6 @@
 # Linked capabilities — implementation and release record
 
+Historical provider references describe the original dated acceptance only. Current provider setup and parity checks are documented in [Azure AI Foundry integration](AZURE_AI_FOUNDRY.md).
 The approved workflow supports skills without certificates and many-to-many links between an employee's skill claims and certification records. New or editable certifications require at least one owned, published-catalogue skill before submission. Historical submitted/approved credentials retain their existing review history.
 
 ## Employee workflow
@@ -20,7 +21,7 @@ Business Analytics retains migration 070's exact submitted-file scope; relations
 
 ## AI assistance
 
-Explicit AI autofill sends the selected file to the configured provider. Gemini supports image/PDF parts; DOCX/text use bounded extracted text. Other providers return a manual-entry fallback for unsupported binary extraction. Suggestions are bounded to current published skill and active credential/provider catalogue candidates, rechecked before delivery and confirmed by the user. No automatic proficiency, employee identity, approval, expiry assumption or catalogue amendment is generated. AI read tools return compact own/assigned group progress without uploaded file contents.
+Explicit AI autofill sends the selected file to the configured provider. The then-configured external AI provider supported image/PDF parts; DOCX/text use bounded extracted text. Other providers return a manual-entry fallback for unsupported binary extraction. Suggestions are bounded to current published skill and active credential/provider catalogue candidates, rechecked before delivery and confirmed by the user. No automatic proficiency, employee identity, approval, expiry assumption or catalogue amendment is generated. AI read tools return compact own/assigned group progress without uploaded file contents.
 
 ## Release checks
 
@@ -30,7 +31,7 @@ Validation: 6 architecture tests, 293 API tests and 177 frontend tests passed (4
 
 Hosted demo acceptance used clearly marked synthetic data: submission `9c27b423-ecde-42ab-a43f-313b851ddd39` contains two skill claims and one certificate with two links. Private PDF save/resume, snapshot metadata/bytes for the assigned manager, a single combined notification, atomic separate decisions and owner review history passed. Duplicate submission returned 409; an unrelated employee read returned 403. All three acceptance items were returned with explicit synthetic-test feedback, so no real proficiency or credential approval was recorded. Authorized Business Analytics returned one matching certificate row among eight Khushi portfolio records, consistent with the owner portfolio rather than duplicate rows per link.
 
-Actual Gemini PDF extraction returned the printed issuer, issue date, expiry and credential ID and two published skills (Agile/Scrum and AI Evaluation), with no inferred proficiency; unknown category remained blank. Browser testing verified PDF thumbnail/View/Download, private incomplete draft save and the Continue draft action. SQL JSON identifier casing, staged file path compatibility, unsaved-change confirmation visibility and modal heading clipping were found and fixed during acceptance. Follow-up acceptance also fixed absent empty-record arrays in incomplete draft responses and blocked the legacy standalone API from resubmitting returned credentials without the current linked request policy.
+The then-configured external AI provider's PDF extraction returned the printed issuer, issue date, expiry and credential ID and two published skills (Agile/Scrum and AI Evaluation), with no inferred proficiency; unknown category remained blank. Browser testing verified PDF thumbnail/View/Download, private incomplete draft save and the Continue draft action. SQL JSON identifier casing, staged file path compatibility, unsaved-change confirmation visibility and modal heading clipping were found and fixed during acceptance. Follow-up acceptance also fixed absent empty-record arrays in incomplete draft responses and blocked the legacy standalone API from resubmitting returned credentials without the current linked request policy.
 
 Incomplete intake groups/files are owner-private form drafts, not certification records; they are excluded from profile/organization credential totals until valid records are materialized. Real Microsoft SSO/access verification remains intentionally deferred, as previously requested. Scheduler activation and storage-retention cleanup remain separate organization-hosting operations.
 

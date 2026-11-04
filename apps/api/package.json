@@ -7,6 +7,7 @@
     "build": "node scripts/build.mjs",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "ai:check": "node --env-file-if-exists=.env --import tsx src/ai-check-cli.ts",
     "test": "tsx --test test/*.test.ts",
     "db:check": "node --env-file-if-exists=.env --import tsx src/database-cli.ts check",
     "db:migrate": "node --env-file-if-exists=.env --import tsx src/database-cli.ts migrate",
@@ -49,6 +50,7 @@
   "dependencies": {
     "@azure/identity": "4.13.3",
     "@azure/storage-blob": "12.34.0",
+    "compression": "1.8.2",
     "express": "5.2.1",
     "fast-xml-parser": "5.11.2",
     "fflate": "0.8.3",
@@ -59,6 +61,7 @@
     "sharp": "0.35.5"
   },
   "devDependencies": {
+    "@types/compression": "1.8.1",
     "@types/express": "5.0.6",
     "@types/mssql": "12.3.0",
     "@types/node": "26.6.4",

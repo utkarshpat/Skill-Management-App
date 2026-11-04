@@ -42,6 +42,27 @@ export function registerRoutes(
   store?: AccessStore,
   demo?: DevelopmentSessions,
 ) {
+  // Available before employee provisioning, but only after API access-token verification.
+  // This read never looks up another identity, links an employee or grants access.
+  app.get('/api/auth/identity', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      if (!dependencies) throw new Error('Identity unavailable');
+      const identity = await dependencies.verify(req.headers.authorization);
+      res.json({ tenantId: identity.tenantId, objectId: identity.objectId });
+    } catch {
+      res.setHeader('WWW-Authenticate', 'Bearer');
+      res
+        .status(401)
+        .json({
+          error: {
+            code: 'NOT_AUTHORIZED',
+            message: 'Sign in with your company account.',
+            requestId: res.locals.requestId,
+          },
+        });
+    }
+  });
   app.use('/api/dev-login', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     if (!demo || !demo.requestAllowed(req)) {

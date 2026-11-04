@@ -16,6 +16,7 @@ import {
   refreshDevelopmentLogin,
 } from './auth';
 import { DevelopmentLogin } from './DevelopmentLogin';
+import { IdentityPending } from './IdentityPending';
 import { BookOpen, BriefcaseBusiness, Compass, Layers3, ListChecks, Users } from 'lucide-react';
 
 const KnowledgeTransfer = lazy(() =>
@@ -66,6 +67,7 @@ export function App() {
     'loading',
   );
   const [sessionNotice, setSessionNotice] = useState('');
+  const [bindingPending, setBindingPending] = useState(false);
   const [workspace, setWorkspace] = useState<WorkspaceState>(),
     [workspaceError, setWorkspaceError] = useState(''),
     [workspaceAttempt, setWorkspaceAttempt] = useState(0);
@@ -87,10 +89,11 @@ export function App() {
           if (!response.ok)
             throw Object.assign(
               Error(body?.error?.message ?? 'Workspace navigation could not be refreshed.'),
-              { status: response.status },
+              { status: response.status, code: body?.error?.code },
             );
           if (!controller.signal.aborted && request === generation) {
             setWorkspace(body);
+            setBindingPending(false);
             setWorkspaceError('');
             if (typeof window !== 'undefined') {
               publishWorkspaceFreshness({ mode: 'live', checkedAt: Date.now() });
@@ -100,6 +103,7 @@ export function App() {
         .catch(error => {
           if (!controller.signal.aborted && request === generation) {
             if ([401, 403].includes(error.status)) setWorkspace(undefined);
+            setBindingPending(error.status === 403 && error.code === 'ACCESS_NOT_PROVISIONED');
             setWorkspaceError(error.message);
           }
           return false;
@@ -189,6 +193,7 @@ export function App() {
           <>
             {workspaceError}
             <button onClick={() => setWorkspaceAttempt(value => value + 1)}>Retry</button>
+            {bindingPending && <IdentityPending />}
           </>
         ) : (
           'Preparing workspace navigation…'

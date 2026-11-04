@@ -5,12 +5,31 @@ import { notifyResponse, notify } from './toast';
 import { createMicrosoftSession } from './microsoft-session';
 import { discoverDevelopmentLogin, parseDemoLogin, type DemoLoginState } from './development-login';
 import { connectDemoSessionChanges } from './demo-session-sync';
+import { parseSignInConfig } from './sign-in-config';
 
-const tenant = import.meta.env.VITE_ENTRA_TENANT_ID;
-const web = import.meta.env.VITE_ENTRA_WEB_CLIENT_ID;
-const api = import.meta.env.VITE_ENTRA_API_CLIENT_ID;
-const redirectUri = import.meta.env.VITE_AUTH_REDIRECT_URI ?? window.location.origin + '/';
-export const signInConfigured = Boolean(tenant && web && api);
+let tenant = '',
+  web = '',
+  api = '';
+const redirectUri = window.location.origin + '/';
+export let signInConfigured = false;
+let configuration: Promise<void> | undefined;
+function configureSignIn() {
+  return (configuration ??= (async () => {
+    const response = await fetch('/api/auth/config', {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw new Error('Sign-in configuration unavailable.');
+    const config = parseSignInConfig(await response.json());
+    tenant = config?.tenantId ?? '';
+    web = config?.webClientId ?? '';
+    api = config?.apiClientId ?? '';
+    signInConfigured = Boolean(config);
+  })().catch(error => {
+    configuration = undefined;
+    throw error;
+  }));
+}
 const microsoft = createMicrosoftSession(async () => {
   const sdk = await import('@azure/msal-browser');
   return {
@@ -27,7 +46,7 @@ const microsoft = createMicrosoftSession(async () => {
     requiresInteraction: error => error instanceof sdk.InteractionRequiredAuthError,
   };
 });
-const scopes = [`api://${api}/access_as_user`];
+const scopes = () => [`api://${api}/access_as_user`];
 let ready: Promise<void> | undefined;
 let demoSession = false;
 export let developmentLoginState: DemoLoginState = { status: 'error', people: [], signedIn: false };
@@ -93,7 +112,10 @@ export async function initializeAuth() {
       ready = undefined;
       throw error;
     }));
-  if (!demoSession && signInConfigured) await microsoft.initialize();
+  if (!demoSession) {
+    await configureSignIn();
+    if (signInConfigured) await microsoft.initialize();
+  }
 }
 export function signedIn() {
   return demoSession || Boolean(microsoft.client?.getActiveAccount());
@@ -101,7 +123,7 @@ export function signedIn() {
 export async function signIn() {
   await initializeAuth();
   if (signInConfigured) await microsoft.initialize();
-  await microsoft.client?.loginRedirect({ scopes, prompt: 'select_account' });
+  await microsoft.client?.loginRedirect({ scopes: scopes(), prompt: 'select_account' });
 }
 export async function signOut() {
   reads.invalidate();
@@ -128,10 +150,10 @@ export async function profileToken() {
   const account = client?.getActiveAccount();
   if (!client || !account) throw new Error('Please sign in.');
   try {
-    return (await client.acquireTokenSilent({ scopes, account })).accessToken;
+    return (await client.acquireTokenSilent({ scopes: scopes(), account })).accessToken;
   } catch (error) {
     if (microsoft.requiresInteraction(error))
-      await client.acquireTokenRedirect({ scopes, account });
+      await client.acquireTokenRedirect({ scopes: scopes(), account });
     throw new Error('Please sign in again to continue.');
   }
 }

@@ -1,5 +1,7 @@
 # Organization Onboarding & SSO Integration Requirements
 
+> Current status — 5 November 2026: see [current company operations](CURRENT_OPERATIONS.md) and [SSO/bulk provisioning](REAL_USER_SSO.md). Company hosting/sign-in are observed and the operator reports bulk binding complete; older deferred/demo steps below are historical. Live upstream directory synchronization remains unimplemented. Keep KT enabled.
+
 Ye document organization ki **IT / Security team** aur **HR / HRMS Data team** ke sath share karne ke liye banaya gaya hai. Isme Microsoft Entra ID (Azure AD) SSO setup aur Employee Database export ki exact requirements shamil hain.
 
 **Status (7 October 2026):** Yeh onboarding data-collection checklist hai, automated HRMS/CSV/XLSX importer ka implemented contract nahi. Current approved access policy [Access Management baseline](ACCESS_MODEL_REDESIGN.md) hai. Existing authenticated APIs/SQL checks, workspace identity mapping aur preview/recheck/audit workflow remain mandatory. Production rollout ke liye [migration runbook](AZURE_MIGRATION_RUNBOOK.md) bhi follow karein.

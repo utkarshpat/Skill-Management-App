@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AssistantService, configuredProvider } from '../src/modules/ai/assistant.js';
+import { AssistantService } from '../src/modules/ai/assistant.js';
 import { presentation } from '../src/modules/ai/output.js';
 import { LocalAccessStore, AccessError } from '../src/modules/access/local-access-store.js';
 const quiz = (count = 10) => ({
@@ -70,92 +70,6 @@ test('presentation renders suggestions without calling persistence; revoked acce
     AccessError,
   );
 });
-test('Gemini preserves signed parts across tool rounds, fixes destination and hides upstream secrets', async () => {
-  const seen: Record<string, unknown>[] = [];
-  const parts = [
-    { functionCall: { name: 'own_profile', args: {} }, thoughtSignature: 'opaque-signature' },
-  ];
-  const provider = configuredProvider({ GEMINI_API: 'test-secret' }, async (url, options) => {
-    assert.equal(
-      url,
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
-    );
-    assert.equal((options?.headers as Record<string, string>)['x-goog-api-key'], 'test-secret');
-    seen.push(JSON.parse(String(options?.body)));
-    return Response.json({
-      candidates: [
-        {
-          finishReason: 'STOP',
-          content: { parts: seen.length === 1 ? parts : [{ text: 'Useful answer' }] },
-        },
-      ],
-    });
-  });
-  assert.ok(provider);
-  const first = await provider.complete(
-    [{ role: 'user', content: 'My profile' }],
-    [],
-    AbortSignal.timeout(1000),
-  );
-  await provider.complete(
-    [
-      { role: 'user', content: 'My profile' },
-      {
-        role: 'assistant',
-        content: '',
-        tool_calls: first.calls,
-        providerParts: first.providerParts,
-      },
-      { role: 'tool', tool_name: 'own_profile', content: '{"name":"Synthetic"}' },
-    ],
-    [],
-    AbortSignal.timeout(1000),
-  );
-  assert.deepEqual((seen[1].contents as { parts: unknown[] }[])[1].parts, parts);
-  assert.throws(
-    () => configuredProvider({ GEMINI_API: 'secret', AI_MODEL: '../external' }),
-    /model name/,
-  );
-  const failed = configuredProvider(
-    { GEMINI_API: 'test-secret' },
-    async () => new Response('test-secret', { status: 429 }),
-  );
-  await assert.rejects(
-    failed!.complete([{ role: 'user', content: 'Help' }], [], AbortSignal.timeout(1000)),
-    error => error instanceof AccessError && !error.message.includes('test-secret'),
-  );
-});
-test('Gemini rejects blocked and truncated responses rather than displaying partial output', async () => {
-  for (const finishReason of ['SAFETY', 'MAX_TOKENS']) {
-    const provider = configuredProvider({ GEMINI_API: 'secret' }, async () =>
-      Response.json({ candidates: [{ finishReason, content: { parts: [{ text: 'partial' }] } }] }),
-    );
-    await assert.rejects(
-      provider!.complete([{ role: 'user', content: 'Hi' }], [], AbortSignal.timeout(1000)),
-      AccessError,
-    );
-  }
-});
-test('Gemini billing and quota failures have distinct safe, actionable messages', async () => {
-  for (const [http, status] of [
-    [402, 503],
-    [429, 429],
-    [403, 503],
-  ]) {
-    const provider = configuredProvider(
-      { GEMINI_API: 'secret' },
-      async () => new Response('secret provider diagnostics', { status: http }),
-    );
-    await assert.rejects(
-      provider!.complete([{ role: 'user', content: 'Hello' }], [], AbortSignal.timeout(1000)),
-      error =>
-        error instanceof AccessError &&
-        error.status === status &&
-        !error.message.includes('secret'),
-    );
-  }
-});
-
 test('quiz delivery enforces explicit, default and follow-up question counts', async () => {
   const store = await LocalAccessStore.open(),
     actor = store.snapshot().people[0].id;

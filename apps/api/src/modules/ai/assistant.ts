@@ -15,7 +15,7 @@ import type {
 } from '../skills/index.js';
 import { ToolRegistry, type ToolDefinition } from './tool-registry.js';
 import type { OrganizationStore, OwnOrganization } from '../organization/index.js';
-import { geminiProvider } from './gemini.js';
+import { azureResponsesProvider } from './azure.js';
 import { presentation, presentationTool } from './output.js';
 import { assistantCapabilities, capabilityGreeting } from './capabilities.js';
 import {
@@ -40,6 +40,7 @@ export interface Message {
   tool_name?: string;
   tool_calls?: ToolCall[];
   providerParts?: unknown[];
+  attachments?: { mimeType: string; data: string; fileName: string }[];
 }
 interface ToolCall {
   id: string;
@@ -53,6 +54,7 @@ export interface GenerationOptions {
 }
 export interface Provider {
   name: string;
+  supportsCertificateFiles?: boolean;
   complete: (
     messages: Message[],
     tools: Tool[],
@@ -888,15 +890,14 @@ export class AssistantService {
 export function configuredProvider(
   env: NodeJS.ProcessEnv,
   transport: typeof fetch = fetch,
+  azureTokenProvider?: (signal: AbortSignal) => Promise<string>,
 ): Provider | undefined {
-  const name = env.AI_PROVIDER || (env.GEMINI_API || env.GEMINI_API_KEY ? 'gemini' : undefined),
-    model = env.AI_MODEL || (name === 'gemini' ? 'gemini-3.8-flash' : undefined);
+  const name = env.AI_PROVIDER,
+    model = env.AI_MODEL;
+  if (name && !['ollama', 'azure', 'openai'].includes(name))
+    throw new Error('Unknown AI provider.');
   if (!name || !model) return undefined;
-  if (name === 'gemini') {
-    const key = env.GEMINI_API || env.GEMINI_API_KEY || env.AI_API_KEY;
-    return key ? geminiProvider(key, model, transport) : undefined;
-  }
-  if (!['ollama', 'azure', 'openai'].includes(name)) throw new Error('Unknown AI provider.');
+  if (name === 'azure') return azureResponsesProvider(env, transport, azureTokenProvider);
   let endpoint: string,
     headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (name === 'ollama') {
@@ -911,23 +912,13 @@ export function configuredProvider(
     endpoint = new URL('/api/chat', url).toString();
   } else {
     if (!env.AI_API_KEY) return undefined;
-    const url = new URL(name === 'openai' ? 'https://api.openai.com/v1/' : (env.AI_ENDPOINT ?? ''));
-    if (
-      url.protocol !== 'https:' ||
-      url.username ||
-      url.password ||
-      (name === 'azure' && !/^[a-z0-9-]+\.(openai|services\.ai)\.azure\.com$/.test(url.hostname))
-    )
+    const url = new URL('https://api.openai.com/v1/');
+    if (url.protocol !== 'https:' || url.username || url.password)
       throw new Error('Use the approved HTTPS model endpoint.');
-    endpoint = new URL(
-      name === 'openai' ? '/v1/chat/completions' : '/openai/v1/chat/completions',
-      url,
-    ).toString();
+    endpoint = new URL('/v1/chat/completions', url).toString();
     headers = {
       ...headers,
-      ...(name === 'azure'
-        ? { 'api-key': env.AI_API_KEY }
-        : { Authorization: `Bearer ${env.AI_API_KEY}` }),
+      Authorization: `Bearer ${env.AI_API_KEY}`,
     };
   }
   return {

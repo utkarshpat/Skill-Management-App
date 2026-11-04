@@ -4,7 +4,30 @@ import { once } from 'node:events';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { get } from 'node:http';
+import { brotliDecompressSync, gunzipSync } from 'node:zlib';
 import { createApp } from '../src/create-app.js';
+
+function rawGet(url: string, headers: Record<string, string>) {
+  return new Promise<{
+    status: number;
+    headers: import('node:http').IncomingHttpHeaders;
+    body: Buffer;
+  }>((resolve, reject) => {
+    get(url, { headers }, response => {
+      const chunks: Buffer[] = [];
+      response.on('data', chunk => chunks.push(chunk));
+      response.on('error', reject);
+      response.on('end', () =>
+        resolve({
+          status: response.statusCode!,
+          headers: response.headers,
+          body: Buffer.concat(chunks),
+        }),
+      );
+    }).on('error', reject);
+  });
+}
 
 test('same-origin hosting supports deep links without masking API or asset failures', async () => {
   const staging = await mkdtemp(join(tmpdir(), 'skills-web-hosting-'));
@@ -14,7 +37,8 @@ test('same-origin hosting supports deep links without masking API or asset failu
   await mkdir(join(root, 'assets'), { recursive: true });
   await mkdir(join(root, 'brand'));
   await writeFile(join(root, 'index.html'), '<!doctype html><title>Skills</title>');
-  await writeFile(join(root, 'assets', 'index-Abc12345.js'), 'console.log("skills")');
+  const javascript = 'console.log("skills");\n'.repeat(1000);
+  await writeFile(join(root, 'assets', 'index-Abc12345.js'), javascript);
   await writeFile(join(root, 'brand', 'logo.svg'), '<svg/>');
   await writeFile(join(root, '.env'), 'PRIVATE_SENTINEL');
   const server = createApp(undefined, { webRoot: root }).listen(0, '127.0.0.1');
@@ -37,8 +61,38 @@ test('same-origin hosting supports deep links without masking API or asset failu
     const asset = await fetch(`${base}/assets/index-Abc12345.js`);
     assert.equal(asset.status, 200);
     assert.match(asset.headers.get('cache-control')!, /immutable/);
+    assert.equal(await asset.text(), javascript);
+    // Use raw HTTP bytes: fetch transparently decompresses encoded responses.
+    for (const encoding of ['gzip', 'br']) {
+      const compressed = await rawGet(`${base}/assets/index-Abc12345.js`, {
+        'Accept-Encoding': encoding,
+      });
+      assert.equal(compressed.status, 200);
+      assert.equal(compressed.headers['content-encoding'], encoding);
+      assert.match(compressed.headers.vary!, /Accept-Encoding/i);
+      assert.match(compressed.headers['cache-control']!, /immutable/);
+      assert.match(compressed.headers['content-type']!, /javascript/);
+      assert.ok(compressed.body.length < Buffer.byteLength(javascript));
+      const decoded =
+        encoding === 'gzip' ? gunzipSync(compressed.body) : brotliDecompressSync(compressed.body);
+      assert.equal(decoded.toString(), javascript);
+    }
+    for (const encoding of ['identity', 'gzip;q=0, br;q=0, deflate;q=0']) {
+      const plain = await rawGet(`${base}/assets/index-Abc12345.js`, {
+        'Accept-Encoding': encoding,
+      });
+      assert.equal(plain.headers['content-encoding'], undefined);
+      assert.equal(plain.body.toString(), javascript);
+    }
+    const cached = await rawGet(`${base}/assets/index-Abc12345.js`, {
+      'Accept-Encoding': 'gzip',
+      'If-None-Match': asset.headers.get('etag')!,
+    });
+    assert.equal(cached.status, 304);
+    assert.equal(cached.body.length, 0);
     const brand = await fetch(`${base}/brand/logo.svg`);
     assert.equal(brand.headers.get('cache-control'), 'no-cache');
+    assert.equal(brand.headers.get('content-encoding'), null);
     const health = await fetch(`${base}/api/health`);
     assert.equal((await health.json()).status, 'ok');
     for (const path of ['/api/me', '/api/missing']) {

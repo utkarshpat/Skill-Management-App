@@ -120,7 +120,7 @@ test('AI extraction uses bounded catalogue candidates, strips invented proficien
     },
   } as unknown as ClaimsStore;
   const provider = {
-    name: 'gemini',
+    name: 'fixture',
     complete: async (messages: any[], tools: any[]) => {
       assert.equal(tools.length, 0);
       calls++;
@@ -187,7 +187,7 @@ test('certificate autofill distinguishes explicit non-expiring dates from unknow
     ['2027-01-01', '2027-01-01'],
   ]) {
     const provider = {
-      name: 'gemini',
+      name: 'fixture',
       complete: async (messages: any[]) => {
         assert.match(messages[0].content, /null only when explicitly non-expiring/);
         return {
@@ -355,7 +355,7 @@ test('certificate AI can return several canonical skills, bounded to six without
   const claims = { options: async () => ({ skills: choices }) } as unknown as ClaimsStore;
   let phase = 0;
   const provider = {
-    name: 'gemini',
+    name: 'fixture',
     complete: async () => ({
       calls: [],
       content: JSON.stringify(

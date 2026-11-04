@@ -16,7 +16,11 @@ export function identityConfig(env: NodeJS.ProcessEnv): IdentityConfig | undefin
   if (ids.every(id => !id)) return undefined;
   if (!ids.every(id => typeof id === 'string' && guid.test(id)))
     throw new Error('Entra tenant/API/web IDs must be UUIDs.');
-  return { tenantId: ids[0]!, apiClientId: ids[1]!, webClientId: ids[2]! };
+  return {
+    tenantId: ids[0]!.toLowerCase(),
+    apiClientId: ids[1]!.toLowerCase(),
+    webClientId: ids[2]!.toLowerCase(),
+  };
 }
 
 export function tokenVerifier(config: IdentityConfig, key?: JWTVerifyGetKey) {
