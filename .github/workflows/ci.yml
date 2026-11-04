@@ -22,5 +22,15 @@ jobs:
       - run: npm run docs:check
       - run: npm run architecture:check
       - run: npm run typecheck
-      - run: npm test
+      - run: npm run test:coverage
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm run coverage:browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-and-coverage-reports
+          path: |
+            artifacts/coverage
+            artifacts/e2e

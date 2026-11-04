@@ -25,6 +25,8 @@ Updated: 5 November 2026. Read [current company operations](CURRENT_OPERATIONS.m
 
 ## Interactive knowledge transfer
 
+Latest verification: [coverage and release report](TEST_COVERAGE_2026-11-05.md), [missing-case inventory](TEST_CASE_GAPS_2026-11-05.md) and [functional change audit](UI_FIX_AUDIT_2026-11-05.md). Browser fixtures are synthetic; SQL/company acceptance is separately identified.
+
 The [organization Azure acceptance report](AZURE_E2E_ACCEPTANCE_2026-10-17.md) records the newer bounded hosted acceptance, retained QA fixtures and the private-preview/person-preview corrections still requiring deployment and recheck. It supersedes earlier pending statements only for the paths actually exercised.
 
 The [SQL/Blob private storage implementation and rollout](PRIVATE_FILE_STORAGE_2026-10-17.md) and [performance changes](PERFORMANCE_2026-10-17.md) cover the latest increment. The operator reports applying organization migration 085 and manually deploying the final ZIP; independent public HTTP smoke checks passed. Authenticated hosted file acceptance remains pending. The [SQL cold-start investigation](SQL_COLD_START_VERIFICATION_2026-10-17.md) concerns the original testing database.

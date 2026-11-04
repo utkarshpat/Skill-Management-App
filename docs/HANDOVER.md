@@ -8,7 +8,7 @@ Version: 2026-11-05. This is the maintained project handover. The interactive re
 
 Azure GPT-6 Luna Responses/managed identity is user-reported working. Demo login is disabled, obsolete demo secrets are retired and KT remains enabled by explicit instruction. Browser registration IDs now come from `/api/auth/config`; no VITE Entra settings are consumed. The shared GatePass India registration is an explicit temporary choice. No automatic email linking, live directory sync or in-app binding approval is implemented. The two-project view/export-only capability-lead grant remains pending.
 
-Latest runtime checks: 608 (7 architecture/packaging, 346 API, 255 web), typecheck and builds passed. Operational SQL passed T-SQL 160 parsing; company SQL mutations were performed by the operator, not the agent. Setup audit tables are operations-only and are absent from the migration-generated schema explorer. Historical reports below preserve their original evidence; personal/demo deployment URLs and deferred statements there do not describe current company status.
+Latest runtime checks: 630 (7 architecture/packaging, 365 API, 258 web), typecheck and builds passed. Operational SQL passed T-SQL 160 parsing; company SQL mutations were performed by the operator, not the agent. Setup audit tables are operations-only and are absent from the migration-generated schema explorer. Historical reports below preserve their original evidence; personal/demo deployment URLs and deferred statements there do not describe current company status.
 
 ## Catalogue forms and common criteria - 19 October 2026 (historical)
 

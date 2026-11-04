@@ -14,9 +14,11 @@ This is the current operational entry point. It supersedes old demo/deferred-SSO
 | AI           | Azure `gpt-6-luna`, Responses API, managed identity, low reasoning. User reports hosted AI/associated workflows working. Gemini runtime/configuration removed.                                                 |
 | Files        | `STORAGE_IS_SQL=true`, per-file registry with retained Blob adapter. Four reviewed SQL test files included in cutover. Ongoing retention and recovery drills remain separate.                                  |
 | KT           | Keep `KNOWLEDGE_TRANSFER_ENABLED=true` by explicit user instruction. Authenticated, source-generated guide; no employee record reads or business execution tools.                                              |
-| Verification | Latest runtime: 608 checks (7 architecture/packaging, 346 API, 255 web), typecheck and builds passed. Operational SQL passed Microsoft T-SQL 160 syntax checks; no agent company SQL execution is claimed.     |
+| Verification | Latest runtime: 630 checks (7 architecture/packaging, 365 API, 258 web), typecheck and builds passed. Operational SQL passed Microsoft T-SQL 160 syntax checks; no agent company SQL execution is claimed.     |
 
 ## Identity and access
+
+Latest test/release follow-up: see [complete-inventory coverage](TEST_COVERAGE_2026-11-05.md). UI review commits are integrated; 22 local synthetic Chromium desktop/mobile E2E cases and 8 nonmutating hosted HTTP checks passed. Full-source frontend line coverage increased from 20.57% to 33.07%. Existing isolated SQL connectivity failed, leaving 39 SQL-backed suites blocked. This does not supersede the real-company identity/access acceptance boundary above. KT stays enabled.
 
 By explicit user choice, the existing **GatePass India** registration is temporarily shared. API and Web both use client ID `431d86d8-4a51-4dda-a821-8d0d66a83eb7`, in tenant `8b87af7d-8647-4dc7-8df4-5f69a2011bb5`. The user reports configuring the SPA redirect, `access_as_user` scope/client preauthorization and requested access-token version 2. Preserve the other app's URLs and permissions; shared token-format changes can affect its API consumers.
 

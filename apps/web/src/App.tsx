@@ -69,6 +69,19 @@ export function App() {
   );
   const [sessionNotice, setSessionNotice] = useState('');
   const [bindingPending, setBindingPending] = useState(false);
+  const [leavingWorkspace, setLeavingWorkspace] = useState(false);
+  const [signOutError, setSignOutError] = useState('');
+  async function leaveWorkspace() {
+    if (leavingWorkspace) return;
+    setLeavingWorkspace(true);
+    setSignOutError('');
+    try {
+      await signOut();
+    } catch {
+      setSignOutError('Sign out could not finish. Please try again.');
+      setLeavingWorkspace(false);
+    }
+  }
   const [workspace, setWorkspace] = useState<WorkspaceState>(),
     [workspaceError, setWorkspaceError] = useState(''),
     [workspaceAttempt, setWorkspaceAttempt] = useState(0);
@@ -201,10 +214,16 @@ export function App() {
             >
               Try again
             </button>
-            <button type="button" className="secondary-button" onClick={() => void signOut()}>
-              Sign out
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={leavingWorkspace}
+              onClick={() => void leaveWorkspace()}
+            >
+              {leavingWorkspace ? 'Signing out…' : 'Sign out'}
             </button>
           </div>
+          {signOutError && <p role="alert">{signOutError}</p>}
           {bindingPending && <IdentityPending />}
         </section>
       </main>

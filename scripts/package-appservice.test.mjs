@@ -32,6 +32,8 @@ test('hosting archive excludes local secrets/dependencies and preserves workspac
       'node_modules/secret.txt',
       'apps/web/dist/secret.txt',
       '.local/backup.bacpac',
+      'e2e/msal-fixture.ts',
+      'apps/web/test/e2e/harness.tsx',
     ]) {
       const destination = join(fixture, path);
       await mkdir(dirname(destination), { recursive: true });

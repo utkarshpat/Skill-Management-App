@@ -78,3 +78,46 @@ test('multiple SDK accounts require explicit selection rather than choosing the 
   await session.initialize();
   assert.equal(session.client?.getActiveAccount(), null);
 });
+
+test('redirect result selects the returned account ahead of a cached account', async () => {
+  const f = fixture();
+  const redirected = { ...account, localAccountId: 'redirected' };
+  f.client.handleRedirectPromise = async () => ({ account: redirected }) as AuthenticationResult;
+  const session = createMicrosoftSession(async () => ({
+    createClient: () => f.client,
+    requiresInteraction: () => false,
+  }));
+  await session.initialize();
+  assert.equal(session.client?.getActiveAccount(), redirected);
+});
+
+test('an existing active SDK account is not replaced by the sole cached account', async () => {
+  const f = fixture();
+  const selected = { ...account, localAccountId: 'already-selected' };
+  f.client.setActiveAccount(selected);
+  const session = createMicrosoftSession(async () => ({
+    createClient: () => f.client,
+    requiresInteraction: () => false,
+  }));
+  assert.equal(session.requiresInteraction(Error('before SDK load')), false);
+  await session.initialize();
+  assert.equal(session.client?.getActiveAccount(), selected);
+});
+
+test('redirect handling failure is retryable without silently selecting a cached user', async () => {
+  const f = fixture();
+  let attempts = 0;
+  f.client.handleRedirectPromise = async () => {
+    if (++attempts === 1) throw Error('redirect failed');
+    return null;
+  };
+  const session = createMicrosoftSession(async () => ({
+    createClient: () => f.client,
+    requiresInteraction: () => false,
+  }));
+  await assert.rejects(session.initialize());
+  assert.equal(session.client?.getActiveAccount(), null);
+  await session.initialize();
+  assert.equal(attempts, 2);
+  assert.equal(session.client?.getActiveAccount(), account);
+});

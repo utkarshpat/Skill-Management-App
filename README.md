@@ -6,7 +6,7 @@ Permission-driven workforce capability and learning platform. React/TypeScript +
 
 Read [current operations](docs/CURRENT_OPERATIONS.md) first. Company Azure hosting uses restricted managed-identity SQL and Azure GPT-6 Luna. The dummy-data cutover was confirmed committed: 20 real profiles, two projects and 19 manager links. Microsoft sign-in/verified identity was observed; the user reports completing reviewed bulk identity binding. Final bulk outcome and Admin/Manager/employee workspace acceptance remain unverified independently. Keep both demo-login flags false and Knowledge Transfer enabled. The capability-lead restricted view/export grant remains pending.
 
-Latest runtime validation: 608 checks (7 architecture/packaging, 346 API, 255 web), typecheck and builds passed. [SSO/bulk provisioning](docs/REAL_USER_SSO.md) replaces individual SQL onboarding for the 20-user roster. No automatic runtime email linking or HR synchronization is implemented.
+Latest runtime validation: 630 checks (7 architecture/packaging, 365 API, 258 web), typecheck and builds passed. [SSO/bulk provisioning](docs/REAL_USER_SSO.md) replaces individual SQL onboarding for the 20-user roster. No automatic runtime email linking or HR synchronization is implemented.
 
 ## Historical release acceptance — 15 October 2026
 

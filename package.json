@@ -17,6 +17,9 @@
     "build": "npm run build --workspaces",
     "typecheck": "npm run typecheck --workspaces",
     "test": "node --test scripts/architecture.test.mjs scripts/package-appservice.test.mjs && npm run test -w apps/api && npm run test -w apps/web",
+    "test:coverage": "node --test scripts/architecture.test.mjs scripts/package-appservice.test.mjs && node scripts/test-coverage.mjs",
+    "test:e2e": "playwright test",
+    "coverage:browser": "node scripts/merge-browser-coverage.mjs",
     "architecture:check": "node scripts/check-architecture.mjs",
     "docs:generate": "python scripts/generate-handover.py",
     "docs:check": "python scripts/generate-handover.py --check",
@@ -24,7 +27,13 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "concurrently": "10.0.5",
+    "@playwright/test": "1.64.1",
+    "c8": "9.1.0",
+    "concurrently": "10.0.6",
+    "istanbul-lib-coverage": "3.2.2",
+    "istanbul-lib-report": "3.0.1",
+    "istanbul-reports": "3.2.0",
+    "v8-to-istanbul": "9.3.0",
     "prettier": "^3.9.9"
   }
 }

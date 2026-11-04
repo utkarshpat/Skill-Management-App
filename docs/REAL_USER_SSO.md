@@ -45,4 +45,4 @@ Setup-only `OperationsRealUserCutover` and `OperationsIdentityBindingAudit` reta
 
 ## Verification and remaining acceptance
 
-Latest runtime validation passed 608 checks (7 architecture/packaging, 346 API, 255 web), typecheck and builds. Operational SQL passed Microsoft T-SQL 160 parsing; the agent did not execute company SQL. Hosted sign-in/verified identity is observed, while final bulk outcome, individual effective access/revocation, corporate-policy coverage and exhaustive hosted workflows still need acceptance. No employee data is copied to personal infrastructure.
+Latest runtime validation passed 630 checks (7 architecture/packaging, 365 API, 258 web), typecheck and builds. Operational SQL passed Microsoft T-SQL 160 parsing; the agent did not execute company SQL. Hosted sign-in/verified identity is observed, while final bulk outcome, individual effective access/revocation, corporate-policy coverage and exhaustive hosted workflows still need acceptance. No employee data is copied to personal infrastructure.
