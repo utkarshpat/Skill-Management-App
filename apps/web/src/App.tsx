@@ -14,6 +14,7 @@ import {
   signIn,
   signInConfigured,
   refreshDevelopmentLogin,
+  signOut,
 } from './auth';
 import { DevelopmentLogin } from './DevelopmentLogin';
 import { IdentityPending } from './IdentityPending';
@@ -187,23 +188,42 @@ export function App() {
       </Suspense>
     );
   if (session === 'signed-in' && !workspace)
-    return (
+    return workspaceError ? (
+      <main className="workspace-state">
+        <section className="workspace-state-card" role="alert">
+          <h1>{bindingPending ? 'Your access is not set up yet' : 'Workspace unavailable'}</h1>
+          <p>{workspaceError}</p>
+          <div className="workspace-state-actions">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => setWorkspaceAttempt(value => value + 1)}
+            >
+              Try again
+            </button>
+            <button type="button" className="secondary-button" onClick={() => void signOut()}>
+              Sign out
+            </button>
+          </div>
+          {bindingPending && <IdentityPending />}
+        </section>
+      </main>
+    ) : (
       <div className="session-loading" role="status">
-        {workspaceError ? (
-          <>
-            {workspaceError}
-            <button onClick={() => setWorkspaceAttempt(value => value + 1)}>Retry</button>
-            {bindingPending && <IdentityPending />}
-          </>
-        ) : (
-          'Preparing workspace navigation…'
-        )}
+        Preparing workspace navigation…
       </div>
     );
   const refreshWarning =
     workspace && workspaceError ? (
       <div className="workspace-refresh-warning" role="alert">
-        {workspaceError} <button onClick={() => setWorkspaceAttempt(n => n + 1)}>Retry</button>
+        <span>{workspaceError}</span>
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => setWorkspaceAttempt(n => n + 1)}
+        >
+          Retry
+        </button>
       </div>
     ) : null;
   if (

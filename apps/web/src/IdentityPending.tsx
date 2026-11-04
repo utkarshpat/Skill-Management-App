@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { authenticatedFetch, isDemoSession, signOut } from './auth';
+import { authenticatedFetch, isDemoSession } from './auth';
 
 // A successful Microsoft sign-in does not imply employee membership or activation.
 export function IdentityPending() {
@@ -37,13 +37,6 @@ export function IdentityPending() {
           </p>
         </>
       )}
-      <button
-        onClick={() => {
-          void signOut();
-        }}
-      >
-        Sign out
-      </button>
     </section>
   );
 }

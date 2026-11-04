@@ -425,3 +425,82 @@ body .dashboard-next-task .ui-progress {
     animation: none;
   }
 }
+
+/* Workspace recovery and identity-pending states */
+.workspace-state {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--canvas);
+}
+.workspace-state-card {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 12px 36px #10203018;
+}
+.workspace-state-card h1 {
+  margin: 0;
+  font-size: 22px;
+}
+.workspace-state-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.workspace-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.workspace-state-card section {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.workspace-state-card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0;
+  font-size: 13px;
+}
+.workspace-state-card dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+.workspace-state-card dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.workspace-refresh-warning {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.workspace-refresh-warning .secondary-button {
+  min-height: 32px;
+  padding: 4px 12px;
+}
+.cap-pending-evidence .secondary-button {
+  min-height: 32px;
+  padding: 4px 12px;
+}
+.cap-pending-evidence .admin-text-button {
+  display: grid;
+  place-items: center;
+  min-width: 32px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}

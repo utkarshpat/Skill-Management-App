@@ -1855,6 +1855,7 @@ export function CapabilityComposer({
                         <span>{file.name}</span>
                         <button
                           type="button"
+                          className="secondary-button"
                           disabled={working}
                           onClick={() => useEvidenceAsCertificate(s, file)}
                         >
@@ -1862,6 +1863,7 @@ export function CapabilityComposer({
                         </button>
                         <button
                           type="button"
+                          className="admin-text-button"
                           disabled={working}
                           aria-label={`Remove ${file.name}`}
                           onClick={() =>

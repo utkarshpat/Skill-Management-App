@@ -119,7 +119,11 @@ export function CatalogueCertificationPicker({
           {error ? (
             <p role="alert">
               {error}{' '}
-              <button type="button" onClick={() => setAttempt(v => v + 1)}>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setAttempt(v => v + 1)}
+              >
                 Retry
               </button>
             </p>
