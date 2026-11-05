@@ -155,3 +155,19 @@ export function businessPeoplePage(rows: BusinessDashboard['rows']) {
     )
     .slice(0, 8);
 }
+
+export interface KnownSkill {
+  name: string;
+  active: boolean;
+}
+
+/** Mapped skills known to be archived; the server rejects them when a certification is saved. */
+export function unavailableMappedSkills(ids: string[], known: Record<string, KnownSkill>) {
+  return ids.filter(id => known[id] !== undefined && !known[id].active).map(id => known[id].name);
+}
+
+export function mappedSkillLabel(id: string, known: Record<string, KnownSkill>) {
+  const skill = known[id];
+  if (!skill) return 'selected skill';
+  return skill.active ? skill.name : `${skill.name} (archived)`;
+}

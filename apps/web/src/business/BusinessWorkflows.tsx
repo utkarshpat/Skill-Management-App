@@ -21,7 +21,12 @@ import {
   type CatalogueCertification,
 } from '../CatalogueCertificationPicker';
 import '../catalogue.css';
-import type { BusinessContext } from './business-model';
+import {
+  mappedSkillLabel,
+  unavailableMappedSkills,
+  type BusinessContext,
+  type KnownSkill,
+} from './business-model';
 interface Master {
   catalogueRevision?: number;
   id: string;
@@ -140,7 +145,7 @@ export function BusinessWorkflows({
     [relatedCertifications, setRelatedCertifications] = useState<CatalogueCertification[]>([]),
     [suggestSkills, setSuggestSkills] = useState(false),
     [relatedSkillIds, setRelatedSkillIds] = useState<string[]>([]),
-    [knownSkillNames, setKnownSkillNames] = useState<Record<string, string>>({}),
+    [knownSkills, setKnownSkills] = useState<Record<string, KnownSkill>>({}),
     [reason, setReason] = useState(''),
     [active, setActive] = useState(true),
     [scope, setScope] = useState(''),
@@ -243,9 +248,10 @@ export function BusinessWorkflows({
       .then(choices => {
         if (!abort.signal.aborted) {
           setMasters(choices);
-          setKnownSkillNames(prev => {
+          setKnownSkills(prev => {
             const next = { ...prev };
-            for (const skill of choices.skills ?? []) next[skill.id.toLowerCase()] = skill.name;
+            for (const skill of choices.skills ?? [])
+              next[skill.id.toLowerCase()] = { name: skill.name, active: skill.active !== false };
             return next;
           });
         }
@@ -368,6 +374,15 @@ export function BusinessWorkflows({
   }
   function draft() {
     if (!masters) return;
+    if (view === 'amendments' && type === 'CERTIFICATION') {
+      const archived = unavailableMappedSkills(relatedSkillIds, knownSkills);
+      if (archived.length) {
+        setError(
+          `Remove archived skill${archived.length > 1 ? 's' : ''} before saving: ${archived.join(', ')}.`,
+        );
+        return;
+      }
+    }
     if (view === 'amendments')
       void prepare({
         operation: directCatalogue ? 'SAVE_MASTER' : 'PROPOSE',
@@ -1404,11 +1419,7 @@ export function BusinessWorkflows({
                                 setRelatedSkillIds(previous => previous.filter(v => v !== id))
                               }
                             >
-                              Remove{' '}
-                              {masters?.skills.find(skill => skill.id.toLowerCase() === id)?.name ??
-                                knownSkillNames[id] ??
-                                'selected skill'}{' '}
-                              x
+                              Remove {mappedSkillLabel(id, knownSkills)} x
                             </button>
                           ))}
                         </div>
