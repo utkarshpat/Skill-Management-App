@@ -44,10 +44,31 @@ export function CatalogueCertificationPicker({
         )
           .then(r => readApiResponse<Choices>(r, 'Certification choices could not be loaded.'))
           .then(v => {
+            if (
+              !v ||
+              !Number.isInteger(v.total) ||
+              v.total < 0 ||
+              !Number.isInteger(v.pageSize) ||
+              v.pageSize <= 0 ||
+              !Array.isArray(v.certifications) ||
+              v.certifications.some(
+                c =>
+                  !c ||
+                  typeof c.id !== 'string' ||
+                  !c.id ||
+                  typeof c.name !== 'string' ||
+                  typeof c.provider !== 'string' ||
+                  typeof c.active !== 'boolean',
+              )
+            )
+              throw Error('Certification choices could not be loaded.');
             if (!abort.signal.aborted) setChoices(v);
           })
           .catch(e => {
-            if (!abort.signal.aborted) setError(e.message);
+            if (!abort.signal.aborted)
+              setError(
+                e instanceof Error ? e.message : 'Certification choices could not be loaded.',
+              );
           });
       },
       search ? 200 : 0,
