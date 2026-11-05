@@ -25,7 +25,7 @@ Current local work: [portfolio commit audit and integration](PORTFOLIO_COMMIT_AU
 | [Conversational people matching](CONVERSATIONAL_PEOPLE_MATCHING_2026-10-14.md)                | Existing AI sidebar, clarification, current authorized results/export and removed demand UI                      |
 | [Renewal/notifications/learning](RENEWAL_NOTIFICATIONS_AND_LEARNING_NEXT_STEPS_2026-10-13.md) | Approval-gated renewal lineage and explicit catalogue-based learning next steps                                  |
 
-`SCMD_FDD_MAPPING_2026-10-12.md` and the dated audit files preserve findings at their review date. Later increments and acceptance records supersede their “missing”, “local” and “pending” statements only for the features actually covered. They must not be used as a new backlog without checking the current handover.
+`SCMD_FDD_MAPPING_2026-10-12.md` and the dated audit files preserve findings at their review date. The 13 archived October bug/commit audits and demo acceptance reports are in [`archive/2026-10/`](archive/2026-10/); their evidence is retained, not deleted. Later increments and acceptance records supersede their “missing”, “local” and “pending” statements only for the features actually covered. They must not be used as a new backlog without checking the current handover.
 
 ## Interactive knowledge transfer
 
