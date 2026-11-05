@@ -1,6 +1,6 @@
 {
   "version": "2026-11-05",
-  "revision": "0be2807a0b593734",
+  "revision": "61f6580b7b0baef3",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -92,7 +92,8 @@
       "087_direct_catalogue_management.sql",
       "088_organization_portfolio.sql",
       "089_portfolio_business_scopes.sql",
-      "090_workflow_topic_recipients.sql"
+      "090_workflow_topic_recipients.sql",
+      "091_search_people_administration.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -7495,8 +7496,8 @@
     {
       "name": "BusinessAdministration",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/088_organization_portfolio.sql"
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@person_id uniqueidentifier=NULL",
+      "source": "database/migrations/091_search_people_administration.sql"
     },
     {
       "name": "SaveBusinessChange",
@@ -7659,6 +7660,12 @@
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@kind varchar(8),@category varchar(24)) RETURNS bit",
       "source": "database/migrations/090_workflow_topic_recipients.sql"
+    },
+    {
+      "name": "ReadPeopleAdministration",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@mode varchar(12),@person_id uniqueidentifier=NULL,\n @kind varchar(12)=NULL,@query nvarchar(100)=N'',@page int=1,@node_kind varchar(20)=NULL,@parent_id uniqueidentifier=NULL",
+      "source": "database/migrations/091_search_people_administration.sql"
     }
   ],
   "groups": {

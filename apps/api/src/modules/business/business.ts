@@ -148,7 +148,7 @@ export interface BusinessStore {
   ): Promise<Record<string, unknown> | null>;
   context(actor: string): Promise<BusinessContext>;
   dashboard(actor: string, query: BusinessQuery, exporting?: boolean): Promise<BusinessDashboard>;
-  administration(actor: string): Promise<Record<string, unknown>>;
+  administration(actor: string, personId?: string): Promise<Record<string, unknown>>;
   change(actor: string, change: BusinessChange): Promise<void>;
   workflow(
     actor: string,

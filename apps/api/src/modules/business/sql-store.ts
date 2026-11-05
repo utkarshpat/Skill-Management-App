@@ -116,7 +116,7 @@ export class SqlBusinessStore implements BusinessStore {
     if ([2601, 2627].includes(number ?? 0))
       throw new AccessError(409, 'This entry already exists. Reload before retrying.');
     if (number === 547) throw new AccessError(400, 'Choose records from the current account.');
-    if ([2812, 208, 207].includes(number ?? 0))
+    if ([2812, 208, 207, 8144, 201].includes(number ?? 0))
       throw new AccessError(503, 'Business Operations database migration is pending.');
     throw error;
   }
@@ -126,8 +126,15 @@ export class SqlBusinessStore implements BusinessStore {
       ['scopes', 'hierarchy'],
     );
   }
-  async administration(actor: string) {
-    const result = await this.execute<Record<string, unknown>>(actor, 'dbo.BusinessAdministration');
+  async administration(actor: string, personId?: string) {
+    const result = await this.execute<Record<string, unknown>>(
+      actor,
+      'dbo.BusinessAdministration',
+      undefined,
+      personId
+        ? request => request.input('person_id', sql.UniqueIdentifier, identifier(personId))
+        : undefined,
+    );
     const fresh = await this.context(actor);
     if (!fresh.canManage) throw new AccessError(403, 'Administration access changed.');
     if (result.revision !== fresh.revision)

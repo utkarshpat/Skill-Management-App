@@ -3,7 +3,13 @@ import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import { readActorAccess, type AccessStore } from '../access/index.js';
 import { AccessError } from '../../shared/errors.js';
-import { businessQuery, businessChange, previewBusiness, type BusinessStore } from './business.js';
+import {
+  businessQuery,
+  businessChange,
+  previewBusiness,
+  identifier,
+  type BusinessStore,
+} from './business.js';
 import { assertBusinessScope } from './sql-store.js';
 import { businessCsv, businessXlsx } from './export.js';
 import { businessWorkflow } from './workflows.js';
@@ -204,9 +210,16 @@ export function registerBusinessRoutes(
       next(error);
     }
   });
-  app.get('/api/business/administration', async (_req, res, next) => {
+  app.get('/api/business/administration', async (req, res, next) => {
     try {
-      res.json(await deps!.business!.administration(res.locals.businessActor));
+      if (Object.keys(req.query).some(k => k !== 'personId'))
+        throw new AccessError(400, 'Unsupported administration filter.');
+      res.json(
+        await deps!.business!.administration(
+          res.locals.businessActor,
+          req.query.personId === undefined ? undefined : identifier(req.query.personId),
+        ),
+      );
     } catch (error) {
       next(error);
     }

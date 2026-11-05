@@ -1,0 +1,155 @@
+.people-access-workspace {
+  color: var(--ink, #172333);
+}
+.people-access-workspace button {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  max-width: 100%;
+}
+.people-access-intro h2,
+.people-person-heading h2 {
+  margin: 0 0 0.5rem;
+}
+.people-access-intro p {
+  color: var(--muted, #596578);
+}
+.people-access-search {
+  display: grid;
+  gap: 0.4rem;
+  max-width: 42rem;
+  margin: 1.5rem 0;
+  font-weight: 600;
+}
+.people-access-workspace input:not([type='checkbox']),
+.people-access-workspace select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.6rem;
+  padding: 0.7rem;
+  background: #fff;
+  color: inherit;
+}
+.people-access-layout {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(0, 2.8fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.people-access-layout > aside,
+.people-access-selected {
+  background: #fff;
+  border: 1px solid #d5dfe8;
+  border-radius: 1rem;
+  padding: 1.2rem;
+  min-width: 0;
+}
+.people-search-results,
+.people-assigned-templates,
+.people-manager-results {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+.people-search-results button {
+  display: grid;
+  gap: 0.4rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.9rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.7rem;
+  background: #fff;
+  color: inherit;
+}
+.people-search-results button.selected {
+  border-color: #087f83;
+  background: #edf8f6;
+}
+.people-search-results button span {
+  color: #526173;
+  font-size: 0.88rem;
+}
+.people-person-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 1.5rem;
+}
+.people-person-tabs [aria-current='page'] {
+  background: #e7f5f3;
+  color: #07676c;
+  border-color: #07858a;
+}
+.people-person-form fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+.people-person-form label,
+.people-access-selected section > label,
+.people-node-picker label {
+  display: grid;
+  gap: 0.4rem;
+}
+.people-person-form .people-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.people-person-form button {
+  justify-self: start;
+}
+.people-organization-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.people-node-picker {
+  display: grid;
+  gap: 0.6rem;
+  border: 1px solid #e0e5eb;
+  border-radius: 0.7rem;
+  padding: 1rem;
+}
+.people-assigned-templates li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  border: 1px solid #d5dfe8;
+  border-radius: 0.7rem;
+  padding: 0.9rem;
+}
+.people-search-paging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+.people-access-success {
+  padding: 0.8rem;
+  background: #e9f7ef;
+  border-radius: 0.6rem;
+  color: #145b3d;
+}
+.people-access-workspace button:focus-visible,
+.people-access-workspace input:focus-visible,
+.people-access-workspace select:focus-visible {
+  outline: 3px solid #4baeb3;
+  outline-offset: 2px;
+}
+@media (max-width: 800px) {
+  .people-access-layout,
+  .people-organization-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .people-person-tabs .secondary-button {
+    flex: 1 1 auto;
+  }
+}

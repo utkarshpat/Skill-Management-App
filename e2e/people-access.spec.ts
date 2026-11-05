@@ -1,0 +1,126 @@
+import { expect, fixture, ids, test } from './browser-fixture';
+
+test('People & Access searches on demand and reviews template assignment and removal', async ({
+  page,
+}) => {
+  await fixture(page, { role: 'admin' });
+  const employee = {
+    id: '88888888-8888-4888-8888-000000000002',
+    displayName: 'Aditi Menon',
+    employeeCode: '710902',
+    active: true,
+    jobTitle: 'Delivery engineer',
+    grade: 'G3',
+    primaryCapabilityId: null,
+    overrides: [],
+  };
+  const template = {
+    id: '88888888-8888-4888-8888-000000000003',
+    name: 'Delivery Support',
+    permissions: [{ permission: 'request.view', scope: 'OWN', effect: 'ALLOW' }],
+  };
+  let roleIds: string[] = [];
+  let revision = 7;
+  const previews: string[][] = [];
+  const saves: string[][] = [];
+  const requests: string[] = [];
+  await page.route('**/api/access**', async route => {
+    const url = new URL(route.request().url());
+    const path = url.pathname;
+    const json = (body: unknown, status = 200) => route.fulfill({ json: body, status });
+    const person = { ...employee, roleIds };
+    requests.push(path + url.search);
+    if (path === '/api/access' && route.request().method() === 'GET') {
+      if (url.search !== '?summary=1')
+        return json({ error: { message: 'Unexpected full read' } }, 500);
+      return json({
+        revision,
+        currentPerson: { ...person, id: ids.person },
+        canManageUsers: true,
+        canViewAudit: true,
+        people: [],
+        roles: [],
+        audit: [],
+        catalogue: [
+          { code: 'request.view', label: 'View requests', implemented: true, scopes: ['OWN'] },
+        ],
+      });
+    }
+    if (path === '/api/access/directory') {
+      const items =
+        url.searchParams.get('kind') === 'templates'
+          ? [template]
+          : [
+              {
+                id: employee.id,
+                name: employee.displayName,
+                employeeCode: employee.employeeCode,
+                active: true,
+              },
+            ];
+      return json({ revision, items, total: items.length, page: 1, pageSize: 10 });
+    }
+    if (path === '/api/access/people/' + employee.id)
+      return json({
+        revision,
+        person,
+        roles: roleIds.length ? [template] : [],
+        organization: { nodes: [], assignments: [], people: [] },
+      });
+    if (path === '/api/access/primary-capabilities')
+      return json({ items: [], total: 0, page: 1, pageSize: 20 });
+    if (path === '/api/access/preview') {
+      const body = route.request().postDataJSON();
+      previews.push(body.roleIds);
+      return json({
+        before: person,
+        after: body,
+        receipt: 'reviewed-' + revision,
+        impacts: [],
+        warnings: [],
+      });
+    }
+    if (path === '/api/access' && route.request().method() === 'POST') {
+      const body = route.request().postDataJSON();
+      if (
+        body.id !== employee.id ||
+        body.revision !== revision ||
+        body.previewReceipt !== 'reviewed-' + revision ||
+        JSON.stringify(body.roleIds) !== JSON.stringify(previews.at(-1))
+      )
+        return json({ error: { message: 'Review the exact change before saving' } }, 409);
+      roleIds = body.roleIds;
+      saves.push(roleIds);
+      return json({ saved: true, revision: ++revision });
+    }
+    return json({ error: { message: 'Unexpected People & Access request' } }, 500);
+  });
+  await page.goto('/access');
+  const search = page.getByRole('searchbox', { name: 'Find person' });
+  await expect(search).toBeVisible();
+  await expect(page.getByText(/Start with a name or employee ID/)).toBeVisible();
+  expect(requests).toEqual(['/api/access?summary=1']);
+  await search.fill('710902');
+  await page.getByRole('button', { name: /Aditi Menon.*710902/ }).click();
+  await expect(page.getByRole('region', { name: 'Selected person' })).toBeFocused();
+  await page.getByRole('button', { name: 'Templates (0)' }).click();
+  await page.getByLabel('Template to assign').selectOption(template.id);
+  await page.getByRole('button', { name: 'Review template assignment' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText(/Assign Delivery Support to Aditi Menon/)).toBeVisible();
+  expect(saves).toEqual([]);
+  await dialog.getByRole('button', { name: 'Confirm & save' }).click();
+  await page.getByRole('button', { name: 'Remove template Delivery Support' }).click();
+  await dialog.getByRole('button', { name: 'Back to edit' }).click();
+  expect(saves).toEqual([[template.id]]);
+  await page.getByRole('button', { name: 'Remove template Delivery Support' }).click();
+  await dialog.getByRole('button', { name: 'Confirm & save' }).click();
+  await expect(page.getByText('No additional templates assigned.')).toBeVisible();
+  expect(saves).toEqual([[template.id], []]);
+  expect(
+    requests
+      .filter(path => path.includes('/people/'))
+      .every(path => path === '/api/access/people/' + employee.id),
+  ).toBe(true);
+  expect(requests).not.toContain('/api/access/organization');
+});

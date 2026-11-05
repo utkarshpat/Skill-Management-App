@@ -152,6 +152,61 @@ export class SqlAccessStore implements AccessStore {
   async person(id: string) {
     return (await this.actorSnapshot(id)).people.find(person => person.id === id && person.active);
   }
+  private async administrationRead<T>(
+    actorId: string,
+    mode: string,
+    values: {
+      personId?: string;
+      kind?: string;
+      search?: string;
+      page?: number;
+      nodeKind?: string;
+      parentId?: string;
+    },
+  ) {
+    try {
+      return await withRuntimeDatabase(async pool => {
+        const result = await pool
+          .request()
+          .input('account_id', sql.UniqueIdentifier, this.accountId)
+          .input('actor_id', sql.UniqueIdentifier, actorId)
+          .input('mode', sql.VarChar(12), mode)
+          .input('person_id', sql.UniqueIdentifier, values.personId ?? null)
+          .input('kind', sql.VarChar(12), values.kind ?? null)
+          .input('query', sql.NVarChar(100), values.search ?? '')
+          .input('page', sql.Int, values.page ?? 1)
+          .input('node_kind', sql.VarChar(20), values.nodeKind ?? null)
+          .input('parent_id', sql.UniqueIdentifier, values.parentId ?? null)
+          .execute('dbo.ReadPeopleAdministration');
+        const data = readSqlJson<T>(result.recordset[0]?.json);
+        return data;
+      });
+    } catch (error) {
+      const number = (error as { number?: number }).number;
+      if (number === 51003)
+        throw new AccessError(403, 'People and access administration are required.');
+      if (number === 51004)
+        throw new AccessError(404, 'This person is unavailable in this workspace.');
+      if (number === 51000) throw new AccessError(400, 'Invalid directory search.');
+      if ([2812, 208, 207].includes(number ?? 0))
+        throw new AccessError(503, 'Install the current search-based administration migration.');
+      throw error;
+    }
+  }
+  async directory(actorId: string, query: import('./administration.js').DirectoryQuery) {
+    return this.administrationRead<import('./administration.js').DirectoryPage>(
+      actorId,
+      'DIRECTORY',
+      query,
+    );
+  }
+  async personAdministration(actorId: string, personId: string) {
+    return this.administrationRead<import('./administration.js').PersonAdministration>(
+      actorId,
+      'PERSON',
+      { personId },
+    );
+  }
   async primaryCapabilities(
     actorId: string,
     query: { search: string; page: number; id?: string },

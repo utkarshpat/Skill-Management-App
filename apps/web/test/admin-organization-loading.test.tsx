@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
 const settle = () => new Promise(resolve => setImmediate(resolve));
-test('personal admin-shell routes skip organization reads; admin views fetch and discard aborted replies', async () => {
+test('personal and people-search routes skip organization reads; other admin views discard aborted replies', async () => {
   const source = await readFile(new URL('../src/AccessAdmin.tsx', import.meta.url), 'utf8');
   const start = source.indexOf(
     '  useEffect(() => {',
@@ -14,7 +14,12 @@ test('personal admin-shell routes skip organization reads; admin views fetch and
   let cleanup: (() => void) | undefined;
   const requests: { signal: AbortSignal; resolve: (value: unknown) => void }[] = [];
   const display = { organization: undefined as unknown, error: '', loading: false };
-  function mount(personalTitle: string | undefined, canManageUsers = true, demo = false) {
+  function mount(
+    personalTitle: string | undefined,
+    canManageUsers = true,
+    demo = false,
+    compactPeople = false,
+  ) {
     cleanup?.();
     cleanup = undefined;
     vm.runInNewContext(effect, {
@@ -22,6 +27,7 @@ test('personal admin-shell routes skip organization reads; admin views fetch and
         cleanup = callback();
       },
       personalTitle,
+      compactPeople,
       state: { canManageUsers, revision: 1 },
       organizationAttempt: 0,
       isDemoSession: () => demo,
@@ -41,6 +47,7 @@ test('personal admin-shell routes skip organization reads; admin views fetch and
     });
   }
   mount('My workspace');
+  mount(undefined, true, false, true);
   assert.equal(requests.length, 0);
   mount(undefined);
   assert.equal(requests.length, 1);

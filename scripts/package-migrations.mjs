@@ -11,6 +11,7 @@ const migrations = [
   [88, '088_organization_portfolio.sql'],
   [89, '089_portfolio_business_scopes.sql'],
   [90, '090_workflow_topic_recipients.sql'],
+  [91, '091_search_people_administration.sql'],
 ];
 const literal = value => "N'" + value.replaceAll("'", "''") + "'";
 export function transactionMigration(
@@ -18,7 +19,8 @@ export function transactionMigration(
   version,
   { database = 'SS-SkillMgmtApp-SQL-Dev', server = 'ssskillmgmtappsqlsrvdev' } = {},
 ) {
-  if (![88, 89, 90].includes(version)) throw Error('Unsupported release migration.');
+  if (!migrations.some(([supported]) => supported === version))
+    throw Error('Unsupported release migration.');
   const batches = source
     .replace(/^\uFEFF/, '')
     .split(/^GO\s*$/im)
@@ -78,6 +80,9 @@ WHERE c.kind='DEPARTMENT' AND f.node_id IS NULL;
 Company target: ssskillmgmtappsqlsrvdev / SS-SkillMgmtApp-SQL-Dev.
 No company migration or data change has been performed by creating this package.
 
+If 090 is already recorded and the hierarchy mapping was completed, run only
+04_091_search_people_administration.sql, then deploy the matching app ZIP.
+
 1. Confirm a recoverable backup and stop application traffic/other writers.
 2. Run 00_preflight.sql in the company database. Existing baseline through 087 is required.
 3. Run 01_088_organization_portfolio.sql in SSMS. It records version 88 transactionally.
@@ -85,9 +90,10 @@ No company migration or data change has been performed by creating this package.
    authorized administrator and every existing client/DU/Portfolio mapping. Do not invent
    default portfolios or manager links. Run execute=0, review revision/hash and the full map,
    then execute=1 with that exact receipt. Installing 088 alone does not map existing clients.
-5. Run 02_089_portfolio_business_scopes.sql, then 03_090_workflow_topic_recipients.sql.
+5. Run 02_089_portfolio_business_scopes.sql, 03_090_workflow_topic_recipients.sql,
+   then 04_091_search_people_administration.sql.
 6. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
-   request topic/recipient discovery and current assigned-manager review.
+   request topic/recipient discovery, current assigned-manager review and People & Access search.
 
 Use the root numbered wrappers for manual SSMS installation. They guard the target, preserve
 the migration ledger, roll back failed versions and skip already recorded versions. The raw

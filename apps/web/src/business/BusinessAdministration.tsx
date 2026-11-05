@@ -91,7 +91,11 @@ export function BusinessAdministration({
   useEffect(() => {
     const abort = new AbortController();
     setLoadError('');
-    authenticatedFetch('/api/business/administration', { signal: abort.signal })
+    authenticatedFetch(
+      '/api/business/administration' +
+        (selectedPersonId ? '?personId=' + encodeURIComponent(selectedPersonId) : ''),
+      { signal: abort.signal },
+    )
       .then(r =>
         readApiResponse<Administration>(r, 'Project and access configuration is unavailable.'),
       )
@@ -112,7 +116,7 @@ export function BusinessAdministration({
         }
       });
     return () => abort.abort();
-  }, [attempt]);
+  }, [attempt, selectedPersonId]);
   const changeKind = (value: string) => {
     invalidatePreview();
     setKind(value);
@@ -357,29 +361,31 @@ export function BusinessAdministration({
                   ))}
                 </div>
               </details>
-              <div className="bo-access-toolbar">
-                <div className="bo-search-group">
-                  <span className="bo-search-icon">
-                    <Search size={16} />
-                  </span>
-                  <input
-                    className="bo-search-input"
-                    type="search"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="Find person by name or employee code…"
-                    aria-label="Find person"
-                  />
+              {!selectedPersonId && (
+                <div className="bo-access-toolbar">
+                  <div className="bo-search-group">
+                    <span className="bo-search-icon">
+                      <Search size={16} />
+                    </span>
+                    <input
+                      className="bo-search-input"
+                      type="search"
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      placeholder="Find person by name or employee code…"
+                      aria-label="Find person"
+                    />
+                  </div>
+                  <div className="bo-toolbar-actions">
+                    <Link className="secondary-button" to="/access?view=organization">
+                      Manage reporting & organization
+                    </Link>
+                    <Link className="secondary-button" to="/access?view=people">
+                      People, exceptions & access explanations
+                    </Link>
+                  </div>
                 </div>
-                <div className="bo-toolbar-actions">
-                  <Link className="secondary-button" to="/access?view=organization">
-                    Manage reporting & organization
-                  </Link>
-                  <Link className="secondary-button" to="/access?view=people">
-                    People, exceptions & access explanations
-                  </Link>
-                </div>
-              </div>
+              )}
               <div className="bo-table-wrap">
                 <table>
                   <thead>
@@ -447,49 +453,70 @@ export function BusinessAdministration({
                                 {state.responsibilities
                                   .filter(r => r.personId === p.id)
                                   .map(r => (
-                                    <button
-                                      className="bo-access-assignment"
-                                      key={r.id}
-                                      type="button"
-                                      onClick={() => editResponsibility(r)}
-                                    >
-                                      <span
-                                        className={`bo-access-assignment-pill ${
-                                          r.effect === 'DENY'
-                                            ? 'bo-assignment-deny'
-                                            : 'bo-assignment-allow'
-                                        }`}
+                                    <div key={r.id}>
+                                      <button
+                                        className="bo-access-assignment"
+                                        key={r.id}
+                                        type="button"
+                                        onClick={() => editResponsibility(r)}
                                       >
-                                        {r.effect === 'DENY' ? 'Denied' : 'Allowed'}
-                                      </span>
-                                      <span>
-                                        {r.bundle === 'SYSTEM_ADMIN'
-                                          ? 'Admin'
-                                          : 'Business Analytics'}{' '}
-                                        ·{' '}
-                                        {state.nodes.find(n => n.id === r.scopeId)?.name ??
-                                          state.projects.find(n => n.id === r.scopeId)?.name ??
-                                          (r.kind === 'ORGANIZATION'
-                                            ? 'Organization'
-                                            : 'Unavailable scope')}
-                                      </span>
-                                      <span
-                                        className={
-                                          !r.active
-                                            ? 'bo-assignment-inactive'
+                                        <span
+                                          className={`bo-access-assignment-pill ${
+                                            r.effect === 'DENY'
+                                              ? 'bo-assignment-deny'
+                                              : 'bo-assignment-allow'
+                                          }`}
+                                        >
+                                          {r.effect === 'DENY' ? 'Denied' : 'Allowed'}
+                                        </span>
+                                        <span>
+                                          {r.bundle === 'SYSTEM_ADMIN'
+                                            ? 'Admin'
+                                            : 'Business Analytics'}{' '}
+                                          ·{' '}
+                                          {state.nodes.find(n => n.id === r.scopeId)?.name ??
+                                            state.projects.find(n => n.id === r.scopeId)?.name ??
+                                            (r.kind === 'ORGANIZATION'
+                                              ? 'Organization'
+                                              : 'Unavailable scope')}
+                                        </span>
+                                        <span
+                                          className={
+                                            !r.active
+                                              ? 'bo-assignment-inactive'
+                                              : r.validUntil &&
+                                                  Date.parse(r.validUntil) <= Date.now()
+                                                ? 'bo-assignment-expired'
+                                                : 'bo-assignment-active'
+                                          }
+                                        >
+                                          ·{' '}
+                                          {!r.active
+                                            ? 'Inactive'
                                             : r.validUntil && Date.parse(r.validUntil) <= Date.now()
-                                              ? 'bo-assignment-expired'
-                                              : 'bo-assignment-active'
-                                        }
-                                      >
-                                        ·{' '}
-                                        {!r.active
-                                          ? 'Inactive'
-                                          : r.validUntil && Date.parse(r.validUntil) <= Date.now()
-                                            ? 'Expired'
-                                            : 'Active'}
-                                      </span>
-                                    </button>
+                                              ? 'Expired'
+                                              : 'Active'}
+                                        </span>
+                                      </button>
+                                      {selectedPersonId && r.active && (
+                                        <button
+                                          type="button"
+                                          className="secondary-button"
+                                          onClick={() => {
+                                            editResponsibility(r);
+                                            setActive(false);
+                                            setReason('');
+                                            document
+                                              .querySelector('#bo-access-assignment-form')
+                                              ?.scrollIntoView?.({ block: 'nearest' });
+                                          }}
+                                        >
+                                          {r.effect === 'DENY'
+                                            ? 'Remove restriction'
+                                            : 'Remove access'}
+                                        </button>
+                                      )}
+                                    </div>
                                   ))}
                               </div>
                             </div>

@@ -54,6 +54,14 @@ export interface LocalAccessState {
 }
 export { AccessError } from '../../shared/errors.js';
 export interface AccessStore {
+  directory?(
+    actorId: string,
+    query: import('./administration.js').DirectoryQuery,
+  ): Promise<import('./administration.js').DirectoryPage>;
+  personAdministration?(
+    actorId: string,
+    personId: string,
+  ): Promise<import('./administration.js').PersonAdministration>;
   readonly storage?: 'azure-sql' | 'local-file';
   snapshot(options?: {
     includeAudit?: boolean;

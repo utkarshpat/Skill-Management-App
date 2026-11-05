@@ -42,11 +42,11 @@ const BusinessAdministration = lazy(() =>
 const OrganizationSetup = lazy(() =>
   import('./OrganizationSetup').then(module => ({ default: module.OrganizationSetup })),
 );
-const PersonAccessDialog = lazy(() =>
-  import('./PersonAccessDialog').then(module => ({ default: module.PersonAccessDialog })),
-);
 const SkillCatalogue = lazy(() =>
   import('./SkillCatalogue').then(module => ({ default: module.SkillCatalogue })),
+);
+const PeopleAccessWorkspace = lazy(() =>
+  import('./PeopleAccessWorkspace').then(module => ({ default: module.PeopleAccessWorkspace })),
 );
 interface Assignment {
   permission: string;
@@ -139,7 +139,7 @@ const currentView = (params: URLSearchParams): View => {
       'profiles',
     ].includes(view)
     ? (view as View)
-    : 'overview';
+    : 'people';
 };
 const actionLabel = (action: string) =>
   ({
@@ -166,6 +166,14 @@ export function AccessAdmin({
 }) {
   const navigate = useNavigate();
   const personalTitle = personalPageTitle(personalPath);
+  const [params, setParams] = useSearchParams();
+  const tab = currentView(params);
+  const compactPeople = !personalTitle && tab === 'people';
+  const linkedPerson = params.get('person');
+  const initialPersonId =
+    linkedPerson && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(linkedPerson)
+      ? linkedPerson.toLowerCase()
+      : undefined;
   const [state, setState] = useState<State>();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -173,8 +181,7 @@ export function AccessAdmin({
   const [person, setPerson] = useState<Person>(emptyPerson);
   const [editor, setEditor] = useState<'role' | 'person'>(),
     [editorPage, setEditorPage] = useState(0),
-    [editorRevision, setEditorRevision] = useState(0),
-    [rolePage, setRolePage] = useState(0);
+    [editorRevision, setEditorRevision] = useState(0);
   const [search, setSearch] = useState('');
   const [navigationOpen, setNavigationOpen] = useState(false);
   useEffect(() => {
@@ -183,14 +190,13 @@ export function AccessAdmin({
   }, [personalPath]);
   const [pageActions, setPageActions] = useState<HTMLDivElement | null>(null);
   const [organization, setOrganization] = useState<OrganizationSummary>();
-  const [organizationPersonId, setOrganizationPersonId] = useState<string>();
   const [organizationError, setOrganizationError] = useState('');
   const [organizationAttempt, setOrganizationAttempt] = useState(0);
   const [organizationLoading, setOrganizationLoading] = useState(false);
   const [assignmentDraft, setAssignmentDraft] = useState<Record<string, string[]>>({});
   const [department, setDepartment] = useState('');
   useEffect(() => {
-    if (personalTitle || !state?.canManageUsers || isDemoSession()) {
+    if (personalTitle || compactPeople || !state?.canManageUsers || isDemoSession()) {
       setOrganization(undefined);
       setOrganizationError('');
       setOrganizationLoading(false);
@@ -217,9 +223,8 @@ export function AccessAdmin({
         if (!controller.signal.aborted) setOrganizationLoading(false);
       });
     return () => controller.abort();
-  }, [personalTitle, state?.revision, state?.canManageUsers, organizationAttempt]);
+  }, [personalTitle, compactPeople, state?.revision, state?.canManageUsers, organizationAttempt]);
   const [bulkReview, setBulkReview] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<string>();
   const [review, setReview] = useState<{
     body: Record<string, unknown>;
     receipt: string;
@@ -233,11 +238,6 @@ export function AccessAdmin({
     }[];
   }>();
   const [busy, setBusy] = useState(false);
-  const [params, setParams] = useSearchParams();
-  const tab = currentView(params);
-  useEffect(() => {
-    if (tab !== 'organization') setOrganizationPersonId(undefined);
-  }, [tab]);
   function setTab(view: View) {
     if (personalPath) {
       navigate('/access?view=' + view);
@@ -260,7 +260,6 @@ export function AccessAdmin({
     setError('');
     setEditor(kind);
     setEditorPage(0);
-    setRolePage(0);
     setEditorRevision(state?.revision ?? 0);
     if (kind === 'person') setPerson(emptyPerson());
     else setRole(emptyRole());
@@ -269,7 +268,7 @@ export function AccessAdmin({
     );
   }
   async function load() {
-    const response = await authenticatedFetch(endpoint);
+    const response = await authenticatedFetch(endpoint + (compactPeople ? '?summary=1' : ''));
     if (!response.ok)
       throw new Error(
         response.status === 403
@@ -286,7 +285,9 @@ export function AccessAdmin({
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
-    authenticatedFetch(endpoint, { signal: controller.signal })
+    authenticatedFetch(endpoint + (compactPeople ? '?summary=1' : ''), {
+      signal: controller.signal,
+    })
       .then(async response => {
         if (!response.ok)
           throw new Error(
@@ -304,7 +305,7 @@ export function AccessAdmin({
       active = false;
       controller.abort();
     };
-  }, [endpoint]);
+  }, [endpoint, compactPeople]);
   async function save(kind: 'role' | 'person') {
     if (!state) return;
     setBusy(true);
@@ -329,39 +330,6 @@ export function AccessAdmin({
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'The change could not be saved.');
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function previewPersonChange(updatedPerson: Person) {
-    if (busy || !state) throw Error('Wait for the current change before previewing.');
-    setBusy(true);
-    setError('');
-    try {
-      const body = {
-        ...updatedPerson,
-        id: updatedPerson.id || undefined,
-        kind: 'person',
-        revision: state.revision,
-      };
-      const response = await authenticatedFetch(endpoint + '/preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const result = await response.json();
-      if (!response.ok) throw Error(result?.error?.message ?? 'Preview could not be loaded.');
-      setReview({
-        body,
-        receipt: result.receipt,
-        before: result.before,
-        after: result.after,
-        impacts: result.impacts,
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'The preview could not be loaded.';
-      setError(message);
-      throw Error(message);
     } finally {
       setBusy(false);
     }
@@ -606,40 +574,42 @@ export function AccessAdmin({
           />
         </header>
         <main id="access-main" className="access-main">
-          {!personalTitle && ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
-            <>
-              <nav className="access-section-tabs" aria-label="People and access sections">
-                {[
-                  ...(state?.canManageUsers ? [['people', 'People']] : []),
-                  ...(workspaceContext?.capabilities.businessAdministration
-                    ? [['profiles', 'Projects & scoped access']]
-                    : []),
-                  ['roles', 'Templates'],
-                ].map(([id, label]) => (
-                  <button
-                    type="button"
-                    key={id}
-                    aria-current={tab === id ? 'page' : undefined}
-                    onClick={() => {
-                      setTab(id as View);
-                      setEditor(undefined);
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </nav>
-              {tab === 'profiles' && workspaceContext?.capabilities.businessAdministration && (
-                <Suspense fallback={<div role="status">Opening scoped access…</div>}>
-                  <BusinessAdministration
-                    onSaved={() => {
-                      void load().catch(err => setError(err.message));
-                    }}
-                  />
-                </Suspense>
-              )}
-            </>
-          )}
+          {!personalTitle &&
+            !compactPeople &&
+            ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
+              <>
+                <nav className="access-section-tabs" aria-label="People and access sections">
+                  {[
+                    ...(state?.canManageUsers ? [['people', 'People']] : []),
+                    ...(workspaceContext?.capabilities.businessAdministration
+                      ? [['profiles', 'Projects & scoped access']]
+                      : []),
+                    ['roles', 'Templates'],
+                  ].map(([id, label]) => (
+                    <button
+                      type="button"
+                      key={id}
+                      aria-current={tab === id ? 'page' : undefined}
+                      onClick={() => {
+                        setTab(id as View);
+                        setEditor(undefined);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </nav>
+                {tab === 'profiles' && workspaceContext?.capabilities.businessAdministration && (
+                  <Suspense fallback={<div role="status">Opening scoped access…</div>}>
+                    <BusinessAdministration
+                      onSaved={() => {
+                        void load().catch(err => setError(err.message));
+                      }}
+                    />
+                  </Suspense>
+                )}
+              </>
+            )}
           {error && (
             <div className="access-message" role="alert">
               {error}
@@ -768,23 +738,13 @@ export function AccessAdmin({
               {!personalTitle && tab === 'organization' && (
                 <Suspense fallback={<div role="status">Opening organization…</div>}>
                   <OrganizationSetup
-                    key={organizationPersonId ?? 'organization'}
-                    initialPersonId={organizationPersonId}
                     actionsContainer={pageActions}
                     onChanged={() => {
                       load().catch(err => setError(err.message));
                     }}
                     onEditPerson={id => {
-                      const selected = state.people.find(item => item.id === id);
-                      if (selected) {
-                        setPerson(structuredClone(selected));
-                        setTab('people');
-                        setEditor('person');
-                        setEditorPage(1);
-                        setRolePage(0);
-                        setEditorRevision(state.revision);
-                        setError('');
-                      }
+                      const next = new URLSearchParams({ view: 'people', person: id });
+                      navigate('/access?' + next.toString());
                     }}
                     onAssignDepartment={id => {
                       setDepartment(id);
@@ -884,80 +844,33 @@ export function AccessAdmin({
                   />
                 </>
               )}
-              {!personalTitle && tab === 'people' && state.canManageUsers && (
-                <AccessDirectory
-                  key="people"
-                  kind="people"
-                  people={state.people}
-                  roles={state.roles}
-                  busy={busy}
-                  onRole={() => {}}
-                  onPerson={id => {
-                    const item = state.people.find(person => person.id === id);
-                    if (item) {
-                      setSelectedPerson(item.id);
-                      setError('');
-                    }
-                  }}
-                />
-              )}
-              {!personalTitle &&
-                tab === 'people' &&
-                selectedPerson &&
-                (() => {
-                  const selected = state.people.find(item => item.id === selectedPerson);
-                  if (!selected) return null;
-                  return (
-                    <Suspense fallback={<div role="status">Opening person access…</div>}>
-                      <PersonAccessDialog
-                        key={selected.id}
-                        person={selected}
-                        roles={state.roles}
-                        catalogue={state.catalogue}
-                        organization={organization}
-                        people={state.people}
-                        canManageUsers={state.canManageUsers}
-                        canViewAudit={state.canViewAudit}
+              {compactPeople && (
+                <>
+                  <nav className="access-section-tabs" aria-label="Administration tools">
+                    <Link to="/access?view=roles">Manage template definitions</Link>
+                    {workspaceContext?.capabilities.businessAdministration && (
+                      <Link to="/access?view=profiles">Manage Business projects</Link>
+                    )}
+                  </nav>
+                  {state.canManageUsers && (
+                    <Suspense fallback={<p role="status">Opening people search…</p>}>
+                      <PeopleAccessWorkspace
+                        key={initialPersonId ?? 'search'}
+                        initialPersonId={initialPersonId}
                         endpoint={endpoint}
-                        revision={state.revision}
-                        busy={busy}
-                        error={error}
-                        onReload={async () => {
-                          await load();
-                          setError('');
+                        catalogue={state.catalogue}
+                        canViewAudit={state.canViewAudit}
+                        canManageScoped={Boolean(
+                          workspaceContext?.capabilities.businessAdministration,
+                        )}
+                        onChanged={() => {
+                          void load().catch(err => setError(err.message));
                         }}
-                        onClose={() => setSelectedPerson(undefined)}
-                        onApplyChange={previewPersonChange}
-                        onFullEdit={personToEdit => {
-                          setSelectedPerson(undefined);
-                          setPerson(structuredClone(personToEdit));
-                          setEditor('person');
-                          setEditorPage(0);
-                          setEditorRevision(state.revision);
-                        }}
-                        onManageOrganization={() => {
-                          setSelectedPerson(undefined);
-                          setOrganizationPersonId(selected.id);
-                          setTab('organization');
-                          setError('');
-                        }}
-                        businessAdministrationNode={
-                          workspaceContext?.capabilities.businessAdministration ? (
-                            <Suspense fallback={<div role="status">Opening scoped access…</div>}>
-                              <BusinessAdministration
-                                key={selected.id}
-                                selectedPersonId={selected.id}
-                                onSaved={() => {
-                                  void load().catch(err => setError(err.message));
-                                }}
-                              />
-                            </Suspense>
-                          ) : undefined
-                        }
                       />
                     </Suspense>
-                  );
-                })()}
+                  )}
+                </>
+              )}
               {bulkReview && (
                 <FormDialog
                   title="Review template assignments"
@@ -1217,95 +1130,10 @@ export function AccessAdmin({
                             />
                             Active account
                           </label>
-                        </>
-                      ),
-                    },
-                    {
-                      label: 'Access templates',
-                      content: (
-                        <>
-                          <table className="role-checkbox-table dialog-table">
-                            <thead>
-                              <tr>
-                                <th>Assign</th>
-                                <th>Role</th>
-                                <th>Permissions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {state.roles.slice(rolePage * 5, rolePage * 5 + 5).map(item => (
-                                <tr key={item.id}>
-                                  <td>
-                                    <input
-                                      type="checkbox"
-                                      aria-label={
-                                        'Assign ' +
-                                        item.name +
-                                        ' to ' +
-                                        (person.displayName || 'new person')
-                                      }
-                                      checked={person.roleIds.includes(item.id)}
-                                      disabled={
-                                        !person.roleIds.includes(item.id) &&
-                                        item.permissions.some(
-                                          grant =>
-                                            !state.catalogue
-                                              .find(action => action.code === grant.permission)
-                                              ?.scopes?.includes(grant.scope),
-                                        )
-                                      }
-                                      onChange={event =>
-                                        setPerson({
-                                          ...person,
-                                          roleIds: event.target.checked
-                                            ? [...person.roleIds, item.id]
-                                            : person.roleIds.filter(id => id !== item.id),
-                                        })
-                                      }
-                                    />
-                                  </td>
-                                  <td>{item.name}</td>
-                                  <td>
-                                    {item.permissions.length}
-                                    {item.permissions.some(
-                                      grant =>
-                                        !state.catalogue
-                                          .find(action => action.code === grant.permission)
-                                          ?.scopes?.includes(grant.scope),
-                                    ) && (
-                                      <small>
-                                        {' '}
-                                        · Contains unsupported assignments; review before assigning
-                                      </small>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                          <div className="compact-pagination">
-                            <span>
-                              Roles {rolePage * 5 + 1}–
-                              {Math.min(rolePage * 5 + 5, state.roles.length)} of{' '}
-                              {state.roles.length}
-                            </span>
-                            <button
-                              type="button"
-                              className="secondary-button"
-                              disabled={rolePage === 0}
-                              onClick={() => setRolePage(value => value - 1)}
-                            >
-                              Previous
-                            </button>
-                            <button
-                              type="button"
-                              className="secondary-button"
-                              disabled={(rolePage + 1) * 5 >= state.roles.length}
-                              onClick={() => setRolePage(value => value + 1)}
-                            >
-                              Next
-                            </button>
-                          </div>
+                          <p>
+                            After saving, find this person to assign templates or update their
+                            organization.
+                          </p>
                         </>
                       ),
                     },

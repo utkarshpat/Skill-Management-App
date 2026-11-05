@@ -78,6 +78,7 @@ export function PersonAccessDialog({
   businessAdministrationNode,
   error,
   onReload,
+  exceptionsOnly = false,
 }: {
   person: Person;
   roles: Role[];
@@ -96,11 +97,12 @@ export function PersonAccessDialog({
   businessAdministrationNode?: React.ReactNode;
   error?: string;
   onReload?: () => Promise<void>;
+  exceptionsOnly?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<
     'effective' | 'access' | 'roles' | 'exceptions' | 'organization' | 'audit'
-  >('effective');
-  const [advanced, setAdvanced] = useState(false);
+  >(exceptionsOnly ? 'exceptions' : 'effective');
+  const [advanced, setAdvanced] = useState(exceptionsOnly);
 
   // Role addition state
   const [selectedRoleToAdd, setSelectedRoleToAdd] = useState('');
@@ -324,7 +326,7 @@ export function PersonAccessDialog({
       }
       footer={
         <div className="access-dialog-footer">
-          {canManageUsers && (
+          {canManageUsers && !exceptionsOnly && (
             <button
               type="button"
               className="secondary-button"
@@ -387,75 +389,79 @@ export function PersonAccessDialog({
         </section>
 
         {/* Tab Navigation */}
-        <nav className="access-tabs-bar" aria-label="Person access sections">
-          <button
-            type="button"
-            className={`access-tab-btn ${activeTab === 'effective' ? 'active' : ''}`}
-            aria-pressed={activeTab === 'effective'}
-            onClick={() => setActiveTab('effective')}
-          >
-            <UserRound size={16} /> Overview
-          </button>
-          <button
-            type="button"
-            className={`access-tab-btn ${activeTab === 'access' ? 'active' : ''}`}
-            aria-pressed={activeTab === 'access'}
-            onClick={() => setActiveTab('access')}
-          >
-            <ShieldCheck size={16} /> Access
-          </button>
-          <button
-            type="button"
-            className={`access-tab-btn ${activeTab === 'organization' ? 'active' : ''}`}
-            aria-pressed={activeTab === 'organization'}
-            onClick={() => setActiveTab('organization')}
-          >
-            <FolderTree size={16} /> Organization & reporting
-          </button>
-          {canViewAudit && (
+        {!exceptionsOnly && (
+          <nav className="access-tabs-bar" aria-label="Person access sections">
             <button
               type="button"
-              className={`access-tab-btn ${activeTab === 'audit' ? 'active' : ''}`}
-              aria-pressed={activeTab === 'audit'}
-              onClick={() => setActiveTab('audit')}
+              className={`access-tab-btn ${activeTab === 'effective' ? 'active' : ''}`}
+              aria-pressed={activeTab === 'effective'}
+              onClick={() => setActiveTab('effective')}
             >
-              <History size={16} /> Audit History
-            </button>
-          )}
-        </nav>
-        <details
-          className="access-advanced-tools"
-          open={advanced}
-          onToggle={event => {
-            const open = event.currentTarget.open;
-            setAdvanced(open);
-            if (!open && (activeTab === 'roles' || activeTab === 'exceptions'))
-              setActiveTab('effective');
-          }}
-        >
-          <summary>Advanced: templates & exceptions</summary>
-          <p>
-            Use only when scoped access and the standard employee/manager baseline are not enough.
-          </p>
-          <nav className="access-tabs-bar" aria-label="Advanced person access sections">
-            <button
-              type="button"
-              className={`access-tab-btn ${activeTab === 'roles' ? 'active' : ''}`}
-              aria-pressed={activeTab === 'roles'}
-              onClick={() => setActiveTab('roles')}
-            >
-              <Users size={16} /> Additional templates ({person.roleIds.length})
+              <UserRound size={16} /> Overview
             </button>
             <button
               type="button"
-              className={`access-tab-btn ${activeTab === 'exceptions' ? 'active' : ''}`}
-              aria-pressed={activeTab === 'exceptions'}
-              onClick={() => setActiveTab('exceptions')}
+              className={`access-tab-btn ${activeTab === 'access' ? 'active' : ''}`}
+              aria-pressed={activeTab === 'access'}
+              onClick={() => setActiveTab('access')}
             >
-              <ShieldAlert size={16} /> Permission exceptions ({person.overrides.length})
+              <ShieldCheck size={16} /> Access
             </button>
+            <button
+              type="button"
+              className={`access-tab-btn ${activeTab === 'organization' ? 'active' : ''}`}
+              aria-pressed={activeTab === 'organization'}
+              onClick={() => setActiveTab('organization')}
+            >
+              <FolderTree size={16} /> Organization & reporting
+            </button>
+            {canViewAudit && (
+              <button
+                type="button"
+                className={`access-tab-btn ${activeTab === 'audit' ? 'active' : ''}`}
+                aria-pressed={activeTab === 'audit'}
+                onClick={() => setActiveTab('audit')}
+              >
+                <History size={16} /> Audit History
+              </button>
+            )}
           </nav>
-        </details>
+        )}
+        {!exceptionsOnly && (
+          <details
+            className="access-advanced-tools"
+            open={advanced}
+            onToggle={event => {
+              const open = event.currentTarget.open;
+              setAdvanced(open);
+              if (!open && (activeTab === 'roles' || activeTab === 'exceptions'))
+                setActiveTab('effective');
+            }}
+          >
+            <summary>Advanced: templates & exceptions</summary>
+            <p>
+              Use only when scoped access and the standard employee/manager baseline are not enough.
+            </p>
+            <nav className="access-tabs-bar" aria-label="Advanced person access sections">
+              <button
+                type="button"
+                className={`access-tab-btn ${activeTab === 'roles' ? 'active' : ''}`}
+                aria-pressed={activeTab === 'roles'}
+                onClick={() => setActiveTab('roles')}
+              >
+                <Users size={16} /> Additional templates ({person.roleIds.length})
+              </button>
+              <button
+                type="button"
+                className={`access-tab-btn ${activeTab === 'exceptions' ? 'active' : ''}`}
+                aria-pressed={activeTab === 'exceptions'}
+                onClick={() => setActiveTab('exceptions')}
+              >
+                <ShieldAlert size={16} /> Permission exceptions ({person.overrides.length})
+              </button>
+            </nav>
+          </details>
+        )}
 
         {/* Tab 1: Effective Access */}
         {activeTab === 'effective' && (
