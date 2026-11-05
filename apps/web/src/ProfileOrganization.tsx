@@ -4,6 +4,7 @@ export interface ProfileOrganizationDetails {
   workspace: string;
   placementStatus: 'ASSIGNED' | 'NOT_ASSIGNED' | 'NEEDS_ATTENTION';
   deliveryUnit: string | null;
+  portfolio?: string | null;
   department: string | null;
   team: string | null;
   managerStatus: 'ASSIGNED' | 'NOT_ASSIGNED' | 'NEEDS_ATTENTION';
@@ -70,6 +71,14 @@ export function ProfileOrganization({
                 ) : (
                   placementValue
                 )}
+              </dd>
+            </div>
+            <div className="profile-info-tile">
+              <dt>Portfolio/Division</dt>
+              <dd>
+                {placement === 'ASSIGNED'
+                  ? details.portfolio || 'Needs administrator attention'
+                  : placementValue}
               </dd>
             </div>
             <div className="profile-info-tile">

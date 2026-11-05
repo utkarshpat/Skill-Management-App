@@ -24,6 +24,7 @@ const migrations = await Promise.all(
     '068_business_access_audit_subjects.sql',
     '069_business_record_attribution.sql',
     '070_business_submitted_files.sql',
+    '088_organization_portfolio.sql',
   ].map(file => readFile(new URL('../../../database/migrations/' + file, import.meta.url), 'utf8')),
 );
 await withDatabase(async pool => {
@@ -76,7 +77,7 @@ await withDatabase(async pool => {
     });
     try {
       for (let i = 0; i < migrations.length; i++)
-        if (info.version < [60, 61, 62, 63, 64, 66, 67, 68, 69, 70][i])
+        if (info.version < [60, 61, 62, 63, 64, 66, 67, 68, 69, 70, 88][i])
           for (const batch of migrations[i].split(/^GO\s*$/m))
             if (batch.trim()) await new sql.Request(tx).batch(batch);
       const ids = Object.fromEntries(
@@ -1040,6 +1041,7 @@ await withDatabase(async pool => {
         );
       } else if (scenario === 'scope-lifecycle') {
         const unit = randomUUID(),
+          portfolio = randomUUID(),
           department = randomUUID(),
           grant = randomUUID(),
           demand = randomUUID();
@@ -1047,13 +1049,16 @@ await withDatabase(async pool => {
           .input('account', sql.UniqueIdentifier, account)
           .input('lead', sql.UniqueIdentifier, ids.lead)
           .input('unit', sql.UniqueIdentifier, unit)
+          .input('portfolio', sql.UniqueIdentifier, portfolio)
           .input('department', sql.UniqueIdentifier, department)
           .input('grant', sql.UniqueIdentifier, grant)
           .input('demand', sql.UniqueIdentifier, demand)
           .input('a', sql.UniqueIdentifier, ids.a).query(`
             UPDATE dbo.BusinessProject SET active=0 WHERE account_id=@account AND id=@a;
             INSERT dbo.AccessOrgNode(account_id,node_id,kind,display_name,parent_id,active)
-            VALUES(@account,@unit,'DELIVERY_UNIT',N'BQA unit '+CONVERT(nvarchar(36),@unit),NULL,1),(@account,@department,'DEPARTMENT',N'BQA department',@unit,1);
+            VALUES(@account,@unit,'DELIVERY_UNIT',N'BQA unit '+CONVERT(nvarchar(36),@unit),NULL,1),
+              (@account,@portfolio,'PORTFOLIO',N'BQA portfolio',@unit,1),
+              (@account,@department,'DEPARTMENT',N'BQA department',@portfolio,1);
             INSERT dbo.BusinessResponsibility VALUES(@account,@grant,@lead,'BUSINESS_OPERATIONS','DEPARTMENT',@department,'ALLOW',1,NULL,N'Fixture');
             INSERT dbo.BusinessDemand VALUES(@account,@demand,@lead,N'Fixture',N'Fixture','DEPARTMENT',@department,N'{"skills":[],"certifications":[]}',1,SYSUTCDATETIME());
           `);
@@ -1071,6 +1076,35 @@ await withDatabase(async pool => {
           (await context()).scopes.some((s: { id: string }) => s.id.toLowerCase() === ids.ga),
           false,
         );
+        assert.equal(await coversDemand(), true);
+        const path = await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('department', sql.UniqueIdentifier, department)
+          .input('portfolio', sql.UniqueIdentifier, portfolio)
+          .query(`SELECT department_id,portfolio_id,unit_id FROM dbo.OrganizationClientPath(@account) WHERE department_id=@department;
+            SELECT dbo.BusinessScopeValid(@account,'PORTFOLIO',@portfolio) AS allowed;`);
+        const results = path.recordsets as sql.IRecordSet<Record<string, unknown>>[];
+        assert.equal(String(results[0][0].department_id).toLowerCase(), department);
+        assert.equal(String(results[0][0].portfolio_id).toLowerCase(), portfolio);
+        assert.equal(String(results[0][0].unit_id).toLowerCase(), unit);
+        assert.equal(
+          results[1][0].allowed,
+          false,
+          'A structural portfolio is not an implemented permission scope.',
+        );
+        await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('portfolio', sql.UniqueIdentifier, portfolio)
+          .query(
+            'UPDATE dbo.AccessOrgNode SET active=0 WHERE account_id=@account AND node_id=@portfolio;',
+          );
+        assert.equal(await coversDemand(), false, 'Inactive portfolio ancestry fails closed.');
+        await new sql.Request(tx)
+          .input('account', sql.UniqueIdentifier, account)
+          .input('portfolio', sql.UniqueIdentifier, portfolio)
+          .query(
+            'UPDATE dbo.AccessOrgNode SET active=1 WHERE account_id=@account AND node_id=@portfolio;',
+          );
         assert.equal(await coversDemand(), true);
         await new sql.Request(tx)
           .input('account', sql.UniqueIdentifier, account)
@@ -1156,16 +1190,19 @@ await withDatabase(async pool => {
         );
       } else if (scenario === 'responsibility-policy') {
         const unit = randomUUID();
+        const portfolio = randomUUID();
         const department = randomUUID();
         await new sql.Request(tx)
           .input('account', sql.UniqueIdentifier, account)
           .input('lead', sql.UniqueIdentifier, ids.lead)
           .input('unit', sql.UniqueIdentifier, unit)
+          .input('portfolio', sql.UniqueIdentifier, portfolio)
           .input('department', sql.UniqueIdentifier, department).query(`
             UPDATE dbo.BusinessResponsibility SET active=0 WHERE account_id=@account AND person_id=@lead;
             INSERT dbo.AccessOrgNode(account_id,node_id,kind,display_name,parent_id,active)
             VALUES(@account,@unit,'DELIVERY_UNIT',N'BQA unit '+CONVERT(nvarchar(36),@unit),NULL,1),
-              (@account,@department,'DEPARTMENT',N'BQA department',@unit,1);
+              (@account,@portfolio,'PORTFOLIO',N'BQA portfolio',@unit,1),
+              (@account,@department,'DEPARTMENT',N'BQA department',@portfolio,1);
             INSERT dbo.BusinessResponsibility VALUES(@account,NEWID(),@lead,'BUSINESS_OPERATIONS','DEPARTMENT',@department,'ALLOW',1,NULL,N'Fixture');
           `);
         const context = async () =>

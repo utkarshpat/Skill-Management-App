@@ -324,8 +324,10 @@ test('server-owned history handles long replies and sends compact prompts with a
     requests[0].system.length < 2500,
     `System prompt is ${requests[0].system.length} characters`,
   );
-  assert.match(requests[0].system, /DEPARTMENT\/department as Accounts\/Clients/);
-  assert.match(requests[0].system, /organizational TEAM\/team as Project/);
+  assert.match(
+    requests[0].system,
+    /Delivery Unit > Portfolio\/Division > Accounts\/Clients \(DEPARTMENT\) > Project \(TEAM\)/,
+  );
   assert.match(requests[0].system, /current assigned direct-manager checks apply/);
 });
 

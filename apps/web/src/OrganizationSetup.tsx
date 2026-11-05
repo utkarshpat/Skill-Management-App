@@ -4,9 +4,16 @@ import { ChevronRight, Plus, Search, GitBranch, Check, FolderTree } from 'lucide
 import { authenticatedFetch } from './auth';
 import { VisualTree, type TreeItem } from './VisualTree';
 import { FormDialog } from './FormDialog';
-import { organizationKindLabel, organizationPreviewText } from './organization-labels';
+import {
+  organizationKindLabel,
+  organizationPreviewText,
+  organizationParentKind,
+  organizationChildKind,
+  organizationPathValid,
+  type OrganizationKind,
+} from './organization-labels';
 
-type Kind = 'DELIVERY_UNIT' | 'DEPARTMENT' | 'TEAM';
+type Kind = OrganizationKind;
 interface OrgNode {
   id: string;
   kind: Kind;
@@ -34,6 +41,7 @@ interface State {
 }
 const labels: Record<Kind, string> = {
   DELIVERY_UNIT: 'Delivery unit',
+  PORTFOLIO: organizationKindLabel('PORTFOLIO'),
   DEPARTMENT: organizationKindLabel('DEPARTMENT'),
   TEAM: organizationKindLabel('TEAM'),
 };
@@ -50,7 +58,7 @@ const endpoint = '/api/access/organization';
  * Organization and reporting hierarchy management interface.
  *
  * Provides visualization and administration of:
- * - Delivery units, accounts/clients, and organizational projects
+ * - Delivery units, portfolios/divisions, accounts/clients, and organizational projects
  * - Person assignments and separate manager reporting lines
  * - Strict Preview → Recheck → Transaction → Audit workflow for structural changes
  */
@@ -216,6 +224,12 @@ export function OrganizationSetup({
       </section>
     );
   const query = search.trim().toLowerCase();
+  const placement = state.nodes.find(node => node.id === placementId);
+  const placementValid = Boolean(
+    placement &&
+    (placement.kind === 'DEPARTMENT' || placement.kind === 'TEAM') &&
+    organizationPathValid(state.nodes, placement.id),
+  );
   const visible = state.nodes.filter(node => archived || node.active);
   const matches = (node: OrgNode): boolean =>
     node.name.toLowerCase().includes(query) ||
@@ -326,6 +340,11 @@ export function OrganizationSetup({
     }
   };
   const chain = personId ? lineage(personId) : [];
+  const missingPortfolios = state.nodes.filter(
+    node =>
+      node.kind === 'DEPARTMENT' &&
+      !state.nodes.some(parent => parent.id === node.parentId && parent.kind === 'PORTFOLIO'),
+  );
   return (
     <div className="organization-setup">
       {review && (
@@ -446,7 +465,7 @@ export function OrganizationSetup({
               <h2>{mode === 'organization' ? 'Organization tree' : 'Reporting tree'}</h2>
               <p>
                 {mode === 'organization'
-                  ? 'Select an account/client, project or delivery unit.'
+                  ? 'Delivery unit → Portfolio/Division → Accounts/Clients → Project.'
                   : 'Select a person to view their reporting line.'}
               </p>
             </div>
@@ -457,7 +476,7 @@ export function OrganizationSetup({
               aria-label="Search hierarchy"
               placeholder={
                 mode === 'organization'
-                  ? 'Find a unit, account/client or project'
+                  ? 'Find a unit, portfolio/division, account/client or project'
                   : 'Find a person or employee ID'
               }
               value={search}
@@ -498,6 +517,13 @@ export function OrganizationSetup({
           />
         </section>
         <div className="org-detail-column">
+          {mode === 'organization' && missingPortfolios.length > 0 && (
+            <p className="access-message" role="status">
+              {missingPortfolios.length} existing accounts/clients need approved Portfolio/Division
+              mapping. Records and grants have been preserved. Edit each branch to choose its
+              portfolio before using its placement.
+            </p>
+          )}
           {selected && mode === 'organization' && (
             <section className="profile-panel">
               <div className="panel-title">
@@ -591,7 +617,7 @@ export function OrganizationSetup({
                       }
                       if (form.kind !== 'DELIVERY_UNIT' && !form.parentId) {
                         setError(
-                          `Choose a parent ${form.kind === 'TEAM' ? 'account/client' : 'delivery unit'} first.`,
+                          `Choose a parent ${organizationKindLabel(organizationParentKind[form.kind]!).toLowerCase()} first.`,
                         );
                         return;
                       }
@@ -613,14 +639,14 @@ export function OrganizationSetup({
                           value={form.kind}
                           onChange={event => {
                             const kind = event.target.value as Kind;
-                            const parentKind = kind === 'TEAM' ? 'DEPARTMENT' : 'DELIVERY_UNIT';
+                            const parentKind = organizationParentKind[kind];
                             const parentValid =
                               Boolean(form.parentId) &&
                               state.nodes.some(
                                 node =>
                                   node.id === form.parentId &&
                                   node.kind === parentKind &&
-                                  node.active,
+                                  organizationPathValid(state.nodes, node.id),
                               );
                             setError('');
                             setForm({
@@ -654,7 +680,8 @@ export function OrganizationSetup({
                       </label>
                       {form.kind !== 'DELIVERY_UNIT' && (
                         <label>
-                          Parent {form.kind === 'TEAM' ? 'account/client' : 'delivery unit'}
+                          Parent{' '}
+                          {organizationKindLabel(organizationParentKind[form.kind]!).toLowerCase()}
                           <select
                             required
                             value={form.parentId ?? ''}
@@ -663,12 +690,24 @@ export function OrganizationSetup({
                             }
                           >
                             <option value="">Choose parent</option>
+                            {form.parentId &&
+                              !state.nodes.some(
+                                node =>
+                                  node.id === form.parentId &&
+                                  node.kind === organizationParentKind[form.kind] &&
+                                  organizationPathValid(state.nodes, node.id),
+                              ) && (
+                                <option value={form.parentId} disabled>
+                                  {state.nodes.find(node => node.id === form.parentId)?.name ??
+                                    'Existing parent'}{' '}
+                                  · Needs mapping
+                                </option>
+                              )}
                             {state.nodes
                               .filter(
                                 node =>
-                                  node.active &&
-                                  node.kind ===
-                                    (form.kind === 'TEAM' ? 'DEPARTMENT' : 'DELIVERY_UNIT'),
+                                  organizationPathValid(state.nodes, node.id) &&
+                                  node.kind === organizationParentKind[form.kind],
                               )
                               .map(node => (
                                 <option key={node.id} value={node.id}>
@@ -709,12 +748,10 @@ export function OrganizationSetup({
                             <button
                               className="secondary-button"
                               type="button"
-                              onClick={() =>
-                                add(form.kind === 'DELIVERY_UNIT' ? 'DEPARTMENT' : 'TEAM', form.id)
-                              }
+                              onClick={() => add(organizationChildKind[form.kind]!, form.id)}
                             >
                               <Plus size={15} />
-                              Add {form.kind === 'DELIVERY_UNIT' ? 'account/client' : 'project'}
+                              Add {labels[organizationChildKind[form.kind]!].toLowerCase()}
                             </button>
                           )}
                         </div>
@@ -723,7 +760,7 @@ export function OrganizationSetup({
                   </form>
                 </FormDialog>
               )}
-              {selected && form.kind !== 'DELIVERY_UNIT' && (
+              {selected && (form.kind === 'DEPARTMENT' || form.kind === 'TEAM') && (
                 <section className="profile-panel">
                   <h2>People directly in this {labels[form.kind].toLowerCase()}</h2>
                   {direct.length ? (
@@ -806,6 +843,12 @@ export function OrganizationSetup({
                   className="profile-panel access-form"
                   onSubmit={event => {
                     event.preventDefault();
+                    if (placementId && !placementValid) {
+                      setError(
+                        'Resolve the existing placement mapping or explicitly choose no account/client or project before previewing.',
+                      );
+                      return;
+                    }
                     void save({
                       kind: 'assignment',
                       personId,
@@ -844,8 +887,19 @@ export function OrganizationSetup({
                         onChange={event => setPlacementId(event.target.value)}
                       >
                         <option value="">No account/client or project assigned</option>
+                        {placementId && !placementValid && (
+                          <option value={placementId} disabled>
+                            {state.nodes.find(node => node.id === placementId)?.name ??
+                              'Existing placement'}{' '}
+                            · Needs mapping
+                          </option>
+                        )}
                         {state.nodes
-                          .filter(node => node.kind !== 'DELIVERY_UNIT' && node.active)
+                          .filter(
+                            node =>
+                              (node.kind === 'DEPARTMENT' || node.kind === 'TEAM') &&
+                              organizationPathValid(state.nodes, node.id),
+                          )
                           .map(node => (
                             <option key={node.id} value={node.id}>
                               {teamPath(node.id)} · {labels[node.kind]}

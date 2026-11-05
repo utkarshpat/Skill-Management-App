@@ -82,10 +82,24 @@ test('preview retains original data and warning constraints while using current 
     revision: 1,
     nodes: [
       {
+        id: 'unit',
+        kind: 'DELIVERY_UNIT' as const,
+        name: 'Example Unit',
+        parentId: null,
+        active: true,
+      },
+      {
+        id: 'portfolio',
+        kind: 'PORTFOLIO' as const,
+        name: 'Example Division',
+        parentId: 'unit',
+        active: true,
+      },
+      {
         id: client,
         kind: 'DEPARTMENT' as const,
         name: 'Example Client',
-        parentId: null,
+        parentId: 'portfolio',
         active: true,
       },
     ],

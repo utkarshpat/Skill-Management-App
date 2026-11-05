@@ -35,7 +35,7 @@ interface Administration {
     analyticsAccess?: boolean;
     adminAccess?: boolean;
   }[];
-  nodes: { id: string; name: string; kind: string; active: boolean }[];
+  nodes: { id: string; name: string; kind: string; active: boolean; scopeValid?: boolean }[];
   historicalGrantsForReview: unknown[];
 }
 export function BusinessAdministration({
@@ -253,7 +253,10 @@ export function BusinessAdministration({
   }
   const people = state?.people.filter(p => p.active || p.id === person) ?? [],
     projects = state?.projects.filter(p => p.active || p.id === project || p.id === scope) ?? [],
-    nodes = state?.nodes.filter(n => n.active || n.id === scope || n.id === department) ?? [];
+    nodes =
+      state?.nodes.filter(
+        n => (n.active && n.scopeValid === true) || n.id === scope || n.id === department,
+      ) ?? [];
   return (
     <section className="bo-panel bo-access-admin" onChangeCapture={invalidatePreview}>
       <div className="bo-panel-header">
@@ -596,7 +599,7 @@ export function BusinessAdministration({
                       {nodes
                         .filter(n => n.kind === 'DEPARTMENT')
                         .map(n => (
-                          <option key={n.id} value={n.id}>
+                          <option key={n.id} value={n.id} disabled={n.scopeValid !== true}>
                             {n.name}
                           </option>
                         ))}
@@ -689,7 +692,14 @@ export function BusinessAdministration({
                           ? projects
                           : nodes.filter(n => n.kind === scopeKind)
                         ).map(n => (
-                          <option key={n.id} value={n.id}>
+                          <option
+                            key={n.id}
+                            value={n.id}
+                            disabled={
+                              scopeKind !== 'PROJECT' &&
+                              ('scopeValid' in n ? n.scopeValid !== true : true)
+                            }
+                          >
                             {n.name}
                           </option>
                         ))}

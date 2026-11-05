@@ -43,6 +43,7 @@ const assigned: ProfileOrganizationDetails = {
   workspace: 'Stored workspace',
   placementStatus: 'ASSIGNED',
   deliveryUnit: 'Services',
+  portfolio: 'Example Division',
   department: 'Engineering',
   team: 'Platform',
   managerStatus: 'ASSIGNED',
@@ -52,6 +53,8 @@ test('own organization presents current names without treating templates or hier
   const html = renderToStaticMarkup(<ProfileOrganization details={assigned} />);
   for (const text of [
     'Services',
+    'Portfolio/Division',
+    'Example Division',
     'Engineering',
     'Platform',
     'Current Manager',
@@ -67,6 +70,18 @@ test('own organization presents current names without treating templates or hier
   );
   assert.match(departmentOnly, /No project assigned/);
   assert.match(departmentOnly, /Engineering/);
+});
+test('profile portfolio escapes names and distinguishes an unmigrated response from an assignment', () => {
+  const legacy = renderToStaticMarkup(
+    <ProfileOrganization details={{ ...assigned, portfolio: undefined }} />,
+  );
+  assert.match(legacy, /Portfolio\/Division/);
+  assert.match(legacy, /Needs administrator attention/);
+  const escaped = renderToStaticMarkup(
+    <ProfileOrganization details={{ ...assigned, portfolio: '<script>division</script>' }} />,
+  );
+  assert.match(escaped, /&lt;script&gt;division&lt;\/script&gt;/);
+  assert.doesNotMatch(escaped, /<script>/);
 });
 test('profile distinguishes unassigned, broken, loading, failed and unavailable organization records', () => {
   const missing = renderToStaticMarkup(

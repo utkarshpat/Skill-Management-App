@@ -60,13 +60,14 @@ Platform par employees ka profile banane aur **reporting hierarchy & skill verif
 
 > **Note**: Current direct-manager skill review ek explicitly implemented relationship policy hai: current active manager, exact assigned reviewer, active claimant, reviewable state, matching scoped DENY aur no-self-review checks preserve hone chahiye. Hierarchy, title, account/client ya manager flag se general access nahi milta. Recommendations ko independently effective `learning.recommend` permission aur authorized recipient scope chahiye. Placement data wider TEAM/DEPARTMENT/ORGANIZATION access enable nahi karta.
 
-Current product labels **Accounts/Clients** aur **Project** hain. Data collection ke `department` aur `team` column names neeche unchanged hain: `department` Accounts/Clients placement hai, aur `team` uske andar optional single organizational Project hai. Ye rename separate multiple Business project memberships ko merge ya populate nahi karta.
+Current product labels **Portfolio/Division**, **Accounts/Clients** aur **Project** hain. Har client ke liye approved Portfolio/Division mapping mandatory hai. Data collection ke `department` aur `team` column names neeche unchanged hain: `department` Accounts/Clients placement hai, aur `team` uske andar optional single organizational Project hai. Ye structure separate multiple Business project memberships ko merge ya populate nahi karta. Migration 088 aur reviewed mapping ka live rollout pending hai.
 
 | Field Name              | Data Type      | Description                                      | Mandatory?                    | Example                  |
 | ----------------------- | -------------- | ------------------------------------------------ | ----------------------------- | ------------------------ |
 | `manager_employee_code` | Text (max 40)  | Direct reporting manager ka Employee Code        | **YES** _(Top head ka blank)_ | `EMP10012`               |
-| `delivery_unit`         | Text (max 100) | Top-level division ya business unit              | **YES**                       | `Digital Transformation` |
-| `department`            | Text (max 100) | Delivery Unit ke andar Accounts/Clients          | **YES**                       | `Example Client`         |
+| `delivery_unit`         | Text (max 100) | Top-level Delivery Unit                          | **YES**                       | `Digital Transformation` |
+| `portfolio`             | Text (max 100) | Delivery Unit ke andar Portfolio/Division        | **YES**                       | `Example Division`       |
+| `department`            | Text (max 100) | Portfolio/Division ke andar Accounts/Clients     | **YES**                       | `Example Client`         |
 | `team`                  | Text (max 100) | Accounts/Clients ke andar organizational Project | Optional                      | `Example Project`        |
 
 ### 3. Job Profile & Designation Details
@@ -89,12 +90,12 @@ Current product labels **Accounts/Clients** aur **Project** hain. Data collectio
 Organization data collection/reconciliation ke liye is format mein `.csv` ya `.xlsx` export provide kar sakti hai. **Is sample ko current CLI ya UI mein directly upload/import nahi karna:** generic CSV/XLSX/HRMS ingestion abhi implemented nahi hai. Existing `access:import` development-only local JSON bootstrap hai, organization HRMS import nahi. Employee profiles, Entra mapping, org nodes/reporting aur approved access assignments current governed APIs/setup process se explicitly provision honge. `active` strings ko reviewed processing mein boolean mein normalize karna hoga; `admin_role` remains a request.
 
 ```csv
-employee_code,display_name,email,entra_object_id,manager_employee_code,delivery_unit,department,team,job_title,grade,active,admin_role
-EMP10001,Vikram Mehta,vikram.mehta@company.com,a1234567-1111-2222-3333-444455556666,,Digital Services,Technology,,CTO,E2,TRUE,Access Admin
-EMP10012,Pooja Nair,pooja.nair@company.com,b2345678-2222-3333-4444-555566667777,EMP10001,Digital Services,Technology,Platform Pod,Engineering Manager,L6,TRUE,
-EMP10245,Rahul Sharma,rahul.sharma@company.com,c3456789-3333-4444-5555-666677778888,EMP10012,Digital Services,Technology,Platform Pod,Senior Backend Engineer,L4,TRUE,
-EMP10246,Neha Singh,neha.singh@company.com,d4567890-4444-5555-6666-777788889999,EMP10012,Digital Services,Technology,Platform Pod,Frontend Engineer,L3,TRUE,
-EMP10050,Suresh Patel,suresh.patel@company.com,e5678901-5555-6666-7777-888899990000,EMP10001,Corporate,Human Resources,L&D,Head of Learning,L6,TRUE,Catalogue Admin
+employee_code,display_name,email,entra_object_id,manager_employee_code,delivery_unit,portfolio,department,team,job_title,grade,active,admin_role
+EMP10001,Vikram Mehta,vikram.mehta@company.com,a1234567-1111-2222-3333-444455556666,,Digital Services,Enterprise,Technology,,CTO,E2,TRUE,Access Admin
+EMP10012,Pooja Nair,pooja.nair@company.com,b2345678-2222-3333-4444-555566667777,EMP10001,Digital Services,Enterprise,Technology,Platform Pod,Engineering Manager,L6,TRUE,
+EMP10245,Rahul Sharma,rahul.sharma@company.com,c3456789-3333-4444-5555-666677778888,EMP10012,Digital Services,Enterprise,Technology,Platform Pod,Senior Backend Engineer,L4,TRUE,
+EMP10246,Neha Singh,neha.singh@company.com,d4567890-4444-5555-6666-777788889999,EMP10012,Digital Services,Enterprise,Technology,Platform Pod,Frontend Engineer,L3,TRUE,
+EMP10050,Suresh Patel,suresh.patel@company.com,e5678901-5555-6666-7777-888899990000,EMP10001,Corporate,Corporate Services,Human Resources,L&D,Head of Learning,L6,TRUE,Catalogue Admin
 ```
 
 ---
@@ -110,11 +111,13 @@ EMP10050,Suresh Patel,suresh.patel@company.com,e5678901-5555-6666-7777-888899990
    - Self-reporting (`employee_code == manager_employee_code`) strictly forbidden hai.
 3. **Circular Loops Strictly Rejected**:
    - Reporting chain mein koi circular reporting (e.g., A reports to B, and B reports to A) nahi honi chahiye.
-4. **Delivery Unit, Accounts/Clients & Project Tree**:
+4. **Delivery Unit, Portfolio/Division, Accounts/Clients & Project Tree**:
    - Delivery Unit top-level root hota hai.
-   - Accounts/Clients (`DEPARTMENT`) Delivery Unit ke under map hota hai.
+   - Portfolio/Division (`PORTFOLIO`) Delivery Unit ke under hota hai; har client ki complete mapping pehle approve honi chahiye.
+   - Accounts/Clients (`DEPARTMENT`) Portfolio/Division ke under map hota hai; direct DU-to-client parent ab valid nahi hai.
    - Organizational Project (`TEAM`) hamesha Accounts/Clients ke under aata hai.
    - Direct Accounts/Clients placement bhi supported hai; organizational Project optional hai. Reporting manager separately assign hota hai.
+   - India Head -> DU Head -> Portfolio Manager/Delivery Manager -> Account Manager -> Project Manager reporting guide hai, inferred person assignments ya access grants nahi.
 
 ---
 

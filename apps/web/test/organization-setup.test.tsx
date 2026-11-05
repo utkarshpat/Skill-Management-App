@@ -30,13 +30,20 @@ const snapshot = {
   revision: 7,
   nodes: [
     { id: 'unit', kind: 'DELIVERY_UNIT', name: 'Example Unit', parentId: null, active: true },
-    { id: client, kind: 'DEPARTMENT', name: 'Example Client', parentId: 'unit', active: true },
+    {
+      id: 'portfolio',
+      kind: 'PORTFOLIO',
+      name: 'Example Division',
+      parentId: 'unit',
+      active: true,
+    },
+    { id: client, kind: 'DEPARTMENT', name: 'Example Client', parentId: 'portfolio', active: true },
     { id: project, kind: 'TEAM', name: 'Example Project', parentId: client, active: true },
     {
       id: 'archived',
       kind: 'DEPARTMENT',
       name: 'Archived Client',
-      parentId: 'unit',
+      parentId: 'portfolio',
       active: false,
     },
   ],
@@ -45,12 +52,19 @@ const snapshot = {
     { id: manager, displayName: 'Test Manager', employeeCode: 'MGR', active: true },
     { id: 'inactive', displayName: 'Inactive Person', employeeCode: 'OLD', active: false },
   ],
-  assignments: [],
+  assignments: [] as {
+    personId: string;
+    departmentId: string | null;
+    teamId: string | null;
+    managerId: string | null;
+  }[],
 };
+let responseSnapshot = structuredClone(snapshot);
 let mounted: Awaited<ReturnType<typeof render>> | undefined;
 let toolbar: HTMLDivElement;
 const writes: { path: string; body: Record<string, unknown> }[] = [];
 beforeEach(async () => {
+  responseSnapshot = structuredClone(snapshot);
   writes.length = 0;
   toolbar = document.createElement('div');
   document.body.append(toolbar);
@@ -58,7 +72,7 @@ beforeEach(async () => {
     const path = String(input);
     if (path === '/api/dev-login') return demoResponse();
     assert.match(path, /^\/api\/access\/organization(?:\/preview)?$/);
-    if (init?.method !== 'POST') return Response.json(snapshot);
+    if (init?.method !== 'POST') return Response.json(responseSnapshot);
     const body = JSON.parse(String(init.body)) as Record<string, unknown>;
     writes.push({ path, body });
     if (path.endsWith('/preview'))
@@ -76,6 +90,9 @@ beforeEach(async () => {
     return Response.json({ saved: true });
   });
   await refreshDevelopmentLogin();
+  await mount();
+});
+async function mount() {
   mounted = await render(
     <OrganizationSetup
       actionsContainer={toolbar}
@@ -86,7 +103,7 @@ beforeEach(async () => {
     />,
   );
   await settle();
-});
+}
 afterEach(async () => {
   await mounted?.unmount();
   mounted = undefined;
@@ -102,6 +119,90 @@ async function click(text: string) {
   assert.ok(button, `Missing button: ${text}`);
   await act(async () => button.click());
 }
+
+async function editNode(name: string) {
+  const node = Array.from(document.querySelectorAll<HTMLButtonElement>('.visual-node-select')).find(
+    button => button.querySelector('strong')?.textContent === name,
+  );
+  assert.ok(node);
+  await act(async () => node.click());
+  const edit = document.querySelector<HTMLElement>(`[aria-label="Edit ${name}"]`);
+  assert.ok(edit);
+  await act(async () => edit.click());
+}
+
+test('add-child follows Portfolio/Division and switching level resets an incompatible parent', async () => {
+  await editNode('Example Unit');
+  assert.doesNotMatch(document.body.textContent!, /People directly in this/);
+  await click('Add portfolio/division');
+  let fields = document.querySelectorAll<HTMLSelectElement>('#organization-editor select');
+  assert.equal(fields[0].value, 'PORTFOLIO');
+  assert.equal(fields[1].value, 'unit');
+  assert.deepEqual(
+    Array.from(fields[1].options, option => option.value),
+    ['', 'unit'],
+  );
+  await select(fields[0], 'DEPARTMENT');
+  fields = document.querySelectorAll<HTMLSelectElement>('#organization-editor select');
+  assert.equal(fields[1].value, '');
+  assert.deepEqual(
+    Array.from(fields[1].options, option => option.value),
+    ['', 'portfolio'],
+  );
+  await select(fields[0], 'TEAM');
+  assert.deepEqual(
+    Array.from(fields[1].options, option => option.value),
+    ['', client],
+  );
+  assert.equal(writes.length, 0);
+});
+
+test('unmapped legacy placement stays visible and cannot be silently cleared when changing reporting', async () => {
+  await mounted!.unmount();
+  responseSnapshot.nodes.find(n => n.id === client)!.parentId = 'unit';
+  responseSnapshot.assignments = [
+    { personId: employee, departmentId: client, teamId: null, managerId: manager },
+  ];
+  await mount();
+  assert.match(
+    document.body.textContent!,
+    /existing accounts\/clients need approved Portfolio\/Division mapping/,
+  );
+  await editNode('Example Client');
+  const parent = document.querySelectorAll<HTMLSelectElement>('#organization-editor select')[1];
+  assert.equal(parent.value, 'unit');
+  assert.equal(parent.selectedOptions[0].disabled, true);
+  assert.match(parent.selectedOptions[0].textContent!, /Needs mapping/);
+  await click('Cancel');
+  await click('Reporting lines');
+  await click('Assign person');
+  const fields = document.querySelectorAll<HTMLSelectElement>('#reporting-editor select');
+  await select(fields[0], employee);
+  assert.equal(fields[1].value, client);
+  assert.equal(fields[1].selectedOptions[0].disabled, true);
+  assert.match(fields[1].selectedOptions[0].textContent!, /Needs mapping/);
+  assert.equal(
+    Array.from(fields[1].options).some(o => ['unit', 'portfolio', project].includes(o.value)),
+    false,
+  );
+  await act(async () =>
+    document
+      .querySelector('#reporting-editor')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  assert.equal(writes.length, 0);
+  assert.match(document.body.textContent!, /Resolve the existing placement mapping/);
+  await select(fields[1], '');
+  await act(async () =>
+    document
+      .querySelector('#reporting-editor')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  await settle();
+  assert.equal(writes[0].body.departmentId, null);
+  assert.equal(writes[0].body.teamId, null);
+  assert.equal(writes[0].body.managerId, manager);
+});
 async function select(field: HTMLSelectElement, value: string) {
   await act(async () => {
     field.value = value;
@@ -128,6 +229,7 @@ test('organization tree and editor display new names while preserving kind and p
     Array.from(fields[0].options, option => [option.value, option.textContent]),
     [
       ['DELIVERY_UNIT', 'Delivery unit'],
+      ['PORTFOLIO', 'Portfolio/Division'],
       ['DEPARTMENT', 'Accounts/Clients'],
       ['TEAM', 'Project'],
     ],
@@ -160,6 +262,10 @@ for (const placement of [client, project, '']) {
     );
     assert.equal(
       Array.from(fields[1].options).some(option => option.value === 'archived'),
+      false,
+    );
+    assert.equal(
+      Array.from(fields[1].options).some(option => ['unit', 'portfolio'].includes(option.value)),
       false,
     );
     await act(async () =>

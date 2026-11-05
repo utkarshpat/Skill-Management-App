@@ -1,6 +1,6 @@
 {
   "version": "2026-11-05",
-  "revision": "655d0796df7828b1",
+  "revision": "4d44e3f4e94d90d9",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -89,7 +89,8 @@
       "084_skill_evidence_documents.sql",
       "085_private_file_storage.sql",
       "086_catalogue_forms_shared_criteria.sql",
-      "087_direct_catalogue_management.sql"
+      "087_direct_catalogue_management.sql",
+      "088_organization_portfolio.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -1877,7 +1878,7 @@
           "kind": {
             "type": "varchar(20)",
             "nullable": false,
-            "declaration": "kind varchar(20) NOT NULL CHECK(kind IN ('DELIVERY_UNIT','DEPARTMENT','TEAM'))",
+            "declaration": "kind varchar(20) NOT NULL",
             "source": "005_organization_setup.sql"
           },
           "display_name": {
@@ -1944,6 +1945,10 @@
           {
             "sql": "CHECK(parent_id IS NULL OR parent_id<>node_id)",
             "source": "005_organization_setup.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_AccessOrgNode_Kind CHECK(kind IN('DELIVERY_UNIT','PORTFOLIO','DEPARTMENT','TEAM'))",
+            "source": "088_organization_portfolio.sql"
           }
         ],
         "indexes": [
@@ -7163,7 +7168,7 @@
       "name": "SaveOrganizationChange",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,\n @kind varchar(20),@target_id uniqueidentifier,@is_new bit,@payload nvarchar(max)",
-      "source": "database/migrations/006_department_membership.sql"
+      "source": "database/migrations/088_organization_portfolio.sql"
     },
     {
       "name": "ReadSkillCatalogue",
@@ -7319,7 +7324,7 @@
       "name": "ReadOwnOrganization",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/043_own_organization_profile.sql"
+      "source": "database/migrations/088_organization_portfolio.sql"
     },
     {
       "name": "ReadOwnGrowthClaims",
@@ -7415,25 +7420,25 @@
       "name": "BusinessScopeValid",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier) RETURNS bit",
-      "source": "database/migrations/060_business_operations.sql"
+      "source": "database/migrations/088_organization_portfolio.sql"
     },
     {
       "name": "BusinessResponsibilityUsable",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@grant uniqueidentifier) RETURNS bit",
-      "source": "database/migrations/060_business_operations.sql"
+      "source": "database/migrations/088_organization_portfolio.sql"
     },
     {
       "name": "BusinessScopeMatches",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@person uniqueidentifier,@kind varchar(20),@scope uniqueidentifier) RETURNS bit",
-      "source": "database/migrations/060_business_operations.sql"
+      "source": "database/migrations/088_organization_portfolio.sql"
     },
     {
       "name": "BusinessScopePeople",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier) RETURNS TABLE",
-      "source": "database/migrations/060_business_operations.sql"
+      "source": "database/migrations/088_organization_portfolio.sql"
     },
     {
       "name": "BusinessVisiblePeople",
@@ -7481,7 +7486,7 @@
       "name": "BusinessAdministration",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/067_access_profile_administration.sql"
+      "source": "database/migrations/088_organization_portfolio.sql"
     },
     {
       "name": "SaveBusinessChange",
@@ -7499,7 +7504,7 @@
       "name": "BusinessScopeCovers",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier,@targetKind varchar(20),@target uniqueidentifier) RETURNS bit",
-      "source": "database/migrations/061_business_workflows.sql"
+      "source": "database/migrations/088_organization_portfolio.sql"
     },
     {
       "name": "BusinessDemandCan",
@@ -7626,6 +7631,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(30),@payload nvarchar(max)",
       "source": "database/migrations/087_direct_catalogue_management.sql"
+    },
+    {
+      "name": "OrganizationClientPath",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier) RETURNS TABLE",
+      "source": "database/migrations/088_organization_portfolio.sql"
     }
   ],
   "groups": {

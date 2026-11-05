@@ -948,7 +948,7 @@ export class ToolRegistry {
       this.entries.set('workspace_summary', {
         definition: definition(
           'workspace_summary',
-          'Read workspace people, role and accounts/clients counts, if administration is permitted. The departments result field contains the accounts/clients count.',
+          'Read workspace people, role, Portfolio/Division and accounts/clients counts, if administration is permitted. The departments result field contains the accounts/clients count.',
         ),
 
         permission: (state, person) =>
@@ -961,6 +961,8 @@ export class ToolRegistry {
             people: state.people.length,
             activePeople: state.people.filter(item => item.active).length,
             roles: state.roles.length,
+            portfolios: structure.nodes.filter(node => node.active && node.kind === 'PORTFOLIO')
+              .length,
             departments: structure.nodes.filter(node => node.active && node.kind === 'DEPARTMENT')
               .length,
             source: 'Workspace summary',
