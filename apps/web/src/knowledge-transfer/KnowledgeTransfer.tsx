@@ -241,6 +241,7 @@ export function KnowledgeTransfer() {
             <span>Print</span>
           </button>
           <button
+            aria-label="Export handbook"
             onClick={() =>
               download(
                 'project-handover.md',
@@ -251,7 +252,7 @@ export function KnowledgeTransfer() {
             <Download size={17} />
             <span>Export handbook</span>
           </button>
-          <Link to="/workspace">
+          <Link to="/workspace" aria-label="Return to workspace">
             <ArrowLeft size={17} />
             <span>Workspace</span>
           </Link>

@@ -24,7 +24,8 @@
     "docs:generate": "python scripts/generate-handover.py",
     "docs:check": "python scripts/generate-handover.py --check",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "coverage:check": "node scripts/check-coverage.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

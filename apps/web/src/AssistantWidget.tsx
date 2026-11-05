@@ -544,7 +544,7 @@ export function AssistantWidget() {
             <Bot size={20} />
             <div>
               <strong>AI assistant</strong>
-              <small>Answers, drafts & learning practice</small>
+              <small>App workflows, drafts & learning practice</small>
             </div>
             <button
               aria-label="Recent AI chats"
@@ -801,7 +801,7 @@ export function AssistantWidget() {
               value={text}
               maxLength={2000}
               rows={2}
-              placeholder="Ask a question…"
+              placeholder="Ask about this workspace…"
               disabled={!status?.configured || busy || historyBusy || actionBusy}
               onChange={event => setText(event.target.value)}
               onKeyDown={event => {

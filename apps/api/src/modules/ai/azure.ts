@@ -94,6 +94,7 @@ export function azureResponsesProvider(
     });
   return {
     name: 'azure',
+    deployment: model,
     supportsCertificateFiles: true,
     async complete(messages, tools, signal, options) {
       try {

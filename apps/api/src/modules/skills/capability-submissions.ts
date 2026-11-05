@@ -107,11 +107,15 @@ export function capabilityIntake(input: unknown) {
         name: text(choice.name, 100),
         category: text(choice.category, 80),
         definitionRevision: integer(choice.definitionRevision, 2147483646),
-        levels: choice.levels.map((l: any) => ({
-          rank: integer(l.rank, 8),
-          name: text(l.name, 60),
-          description: text(l.description, 1000),
-        })),
+        levels: choice.levels.map((raw: unknown) => {
+          const level = object(raw);
+          only(level, ['rank', 'name', 'description']);
+          return {
+            rank: integer(level.rank, 8),
+            name: text(level.name, 60),
+            description: text(level.description, 1000),
+          };
+        }),
       },
       rank: integer(item.rank, 8),
       experienceMonths: integer(item.experienceMonths, 600),

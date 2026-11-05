@@ -16,6 +16,11 @@ import type {
 import { ToolRegistry, type ToolDefinition } from './tool-registry.js';
 import type { OrganizationStore, OwnOrganization } from '../organization/index.js';
 import { azureResponsesProvider } from './azure.js';
+import {
+  workflowChatShortcut,
+  workflowOnlyInstructions,
+  workflowChatReply,
+} from './workflow-chat-policy.js';
 import { presentation, presentationTool } from './output.js';
 import { assistantCapabilities, capabilityGreeting } from './capabilities.js';
 import {
@@ -54,6 +59,7 @@ export interface GenerationOptions {
 }
 export interface Provider {
   name: string;
+  deployment?: string;
   supportsCertificateFiles?: boolean;
   complete: (
     messages: Message[],
@@ -596,8 +602,11 @@ export class AssistantService {
         tools: this.registry.available(quotaState, quotaPerson),
       });
       signal.throwIfAborted();
-      release = await this.budget.acquire(actorId);
-      const result = await this.respond(actorId, request, signal, meter, prepared?.task);
+      const shortcut = workflowChatShortcut(conversation(request), this.provider);
+      if (!shortcut) release = await this.budget.acquire(actorId);
+      const result = shortcut
+        ? { reply: shortcut, sources: [], mode: 'read-only' }
+        : await this.respond(actorId, request, signal, meter, prepared?.task);
       const recheckDelivery = async () => {
         signal.throwIfAborted();
         const fresh = await readActorAccess(this.store, actorId),
@@ -711,6 +720,8 @@ export class AssistantService {
         role: 'system',
         content:
           coreInstructions +
+          ' ' +
+          workflowOnlyInstructions +
           (person.business?.view || person.business?.amend ? businessInstructions : '') +
           ' ' +
           taskInstructions(settings.kind),
@@ -785,7 +796,7 @@ export class AssistantService {
         if (!answer.content.trim() || answer.content.length > 12000)
           throw new AccessError(502, 'AI returned an invalid answer.');
         return {
-          reply: answer.content,
+          reply: workflowChatReply(answer.content),
           sources,
           mode: 'read-only',
           ...(peopleSearch ? { peopleSearch } : {}),
@@ -835,6 +846,13 @@ export class AssistantService {
           !assistantCapabilities(outputContext.state, outputContext.person).canDraftOwnSkill
         )
           throw new AccessError(403, 'Current permissions do not allow a personal skill draft.');
+        if (artifact.kind !== 'practice_quiz') {
+          const body = [artifact.title, artifact.summary, artifact.body, ...artifact.steps].join(
+            '\n',
+          );
+          const safe = workflowChatReply(body);
+          if (safe !== body) return { reply: safe, sources: [], mode: 'read-only' };
+        }
         return { reply: artifact.summary, sources, mode: 'read-only', artifact };
       }
       messages.push({
@@ -923,6 +941,7 @@ export function configuredProvider(
   }
   return {
     name,
+    deployment: model,
     async complete(messages, available, signal) {
       try {
         const body =

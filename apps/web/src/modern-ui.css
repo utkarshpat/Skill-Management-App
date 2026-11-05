@@ -505,7 +505,7 @@ body .dashboard-next-task .ui-progress {
   cursor: pointer;
 }
 
-.account-popover {
+.account-popover:popover-open {
   display: grid;
   gap: 10px;
 }

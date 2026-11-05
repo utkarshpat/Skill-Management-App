@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react';
 import { BusinessWorkflows } from '../../src/business/BusinessWorkflows';
 import { CatalogueCertificationPicker } from '../../src/CatalogueCertificationPicker';
 import { SkillReviews } from '../../src/SkillReviews';
+import { CapabilityComposer } from '../../src/capabilities/CapabilityComposer';
+import { BusinessOperations } from '../../src/business/BusinessOperations';
+import { BusinessAdministration } from '../../src/business/BusinessAdministration';
+import { CapabilityReview } from '../../src/capabilities/CapabilityReview';
+import { TeamCapability } from '../../src/TeamCapability';
 import { initializeAuth } from '../../src/auth';
 import { ThemeProvider } from '../../src/Theme';
 import '../../src/styles.css';
@@ -16,6 +21,7 @@ const context = {
   canAmend: true,
 };
 function Harness() {
+  const [outcome, setOutcome] = useState('');
   const [ready, setReady] = useState(false),
     [value, setValue] = useState<any[]>([]);
   useEffect(() => {
@@ -23,6 +29,34 @@ function Harness() {
   }, []);
   if (!ready) return <p>Preparing synthetic fixture</p>;
   const mode = new URLSearchParams(location.search).get('fixture');
+  if (outcome) return <p role="status">{outcome}</p>;
+  if (mode === 'capability-review' || mode === 'capability-history')
+    return (
+      <CapabilityReview
+        id="88888888-8888-4888-8888-000000000001"
+        employeeName="Aditi Menon"
+        readOnly={mode === 'capability-history'}
+        onClose={() => setOutcome('Review closed')}
+        onSaved={() => setOutcome('Review decision confirmed')}
+      />
+    );
+  if (mode === 'team')
+    return <TeamCapability onReviews={id => setOutcome('Review queue for ' + id)} canAskAi />;
+  if (mode === 'analytics') return <BusinessOperations />;
+  if (mode === 'access-profiles')
+    return (
+      <BusinessAdministration
+        onSaved={() => setOutcome('Configuration saved and access refreshed')}
+      />
+    );
+  if (mode === 'composer')
+    return (
+      <CapabilityComposer
+        initialSkill={{ id: '11111111-1111-4111-8111-000000000001', name: 'SQL' }}
+        onClose={() => setOutcome('Form closed without saving')}
+        onSaved={() => setOutcome('Capability saved')}
+      />
+    );
   if (mode === 'picker')
     return (
       <>

@@ -320,7 +320,10 @@ test('server-owned history handles long replies and sends compact prompts with a
   assert.ok(!requests[0].tools.includes('present_output'));
   assert.equal(requests[0].cap, 1200);
   assert.ok(requests[1].history > requests[0].history);
-  assert.ok(requests[0].system.length < 2500);
+  assert.ok(
+    requests[0].system.length < 2500,
+    `Compact system prompt grew to ${requests[0].system.length} characters`,
+  );
 });
 
 test('token metering includes tool rounds and failed attempts without exposing prompts', async () => {
