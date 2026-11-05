@@ -1,10 +1,10 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { CertificationReviewDialog } from './certifications/CertificationReviewDialog';
 import type { CertificationPage, CertificationRecord } from './certifications/types';
 import { toast } from './toast';
-import { ArrowRight, Award, Clock3, Search, ShieldCheck, X } from 'lucide-react';
+import { ArrowRight, Award, Clock3, RefreshCw, Search, ShieldCheck, X } from 'lucide-react';
 import { CertificationRecommendations } from './certifications/CertificationRecommendations';
 import './capability-workspace.css';
 import { CapabilitySubmissions } from './capabilities/CapabilitySubmissions';
@@ -17,14 +17,42 @@ export function ReviewWorkspace({
 }: {
   certificationsAllowed?: boolean;
 }) {
+  const [skillsReady, setSkillsReady] = useState(false);
+  const [submissionsReady, setSubmissionsReady] = useState(false);
+  const [certificationsReady, setCertificationsReady] = useState(false);
+  const ready = skillsReady && submissionsReady && (!certificationsAllowed || certificationsReady);
+  const skillsLoaded = useCallback(() => setSkillsReady(true), []);
+  const submissionsLoaded = useCallback(() => setSubmissionsReady(true), []);
+  const certificationsLoaded = useCallback(() => setCertificationsReady(true), []);
   return (
-    <Suspense fallback={<p role="status">Loading review workspace…</p>}>
+    <Suspense
+      fallback={
+        <section className="review-loading" role="status" aria-busy="true">
+          <div className="review-loading-icon" aria-hidden="true">
+            <RefreshCw size={24} />
+          </div>
+          <div>
+            <strong>Loading review workspace…</strong>
+            <p>Checking your permissions and assigned review queues.</p>
+          </div>
+        </section>
+      }
+    >
       <SkillReviews
         unified
+        initialQueueLoading={!submissionsReady || (certificationsAllowed && !certificationsReady)}
+        onInitialLoad={skillsLoaded}
         queueContent={
           <>
-            <CapabilitySubmissions review showEmpty />
-            {certificationsAllowed && <CertificationReviewPanel view="queue" />}
+            <CapabilitySubmissions
+              review
+              showEmpty
+              onInitialLoad={submissionsLoaded}
+              active={ready}
+            />
+            {certificationsAllowed && (
+              <CertificationReviewPanel view="queue" onInitialLoad={certificationsLoaded} />
+            )}
           </>
         }
         teamContent={
@@ -37,7 +65,13 @@ export function ReviewWorkspace({
     </Suspense>
   );
 }
-function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'recommendations' }) {
+function CertificationReviewPanel({
+  view,
+  onInitialLoad,
+}: {
+  view: 'queue' | 'analytics' | 'recommendations';
+  onInitialLoad?: () => void;
+}) {
   const [data, setData] = useState<CertificationPage>();
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState('');
@@ -96,10 +130,13 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          onInitialLoad?.();
+        }
       });
     return () => controller.abort();
-  }, [page, query, attempt, view]);
+  }, [page, query, attempt, view, onInitialLoad]);
   useEffect(() => {
     if (view === 'queue') return;
     const controller = new AbortController();
@@ -141,7 +178,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
       ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
       : 'Date unavailable';
   };
-  const showLegacyQueue = loading || Boolean(error) || Boolean(data?.records.length);
+  const showLegacyQueue = Boolean(error) || Boolean(data?.records.length);
   const hasNext = Boolean(data && page * data.pageSize < data.total);
   if (view === 'queue' && !showLegacyQueue) return null;
 

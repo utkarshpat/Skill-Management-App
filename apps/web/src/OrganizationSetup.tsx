@@ -68,12 +68,14 @@ export function OrganizationSetup({
   onEditPerson,
   onAssignDepartment,
   roleNames,
+  initialPersonId,
 }: {
   actionsContainer: HTMLElement | null;
   onChanged: () => void;
   onEditPerson: (id: string) => void;
   onAssignDepartment: (id: string) => void;
   roleNames: Record<string, string[]>;
+  initialPersonId?: string;
 }) {
   const [review, setReview] = useState<{
     body: object;
@@ -111,7 +113,25 @@ export function OrganizationSetup({
   useEffect(() => {
     const controller = new AbortController();
     read(controller.signal)
-      .then(result => setExpanded(new Set(result.nodes.map(node => node.id))))
+      .then(result => {
+        if (controller.signal.aborted) return;
+        setExpanded(new Set(result.nodes.map(node => node.id)));
+        if (initialPersonId) {
+          if (!result.people.some(person => person.id === initialPersonId))
+            throw Error('This person is unavailable in current organization administration.');
+          const assignments = result.assignments.filter(item => item.personId === initialPersonId);
+          if (assignments.length > 1)
+            throw Error(
+              'This person has conflicting organization assignments. Resolve them before editing.',
+            );
+          const assignment = assignments[0];
+          setMode('reporting');
+          setPersonId(initialPersonId);
+          setPlacementId(assignment?.teamId ?? assignment?.departmentId ?? '');
+          setManagerId(assignment?.managerId ?? '');
+          setEditorOpen(true);
+        }
+      })
       .catch(err => {
         if (!controller.signal.aborted) setError(err.message);
       });

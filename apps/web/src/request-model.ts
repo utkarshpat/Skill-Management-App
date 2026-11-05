@@ -26,6 +26,11 @@ export const requestCategories = [
     label: 'Profile & access',
     description: 'Profile details, permissions or access',
   },
+  {
+    code: 'PLATFORM',
+    label: 'Platform issues & help',
+    description: 'Report a bug or get help from platform administrators',
+  },
   { code: 'OTHER', label: 'Something else', description: 'Any other question or service issue' },
 ] as const;
 export type RequestCategory = (typeof requestCategories)[number]['code'];
@@ -61,7 +66,16 @@ export interface RequestRecord {
 export interface RequestOptions {
   canRequest: boolean;
   canIncident: boolean;
-  recipients: { id: string; name: string; kind: RequestKind; reportingManager: boolean }[];
+  categories: { code: RequestCategory; kind: RequestKind }[];
+  recipients: {
+    id: string;
+    name: string;
+    kind: RequestKind;
+    reportingManager: boolean;
+    sameTeam?: boolean;
+    reportingLine?: boolean;
+    systemAdmin?: boolean;
+  }[];
 }
 export async function requestRead<T>(response: Response): Promise<T> {
   return readApiResponse<T>(response, 'Could not load requests. Try again.');

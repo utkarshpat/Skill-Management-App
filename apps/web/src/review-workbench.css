@@ -216,6 +216,9 @@
   color: var(--ink);
   min-width: 0;
 }
+.review-workspace-content[hidden] {
+  display: none;
+}
 .review-page-heading {
   display: flex;
   align-items: center;

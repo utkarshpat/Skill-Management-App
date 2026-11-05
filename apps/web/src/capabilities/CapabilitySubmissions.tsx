@@ -18,10 +18,14 @@ export function CapabilitySubmissions({
   review = false,
   showEmpty = false,
   onUpdated,
+  onInitialLoad,
+  active = true,
 }: {
   review?: boolean;
   showEmpty?: boolean;
   onUpdated?: () => void;
+  onInitialLoad?: () => void;
+  active?: boolean;
 }) {
   const [params] = useSearchParams();
   const location = useLocation();
@@ -56,10 +60,13 @@ export function CapabilitySubmissions({
         }
       })
       .finally(() => {
-        if (!abort.signal.aborted) setLoading(false);
+        if (!abort.signal.aborted) {
+          setLoading(false);
+          onInitialLoad?.();
+        }
       });
     return () => abort.abort();
-  }, [review, attempt]);
+  }, [review, attempt, onInitialLoad]);
   useEffect(() => {
     const refresh = () => setAttempt(v => v + 1);
     window.addEventListener('notifications-remote-updated', refresh);
@@ -75,6 +82,7 @@ export function CapabilitySubmissions({
     // The recent list is capped at 50. Detail reads authorize the exact submission,
     // including notification targets that have aged out of this list.
     if (
+      active &&
       !loading &&
       target &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(target) &&
@@ -83,7 +91,7 @@ export function CapabilitySubmissions({
       consumed.current = navigation;
       setOpened(target);
     }
-  }, [params, loading, location.key]);
+  }, [params, loading, location.key, active]);
   const done = () => {
     setOpened(undefined);
     setAttempt(v => v + 1);

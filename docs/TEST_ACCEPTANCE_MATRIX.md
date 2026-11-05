@@ -1,5 +1,7 @@
 # Workflow and edge-case acceptance matrix
 
+Final integration note: the user deferred the 90% coverage task until after main integration and package delivery. [Final merge audit](FINAL_MERGE_AUDIT_2026-11-05.md) records the incorporated fixes and local functional/SQL evidence. Earlier coverage percentages are historical; the 90% threshold remains available and is reported without blocking this explicitly authorized integration release.
+
 Target requested by the user: **90%+ coverage**, with realistic human-readable fixtures and reasoned workflow cases. This is an active target, not a completed acceptance statement. `npm run coverage:check` requires 90% for lines/statements/branches/functions in each app and complete TypeScript source representation. No production files are omitted except `.d.ts`. SQL and CSS are outside TypeScript coverage; a passing percentage cannot establish their acceptance.
 
 Fixtures use fictional Aditi Menon, Rohan Mehta and Neha Kapoor with delivery projects, skills, certificates and reporting relationships. Test adapters never seed or mutate the real company workspace. Browser HTTP fixtures, driver contract tests and installed-SQL acceptance are different evidence levels.

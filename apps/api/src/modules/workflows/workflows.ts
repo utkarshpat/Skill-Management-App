@@ -6,6 +6,7 @@ export const workflowCategories = [
   'ASSESSMENT',
   'PROJECT',
   'PROFILE_ACCESS',
+  'PLATFORM',
   'OTHER',
 ] as const;
 export type WorkflowCategory = (typeof workflowCategories)[number];
@@ -60,10 +61,19 @@ export interface WorkflowEvent {
 export interface WorkflowOptions {
   canRequest: boolean;
   canIncident: boolean;
-  recipients: { id: string; name: string; kind: WorkflowKind; reportingManager: boolean }[];
+  categories: { code: WorkflowCategory; kind: WorkflowKind }[];
+  recipients: {
+    id: string;
+    name: string;
+    kind: WorkflowKind;
+    reportingManager: boolean;
+    sameTeam?: boolean;
+    reportingLine?: boolean;
+    systemAdmin?: boolean;
+  }[];
 }
 export interface WorkflowStore {
-  options(actor: string, query?: string): Promise<WorkflowOptions>;
+  options(actor: string, query?: string, category?: WorkflowCategory): Promise<WorkflowOptions>;
   list(
     actor: string,
     page: number,
@@ -83,9 +93,7 @@ export interface WorkflowStore {
     query?: string,
   ): Promise<WorkflowOptions['recipients']>;
   change(actor: string, input: WorkflowChange): Promise<void>;
-  notifications(
-    actor: string,
-  ): Promise<
+  notifications(actor: string): Promise<
     {
       id: string;
       at: string;
@@ -195,6 +203,12 @@ export function workflowChange(input: unknown): WorkflowChange {
 }
 export function workflowId(value: unknown) {
   return uuid(value);
+}
+export function workflowCategory(value: unknown): WorkflowCategory | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !workflowCategories.includes(value as WorkflowCategory))
+    throw new AccessError(400, 'Choose an implemented request topic.');
+  return value as WorkflowCategory;
 }
 export function workflowPage(value: unknown) {
   if (value === undefined) return 1;

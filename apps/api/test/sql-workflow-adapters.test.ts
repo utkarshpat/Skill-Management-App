@@ -29,6 +29,7 @@ test('workflow adapter retains participant identities, filters, history and revi
       'dbo.WorkflowWorkspace',
       [{ canRequest: true, canIncident: false }],
       [{ id: manager.toUpperCase(), name: 'Rohan Mehta', kind: 'REQUEST', reportingManager: true }],
+      [{ code: 'LEARNING', kind: 'REQUEST' }],
     );
     assert.equal((await store.options(actor)).recipients[0].id, manager);
     f.reply('dbo.ReadWorkflowList', [{ total: 1, page: 2 }], [row], [{ submitted: 1 }]);

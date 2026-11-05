@@ -1,5 +1,7 @@
 # Documentation index
 
+Latest integration: [final merge audit and deployment boundary](FINAL_MERGE_AUDIT_2026-11-05.md). Code-first stays separate; the user deferred the 90% coverage task until after the audited main merge. Required company schema rollout is 088 → reviewed Portfolio mapping → 089 → 090.
+
 Updated: 5 November 2026. Read [current company operations](CURRENT_OPERATIONS.md) and the maintained handover before older dated reports. Documentation describes repository behavior and dated acceptance, not continuous production health or enterprise certification.
 
 Current local work: [portfolio commit audit and integration](PORTFOLIO_COMMIT_AUDIT_2026-11-05.md) and [workflow/edge-case acceptance matrix](TEST_ACCEPTANCE_MATRIX.md). The 90% coverage gate remains incomplete; hierarchy integration is not a company schema installation or release acceptance.

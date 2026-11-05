@@ -11,6 +11,7 @@ import {
   Search,
   CheckCircle2,
   ArrowLeft,
+  LifeBuoy,
 } from 'lucide-react';
 import { FormDialog } from './FormDialog';
 import { authenticatedFetch } from './auth';
@@ -22,7 +23,15 @@ import {
   type RequestKind,
   type RequestOptions,
 } from './request-model';
-const icons = [BookOpen, Layers3, ClipboardCheck, BriefcaseBusiness, UserRound, MoreHorizontal];
+const icons = [
+  BookOpen,
+  Layers3,
+  ClipboardCheck,
+  BriefcaseBusiness,
+  UserRound,
+  LifeBuoy,
+  MoreHorizontal,
+];
 export function RequestComposer({
   options,
   onClose,
@@ -50,18 +59,24 @@ export function RequestComposer({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [id] = useState(() => crypto.randomUUID());
+  const [available, setAvailable] = useState(options);
   useEffect(() => {
-    if (page !== 2) return;
+    if (page !== 2 || !category) return;
     const c = new AbortController();
     setSearching(true);
     const timer = setTimeout(() => {
-      authenticatedFetch('/api/workflows/options?q=' + encodeURIComponent(query), {
-        signal: c.signal,
-      })
+      authenticatedFetch(
+        '/api/workflows/options?category=' + category + '&q=' + encodeURIComponent(query.trim()),
+        {
+          signal: c.signal,
+        },
+      )
         .then(requestRead<RequestOptions>)
         .then(o => {
           if (!c.signal.aborted) {
             setRecipients(o.recipients);
+            setAvailable(o);
+            setResultPage(0);
             setSearching(false);
             setError('');
           }
@@ -69,6 +84,7 @@ export function RequestComposer({
         .catch(e => {
           if (!c.signal.aborted) {
             setRecipients([]);
+            setRecipient(undefined);
             setSearching(false);
             setError(e.message);
           }
@@ -78,10 +94,13 @@ export function RequestComposer({
       clearTimeout(timer);
       c.abort();
     };
-  }, [page, query]);
+  }, [page, query, category, kind]);
   const matches = recipients.filter(r => r.kind === kind);
+  const topics = requestCategories.filter(c =>
+    available.categories?.some(a => a.code === c.code && a.kind === kind),
+  );
   function validate(target: number) {
-    if (target > 0 && !category) {
+    if (target > 0 && (!category || !topics.some(c => c.code === category))) {
       setError('Choose what you need help with.');
       setPage(0);
       return false;
@@ -91,7 +110,7 @@ export function RequestComposer({
       setPage(1);
       return false;
     }
-    if (target > 2 && !recipient) {
+    if (target > 2 && (searching || !recipient)) {
       setError('Choose who should receive this.');
       setPage(2);
       return false;
@@ -148,7 +167,7 @@ export function RequestComposer({
                 <h3>What can we help you with?</h3>
                 <fieldset className="request-kind-switch" disabled={busy}>
                   <legend className="sr-only">Record type</legend>
-                  {options.canRequest && (
+                  {available.canRequest && (
                     <label>
                       <input
                         type="radio"
@@ -157,6 +176,8 @@ export function RequestComposer({
                         checked={kind === 'REQUEST'}
                         onChange={() => {
                           setKind('REQUEST');
+                          setCategory(undefined);
+                          setQuery('');
                           setRecipient(undefined);
                           setResultPage(0);
                         }}
@@ -164,7 +185,7 @@ export function RequestComposer({
                       Request
                     </label>
                   )}
-                  {options.canIncident && (
+                  {available.canIncident && (
                     <label>
                       <input
                         type="radio"
@@ -173,6 +194,8 @@ export function RequestComposer({
                         checked={kind === 'INCIDENT'}
                         onChange={() => {
                           setKind('INCIDENT');
+                          setCategory(undefined);
+                          setQuery('');
                           setRecipient(undefined);
                           setResultPage(0);
                         }}
@@ -184,8 +207,8 @@ export function RequestComposer({
               </div>
               <fieldset className="request-category-grid">
                 <legend className="sr-only">Request category</legend>
-                {requestCategories.map((c, i) => {
-                  const Icon = icons[i];
+                {topics.map(c => {
+                  const Icon = icons[requestCategories.indexOf(c)];
                   return (
                     <label
                       key={c.code}
@@ -198,7 +221,12 @@ export function RequestComposer({
                         name="request-category"
                         value={c.code}
                         checked={category === c.code}
-                        onChange={() => setCategory(c.code)}
+                        onChange={() => {
+                          setCategory(c.code);
+                          setRecipient(undefined);
+                          setQuery('');
+                          setResultPage(0);
+                        }}
                       />
                       <span className="request-category-icon">
                         <Icon size={24} />
@@ -209,6 +237,12 @@ export function RequestComposer({
                   );
                 })}
               </fieldset>
+              {!topics.length && (
+                <p role="status">
+                  No topics are available with your current access. Ask your administrator to check
+                  your permissions.
+                </p>
+              )}
             </div>
           ),
         },
@@ -267,8 +301,9 @@ export function RequestComposer({
             <div className="request-recipient-step">
               <h3>Who should receive this?</h3>
               <p>
-                Find your line manager, a system administrator or a person in another
-                account/client.
+                {category === 'PLATFORM'
+                  ? 'Platform administrators are shown by default. Search by name to find another eligible recipient.'
+                  : 'Your team and reporting line are shown by default. Search by name to find other eligible people.'}
               </p>
               <label className="request-recipient-search">
                 <Search size={18} />
@@ -289,7 +324,11 @@ export function RequestComposer({
                 <p role="status">Searching people…</p>
               ) : !matches.length ? (
                 <p role="status">
-                  No match. Try another name or check their view permission with your administrator.
+                  {query.trim()
+                    ? 'No eligible people match this name. Try another name.'
+                    : category === 'PLATFORM'
+                      ? 'No eligible platform administrator is available. Search by name or ask your administrator to check access.'
+                      : 'No eligible team or reporting-line recipients are available. Search by name to find someone else.'}
                 </p>
               ) : (
                 <>
@@ -323,7 +362,15 @@ export function RequestComposer({
                         <span>
                           <strong>{r.name}</strong>
                           <small>
-                            {r.reportingManager ? 'Your reporting manager' : 'Workspace member'}
+                            {r.systemAdmin && category === 'PLATFORM'
+                              ? 'Platform administrator'
+                              : r.reportingManager
+                                ? 'Your reporting manager'
+                                : r.sameTeam
+                                  ? 'Your team'
+                                  : r.reportingLine
+                                    ? 'Your reporting line'
+                                    : 'Workspace member'}
                           </small>
                         </span>
                       </label>

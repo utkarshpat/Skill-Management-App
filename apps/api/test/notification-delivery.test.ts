@@ -17,7 +17,12 @@ test('notification delivery rechecks active status, effective permissions and ac
     );
     access.snapshot = () => structuredClone(state);
     const workflows: WorkflowStore = {
-      options: async () => ({ canRequest: false, canIncident: false, recipients: [] }),
+      options: async () => ({
+        canRequest: false,
+        canIncident: false,
+        categories: [],
+        recipients: [],
+      }),
       list: async () => ({ items: [], total: 0, page: 1, pageSize: 10 }),
       detail: async () => {
         throw Error('Unused');

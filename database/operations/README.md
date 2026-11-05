@@ -25,6 +25,8 @@ Keep audit/source provenance and recoverable backups. Setup archives `Operations
 
 ## Mandatory Portfolio/Division rollout
 
+Final integration adds **090_workflow_topic_recipients.sql** after 089 Portfolio scopes. It shares SQL topic gates between discovery and create, suggests current organization/reporting peers and Platform administrators, and retains participant lifecycle checks. Use the final migration bundle's ledger-aware wrappers for manual SSMS installation; raw migration files alone do not record `SchemaMigration`. Reviewed mapping remains an explicit operation between 088 and 089. The optional real-catalogue template is not a schema prerequisite.
+
 Subsequent user-approved increment: [089 Portfolio Business scopes and hierarchy filters](../../docs/PORTFOLIO_SCOPES_2026-11-05.md) requires successful 088 mapping first. Install 089 in the same approved maintenance rollout before releasing its matching API/web build. It adds explicit Business Analytics scopes, not inherited title/review authority or generic role scope support. The structural-only limitation in the historical 088 steps below describes 088 alone.
 
 This is a pending maintenance operation, not a completed migration/backfill. Obtain a recoverable backup and reviewed workspace, current authorized app-admin actor, Delivery Unit/client UUIDs and Portfolio/Division UUID/name mapping. Do not copy employee rosters into source or invent manager links. Every existing client, including archived records, must appear exactly once. Reuse an exact existing portfolio or approve a new UUID; the template permits a legacy direct-DU parent or the already-approved target portfolio, not unrelated reorganization.

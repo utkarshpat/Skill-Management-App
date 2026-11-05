@@ -18,7 +18,7 @@ test('unified review navigation keeps earlier type links and routes analytics an
 test('manager workspace integrates linked reviews and credential panels without separate type tabs', async () => {
   const source = await readFile(new URL('../src/ReviewWorkspace.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /aria-label="Review type"|review-type-tabs/);
-  assert.match(source, /CapabilitySubmissions review showEmpty/);
+  assert.match(source, /CapabilitySubmissions\s+review\s+showEmpty/);
   assert.match(source, /teamContent=/);
   assert.match(source, /recommendationContent=/);
   assert.match(source, /Team certificates/);

@@ -4,6 +4,8 @@ This is the current operational entry point. It supersedes old demo/deferred-SSO
 
 ## Recorded status
 
+Final integration follow-up: [final merge audit](FINAL_MERGE_AUDIT_2026-11-05.md) records the user-authorized main integration, person-first access/review/request corrections and required schema versions 088–090. The user explicitly deferred the 90% coverage target until after this release; CI reports the existing target without blocking this integration. The older checkpoint below retains its original test counts. Company migration installation/backfill and hosted verification remain operator steps; no company SQL changes or live deployment were performed during this audit. Code-first remains on its separate branch.
+
 Local follow-up (not hosted acceptance): hierarchy e37df62 is merged. Portfolio Business Analytics scope/filter increment 089 is implemented and passed rollback SQL checks on a newly created local SQL Express audit database; company SQL remains at the last recorded version until an operator verifies otherwise. The full current unit run passes **864 checks** (8 tooling, 444 API, 412 web), with typechecks/build/docs verification passing. Recovery/practice malformed-response fixes and strict current-source coverage provenance checks are included locally. The separate 90% coverage release gate remains incomplete; older percentages below are historical, not approval to deploy. See [Portfolio scopes](PORTFOLIO_SCOPES_2026-11-05.md) and [coverage status](TEST_COVERAGE_2026-11-05.md).
 
 | Area         | Status / evidence                                                                                                                                                                                              |

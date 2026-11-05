@@ -23,6 +23,9 @@ for (const kind of ['REQUEST', 'INCIDENT'] as const)
           json: {
             canRequest: true,
             canIncident: true,
+            categories: ['LEARNING', 'SKILL', 'PROFILE_ACCESS', 'PLATFORM', 'OTHER'].flatMap(code =>
+              ['REQUEST', 'INCIDENT'].map(kind => ({ code, kind })),
+            ),
             recipients:
               q === 'nobody'
                 ? []
@@ -93,7 +96,7 @@ for (const kind of ['REQUEST', 'INCIDENT'] as const)
     await next();
     const search = dialog.getByRole('searchbox', { name: 'Search recipient by name' });
     await search.fill('nobody');
-    await expect(dialog.getByText(/No match. Try another name/)).toBeVisible();
+    await expect(dialog.getByText(/No eligible people match this name/)).toBeVisible();
     await next();
     await expect(dialog.locator('.form-dialog-message')).toContainText(
       'Choose who should receive this.',

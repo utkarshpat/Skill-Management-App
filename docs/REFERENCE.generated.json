@@ -1,6 +1,6 @@
 {
   "version": "2026-11-05",
-  "revision": "b8ca91b028c9869f",
+  "revision": "0be2807a0b593734",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -91,7 +91,8 @@
       "086_catalogue_forms_shared_criteria.sql",
       "087_direct_catalogue_management.sql",
       "088_organization_portfolio.sql",
-      "089_portfolio_business_scopes.sql"
+      "089_portfolio_business_scopes.sql",
+      "090_workflow_topic_recipients.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -3503,6 +3504,10 @@
           {
             "sql": "CONSTRAINT CK_Workflow_Lifecycle CHECK(status IN ('SUBMITTED','IN_PROGRESS','RESOLVED','CANCELLED'))",
             "source": "023_workflow_lifecycle.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_Workflow_Category CHECK(category IN('LEARNING','SKILL','ASSESSMENT','PROJECT','PROFILE_ACCESS','PLATFORM','OTHER'))",
+            "source": "090_workflow_topic_recipients.sql"
           }
         ],
         "indexes": [
@@ -7268,14 +7273,14 @@
     {
       "name": "WorkflowWorkspace",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@mode varchar(20),@record_id uniqueidentifier=NULL,@page int=1,@inbox bit=0,@payload nvarchar(max)=NULL,@query nvarchar(100)=NULL",
-      "source": "database/migrations/081_workflow_notification_details.sql"
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@mode varchar(20),@record_id uniqueidentifier=NULL,@page int=1,@inbox bit=0,@payload nvarchar(max)=NULL,@query nvarchar(100)=NULL,@category_filter varchar(24)=NULL",
+      "source": "database/migrations/090_workflow_topic_recipients.sql"
     },
     {
       "name": "ReadWorkflowList",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1,@inbox bit=0,\n @query nvarchar(80)=N'',@kind varchar(8)='',@status varchar(20)='',@priority varchar(6)='',@category varchar(24)=''",
-      "source": "database/migrations/023_workflow_lifecycle.sql"
+      "source": "database/migrations/090_workflow_topic_recipients.sql"
     },
     {
       "name": "ReadOwnSkillSummary",
@@ -7648,6 +7653,12 @@
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@actor uniqueidentifier) RETURNS TABLE",
       "source": "database/migrations/089_portfolio_business_scopes.sql"
+    },
+    {
+      "name": "WorkflowTopicCan",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@kind varchar(8),@category varchar(24)) RETURNS bit",
+      "source": "database/migrations/090_workflow_topic_recipients.sql"
     }
   ],
   "groups": {

@@ -18,7 +18,7 @@ test('workflow AI action notes require current record authority and reject stale
     calls = 0,
     body = 'Completed the user-supplied work.';
   const workflows: WorkflowStore = {
-    options: async () => ({ canRequest: true, canIncident: true, recipients: [] }),
+    options: async () => ({ canRequest: true, canIncident: true, categories: [], recipients: [] }),
     list: async () => ({ items: [], total: 0, page: 1, pageSize: 10 }),
     detail: async who => {
       assert.equal(who, actor);
@@ -163,7 +163,7 @@ test('workflow AI tools bind the actor, reject selectors and suppress results af
     },
     options: async id => {
       assert.equal(id, actor);
-      return { canRequest: true, canIncident: true, recipients: [] };
+      return { canRequest: true, canIncident: true, categories: [], recipients: [] };
     },
     detail: async () => {
       throw Error();

@@ -1,6 +1,8 @@
 # Coverage and release verification — 5 November 2026
 
-## Current local follow-up
+Latest user decision: coverage expansion to 90% is deferred until after the audited main integration. See [the final integration audit](FINAL_MERGE_AUDIT_2026-11-05.md). CI still runs and reports the 90% check, with `continue-on-error` for this explicitly deferred target. The measurements below predate the final UI/workflow merge and must not be presented as fresh coverage of that merge. Final release manifests record functional test/build results separately.
+
+## Earlier local coverage follow-up
 
 The latest passing runs contain **867 unit/tooling checks: 8 tooling, 446 API and 413 web**, plus **64/64 Chromium desktop/mobile E2E scenarios**. API/web runs have zero failures, skips, cancellations or TODOs. Evidence: ignored `artifacts/final-api-coverage.log`, `artifacts/final-coverage.log`, `artifacts/final-e2e.log` and per-app `run.json`/`tests.log`. Typechecks, production builds and generated-document check pass. The earlier 864-check checkpoint remains in `artifacts/current-all-tests.log`. Local 089 scope SQL acceptance is recorded separately in [Portfolio scopes](PORTFOLIO_SCOPES_2026-11-05.md).
 

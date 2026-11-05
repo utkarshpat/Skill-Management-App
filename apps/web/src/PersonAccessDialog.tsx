@@ -12,12 +12,14 @@ import {
   AlertCircle,
   Pencil,
   Info,
+  UserRound,
 } from 'lucide-react';
 import { FormDialog } from './FormDialog';
 import { EffectiveAccess } from './EffectiveAccess';
 import { EmploymentSummary } from './EmploymentDetails';
 import { AccessAudit } from './AccessAudit';
 import type { OrganizationSummary } from './organization-summary';
+import { organizationParentKind, type OrganizationKind } from './organization-labels';
 import {
   exceptionPermissions,
   exceptionSelection,
@@ -96,8 +98,9 @@ export function PersonAccessDialog({
   onReload?: () => Promise<void>;
 }) {
   const [activeTab, setActiveTab] = useState<
-    'effective' | 'roles' | 'exceptions' | 'organization' | 'audit'
+    'effective' | 'access' | 'roles' | 'exceptions' | 'organization' | 'audit'
   >('effective');
+  const [advanced, setAdvanced] = useState(false);
 
   // Role addition state
   const [selectedRoleToAdd, setSelectedRoleToAdd] = useState('');
@@ -117,8 +120,84 @@ export function PersonAccessDialog({
   const [newExpiry, setNewExpiry] = useState(defaultExpiryStr);
   const [formError, setFormError] = useState('');
 
-  const edge = organization?.assignments.find(item => item.personId === person.id);
+  const personAssignments =
+    organization?.assignments.filter(item => item.personId === person.id) ?? [];
+  const edge = personAssignments.length === 1 ? personAssignments[0] : undefined;
   const manager = people.find(item => item.id === edge?.managerId);
+  const placement: OrganizationSummary['nodes'] = [];
+  let placementId = edge?.teamId ?? edge?.departmentId;
+  while (placementId && placement.length < 4) {
+    const matches = organization?.nodes.filter(node => node.id === placementId) ?? [];
+    if (matches.length !== 1 || placement.some(node => node.id === placementId)) break;
+    const node = matches[0];
+    placement.unshift(node);
+    placementId = node.parentId;
+  }
+  const placementValid =
+    Boolean(edge?.departmentId || edge?.teamId) &&
+    !(edge?.departmentId && edge?.teamId) &&
+    !placementId &&
+    placement.length >= 3 &&
+    placement.every((node, index) => {
+      if (!node.active || !Object.hasOwn(organizationParentKind, node.kind)) return false;
+      const parentKind = organizationParentKind[node.kind as OrganizationKind];
+      return parentKind === null
+        ? index === 0 && node.parentId === null
+        : index > 0 && placement[index - 1].kind === parentKind;
+    }) &&
+    placement.some(
+      node => node.kind === 'DEPARTMENT' && (!edge?.departmentId || node.id === edge.departmentId),
+    ) &&
+    (!edge?.teamId || placement.at(-1)?.kind === 'TEAM');
+  const organizationContext = (
+    <section className="access-person-overview" aria-label="Profile and reporting">
+      <EmploymentSummary value={person} />
+      <dl className="access-person-context">
+        <div>
+          <dt>Organization placement</dt>
+          <dd>
+            {!organization
+              ? 'Organization details unavailable'
+              : personAssignments.length > 1
+                ? 'Needs administrator attention'
+                : !edge?.departmentId && !edge?.teamId
+                  ? 'Not assigned'
+                  : placementValid
+                    ? placement.map(node => node.name).join(' → ')
+                    : 'Needs administrator attention'}
+          </dd>
+        </div>
+        <div>
+          <dt>Direct reporting manager</dt>
+          <dd>
+            {!organization
+              ? 'Reporting details unavailable'
+              : personAssignments.length > 1
+                ? 'Needs administrator attention'
+                : !edge?.managerId
+                  ? 'Not assigned'
+                  : manager?.active && manager.id !== person.id
+                    ? manager.displayName
+                    : 'Needs administrator attention'}
+          </dd>
+        </div>
+      </dl>
+      {canManageUsers && onManageOrganization && (
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={busy}
+          onClick={onManageOrganization}
+        >
+          <FolderTree size={16} /> Edit organization & reporting
+        </button>
+      )}
+      <p className="access-section-desc">
+        Placement and job titles do not grant access. Review current permissions below; changes
+        require a preview before confirmation.
+      </p>
+    </section>
+  );
   const unassignedRoles = roles.filter(
     role => !person.roleIds.includes(role.id) && templateAssignable(role.permissions, catalogue),
   );
@@ -222,7 +301,7 @@ export function PersonAccessDialog({
   return (
     <FormDialog
       className="access-view-dialog"
-      title={`Access profile · ${person.displayName}`}
+      title={`Manage person · ${person.displayName}`}
       subtitle={`${person.employeeCode} · ${person.active ? 'Active account' : 'Suspended'}`}
       onClose={onClose}
       busy={busy}
@@ -252,7 +331,7 @@ export function PersonAccessDialog({
               disabled={busy}
               onClick={() => onFullEdit(person)}
             >
-              <Pencil size={14} /> Full person edit
+              <Pencil size={14} /> Edit person details
             </button>
           )}
           <button type="button" className="secondary-button" disabled={busy} onClick={onClose}>
@@ -281,15 +360,16 @@ export function PersonAccessDialog({
             </div>
             <div className="access-banner-meta-row">
               <span className="access-meta-chip">ID: {person.employeeCode}</span>
-              {manager && (
+              {edge?.managerId && (
                 <span className="access-meta-chip" title="Direct reporting manager">
-                  Manager: {manager.displayName}
+                  {manager?.active && manager.id !== person.id
+                    ? `Manager: ${manager.displayName}`
+                    : 'Reporting needs attention'}
                 </span>
               )}
-              {edge && (
+              {(edge?.departmentId || edge?.teamId) && (
                 <span className="access-meta-chip" title="Organizational unit">
-                  {organization?.nodes.find(node => node.id === (edge.teamId ?? edge.departmentId))
-                    ?.name ?? 'Assigned unit'}
+                  {placementValid ? placement.at(-1)?.name : 'Placement needs attention'}
                 </span>
               )}
               <span className="access-meta-chip highlight">
@@ -314,23 +394,15 @@ export function PersonAccessDialog({
             aria-pressed={activeTab === 'effective'}
             onClick={() => setActiveTab('effective')}
           >
-            <ShieldCheck size={16} /> Effective Access
+            <UserRound size={16} /> Overview
           </button>
           <button
             type="button"
-            className={`access-tab-btn ${activeTab === 'roles' ? 'active' : ''}`}
-            aria-pressed={activeTab === 'roles'}
-            onClick={() => setActiveTab('roles')}
+            className={`access-tab-btn ${activeTab === 'access' ? 'active' : ''}`}
+            aria-pressed={activeTab === 'access'}
+            onClick={() => setActiveTab('access')}
           >
-            <Users size={16} /> Assigned access
-          </button>
-          <button
-            type="button"
-            className={`access-tab-btn ${activeTab === 'exceptions' ? 'active' : ''}`}
-            aria-pressed={activeTab === 'exceptions'}
-            onClick={() => setActiveTab('exceptions')}
-          >
-            <ShieldAlert size={16} /> Permission Exceptions ({person.overrides.length})
+            <ShieldCheck size={16} /> Access
           </button>
           <button
             type="button"
@@ -338,7 +410,7 @@ export function PersonAccessDialog({
             aria-pressed={activeTab === 'organization'}
             onClick={() => setActiveTab('organization')}
           >
-            <FolderTree size={16} /> Organization
+            <FolderTree size={16} /> Organization & reporting
           </button>
           {canViewAudit && (
             <button
@@ -351,10 +423,44 @@ export function PersonAccessDialog({
             </button>
           )}
         </nav>
+        <details
+          className="access-advanced-tools"
+          open={advanced}
+          onToggle={event => {
+            const open = event.currentTarget.open;
+            setAdvanced(open);
+            if (!open && (activeTab === 'roles' || activeTab === 'exceptions'))
+              setActiveTab('effective');
+          }}
+        >
+          <summary>Advanced: templates & exceptions</summary>
+          <p>
+            Use only when scoped access and the standard employee/manager baseline are not enough.
+          </p>
+          <nav className="access-tabs-bar" aria-label="Advanced person access sections">
+            <button
+              type="button"
+              className={`access-tab-btn ${activeTab === 'roles' ? 'active' : ''}`}
+              aria-pressed={activeTab === 'roles'}
+              onClick={() => setActiveTab('roles')}
+            >
+              <Users size={16} /> Additional templates ({person.roleIds.length})
+            </button>
+            <button
+              type="button"
+              className={`access-tab-btn ${activeTab === 'exceptions' ? 'active' : ''}`}
+              aria-pressed={activeTab === 'exceptions'}
+              onClick={() => setActiveTab('exceptions')}
+            >
+              <ShieldAlert size={16} /> Permission exceptions ({person.overrides.length})
+            </button>
+          </nav>
+        </details>
 
         {/* Tab 1: Effective Access */}
         {activeTab === 'effective' && (
           <div className="access-tab-content">
+            {organizationContext}
             <EffectiveAccess
               key={revision}
               endpoint={endpoint + '/effective/' + person.id}
@@ -362,15 +468,26 @@ export function PersonAccessDialog({
             />
           </div>
         )}
+        {activeTab === 'access' && (
+          <div className="access-tab-content">
+            <h3 className="access-section-title">Access for {person.displayName}</h3>
+            <p className="access-section-desc">
+              Employee access follows the active-person baseline. Manager actions depend on current
+              reporting relationships. Business Analytics and Admin require explicit supported
+              responsibilities; choosing a title or template does not grant them.
+            </p>
+            {businessAdministrationNode ?? (
+              <p>
+                Scoped access management is unavailable to your current account. Overview shows the
+                person’s effective access and explanations.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Tab 2: Assigned Roles & Templates (With Amendment & Removal) */}
         {activeTab === 'roles' && (
           <div className="access-tab-content">
-            {businessAdministrationNode && (
-              <div className="access-business-admin-wrap" style={{ marginBottom: '1.25rem' }}>
-                {businessAdministrationNode}
-              </div>
-            )}
             <div className="access-section-header">
               <div>
                 <h3 className="access-section-title">Assigned Access Templates</h3>
@@ -409,7 +526,7 @@ export function PersonAccessDialog({
                         onClick={() => handleRemoveRole(roleId)}
                         title={`Remove ${roleName} from ${person.displayName}`}
                       >
-                        <Trash2 size={14} /> Remove role
+                        <Trash2 size={14} /> Review removal
                       </button>
                     )}
                   </div>
@@ -441,7 +558,7 @@ export function PersonAccessDialog({
                     <option value="">
                       {unassignedRoles.length === 0
                         ? 'No supported additional templates available'
-                        : 'Select role to assign…'}
+                        : 'Select additional template…'}
                     </option>
                     {unassignedRoles.map(role => (
                       <option key={role.id} value={role.id}>
@@ -646,32 +763,7 @@ export function PersonAccessDialog({
 
         {/* Tab 4: Organization Context */}
         {activeTab === 'organization' && (
-          <div className="access-tab-content">
-            <EmploymentSummary value={person} />
-            <div className="access-person-context">
-              <div>
-                <small>Direct reporting manager</small>
-                <strong>
-                  {manager?.displayName ??
-                    (organization ? 'Not assigned' : 'Organization details unavailable')}
-                </strong>
-                {manager?.employeeCode && <span>ID: {manager.employeeCode}</span>}
-              </div>
-              <div>
-                <small>Accounts/Clients / Assigned unit</small>
-                <strong>
-                  {organization?.nodes.find(
-                    node => node.id === (edge?.teamId ?? edge?.departmentId),
-                  )?.name ?? (organization ? 'Not assigned' : 'Unavailable')}
-                </strong>
-              </div>
-            </div>
-            {canManageUsers && onManageOrganization && (
-              <button type="button" className="secondary-button" onClick={onManageOrganization}>
-                Manage reporting & membership
-              </button>
-            )}
-          </div>
+          <div className="access-tab-content">{organizationContext}</div>
         )}
 
         {/* Tab 5: Audit History */}

@@ -230,6 +230,7 @@ test('repeat submission and certificate notifications open once per navigation w
       consumed,
       location,
       enabled: true,
+      active: kind !== 'submission',
       data: {},
       loading: kind === 'submission',
       records: [] as { id: string }[],
@@ -245,6 +246,9 @@ test('repeat submission and certificate notifications open once per navigation w
       assert.equal(opens.length, 0);
       scope.records = [{ id: target }];
       scope.loading = false;
+      vm.runInNewContext(code, scope);
+      assert.equal(opens.length, 0);
+      scope.active = true;
       vm.runInNewContext(code, scope);
     }
     assert.equal(opens.length, 1);

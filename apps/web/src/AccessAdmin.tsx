@@ -17,6 +17,7 @@ import { PermissionEditor } from './PermissionEditor';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, Navigate, useSearchParams, useNavigate } from 'react-router';
 import { authenticatedFetch, isDemoSession } from './auth';
+import './access-navigation.css';
 import {
   LayoutDashboard,
   Users,
@@ -182,6 +183,7 @@ export function AccessAdmin({
   }, [personalPath]);
   const [pageActions, setPageActions] = useState<HTMLDivElement | null>(null);
   const [organization, setOrganization] = useState<OrganizationSummary>();
+  const [organizationPersonId, setOrganizationPersonId] = useState<string>();
   const [organizationError, setOrganizationError] = useState('');
   const [organizationAttempt, setOrganizationAttempt] = useState(0);
   const [organizationLoading, setOrganizationLoading] = useState(false);
@@ -233,6 +235,9 @@ export function AccessAdmin({
   const [busy, setBusy] = useState(false);
   const [params, setParams] = useSearchParams();
   const tab = currentView(params);
+  useEffect(() => {
+    if (tab !== 'organization') setOrganizationPersonId(undefined);
+  }, [tab]);
   function setTab(view: View) {
     if (personalPath) {
       navigate('/access?view=' + view);
@@ -603,7 +608,7 @@ export function AccessAdmin({
         <main id="access-main" className="access-main">
           {!personalTitle && ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
             <>
-              <nav className="bo-tabs" aria-label="People and access sections">
+              <nav className="access-section-tabs" aria-label="People and access sections">
                 {[
                   ...(state?.canManageUsers ? [['people', 'People']] : []),
                   ...(workspaceContext?.capabilities.businessAdministration
@@ -612,6 +617,7 @@ export function AccessAdmin({
                   ['roles', 'Templates'],
                 ].map(([id, label]) => (
                   <button
+                    type="button"
                     key={id}
                     aria-current={tab === id ? 'page' : undefined}
                     onClick={() => {
@@ -762,6 +768,8 @@ export function AccessAdmin({
               {!personalTitle && tab === 'organization' && (
                 <Suspense fallback={<div role="status">Opening organization…</div>}>
                   <OrganizationSetup
+                    key={organizationPersonId ?? 'organization'}
+                    initialPersonId={organizationPersonId}
                     actionsContainer={pageActions}
                     onChanged={() => {
                       load().catch(err => setError(err.message));
@@ -929,7 +937,9 @@ export function AccessAdmin({
                         }}
                         onManageOrganization={() => {
                           setSelectedPerson(undefined);
+                          setOrganizationPersonId(selected.id);
                           setTab('organization');
+                          setError('');
                         }}
                         businessAdministrationNode={
                           workspaceContext?.capabilities.businessAdministration ? (

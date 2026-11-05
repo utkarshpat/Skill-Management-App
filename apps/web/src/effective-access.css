@@ -80,6 +80,37 @@
   display: block;
   margin-bottom: 8px;
 }
+.access-person-context dt {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.access-person-context dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.access-person-overview {
+  padding-bottom: 16px;
+}
+.access-advanced-tools {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  background: var(--surface);
+}
+.access-advanced-tools summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.access-advanced-tools summary:focus-visible {
+  outline: 2px solid var(--focus, var(--accent-ink));
+  outline-offset: 3px;
+}
+.access-advanced-tools p {
+  color: var(--muted);
+  line-height: 1.5;
+}
 
 /* ==========================================================================
    Person Access View & Amendment Dialog

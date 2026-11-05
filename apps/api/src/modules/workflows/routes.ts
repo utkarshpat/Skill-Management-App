@@ -8,6 +8,7 @@ import {
   workflowId,
   workflowPage,
   workflowFilters,
+  workflowCategory,
   type WorkflowStore,
 } from './workflows.js';
 export interface WorkflowDependencies {
@@ -50,13 +51,17 @@ export function registerWorkflowRoutes(
   app.get('/api/workflows/options', async (req, res) => {
     try {
       if (
-        Object.keys(req.query).some(k => k !== 'q') ||
+        Object.keys(req.query).some(k => !['q', 'category'].includes(k)) ||
         (req.query.q !== undefined && (typeof req.query.q !== 'string' || req.query.q.length > 80))
       )
         throw new AccessError(400, 'Search by name using up to 80 characters.');
       if (!deps?.workflows) throw new AccessError(503, 'Workflow storage is not configured.');
       res.json(
-        await deps.workflows.options(res.locals.workflowActor, req.query.q as string | undefined),
+        await deps.workflows.options(
+          res.locals.workflowActor,
+          req.query.q as string | undefined,
+          workflowCategory(req.query.category),
+        ),
       );
     } catch (e) {
       if (e instanceof AccessError) {

@@ -9,6 +9,7 @@ import type {
   WorkflowChange,
   WorkflowFilters,
   WorkflowSummary,
+  WorkflowCategory,
 } from './workflows.js';
 const record = (r: WorkflowRecord & { createdAt: Date; updatedAt: Date }) => ({
   ...r,
@@ -61,7 +62,7 @@ export class SqlWorkflowStore implements WorkflowStore {
       throw error;
     }
   }
-  async options(actor: string, query = ''): Promise<WorkflowOptions> {
+  async options(actor: string, query = '', category?: WorkflowCategory): Promise<WorkflowOptions> {
     let r;
     try {
       r = await withRuntimeDatabase(pool =>
@@ -71,18 +72,35 @@ export class SqlWorkflowStore implements WorkflowStore {
           .input('actor_id', sql.UniqueIdentifier, actor)
           .input('mode', sql.VarChar(20), 'OPTIONS')
           .input('query', sql.NVarChar(100), query)
+          .input('category_filter', sql.VarChar(24), category ?? null)
           .execute('dbo.WorkflowWorkspace'),
       );
     } catch (error) {
-      if ((error as { number?: number }).number === 51003)
-        throw new AccessError(403, 'Workspace access is not assigned.');
+      const number = (error as { number?: number }).number;
+      if (number === 51003) throw new AccessError(403, 'Workspace access is not assigned.');
+      if (number === 8144 || number === 201)
+        throw new AccessError(
+          503,
+          'Request topic policy is unavailable. Install the current workflow migration.',
+        );
+      if (number === 51000) throw new AccessError(400, 'Check the request topic and search text.');
       throw error;
     }
     const sets = r.recordsets as unknown as [
       sql.IRecordSet<{ canRequest: boolean; canIncident: boolean }>,
       sql.IRecordSet<WorkflowOptions['recipients'][number]>,
+      sql.IRecordSet<WorkflowOptions['categories'][number]>,
     ];
-    return { ...sets[0][0], recipients: sets[1].map(p => ({ ...p, id: p.id.toLowerCase() })) };
+    if (!sets[0]?.[0] || !sets[1] || !sets[2])
+      throw new AccessError(
+        503,
+        'Request topic policy is unavailable. Install the current workflow migration.',
+      );
+    return {
+      ...sets[0][0],
+      recipients: sets[1].map(p => ({ ...p, id: p.id.toLowerCase() })),
+      categories: sets[2],
+    };
   }
   async list(
     actor: string,

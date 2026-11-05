@@ -1,0 +1,55 @@
+.access-section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 6px;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised, var(--surface));
+}
+
+.access-section-tabs button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.access-section-tabs button:hover:not([aria-current='page']):not(:disabled) {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+.access-section-tabs button[aria-current='page'] {
+  background: var(--accent-soft);
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
+}
+
+.access-section-tabs button:focus-visible {
+  outline: 2px solid var(--focus, var(--accent-ink));
+  outline-offset: 2px;
+}
+
+.access-section-tabs button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -174,6 +174,14 @@ async function mount(options: Partial<Props> = {}) {
   await settle();
   await settle();
 }
+async function advanced() {
+  const detail = document.querySelector<HTMLDetailsElement>('.access-advanced-tools')!;
+  await act(async () => {
+    detail.open = true;
+    detail.dispatchEvent(new Event('toggle'));
+  });
+  await settle();
+}
 async function submitException() {
   const form = document.querySelector('.access-override-form');
   assert.ok(form);
@@ -190,10 +198,10 @@ test('access profile renders server denials, organization context and audit with
   assert.match(document.body.textContent!, /Block overrides Allow/);
   await click('Organization');
   assert.match(document.body.textContent!, /Rohan Mehta/);
-  assert.match(document.body.textContent!, /Northstar Bank/);
-  await click('Manage reporting & membership');
+  assert.match(document.body.textContent!, /Needs administrator attention/);
+  await click('Edit organization & reporting');
   assert.equal(managed, 1);
-  await click('Full person edit');
+  await click('Edit person details');
   assert.equal(edited, 1);
   await click('Audit History');
   await debounce();
@@ -203,7 +211,8 @@ test('access profile renders server denials, organization context and audit with
 });
 test('additional templates are explicitly previewed; unsupported historical assignments remain untouched', async () => {
   await mount();
-  await click('Assigned access');
+  await advanced();
+  await click('Additional templates');
   const select = document.querySelector<HTMLSelectElement>(
     '[aria-label="Additional access template"]',
   );
@@ -217,13 +226,14 @@ test('additional templates are explicitly previewed; unsupported historical assi
   assert.deepEqual(previews[0].roleIds, ['support', 'people']);
   assert.deepEqual(previews[0].overrides, person.overrides);
   assert.deepEqual(person.roleIds, ['support']);
-  await click('Remove role');
+  await click('Review removal');
   assert.deepEqual(previews[1].roleIds, []);
   assert.deepEqual(previews[1].overrides, person.overrides);
 });
 test('permission exceptions require current supported scope, reason and future expiry before preview', async () => {
   await mount();
-  await click('Permission Exceptions');
+  await advanced();
+  await click('Permission exceptions');
   await submitException();
   assert.equal(
     document.querySelector<HTMLInputElement>('.access-override-form input[maxlength="200"]')!
@@ -272,7 +282,8 @@ test('permission exceptions require current supported scope, reason and future e
 });
 test('preview failures and repeated clicks cannot silently save or duplicate a pending access change', async () => {
   await mount();
-  await click('Assigned access');
+  await advanced();
+  await click('Additional templates');
   await change(
     document.querySelector<HTMLSelectElement>('[aria-label="Additional access template"]')!,
     'people',
@@ -305,14 +316,16 @@ test('read-only and identity-mismatched access profiles never expose person edit
   assert.match(document.body.textContent!, /Access identity mismatch/);
   assert.doesNotMatch(
     document.querySelector('.form-dialog')!.textContent!,
-    /Full person edit|Audit History/,
+    /Edit person details|Audit History/,
   );
-  await click('Assigned access');
+  await advanced();
+  await click('Additional templates');
   assert.doesNotMatch(
     document.querySelector('.form-dialog')!.textContent!,
-    /Review assignment|Remove role/,
+    /Review assignment|Review removal/,
   );
-  await click('Permission Exceptions');
+  await advanced();
+  await click('Permission exceptions');
   assert.equal(document.querySelector('.access-override-form'), null);
   assert.equal(previews.length, 0);
 });

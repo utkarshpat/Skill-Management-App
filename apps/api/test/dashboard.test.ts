@@ -364,7 +364,12 @@ const sources: DashboardSources = {
         assignedTotal: 0,
       },
     }),
-    options: async () => ({ canRequest: false, canIncident: false, recipients: [] }),
+    options: async () => ({
+      canRequest: false,
+      canIncident: false,
+      categories: [],
+      recipients: [],
+    }),
     detail: async () => {
       throw Error('No detail');
     },

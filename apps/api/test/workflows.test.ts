@@ -67,13 +67,23 @@ test('comments and cancellation require bounded text, event id and optimistic re
     assert.throws(() => workflowChange({ ...b, ...extra }));
 });
 test('workflow HTTP binds authenticated actor and rejects forged create fields before storage', async () => {
+  let authenticatedHeader = '';
   const access = await LocalAccessStore.open(),
     person = access.snapshot().people[0];
   let calls = 0;
   const workflows: WorkflowStore = {
-    options: async actor => {
+    options: async (actor, query, category) => {
       assert.equal(actor, person.id);
-      return { canRequest: true, canIncident: false, recipients: [] };
+      if (category) {
+        assert.equal(category, 'PLATFORM');
+        assert.equal(query, ' Example ');
+      }
+      return {
+        canRequest: true,
+        canIncident: false,
+        categories: [{ code: 'PLATFORM', kind: 'REQUEST' }],
+        recipients: [],
+      };
     },
     list: async () => ({ items: [], total: 0, page: 1, pageSize: 10 }),
     detail: async () => {
@@ -89,6 +99,7 @@ test('workflow HTTP binds authenticated actor and rejects forged create fields b
   const app = createApp({
     verify: async auth => {
       if (auth !== 'Bearer trusted') throw Error();
+      authenticatedHeader = auth ?? '';
       return { tenantId: randomUUID(), objectId: randomUUID(), displayName: 'Actor' };
     },
     profile: async () => undefined,
@@ -129,6 +140,15 @@ test('workflow HTTP binds authenticated actor and rejects forged create fields b
       ).status,
       200,
     );
+    const readOptions = (suffix: string) =>
+      fetch(url + '/api/workflows/options' + suffix, {
+        headers: { Authorization: authenticatedHeader },
+      });
+    const platform = await readOptions('?category=PLATFORM&q=%20Example%20');
+    assert.equal(platform.status, 200);
+    assert.deepEqual((await platform.json()).categories, [{ code: 'PLATFORM', kind: 'REQUEST' }]);
+    for (const suffix of ['?category=ADMIN', '?category=SKILL&category=OTHER', '?scopeId=other'])
+      assert.equal((await readOptions(suffix)).status, 400);
   } finally {
     server.close();
     await once(server, 'close');

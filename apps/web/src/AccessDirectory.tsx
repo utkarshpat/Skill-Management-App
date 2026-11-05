@@ -50,7 +50,11 @@ export function AccessDirectory({
           <Search size={18} aria-hidden="true" />
           <input
             aria-label={kind === 'people' ? 'Search people' : 'Search roles'}
-            placeholder={kind === 'people' ? 'Search name, employee ID or role…' : 'Search roles…'}
+            placeholder={
+              kind === 'people'
+                ? 'Find a person by name, employee ID or template…'
+                : 'Search templates…'
+            }
             value={search}
             maxLength={100}
             onChange={event => {
@@ -68,7 +72,7 @@ export function AccessDirectory({
               setPage(1);
             }}
           >
-            <option value="">All accounts</option>
+            <option value="">All statuses</option>
             <option value="active">Active</option>
             <option value="suspended">Suspended</option>
           </select>
@@ -129,11 +133,11 @@ export function AccessDirectory({
                     <button
                       className="directory-edit"
                       disabled={busy}
-                      aria-label={'View access for ' + item.displayName}
+                      aria-label={'Manage person ' + item.displayName}
                       onClick={() => onPerson(item.id)}
                     >
                       <ShieldCheck size={15} />
-                      View access
+                      Manage person
                     </button>
                   </td>
                 </tr>

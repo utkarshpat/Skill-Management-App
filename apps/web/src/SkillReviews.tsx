@@ -58,11 +58,15 @@ export function SkillReviews({
   queueContent,
   teamContent,
   recommendationContent,
+  initialQueueLoading = false,
+  onInitialLoad,
 }: {
   unified?: boolean;
   queueContent?: ReactNode;
   teamContent?: ReactNode;
   recommendationContent?: ReactNode;
+  initialQueueLoading?: boolean;
+  onInitialLoad?: () => void;
 } = {}) {
   const [params, setParams] = useSearchParams(),
     [view, setView] = useState<'queue' | 'team' | 'recommendations'>('queue');
@@ -96,7 +100,10 @@ export function SkillReviews({
     authenticatedFetch('/api/skill-reviews?' + filters, { signal: controller.signal })
       .then(result<ReviewQueue>)
       .then(value => {
-        if (!controller.signal.aborted) setData(value);
+        if (!controller.signal.aborted) {
+          setData(value);
+          onInitialLoad?.();
+        }
       })
       .catch(reason => {
         if (!controller.signal.aborted) {
@@ -109,15 +116,15 @@ export function SkillReviews({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [page, attempt, query, category, status, person]);
+  }, [page, attempt, query, category, status, person, onInitialLoad]);
   useEffect(() => {
     const id = params.get('claim');
-    if (!id || loading || !data) return;
+    if (!id || loading || initialQueueLoading || !data) return;
     const next = new URLSearchParams(params);
     next.delete('claim');
     setParams(next, { replace: true });
     void openClaim(id);
-  }, [params, loading, data]);
+  }, [params, loading, data, initialQueueLoading]);
   function displayClaim(item: Claim) {
     if (unified && item.activeSubmissionId) {
       const next = new URLSearchParams(params);
@@ -237,8 +244,12 @@ export function SkillReviews({
       )}
     </nav>
   );
-  return (
-    <div className="review-shell">
+  const initialLoading = (!data && loading) || (view === 'queue' && initialQueueLoading && !error);
+  const workspace = (
+    <div
+      className="review-shell review-workspace-content"
+      hidden={initialLoading || Boolean(error && !data)}
+    >
       {navigation}
       {view === 'recommendations' && data?.canRecommend ? (
         <>
@@ -263,6 +274,14 @@ export function SkillReviews({
       ) : (
         <>
           {queueContent}
+          {unified && error && data && (
+            <div className="review-error" role="alert">
+              <span>{error}</span>
+              <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
+                Retry
+              </button>
+            </div>
+          )}
           {unified && (
             <p className="review-history-note">
               Earlier individual skill reviews and recorded decisions remain available below.
@@ -270,7 +289,7 @@ export function SkillReviews({
           )}
           <details open className="review-legacy-history">
             {unified && <summary>Legacy reviews{data?.total ? ` (${data.total})` : ''}</summary>}
-            {error && (
+            {!unified && error && (
               <div className="review-error" role="alert">
                 <span>{error}</span>
                 <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
@@ -536,7 +555,7 @@ export function SkillReviews({
               Only assigned claims from your current direct reports appear here. Private drafts stay
               with the employee.
             </p>
-            {!claim && !error && (opening || Boolean(params.get('claim'))) && (
+            {!initialLoading && !claim && !error && (opening || Boolean(params.get('claim'))) && (
               <FormDialog
                 title="Skill review"
                 busy={opening}
@@ -571,5 +590,29 @@ export function SkillReviews({
         </>
       )}
     </div>
+  );
+  return (
+    <>
+      {initialLoading && (
+        <section className="review-loading" role="status" aria-busy="true">
+          <div className="review-loading-icon" aria-hidden="true">
+            <RefreshCw size={24} />
+          </div>
+          <div>
+            <strong>Loading review workspace…</strong>
+            <p>Checking your permissions and assigned review queues.</p>
+          </div>
+        </section>
+      )}
+      {!initialLoading && error && !data && (
+        <div className="review-error" role="alert">
+          <span>{error}</span>
+          <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
+            Retry
+          </button>
+        </div>
+      )}
+      {workspace}
+    </>
   );
 }

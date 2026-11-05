@@ -125,6 +125,9 @@ export async function fixture(page: Page, state: State) {
         return json({
           canRequest: true,
           canIncident: true,
+          categories: ['LEARNING', 'SKILL', 'PROFILE_ACCESS', 'PLATFORM', 'OTHER'].flatMap(code =>
+            ['REQUEST', 'INCIDENT'].map(kind => ({ code, kind })),
+          ),
           recipients: [
             {
               id: '55555555-5555-4555-8555-000000000001',
