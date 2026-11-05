@@ -58,14 +58,16 @@ Platform par employees ka profile banane aur **reporting hierarchy & skill verif
 
 ### 2. Organization Placement & Reporting Hierarchy (Crucial)
 
-> **Note**: Current direct-manager skill review ek explicitly implemented relationship policy hai: current active manager, exact assigned reviewer, active claimant, reviewable state, matching scoped DENY aur no-self-review checks preserve hone chahiye. Hierarchy, title, department ya manager flag se general access nahi milta. Recommendations ko independently effective `learning.recommend` permission aur authorized recipient scope chahiye. Placement data wider TEAM/DEPARTMENT/ORGANIZATION access enable nahi karta.
+> **Note**: Current direct-manager skill review ek explicitly implemented relationship policy hai: current active manager, exact assigned reviewer, active claimant, reviewable state, matching scoped DENY aur no-self-review checks preserve hone chahiye. Hierarchy, title, account/client ya manager flag se general access nahi milta. Recommendations ko independently effective `learning.recommend` permission aur authorized recipient scope chahiye. Placement data wider TEAM/DEPARTMENT/ORGANIZATION access enable nahi karta.
 
-| Field Name              | Data Type      | Description                                | Mandatory?                    | Example                  |
-| ----------------------- | -------------- | ------------------------------------------ | ----------------------------- | ------------------------ |
-| `manager_employee_code` | Text (max 40)  | Direct reporting manager ka Employee Code  | **YES** _(Top head ka blank)_ | `EMP10012`               |
-| `delivery_unit`         | Text (max 100) | Top-level division ya business unit        | **YES**                       | `Digital Transformation` |
-| `department`            | Text (max 100) | Division ke andar ka department / function | **YES**                       | `Engineering`            |
-| `team`                  | Text (max 100) | Department ke andar sub-team / pod         | Optional                      | `Core Platform`          |
+Current product labels **Accounts/Clients** aur **Project** hain. Data collection ke `department` aur `team` column names neeche unchanged hain: `department` Accounts/Clients placement hai, aur `team` uske andar optional single organizational Project hai. Ye rename separate multiple Business project memberships ko merge ya populate nahi karta.
+
+| Field Name              | Data Type      | Description                                      | Mandatory?                    | Example                  |
+| ----------------------- | -------------- | ------------------------------------------------ | ----------------------------- | ------------------------ |
+| `manager_employee_code` | Text (max 40)  | Direct reporting manager ka Employee Code        | **YES** _(Top head ka blank)_ | `EMP10012`               |
+| `delivery_unit`         | Text (max 100) | Top-level division ya business unit              | **YES**                       | `Digital Transformation` |
+| `department`            | Text (max 100) | Delivery Unit ke andar Accounts/Clients          | **YES**                       | `Example Client`         |
+| `team`                  | Text (max 100) | Accounts/Clients ke andar organizational Project | Optional                      | `Example Project`        |
 
 ### 3. Job Profile & Designation Details
 
@@ -108,10 +110,11 @@ EMP10050,Suresh Patel,suresh.patel@company.com,e5678901-5555-6666-7777-888899990
    - Self-reporting (`employee_code == manager_employee_code`) strictly forbidden hai.
 3. **Circular Loops Strictly Rejected**:
    - Reporting chain mein koi circular reporting (e.g., A reports to B, and B reports to A) nahi honi chahiye.
-4. **Delivery Unit & Department Tree**:
+4. **Delivery Unit, Accounts/Clients & Project Tree**:
    - Delivery Unit top-level root hota hai.
-   - Department Delivery Unit ke under map hota hai.
-   - Team hamesha Department ke under aati hai.
+   - Accounts/Clients (`DEPARTMENT`) Delivery Unit ke under map hota hai.
+   - Organizational Project (`TEAM`) hamesha Accounts/Clients ke under aata hai.
+   - Direct Accounts/Clients placement bhi supported hai; organizational Project optional hai. Reporting manager separately assign hota hai.
 
 ---
 

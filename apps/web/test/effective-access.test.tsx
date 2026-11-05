@@ -39,3 +39,38 @@ test('access explanations show resolved scope, workflow checks and escaped sourc
   assert.match(html, /revision 7/);
   assert.doesNotMatch(html, /<script>/);
 });
+
+test('access scope explanations use accounts/clients without changing source records or decisions', () => {
+  const summary = {
+    actorId: 'own',
+    revision: 3,
+    summaryOnly: true,
+    unsupportedAssignments: [],
+    decisions: [
+      {
+        action: 'business.analytics.view',
+        implemented: true,
+        allowed: true,
+        reasonCode: 'ALLOW',
+        resolvedScope: { kind: 'DEPARTMENT' },
+        constraints: ['CURRENT_PERMISSION'],
+        sources: [
+          {
+            kind: 'RESPONSIBILITY',
+            label: 'Example Client',
+            effect: 'ALLOW',
+            scope: 'DEPARTMENT:Client_ID',
+          },
+        ],
+      },
+    ],
+  };
+  const before = structuredClone(summary);
+  const html = renderToStaticMarkup(<AccessDecisionList summary={summary} />);
+  assert.match(html, /accounts\/clients/);
+  assert.match(html, /Accounts\/Clients:Client_ID/);
+  assert.match(html, /Allowed/);
+  assert.match(html, /current permission/);
+  assert.doesNotMatch(html, /DEPARTMENT/);
+  assert.deepEqual(summary, before);
+});

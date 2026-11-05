@@ -1,6 +1,7 @@
 import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
+import { organizationValidationMessage } from '../../shared/organization-terminology.js';
 import {
   organizationChange,
   identifier,
@@ -87,7 +88,8 @@ export class SqlOrganizationStore implements OrganizationStore {
       if (number === 51003)
         throw new AccessError(403, 'Organization administration is not assigned.');
       if (number === 51004) throw new AccessError(404, 'Workspace record unavailable.');
-      if (number === 51000) throw new AccessError(400, (error as Error).message);
+      if (number === 51000)
+        throw new AccessError(400, organizationValidationMessage((error as Error).message));
       if ([2601, 2627].includes(number ?? 0))
         throw new AccessError(400, 'This name already exists under the selected parent.');
       if (number === 547) throw new AccessError(400, 'Choose records from this workspace.');

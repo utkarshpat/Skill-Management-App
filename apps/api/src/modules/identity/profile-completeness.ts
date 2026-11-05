@@ -21,7 +21,7 @@ export function profileCompleteness(profile: Profile): ProfileCompleteness {
     { key: 'grade', label: 'Grade', state: text(profile.grade) },
     {
       key: 'department',
-      label: 'Department',
+      label: 'Accounts/Clients',
       state: !organization
         ? 'UNAVAILABLE'
         : organization.placementStatus === 'NEEDS_ATTENTION'

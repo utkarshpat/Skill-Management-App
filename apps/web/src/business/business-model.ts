@@ -1,3 +1,5 @@
+import { organizationKindLabel } from '../organization-labels';
+
 export interface BusinessScope {
   id: string;
   kind: string;
@@ -17,7 +19,7 @@ export function businessScopeChoices(scopes: BusinessScope[], selectedId = '') {
   return [...choices.values()];
 }
 export function businessScopeLabel(scope: BusinessScope) {
-  const kind = scope.kind.replaceAll('_', ' ');
+  const kind = organizationKindLabel(scope.kind);
   return kind.toLowerCase() === scope.label.toLowerCase()
     ? scope.label
     : `${kind} · ${scope.label}`;

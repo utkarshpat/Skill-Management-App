@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router';
+import { organizationKindLabel } from '../organization-labels';
 import { businessDraftHandoff } from './business-draft-handoff';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -847,7 +848,7 @@ export function BusinessWorkflows({
                               <strong>{d.title}</strong>
                               <p className="bo-note">{d.description}</p>
                             </td>
-                            <td>{d.scopeKind.replaceAll('_', ' ')}</td>
+                            <td>{organizationKindLabel(d.scopeKind)}</td>
                             <td>
                               {d.requirements.skills.length} skills ·{' '}
                               {d.requirements.certifications.length} credentials

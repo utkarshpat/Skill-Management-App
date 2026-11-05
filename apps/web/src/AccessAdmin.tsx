@@ -1,4 +1,5 @@
 import { AccessAudit } from './AccessAudit';
+import { organizationKindLabel } from './organization-labels';
 import type { Decision } from './EffectiveAccess';
 import { EmploymentFields, EmploymentChange, type Employment } from './EmploymentDetails';
 import { PrimaryCapabilityFields } from './PrimaryCapabilityFields';
@@ -697,7 +698,7 @@ export function AccessAdmin({
                         target: 'roles',
                       },
                       {
-                        label: 'Departments',
+                        label: 'Accounts/Clients',
                         value: organization
                           ? organization.nodes.filter(
                               node => node.kind === 'DEPARTMENT' && node.active,
@@ -845,7 +846,7 @@ export function AccessAdmin({
                                     (state.catalogue.find(entry => entry.code === item.permission)
                                       ?.label ?? item.permission) +
                                     ' (' +
-                                    item.scope.toLowerCase().replaceAll('_', ' ') +
+                                    organizationKindLabel(item.scope).toLowerCase() +
                                     ')',
                                 )
                                 .join(', ')}

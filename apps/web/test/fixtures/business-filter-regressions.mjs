@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { transform } from 'rolldown/experimental';
 import * as jsx from 'react/jsx-runtime';
 import { readApiResponse } from '../../src/api-response.ts';
+import * as organizationLabels from '../../src/organization-labels.ts';
 let slots = [],
   cursor = 0,
   effects = [],
@@ -80,6 +81,7 @@ globalThis.__probe = {
   react,
   jsx,
   icons,
+  organizationLabels,
   model,
   auth: {
     authenticatedFetch: async (url, options) => {
@@ -121,6 +123,7 @@ const sources = {
   'lucide-react': 'icons',
   '../auth': 'auth',
   '../api-response': 'response',
+  '../organization-labels': 'organizationLabels',
   './business-model': 'model',
   './business-report-document': 'reportDocument',
   './BusinessAdministration': 'administration',

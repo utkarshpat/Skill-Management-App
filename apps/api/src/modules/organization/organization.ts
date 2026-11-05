@@ -76,7 +76,8 @@ export function organizationChange(input: unknown) {
   if (body.kind === 'assignment') {
     const teamId = identifier(body.teamId, true),
       departmentId = identifier(body.departmentId, true);
-    if (teamId && departmentId) throw new AccessError(400, 'Choose either a department or a team.');
+    if (teamId && departmentId)
+      throw new AccessError(400, 'Choose either an account/client or an organizational project.');
     return {
       kind: 'assignment' as const,
       revision: Number(body.revision),

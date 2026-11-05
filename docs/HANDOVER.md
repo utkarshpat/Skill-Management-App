@@ -2,6 +2,12 @@
 
 Version: 2026-11-05. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
 
+## Organization naming - 5 November 2026
+
+Current product labels are **Accounts/Clients** (historical Department, stored `DEPARTMENT`) and **Project** (organizational Team, stored `TEAM`). The hierarchy is Workspace -> Delivery Unit -> Accounts/Clients -> optional Project -> Employee. An employee can be placed directly in Accounts/Clients without an organizational project. Reporting manager assignment is separate.
+
+This approved change is presentation-only: no database renames, identity/grant changes, assignment backfill or schema migration. A company workspace/account is not an Accounts/Clients placement. Single organizational Project placement and multiple Business project memberships remain separate existing models; their IDs/scopes must not be interchanged. Manager "team" still means current direct reports. Historical documentation and technical schema/API inventories retain their original names. See the [approved terminology contract](ACCESS_MODEL_REDESIGN.md#organization-display-terminology---approved-follow-up-5-november-2026).
+
 ## Current company operations — 5 November 2026
 
 [Current operations](CURRENT_OPERATIONS.md) and [SSO/provisioning](REAL_USER_SSO.md) supersede dated demo/deferred instructions below. Company App Service and restricted managed-identity SQL are configured; supplied inventory confirmed migration 087. The user screenshot confirmed the dummy-data cutover at revision 76: 20 real profiles, two projects, 19 reporting links and archived historical audit/grants. Microsoft login's verified-identity screen was observed. Twenty unique exact roster-email / directory-UPN mappings were prepared; the user reports bulk binding complete, with final commit output/revision and individual access acceptance still unverified independently.

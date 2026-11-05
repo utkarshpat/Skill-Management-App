@@ -57,7 +57,7 @@ export function previewOrganization(state: OrganizationState, actorId: string, i
       change.kind === 'assignment'
         ? [
             'Changing reporting affects current direct-manager review scope. Existing assigned claims are not silently rerouted; routing mismatches must use the resubmission workflow.',
-            'Membership and reporting placement do not automatically grant department or organization access.',
+            'Membership and reporting placement do not automatically grant account/client or organization access.',
           ]
         : ['Organization placement does not automatically grant access.'],
   };

@@ -76,7 +76,7 @@ export function businessReportHtml(
   const categories = data.categories || [];
   const totalCatRecords = categories.reduce((s, c) => s + c.value, 0);
 
-  // Comparisons (Departments/Delivery Units)
+  // Comparisons (Accounts/Clients and Delivery Units)
   const comparisons = data.comparisons || [];
 
   // Skill Coverage Rows Computation

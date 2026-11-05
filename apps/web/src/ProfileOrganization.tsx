@@ -73,7 +73,7 @@ export function ProfileOrganization({
               </dd>
             </div>
             <div className="profile-info-tile">
-              <dt>Department</dt>
+              <dt>Accounts/Clients</dt>
               <dd>
                 {placement === 'ASSIGNED' ? (
                   <span className="profile-dept-tag">{details.department}</span>
@@ -83,13 +83,13 @@ export function ProfileOrganization({
               </dd>
             </div>
             <div className="profile-info-tile">
-              <dt>Team</dt>
+              <dt>Project</dt>
               <dd>
                 {placement === 'ASSIGNED' ? (
                   details.team ? (
                     <span className="profile-team-tag">{details.team}</span>
                   ) : (
-                    <span className="profile-neutral-tag">No team assigned</span>
+                    <span className="profile-neutral-tag">No project assigned</span>
                   )
                 ) : (
                   placementValue
@@ -119,8 +119,8 @@ export function ProfileOrganization({
           )}
           {placement === 'NOT_ASSIGNED' && (
             <p>
-              Your department or team has not been assigned yet. Ask your access administrator to
-              update your placement.
+              Your account/client or project has not been assigned yet. Ask your access
+              administrator to update your placement.
             </p>
           )}
           <p className="profile-organization-policy">

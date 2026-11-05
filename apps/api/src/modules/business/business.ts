@@ -401,7 +401,7 @@ export function previewBusiness(
       n => n.id === change.payload.departmentId && n.kind === 'DEPARTMENT' && n.active,
     )
   )
-    throw new AccessError(400, 'Choose an active department.');
+    throw new AccessError(400, 'Choose an active account/client.');
   if (
     change.kind === 'PROJECT' &&
     rows('projects').some(

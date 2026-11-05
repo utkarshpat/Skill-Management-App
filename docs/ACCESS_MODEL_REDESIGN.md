@@ -6,6 +6,12 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Organization display terminology - approved follow-up, 5 November 2026
+
+The user approved **Accounts/Clients** in place of Department and **Project** in place of the organizational Team label. The displayed hierarchy is Workspace -> Delivery Unit -> Accounts/Clients -> Project (optional) -> Employee; direct Accounts/Clients placement remains supported. This is a label-only change, not a model migration. Persisted `DEPARTMENT`/`TEAM` kinds, `departmentId`/`teamId`, profile fields, scope IDs, foreign keys, permission evaluation and historical audit records retain their existing contracts.
+
+An Accounts/Clients placement is not the tenant/workspace Account. The organizational Project (`TEAM`) remains a single placement; separately stored Business projects (`PROJECT`) retain multiple memberships and their independently enforced responsibility scopes. Renaming does not merge them, synchronize records or enable TEAM review/access grants. Manager/reporting-team terminology still refers to current direct reports and is not organizational placement. Existing assigned-current-manager, DENY, active-status and no-self-review constraints remain mandatory. Older sections below use the historical/internal names.
+
 ### Direct catalogue management - approved follow-up, 19 October 2026
 
 Migration 087 adds direct catalogue certification writes for actors with the already implemented full catalogue approval bundle, including own-profile prerequisites and request-approval DENY checks. It does not add grants or scopes. API Preview/Recheck and SQL Transaction/Audit checks remain mandatory; recovery requires the same current authority and exact normalized command. Request-only users retain the existing amendment approval flow. Administrators can save an issuer inline with a certification, atomically reusing an existing issuer where appropriate. Descriptions become optional, and catalogue mappings remain suggestions; personal certificate claim links and manager review policy are unchanged. This follow-up is local work; organization 086 was reported installed, while 087 rollout remains pending. [Details](CATALOGUE_FORMS_2026-10-19.md).

@@ -56,13 +56,16 @@ test('own organization presents current names without treating templates or hier
     'Platform',
     'Current Manager',
     'not access grants',
+    'Accounts/Clients',
+    'Project',
   ])
     assert.ok(html.includes(text));
   assert.doesNotMatch(html, /href=|Edit|Approve|role="alert"/);
+  assert.doesNotMatch(html, /<dt>Department<\/dt>|<dt>Team<\/dt>/);
   const departmentOnly = renderToStaticMarkup(
     <ProfileOrganization details={{ ...assigned, team: null }} />,
   );
-  assert.match(departmentOnly, /No team assigned/);
+  assert.match(departmentOnly, /No project assigned/);
   assert.match(departmentOnly, /Engineering/);
 });
 test('profile distinguishes unassigned, broken, loading, failed and unavailable organization records', () => {

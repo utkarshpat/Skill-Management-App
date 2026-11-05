@@ -4,6 +4,7 @@ import { ChevronRight, Plus, Search, GitBranch, Check, FolderTree } from 'lucide
 import { authenticatedFetch } from './auth';
 import { VisualTree, type TreeItem } from './VisualTree';
 import { FormDialog } from './FormDialog';
+import { organizationKindLabel, organizationPreviewText } from './organization-labels';
 
 type Kind = 'DELIVERY_UNIT' | 'DEPARTMENT' | 'TEAM';
 interface OrgNode {
@@ -33,8 +34,8 @@ interface State {
 }
 const labels: Record<Kind, string> = {
   DELIVERY_UNIT: 'Delivery unit',
-  DEPARTMENT: 'Department',
-  TEAM: 'Team',
+  DEPARTMENT: organizationKindLabel('DEPARTMENT'),
+  TEAM: organizationKindLabel('TEAM'),
 };
 const blank = (kind: Kind = 'DELIVERY_UNIT', parentId: string | null = null) => ({
   id: '',
@@ -49,8 +50,8 @@ const endpoint = '/api/access/organization';
  * Organization and reporting hierarchy management interface.
  *
  * Provides visualization and administration of:
- * - Delivery units, departments, and teams with hierarchical visual trees
- * - Person assignments (manager reporting lines, department/team memberships)
+ * - Delivery units, accounts/clients, and organizational projects
+ * - Person assignments and separate manager reporting lines
  * - Strict Preview → Recheck → Transaction → Audit workflow for structural changes
  */
 export function OrganizationSetup({
@@ -352,9 +353,9 @@ export function OrganizationSetup({
           }
         >
           <h3>Before</h3>
-          <pre>{JSON.stringify(review.before, null, 2)}</pre>
+          <pre>{organizationPreviewText(review.before)}</pre>
           <h3>After</h3>
-          <pre>{JSON.stringify(review.after, null, 2)}</pre>
+          <pre>{organizationPreviewText(review.after)}</pre>
           {review.warnings.map(message => (
             <p key={message}>{message}</p>
           ))}
@@ -445,7 +446,7 @@ export function OrganizationSetup({
               <h2>{mode === 'organization' ? 'Organization tree' : 'Reporting tree'}</h2>
               <p>
                 {mode === 'organization'
-                  ? 'Select a department or delivery unit.'
+                  ? 'Select an account/client, project or delivery unit.'
                   : 'Select a person to view their reporting line.'}
               </p>
             </div>
@@ -456,7 +457,7 @@ export function OrganizationSetup({
               aria-label="Search hierarchy"
               placeholder={
                 mode === 'organization'
-                  ? 'Find a unit, department or team'
+                  ? 'Find a unit, account/client or project'
                   : 'Find a person or employee ID'
               }
               value={search}
@@ -590,7 +591,7 @@ export function OrganizationSetup({
                       }
                       if (form.kind !== 'DELIVERY_UNIT' && !form.parentId) {
                         setError(
-                          `Choose a parent ${form.kind === 'TEAM' ? 'department' : 'delivery unit'} first.`,
+                          `Choose a parent ${form.kind === 'TEAM' ? 'account/client' : 'delivery unit'} first.`,
                         );
                         return;
                       }
@@ -653,7 +654,7 @@ export function OrganizationSetup({
                       </label>
                       {form.kind !== 'DELIVERY_UNIT' && (
                         <label>
-                          Parent {form.kind === 'TEAM' ? 'department' : 'delivery unit'}
+                          Parent {form.kind === 'TEAM' ? 'account/client' : 'delivery unit'}
                           <select
                             required
                             value={form.parentId ?? ''}
@@ -713,7 +714,7 @@ export function OrganizationSetup({
                               }
                             >
                               <Plus size={15} />
-                              Add {form.kind === 'DELIVERY_UNIT' ? 'department' : 'team'}
+                              Add {form.kind === 'DELIVERY_UNIT' ? 'account/client' : 'project'}
                             </button>
                           )}
                         </div>
@@ -837,12 +838,12 @@ export function OrganizationSetup({
                       </select>
                     </label>
                     <label>
-                      Department or team
+                      Accounts/Clients or project
                       <select
                         value={placementId}
                         onChange={event => setPlacementId(event.target.value)}
                       >
-                        <option value="">No department or team assigned</option>
+                        <option value="">No account/client or project assigned</option>
                         {state.nodes
                           .filter(node => node.kind !== 'DELIVERY_UNIT' && node.active)
                           .map(node => (
@@ -872,6 +873,10 @@ export function OrganizationSetup({
                           ))}
                       </select>
                     </label>
+                    <p className="access-help">
+                      This is a single organization placement. Business project memberships are
+                      managed separately and can include multiple projects.
+                    </p>
                     <p className="access-help">
                       Choose the person they report to directly. Higher reporting levels follow that
                       manager’s own reporting line.

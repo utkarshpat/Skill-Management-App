@@ -47,6 +47,9 @@ test('checklist shows exact denominator, actionable missing states and authorize
     </MemoryRouter>,
   );
   assert.match(html, /4 of 6 required fields complete/);
+  assert.match(html, /Accounts\/Clients/);
+  assert.doesNotMatch(html, /<dt>Department<\/dt>/);
+  assert.equal(details.items.find(item => item.key === 'department')?.label, 'Department');
   assert.match(html, /Not assigned/);
   assert.match(html, /Needs administrator attention/);
   assert.match(html, /Reporting manager.*not required/);
