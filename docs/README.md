@@ -4,6 +4,8 @@ Updated: 5 November 2026. Read [current company operations](CURRENT_OPERATIONS.m
 
 Current local work: [portfolio commit audit and integration](PORTFOLIO_COMMIT_AUDIT_2026-11-05.md) and [workflow/edge-case acceptance matrix](TEST_ACCEPTANCE_MATRIX.md). The 90% coverage gate remains incomplete; hierarchy integration is not a company schema installation or release acceptance.
 
+[Portfolio/Division analytics scopes and hierarchy filters](PORTFOLIO_SCOPES_2026-11-05.md) records the subsequent user-approved 089 increment, isolated SQL evidence and maintenance rollout boundary.
+
 | Reference                                                                                     | Purpose                                                                                                          |
 | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | [Current company operations](CURRENT_OPERATIONS.md)                                           | Current evidence, environment, SSO/bulk provisioning, KT enabled, remaining acceptance                           |

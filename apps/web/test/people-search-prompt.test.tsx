@@ -36,3 +36,15 @@ test('matching labels keep the four-level distinction and leave unsupported crit
     'Legacy proficiency L5 or above',
   );
 });
+
+test('Find people keeps a hierarchy narrowing filter distinct from the assigned responsibility', () => {
+  const hierarchy = { id: '10000000-0000-4000-8000-000000000003', name: 'Financial Services' };
+  const prompt = peopleSearchPrompt(
+    { id: '10000000-0000-4000-8000-000000000004', label: 'India Delivery' },
+    hierarchy,
+  );
+  assert.match(prompt, /hierarchy filter ID: 10000000-0000-4000-8000-000000000003/);
+  assert.match(prompt, /Selected Analytics scope ID: 10000000-0000-4000-8000-000000000004/);
+  assert.match(prompt, /Financial Services/);
+  assert.ok(assistantContextPrompt(prompt, ''));
+});

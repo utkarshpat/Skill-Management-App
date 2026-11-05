@@ -1,5 +1,8 @@
-export function peopleSearchPrompt(scope?: { id: string; label: string }) {
-  return `Find people${scope ? ` in ${scope.label.slice(0, 80)}` : ' in my authorized scopes'}. First ask what work or project I need people for. Clarify missing skills, minimum levels and mandatory certificates before matching. Use conversational search, not a saved demand form.${scope ? ` Selected Analytics scope ID: ${scope.id}. Keep this scope unless I change it.` : ' Use the authorized union unless I narrow the scope.'}`;
+export function peopleSearchPrompt(
+  scope?: { id: string; label: string },
+  hierarchy?: { id: string; name: string },
+) {
+  return `Find people${scope ? ` in ${scope.label.slice(0, 80)}` : ' in my authorized scopes'}. First ask what work or project I need people for. Clarify missing skills, minimum levels and mandatory certificates before matching. Use conversational search, not a saved demand form.${scope ? ` Selected Analytics scope ID: ${scope.id}. Keep this scope unless I change it.` : ' Use the authorized union unless I narrow the scope.'}${hierarchy ? ` Selected hierarchy filter ID: ${hierarchy.id} (${hierarchy.name.slice(0, 80)}). Keep this narrowing filter unless I change it.` : ''}`;
 }
 export function peopleSearchUserText(content: string) {
   if (

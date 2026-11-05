@@ -55,7 +55,7 @@ export const actionRegistry = permissionCatalogue.map(([code, label]) => ({
             'skill.catalogue.propose',
             'request.approve',
           ].includes(code)
-        ? ['ORGANIZATION', 'DELIVERY_UNIT', 'DEPARTMENT', 'PROJECT']
+        ? ['ORGANIZATION', 'DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT', 'PROJECT']
         : [],
   scopes: supported[code] ?? [],
 }));

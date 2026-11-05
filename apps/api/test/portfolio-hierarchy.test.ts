@@ -120,7 +120,7 @@ test('legacy, missing, duplicate, cyclic and wrongly typed ancestry never resolv
     );
   }
 });
-test('DU and Portfolio are not employee placement kinds or permission scopes', () => {
+test('DU and Portfolio are not employee placement kinds; Portfolio business responsibilities are explicit', () => {
   for (const id of [unit, portfolio]) {
     for (const key of ['departmentId', 'teamId'])
       assert.throws(() =>
@@ -132,7 +132,7 @@ test('DU and Portfolio are not employee placement kinds or permission scopes', (
         }),
       );
   }
-  assert.throws(() =>
+  assert.ok(
     businessChange({
       revision: 7,
       kind: 'RESPONSIBILITY',
@@ -144,7 +144,7 @@ test('DU and Portfolio are not employee placement kinds or permission scopes', (
         bundle: 'BUSINESS_OPERATIONS',
         effect: 'ALLOW',
         active: true,
-        reason: 'Unsupported scope',
+        reason: 'Explicit reviewed Portfolio analytics scope',
       },
     }),
   );

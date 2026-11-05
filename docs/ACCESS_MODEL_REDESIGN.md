@@ -6,6 +6,14 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Portfolio/Division analytics scope — approved follow-up, 5 November 2026
+
+The user approved hierarchy filters and explicit Portfolio/Division scopes. Migration **089**, following 088 and reviewed placement mapping, adds `PORTFOLIO` to Business Analytics responsibilities and demand scopes. It does not enable Portfolio scopes in generic role permissions, review grants or System Admin responsibilities. Organization → Delivery Unit → Portfolio/Division → Accounts/Clients coverage is server-resolved through complete active ancestry. Business `PROJECT` scope remains separately bound to project membership. Titles and reporting ancestors grant no authority.
+
+Portfolio ALLOW includes active employees placed in its clients; DU DENY covers Portfolio/client ALLOW, and Portfolio/client DENY subtracts matching employees from broader reads. Historical grants are retained. Hierarchy filters are a separate narrowing intersection with `BusinessVisiblePeople`, applied before counts, pages, matching and exports. Discovery lists only valid placements containing currently authorized employees. Unknown, foreign, inactive or unauthorized hierarchy IDs fail closed. Responsibility changes retain Preview → Recheck → Transaction → Audit. Local SQL acceptance and rollout evidence are recorded in [the scope implementation record](PORTFOLIO_SCOPES_2026-11-05.md); company installation and hosted acceptance remain pending.
+
+This increment supersedes the structural-only Portfolio scope limitation below for Business Analytics only; older dated audit results retain their original meaning.
+
 ### Mandatory Portfolio/Division - approved structural follow-up, 5 November 2026
 
 The approved target is **Delivery Unit -> Portfolio/Division -> Accounts/Clients -> optional organizational Project**. Every client requires an explicitly approved portfolio mapping; no default portfolio may be invented. This structural increment supersedes the earlier three-level label-only topology below. Migration 088 adds `PORTFOLIO` nodes without renaming or replacing existing `DEPARTMENT`/`TEAM` IDs, assignments, responsibilities or historical grants. Installing the schema alone does not backfill clients.

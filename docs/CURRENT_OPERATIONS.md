@@ -4,6 +4,8 @@ This is the current operational entry point. It supersedes old demo/deferred-SSO
 
 ## Recorded status
 
+Local follow-up (not hosted acceptance): hierarchy e37df62 is merged. Portfolio Business Analytics scope/filter increment 089 is implemented and passed rollback SQL checks on a newly created local SQL Express audit database; company SQL remains at the last recorded version until an operator verifies otherwise. The full current unit run passes **864 checks** (8 tooling, 444 API, 412 web), with typechecks/build/docs verification passing. Recovery/practice malformed-response fixes and strict current-source coverage provenance checks are included locally. The separate 90% coverage release gate remains incomplete; older percentages below are historical, not approval to deploy. See [Portfolio scopes](PORTFOLIO_SCOPES_2026-11-05.md) and [coverage status](TEST_COVERAGE_2026-11-05.md).
+
 | Area         | Status / evidence                                                                                                                                                                                              |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Hosting      | Azure Linux App Service `SSSkillmgmtAppWebAppDev`; company sign-in and verified-identity screen observed in a user screenshot. Exact running source hash not independently measured.                           |

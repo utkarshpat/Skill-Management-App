@@ -8,7 +8,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,6 +27,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: npm run coverage:browser
+      - run: npm run coverage:check
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -16,6 +16,8 @@ Keep audit/source provenance and recoverable backups. Setup archives `Operations
 
 ## Mandatory Portfolio/Division rollout
 
+Subsequent user-approved increment: [089 Portfolio Business scopes and hierarchy filters](../../docs/PORTFOLIO_SCOPES_2026-11-05.md) requires successful 088 mapping first. Install 089 in the same approved maintenance rollout before releasing its matching API/web build. It adds explicit Business Analytics scopes, not inherited title/review authority or generic role scope support. The structural-only limitation in the historical 088 steps below describes 088 alone.
+
 This is a pending maintenance operation, not a completed migration/backfill. Obtain a recoverable backup and reviewed workspace, current authorized app-admin actor, Delivery Unit/client UUIDs and Portfolio/Division UUID/name mapping. Do not copy employee rosters into source or invent manager links. Every existing client, including archived records, must appear exactly once. Reuse an exact existing portfolio or approve a new UUID; the template permits a legacy direct-DU parent or the already-approved target portfolio, not unrelated reorganization.
 
 1. Stop application traffic and other writers for the maintenance window. Migration 088 intentionally makes unmapped legacy client paths fail closed; **do not deploy it independently while serving the old application**.

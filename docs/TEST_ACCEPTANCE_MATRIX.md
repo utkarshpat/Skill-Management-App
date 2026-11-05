@@ -4,6 +4,8 @@ Target requested by the user: **90%+ coverage**, with realistic human-readable f
 
 Fixtures use fictional Aditi Menon, Rohan Mehta and Neha Kapoor with delivery projects, skills, certificates and reporting relationships. Test adapters never seed or mutate the real company workspace. Browser HTTP fixtures, driver contract tests and installed-SQL acceptance are different evidence levels.
 
+Latest local increment: 864 unit/tooling checks pass (444 API, 412 web, 8 tooling). New interactive coverage includes certification edit validation/retry, recommendation responses and stable send IDs, planner, recovery preview integrity, practice notes/resources/quizzes, person access, dashboard and catalogue. Malformed recovery/practice DTOs previously caused crashes or false successful callbacks; current UI guards and regression cases reject these responses without discarding valid drafts. Portfolio 089 rollback SQL evidence covers actual scope saves/audit/revision, authorized discovery, read/export, scoped DENY, expiry/revocation and forged hierarchy rejection. This is bounded local evidence, not a claim that the 39 full SQL-backed application suites or hosted SSO have passed. Earlier per-flow cells below describe the prior checkpoint and are not substitutes for current artifacts.
+
 ## Cross-cutting cases required for every mutable flow
 
 | Boundary                                              | Expected result                                                                   | Evidence requirement                  |

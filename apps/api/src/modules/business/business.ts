@@ -23,6 +23,7 @@ export function normalizeBusinessAdministration(value: Record<string, unknown>) 
 }
 export interface BusinessQuery {
   scopeId?: string;
+  hierarchyId?: string;
   dataset: 'people' | 'skills' | 'certifications' | 'submissions';
   search: string;
   status: string;
@@ -56,6 +57,7 @@ export interface BusinessQuery {
     | 'certified_desc';
 }
 export interface BusinessContext {
+  hierarchy?: { id: string; kind: string; name: string; parentId: string | null }[];
   actorId?: string;
   revision: number;
   asOf: string;
@@ -185,6 +187,7 @@ export function businessQuery(value: unknown): BusinessQuery {
   const q = value as Record<string, unknown>;
   const keys = [
     'scopeId',
+    'hierarchyId',
     'dataset',
     'search',
     'status',
@@ -261,6 +264,7 @@ export function businessQuery(value: unknown): BusinessQuery {
   return {
     sort: sort as BusinessQuery['sort'],
     ...(q.scopeId !== undefined ? { scopeId: identifier(q.scopeId) } : {}),
+    ...(q.hierarchyId !== undefined ? { hierarchyId: identifier(q.hierarchyId) } : {}),
     ...(q.skillId !== undefined ? { skillId: identifier(q.skillId) } : {}),
     dataset: dataset as BusinessQuery['dataset'],
     validity: validity as BusinessQuery['validity'],
@@ -319,7 +323,9 @@ export function businessChange(value: unknown): BusinessChange {
   } else if (q.kind === 'RESPONSIBILITY') {
     if (
       !['BUSINESS_OPERATIONS', 'SYSTEM_ADMIN'].includes(String(p.bundle)) ||
-      !['ORGANIZATION', 'DELIVERY_UNIT', 'DEPARTMENT', 'PROJECT'].includes(String(p.kind)) ||
+      !['ORGANIZATION', 'DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT', 'PROJECT'].includes(
+        String(p.kind),
+      ) ||
       !['ALLOW', 'DENY'].includes(String(p.effect)) ||
       typeof p.active !== 'boolean'
     )

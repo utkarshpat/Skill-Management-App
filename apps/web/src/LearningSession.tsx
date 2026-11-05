@@ -5,46 +5,19 @@ import { learningPracticeUrl } from './learning-practice-url';
 import { FormDialog } from './FormDialog';
 import type { Plan, Task } from './Learning';
 import './learning-session.css';
-
-interface Resource {
-  label: string;
-  url: string;
-}
-interface Question {
-  prompt: string;
-  options: string[];
-}
-interface Quiz {
-  id: string;
-  title: string;
-  provider: string;
-  createdAt: string;
-  questions: Question[];
-}
-interface Review extends Question {
-  answer: number;
-  correctIndex: number;
-  explanation: string;
-}
-interface Attempt {
-  id: string;
-  quizId: string;
-  answers: number[];
-  score: number;
-  total: number;
-  submittedAt: string;
-  review: Review[];
-}
-interface Practice {
-  session: { revision: number; notes: string; minutes: number; resources: Resource[] };
-  quizzes: Quiz[];
-  attempts: Omit<Attempt, 'review'>[];
-}
+import {
+  readPracticeState,
+  readPracticeReview,
+  type PracticeState as Practice,
+  type PracticeQuiz as Quiz,
+  type PracticeAttempt as Attempt,
+  type PracticeResource as Resource,
+} from './learning-practice-response';
 async function parse(response: Response): Promise<Practice> {
   const body = await response.json().catch(() => undefined);
   if (!response.ok)
     throw Error(body?.error?.message ?? 'This learning session could not be loaded.');
-  return body;
+  return readPracticeState(body);
 }
 export function LearningSession({
   plan,
@@ -153,7 +126,7 @@ export function LearningSession({
       setNotice('AI practice ready. Review the topic and start when you are ready.');
     }
   }
-  async function loadReview(id: string) {
+  async function loadReview(id: string, quizId: string) {
     setBusy(true);
     setError('');
     try {
@@ -161,7 +134,7 @@ export function LearningSession({
       const body = await response.json().catch(() => undefined);
       if (!response.ok || !body)
         throw Error(body?.error?.message ?? 'Could not load your attempt.');
-      setReview(body);
+      setReview(readPracticeReview(body, id, quizId));
       setReviewIndex(0);
       setPage(3);
     } catch (e) {
@@ -181,7 +154,7 @@ export function LearningSession({
       setQuiz(undefined);
       setPage(3);
       setHistoryPage(0);
-      await loadReview(result.id);
+      await loadReview(result.id, result.quizId);
       setNotice('Attempt saved. This is informal learning practice.');
     }
   }
@@ -489,7 +462,7 @@ export function LearningSession({
             <button
               className="secondary-button"
               disabled={busy}
-              onClick={() => void loadReview(a.id)}
+              onClick={() => void loadReview(a.id, a.quizId)}
             >
               View explanations
             </button>

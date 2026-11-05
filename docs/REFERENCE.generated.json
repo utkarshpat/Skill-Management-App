@@ -1,6 +1,6 @@
 {
   "version": "2026-11-05",
-  "revision": "5527517aed6f5fbd",
+  "revision": "041dfd9f792e1fc0",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -90,7 +90,8 @@
       "085_private_file_storage.sql",
       "086_catalogue_forms_shared_criteria.sql",
       "087_direct_catalogue_management.sql",
-      "088_organization_portfolio.sql"
+      "088_organization_portfolio.sql",
+      "089_portfolio_business_scopes.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -5071,7 +5072,7 @@
           "scope_kind": {
             "type": "varchar(20)",
             "nullable": false,
-            "declaration": "scope_kind varchar(20) NOT NULL CHECK(scope_kind IN('ORGANIZATION','DELIVERY_UNIT','DEPARTMENT','PROJECT'))",
+            "declaration": "scope_kind varchar(20) NOT NULL",
             "source": "060_business_operations.sql"
           },
           "scope_id": {
@@ -5148,6 +5149,10 @@
           {
             "sql": "CHECK(LEN(LTRIM(RTRIM(reason)))>0)",
             "source": "060_business_operations.sql"
+          },
+          {
+            "sql": "CHECK(scope_kind IN('ORGANIZATION','DELIVERY_UNIT','PORTFOLIO','DEPARTMENT','PROJECT'))",
+            "source": "database/migrations/089_portfolio_business_scopes.sql"
           }
         ],
         "indexes": [
@@ -5581,12 +5586,12 @@
             "source": "061_business_workflows.sql"
           },
           {
-            "sql": "CHECK(scope_kind IN('ORGANIZATION','DELIVERY_UNIT','DEPARTMENT','PROJECT'))",
+            "sql": "CHECK((scope_kind='ORGANIZATION' AND scope_id IS NULL) OR (scope_kind<>'ORGANIZATION' AND scope_id IS NOT NULL))",
             "source": "061_business_workflows.sql"
           },
           {
-            "sql": "CHECK((scope_kind='ORGANIZATION' AND scope_id IS NULL) OR (scope_kind<>'ORGANIZATION' AND scope_id IS NOT NULL))",
-            "source": "061_business_workflows.sql"
+            "sql": "CHECK(scope_kind IN('ORGANIZATION','DELIVERY_UNIT','PORTFOLIO','DEPARTMENT','PROJECT'))",
+            "source": "database/migrations/089_portfolio_business_scopes.sql"
           }
         ],
         "indexes": [],
@@ -7420,13 +7425,13 @@
       "name": "BusinessScopeValid",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier) RETURNS bit",
-      "source": "database/migrations/088_organization_portfolio.sql"
+      "source": "database/migrations/089_portfolio_business_scopes.sql"
     },
     {
       "name": "BusinessResponsibilityUsable",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@grant uniqueidentifier) RETURNS bit",
-      "source": "database/migrations/088_organization_portfolio.sql"
+      "source": "database/migrations/089_portfolio_business_scopes.sql"
     },
     {
       "name": "BusinessScopeMatches",
@@ -7438,7 +7443,7 @@
       "name": "BusinessScopePeople",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier) RETURNS TABLE",
-      "source": "database/migrations/088_organization_portfolio.sql"
+      "source": "database/migrations/089_portfolio_business_scopes.sql"
     },
     {
       "name": "BusinessVisiblePeople",
@@ -7474,13 +7479,13 @@
       "name": "BusinessProjection",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@actor uniqueidentifier) RETURNS nvarchar(max)",
-      "source": "database/migrations/060_business_operations.sql"
+      "source": "database/migrations/089_portfolio_business_scopes.sql"
     },
     {
       "name": "BusinessContext",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/060_business_operations.sql"
+      "source": "database/migrations/089_portfolio_business_scopes.sql"
     },
     {
       "name": "BusinessAdministration",
@@ -7492,19 +7497,19 @@
       "name": "SaveBusinessChange",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,@kind varchar(30),@id uniqueidentifier,@payload nvarchar(max)",
-      "source": "database/migrations/060_business_operations.sql"
+      "source": "database/migrations/089_portfolio_business_scopes.sql"
     },
     {
       "name": "BusinessDashboard",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@payload nvarchar(max),@export bit=0",
-      "source": "database/migrations/083_full_catalogue_coverage.sql"
+      "source": "database/migrations/089_portfolio_business_scopes.sql"
     },
     {
       "name": "BusinessScopeCovers",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier,@targetKind varchar(20),@target uniqueidentifier) RETURNS bit",
-      "source": "database/migrations/088_organization_portfolio.sql"
+      "source": "database/migrations/089_portfolio_business_scopes.sql"
     },
     {
       "name": "BusinessDemandCan",
@@ -7594,7 +7599,7 @@
       "name": "BusinessPeopleSearch",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@payload nvarchar(max),@export bit=0",
-      "source": "database/migrations/082_conversational_people_search.sql"
+      "source": "database/migrations/089_portfolio_business_scopes.sql"
     },
     {
       "name": "PrivateFileNameToken",
@@ -7637,6 +7642,12 @@
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier) RETURNS TABLE",
       "source": "database/migrations/088_organization_portfolio.sql"
+    },
+    {
+      "name": "BusinessHierarchy",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier) RETURNS TABLE",
+      "source": "database/migrations/089_portfolio_business_scopes.sql"
     }
   ],
   "groups": {

@@ -51,7 +51,7 @@ const administration = {
       kind: 'PORTFOLIO',
       active: true,
       parentId: unit,
-      scopeValid: false,
+      scopeValid: true,
     },
     {
       id: department,
@@ -164,4 +164,48 @@ test('access profiles: project, membership, baseline and historical grants remai
   await expect(page.getByText(/Existing explicit denies remain effective/)).toBeVisible();
   await page.getByText('Historical grants needing explicit review (1)', { exact: true }).click();
   await expect(page.getByText(/Unsupported historical grant requires review/)).toBeVisible();
+});
+
+test('access profiles: Portfolio analytics preview keeps the exact binding and never becomes System Admin', async ({
+  page,
+}) => {
+  await profiles(page);
+  const previews: Record<string, any>[] = [];
+  await page.route('**/api/business/administration/preview', async r => {
+    const body = r.request().postDataJSON();
+    previews.push(body);
+    await r.fulfill({
+      json: {
+        receipt: 'portfolio-reviewed',
+        change: body,
+        before: null,
+        after: body.payload,
+        impact: {},
+        warnings: [],
+      },
+    });
+  });
+  const form = page.locator('#bo-access-assignment-form');
+  await form.getByRole('combobox', { name: 'Person', exact: false }).selectOption(ids.person);
+  await form.getByRole('combobox', { name: 'Scope', exact: true }).selectOption('PORTFOLIO');
+  await form.getByRole('combobox', { name: 'Scope binding', exact: false }).selectOption(portfolio);
+  await form
+    .getByPlaceholder('Why is this change needed?')
+    .fill('Aditi supports the Financial Services portfolio.');
+  await form.getByRole('button', { name: 'Preview change', exact: true }).click();
+  const preview = page.getByRole('dialog', { name: 'Review configuration change' });
+  await expect(preview).toBeVisible();
+  expect(previews[0].payload).toMatchObject({
+    kind: 'PORTFOLIO',
+    scopeId: portfolio,
+    bundle: 'BUSINESS_OPERATIONS',
+  });
+  await preview.getByRole('button', { name: 'Back', exact: true }).click();
+  await form
+    .getByRole('combobox', { name: 'Responsibility', exact: true })
+    .selectOption('SYSTEM_ADMIN');
+  await expect(form.getByRole('combobox', { name: 'Scope', exact: true })).toHaveValue(
+    'ORGANIZATION',
+  );
+  await expect(form.getByRole('combobox', { name: 'Scope binding', exact: false })).toHaveCount(0);
 });

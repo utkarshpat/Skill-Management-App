@@ -25,6 +25,7 @@ export function businessScopeLabel(scope: BusinessScope) {
     : `${kind} · ${scope.label}`;
 }
 export interface BusinessContext {
+  hierarchy?: { id: string; kind: string; name: string; parentId: string | null }[];
   actorId?: string;
   revision: number;
   asOf: string;
@@ -87,6 +88,7 @@ export interface BusinessDashboard {
 }
 export const businessFilterKeys = [
   'scopeId',
+  'hierarchyId',
   'dataset',
   'search',
   'status',

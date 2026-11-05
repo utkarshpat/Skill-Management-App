@@ -365,6 +365,7 @@ function Insights({ context }: { context: BusinessContext }) {
     (data?.context ?? context).scopes,
     params.get('scopeId') ?? '',
   );
+  const hierarchy = (data?.context ?? context).hierarchy ?? [];
 
   const cleared = {
     category: '',
@@ -510,7 +511,10 @@ function Insights({ context }: { context: BusinessContext }) {
                   new CustomEvent('assistant-context-request', {
                     detail: {
                       autoSend: true,
-                      prompt: peopleSearchPrompt(scopes.find(s => s.id === params.get('scopeId'))),
+                      prompt: peopleSearchPrompt(
+                        scopes.find(s => s.id === params.get('scopeId')),
+                        hierarchy.find(n => n.id === params.get('hierarchyId')),
+                      ),
                     },
                   }),
                 )
@@ -563,8 +567,36 @@ function Insights({ context }: { context: BusinessContext }) {
                 </option>
               ))}
             </select>
-            <MetricTooltip text="Select an assigned organization, Delivery Unit, Accounts/Clients or Project responsibility. This does not add access." />
+            <MetricTooltip text="Select an assigned Organization, Delivery Unit, Portfolio/Division, Accounts/Clients or Project responsibility. This does not add access." />
           </div>
+          {hierarchy.length > 0 && (
+            <label>
+              Organization hierarchy
+              <select
+                className="bo-select"
+                aria-label="Organization hierarchy filter"
+                value={params.get('hierarchyId') ?? ''}
+                onChange={e => change({ hierarchyId: e.target.value })}
+              >
+                <option value="">All authorized placements</option>
+                {['DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT'].map(kind => (
+                  <optgroup key={kind} label={organizationKindLabel(kind)}>
+                    {hierarchy
+                      .filter(n => n.kind === kind)
+                      .map(n => {
+                        const parent = hierarchy.find(p => p.id === n.parentId);
+                        const unit = hierarchy.find(p => p.id === parent?.parentId);
+                        return (
+                          <option key={n.id} value={n.id}>
+                            {[unit?.name, parent?.name, n.name].filter(Boolean).join(' → ')}
+                          </option>
+                        );
+                      })}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+          )}
 
           {/* Employee Search */}
           <form
@@ -875,6 +907,7 @@ function Insights({ context }: { context: BusinessContext }) {
                     {(
                       {
                         scopeId: 'Scope',
+                        hierarchyId: 'Organization hierarchy',
                         skillId: 'Skill',
                         maxRank: 'Proficiency',
                         minRank: 'Minimum rank',
@@ -893,11 +926,13 @@ function Insights({ context }: { context: BusinessContext }) {
                   <span className="bo-chip-val">
                     {k === 'scopeId'
                       ? (scopes.find(s => s.id === v)?.label ?? 'Selected scope')
-                      : k === 'skillId'
-                        ? (loaded?.data.coverage.find(c => c.id === v)?.label ?? 'Selected skill')
-                        : k === 'maxRank'
-                          ? `L${params.get('minRank') ?? '1'}–L${v}`
-                          : v.replaceAll('_', ' ')}
+                      : k === 'hierarchyId'
+                        ? (hierarchy.find(n => n.id === v)?.name ?? 'Selected placement')
+                        : k === 'skillId'
+                          ? (loaded?.data.coverage.find(c => c.id === v)?.label ?? 'Selected skill')
+                          : k === 'maxRank'
+                            ? `L${params.get('minRank') ?? '1'}–L${v}`
+                            : v.replaceAll('_', ' ')}
                   </span>
                   <X size={12} aria-hidden="true" />
                 </button>
@@ -1318,7 +1353,7 @@ function Insights({ context }: { context: BusinessContext }) {
                         <div>
                           <h2 className="bo-panel-title">
                             Workforce by scope
-                            <MetricTooltip text="Capability benchmark across organizational scopes (Delivery Units, Accounts/Clients, Projects)." />
+                            <MetricTooltip text="Capability benchmark across organizational scopes (Delivery Units, Portfolios/Divisions, Accounts/Clients, Projects)." />
                           </h2>
                           <p className="bo-note">
                             Comparison across allowed bindings (up to 30). Project memberships can

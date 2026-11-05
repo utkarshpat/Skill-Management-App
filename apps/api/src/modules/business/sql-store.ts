@@ -123,7 +123,7 @@ export class SqlBusinessStore implements BusinessStore {
   async context(actor: string) {
     return normalizeBusinessCollections(
       await this.execute<BusinessContext>(actor, 'dbo.BusinessContext'),
-      ['scopes'],
+      ['scopes', 'hierarchy'],
     );
   }
   async administration(actor: string) {
@@ -141,7 +141,7 @@ export class SqlBusinessStore implements BusinessStore {
       query,
       request => request.input('export', sql.Bit, exporting),
     );
-    result.context = normalizeBusinessCollections(result.context, ['scopes']);
+    result.context = normalizeBusinessCollections(result.context, ['scopes', 'hierarchy']);
     assertBusinessScope(result.context, await this.context(actor), exporting);
     return normalizeBusinessCollections(result, [
       'coverage',
@@ -162,7 +162,7 @@ export class SqlBusinessStore implements BusinessStore {
       query,
       request => request.input('export', sql.Bit, exporting),
     );
-    result.context = normalizeBusinessCollections(result.context, ['scopes']);
+    result.context = normalizeBusinessCollections(result.context, ['scopes', 'hierarchy']);
     const fresh = await this.context(actor);
     assertBusinessScope(result.context, fresh, exporting);
     if (!fresh.canMatch) throw new AccessError(403, 'Matching access changed.');

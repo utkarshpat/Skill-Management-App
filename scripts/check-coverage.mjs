@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
+import { coverageSource } from './coverage-source.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const threshold = 90;
 const pathKey = value => {
@@ -13,6 +14,32 @@ for (const [app, report] of [
   ['web', 'artifacts/coverage/combined-web/coverage-summary.json'],
 ]) {
   try {
+    const inventory = coverageSource(join(root, 'apps', app, 'src'));
+    const unit = JSON.parse(
+      readFileSync(join(root, 'artifacts/coverage/current', app, 'run.json'), 'utf8'),
+    );
+    if (
+      unit.sourceHash !== inventory.hash ||
+      !unit.stableSource ||
+      unit.exitCode !== 0 ||
+      unit.failed
+    )
+      throw Error('Unit coverage is stale, failed or missing for current production source.');
+    if (app === 'web') {
+      const merged = JSON.parse(
+        readFileSync(join(root, 'artifacts/coverage/combined-web/summary.json'), 'utf8'),
+      );
+      const run = JSON.parse(readFileSync(join(root, 'artifacts/e2e/results.json'), 'utf8'));
+      if (
+        !merged.browserStartTime ||
+        merged.sourceHash !== inventory.hash ||
+        merged.browserStartTime !== run.stats?.startTime ||
+        run.errors?.length ||
+        run.stats.unexpected ||
+        run.stats.skipped
+      )
+        throw Error('Web coverage must come from the current complete passing browser run.');
+    }
     const summary = JSON.parse(readFileSync(join(root, report), 'utf8'));
     const sourcePaths = readdirSync(join(root, 'apps', app, 'src'), {
       recursive: true,

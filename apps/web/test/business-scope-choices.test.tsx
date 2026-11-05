@@ -79,4 +79,15 @@ test('accounts/clients display naming preserves responsibility IDs and distinct 
   assert.equal(businessScopeLabel(placement), 'Project · Example Client');
   assert.equal(businessScopeChoices([department, project, placement]).length, 3);
   assert.deepEqual(department, before);
+  const portfolio = {
+    ...department,
+    id: 'portfolio-grant',
+    kind: 'PORTFOLIO',
+    label: 'Financial Services',
+  };
+  assert.equal(businessScopeLabel(portfolio), 'Portfolio/Division · Financial Services');
+  assert.equal(
+    businessScopeChoices([department, portfolio, { ...portfolio, effect: 'DENY' }]).length,
+    2,
+  );
 });

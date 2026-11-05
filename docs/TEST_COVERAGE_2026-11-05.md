@@ -1,5 +1,28 @@
 # Coverage and release verification — 5 November 2026
 
+## Current local follow-up
+
+The latest passing runs contain **867 unit/tooling checks: 8 tooling, 446 API and 413 web**, plus **64/64 Chromium desktop/mobile E2E scenarios**. API/web runs have zero failures, skips, cancellations or TODOs. Evidence: ignored `artifacts/final-api-coverage.log`, `artifacts/final-coverage.log`, `artifacts/final-e2e.log` and per-app `run.json`/`tests.log`. Typechecks, production builds and generated-document check pass. The earlier 864-check checkpoint remains in `artifacts/current-all-tests.log`. Local 089 scope SQL acceptance is recorded separately in [Portfolio scopes](PORTFOLIO_SCOPES_2026-11-05.md).
+
+The pasted 778-test report records another source hash/HEAD and **104/172 represented web files**. Its mapped-file 92.22% cannot establish whole-web coverage or satisfy the requested 90% gate. The fresh complete-inventory result is:
+
+| Area                       | Source files | Lines/statements | Branches | Functions | 90% gate |
+| -------------------------- | ------------ | ---------------- | -------- | --------- | -------- |
+| API                        | 125/125      | 92.69%           | 90.31%   | 94.56%    | Pass     |
+| Web, merged unit + browser | 172/172      | 70.90%           | 83.14%   | 59.19%    | **Fail** |
+
+Web counters are 30,049/42,379 executable lines, 5,523/6,643 discovered branches and 1,136/1,919 discovered functions. Native-V8 discovered branch/function counts can change as more callbacks execute; they are not an independent enumeration of every unexecuted branch. SQL/CSS are outside these TypeScript percentages. No production TypeScript files are excluded except declarations. Current-source hashes, passing runs, full source representation and all four 90% metrics are enforced locally and in CI; stale artifacts cannot approve release.
+
+Production source hashes: API `c8f46b8b1515f0fc0f7611930f7e6e79acd639f77824a711c62b7c5bfecce9c0`; web `b6b47cf65f3f436a9c14ac6c9f6e59ec3f1ffe5c77f162dbb162eeed3c4be893`. Passing coverage recorded unchanged production sources before/after each run. The browser merge references the complete passing run beginning `2026-11-05T14:14:19.658Z`. Readable reports are under `artifacts/coverage/current/api` and `artifacts/coverage/combined-web`.
+
+One intermediate instrumented API run failed the large-PDF validation wall-clock boundary. The production validation limit was preserved. Test concurrency is now bounded to four workers; the complete repeat passed 446/446, including that real PDF case. The failed intermediate log was superseded by the complete repeat; its summary remains documented here rather than being counted as a pass.
+
+Largest remaining web gaps: CapabilityComposer (942 lines), BusinessWorkflows (768), SkillClaimWizard (599), TeamCapability (598), AccessAdmin (524), EmployeeCapability (500), SkillGrowthJourney (436), Certifications (399), MySkills (389), AssistantWidget (372). These require more workflow interactions, not denominator exclusions. The full 39 SQL-backed application suites and hosted identity/access acceptance remain unexecuted; the new isolated SQL acceptance is bounded to the documented hierarchy/scope cases.
+
+The requested 90% overall target is **not achieved**. A review candidate ZIP may be provided with failed-gate metadata; it is not an accepted release. No live deployment is claimed. The dated checkpoint below is retained as historical evidence.
+
+## Earlier checkpoint
+
 This supersedes the earlier native-V8 partial-file coverage report. The UI review commits through `90348a1` are integrated. New tests, a recoverable failed-sign-out fix, dependency patches and repeatable CI/browser coverage are included. No company user or permission was changed by this verification.
 
 ## Results

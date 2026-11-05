@@ -22,6 +22,83 @@ interface Preview {
   tasks: { id: string; title: string; oldDate: string; newDate: string; minutes: number }[];
   previewHash: string;
 }
+const recoveryDay = (value: unknown): value is string => {
+  if (typeof value !== 'string' || !/^20\d{2}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value + 'T12:00:00Z');
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+function validPreview(
+  value: unknown,
+  plan: Plan,
+  start: string,
+  minutes: number,
+): value is Preview {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Partial<Preview>;
+  const pending = new Map(
+    plan.tasks.filter(task => !task.completedAt).map(task => [task.id.toLowerCase(), task]),
+  );
+  if (
+    typeof row.planId !== 'string' ||
+    row.planId.toLowerCase() !== plan.id.toLowerCase() ||
+    row.revision !== plan.revision ||
+    row.startDate !== start ||
+    !recoveryDay(row.startDate) ||
+    row.dailyMinutes !== minutes ||
+    !Number.isSafeInteger(row.dailyMinutes) ||
+    minutes < 5 ||
+    minutes > 480 ||
+    row.oldDailyMinutes !== plan.dailyMinutes ||
+    row.oldTargetDate !== plan.targetDate ||
+    row.timezone !== plan.timezone ||
+    !recoveryDay(row.today) ||
+    !recoveryDay(row.targetDate) ||
+    row.targetDate < start ||
+    !Number.isSafeInteger(row.overdue) ||
+    Number(row.overdue) < 1 ||
+    !Number.isSafeInteger(row.totalMinutes) ||
+    Number(row.totalMinutes) < 1 ||
+    !Number.isSafeInteger(row.days) ||
+    Number(row.days) < 1 ||
+    typeof row.previewHash !== 'string' ||
+    !/^[a-f0-9]{64}$/.test(row.previewHash) ||
+    !Array.isArray(row.tasks) ||
+    row.tasks.length !== pending.size ||
+    !row.tasks.length ||
+    Number(row.overdue) > row.tasks.length ||
+    Number(row.days) > row.tasks.length
+  )
+    return false;
+  const ids = new Set<string>();
+  const dailyTotals = new Map<string, number>();
+  for (const task of row.tasks) {
+    if (!task || typeof task.id !== 'string' || ids.has(task.id.toLowerCase())) return false;
+    const original = pending.get(task.id.toLowerCase());
+    if (
+      !original ||
+      typeof task.title !== 'string' ||
+      !task.title.trim() ||
+      task.title.length > 160 ||
+      task.oldDate !== original.plannedDate ||
+      task.minutes !== original.estimatedMinutes ||
+      !Number.isSafeInteger(task.minutes) ||
+      task.minutes < 1 ||
+      task.minutes > minutes ||
+      !recoveryDay(task.newDate) ||
+      task.newDate < start ||
+      task.newDate > row.targetDate
+    )
+      return false;
+    ids.add(task.id.toLowerCase());
+    const total = (dailyTotals.get(task.newDate) ?? 0) + task.minutes;
+    if (total > minutes) return false;
+    dailyTotals.set(task.newDate, total);
+  }
+  return (
+    row.totalMinutes === row.tasks.reduce((sum, task) => sum + task.minutes, 0) &&
+    row.days === new Set(row.tasks.map(task => task.newDate)).size
+  );
+}
 export function LearningRecovery({
   plan,
   onClose,
@@ -80,14 +157,34 @@ export function LearningRecovery({
         throw Error(body?.error?.message ?? 'Recovery could not be prepared.');
       }
       if (abort.signal.aborted) return;
-      if (!body) throw Error('Recovery returned an incomplete response. Reload before retrying.');
+      if (!body) {
+        if (action === 'apply') {
+          setStale(true);
+          throw Error('Recovery save could not be confirmed. Reload your plan before retrying.');
+        }
+        if (action === 'preview') setStale(true);
+        throw Error('Recovery returned an incomplete response. Reload before retrying.');
+      }
       if (action === 'preview') {
+        if (!validPreview(body, plan, start, minutes)) {
+          setStale(true);
+          throw Error(
+            'Recovery returned an incomplete or mismatched preview. Reload before retrying.',
+          );
+        }
         setPreview(body);
         setTaskPage(0);
         setStale(false);
         setPage(1);
-      } else if (action === 'apply') onSaved();
-      else if (body.previewHash === preview?.previewHash) {
+      } else if (action === 'apply') {
+        if (body.saved !== true) {
+          setStale(true);
+          throw Error('Recovery save could not be confirmed. Reload your plan before retrying.');
+        }
+        onSaved();
+      } else if (typeof body.reply !== 'string' || body.reply.length > 2000) {
+        throw Error('Recovery returned incomplete guidance. Retry guidance before continuing.');
+      } else if (body.previewHash === preview?.previewHash) {
         setAdvice(body.reply);
         setAdvicePage(0);
       } else {

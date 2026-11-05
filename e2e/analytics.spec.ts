@@ -3,6 +3,26 @@ import type { Page } from '@playwright/test';
 const skill = '11111111-1111-4111-8111-000000000001',
   scope = '99999999-9999-4999-8999-000000000001';
 const context = {
+  hierarchy: [
+    {
+      id: '90000000-0000-4000-8000-000000000001',
+      kind: 'DELIVERY_UNIT',
+      name: 'India Delivery',
+      parentId: null,
+    },
+    {
+      id: '90000000-0000-4000-8000-000000000002',
+      kind: 'PORTFOLIO',
+      name: 'Financial Services',
+      parentId: '90000000-0000-4000-8000-000000000001',
+    },
+    {
+      id: '90000000-0000-4000-8000-000000000003',
+      kind: 'DEPARTMENT',
+      name: 'Northstar Bank',
+      parentId: '90000000-0000-4000-8000-000000000002',
+    },
+  ],
   actorId: ids.person,
   revision: 4,
   asOf: '2026-11-05T03:30:00Z',
@@ -124,6 +144,12 @@ test('analytics: scope, chart perspectives, dataset filters and export use the c
   await expect(views.getByRole('button', { name: 'Overview', exact: true })).toBeVisible();
   await page.getByRole('combobox', { name: 'Scope filter' }).selectOption(scope);
   await expect.poll(() => queries.at(-1)?.get('scopeId')).toBe(scope);
+  await page
+    .getByRole('combobox', { name: 'Organization hierarchy filter' })
+    .selectOption('90000000-0000-4000-8000-000000000002');
+  await expect
+    .poll(() => queries.at(-1)?.get('hierarchyId'))
+    .toBe('90000000-0000-4000-8000-000000000002');
   await views.getByRole('button', { name: 'Skill coverage', exact: true }).click();
   await expect(
     page.getByRole('button', {
@@ -142,6 +168,7 @@ test('analytics: scope, chart perspectives, dataset filters and export use the c
     .selectOption('APPROVED');
   await expect.poll(() => queries.at(-1)?.get('status')).toBe('APPROVED');
   expect(queries.at(-1)?.get('scopeId')).toBe(scope);
+  expect(queries.at(-1)?.get('hierarchyId')).toBe('90000000-0000-4000-8000-000000000002');
   await filters
     .getByRole('combobox', { name: 'Dataset', exact: true })
     .selectOption('certifications');

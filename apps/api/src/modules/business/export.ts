@@ -26,6 +26,15 @@ export function reportCells(
         : 'All authorized scopes',
     ],
     ['Unique filtered records', String(data.total)],
+    ...(query.hierarchyId
+      ? [
+          [
+            'Organization hierarchy',
+            data.context.hierarchy?.find(n => n.id === query.hierarchyId)?.name ??
+              'Selected authorized placement',
+          ],
+        ]
+      : []),
     ['Current coverage', 'As-of snapshot; activity dates apply to activity events only'],
     [
       'Project membership',

@@ -35,7 +35,14 @@ interface Administration {
     analyticsAccess?: boolean;
     adminAccess?: boolean;
   }[];
-  nodes: { id: string; name: string; kind: string; active: boolean; scopeValid?: boolean }[];
+  nodes: {
+    id: string;
+    name: string;
+    kind: string;
+    parentId?: string | null;
+    active: boolean;
+    scopeValid?: boolean;
+  }[];
   historicalGrantsForReview: unknown[];
 }
 export function BusinessAdministration({
@@ -600,7 +607,9 @@ export function BusinessAdministration({
                         .filter(n => n.kind === 'DEPARTMENT')
                         .map(n => (
                           <option key={n.id} value={n.id} disabled={n.scopeValid !== true}>
-                            {n.name}
+                            {'parentId' in n && state?.nodes.find(p => p.id === n.parentId)?.name
+                              ? `${state.nodes.find(p => p.id === n.parentId)?.name} → ${n.name}`
+                              : n.name}
                           </option>
                         ))}
                     </select>
@@ -666,13 +675,15 @@ export function BusinessAdministration({
                         setScope('');
                       }}
                     >
-                      {['ORGANIZATION', 'DELIVERY_UNIT', 'DEPARTMENT', 'PROJECT'].map(k => (
-                        <option key={k} value={k}>
-                          {k === 'ORGANIZATION'
-                            ? 'Organization (entire company workspace)'
-                            : organizationKindLabel(k)}
-                        </option>
-                      ))}
+                      {['ORGANIZATION', 'DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT', 'PROJECT'].map(
+                        k => (
+                          <option key={k} value={k}>
+                            {k === 'ORGANIZATION'
+                              ? 'Organization (entire company workspace)'
+                              : organizationKindLabel(k)}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </label>
                   {scopeKind === 'ORGANIZATION' && (
@@ -700,7 +711,9 @@ export function BusinessAdministration({
                               ('scopeValid' in n ? n.scopeValid !== true : true)
                             }
                           >
-                            {n.name}
+                            {'parentId' in n && state?.nodes.find(p => p.id === n.parentId)?.name
+                              ? `${state.nodes.find(p => p.id === n.parentId)?.name} → ${n.name}`
+                              : n.name}
                           </option>
                         ))}
                       </select>

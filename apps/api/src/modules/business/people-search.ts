@@ -2,6 +2,7 @@ import { AccessError } from '../../shared/errors.js';
 import { identifier, type BusinessContext } from './business.js';
 export interface PeopleSearchQuery {
   scopeId?: string;
+  hierarchyId?: string;
   skills: { id: string; minRank: number }[];
   certifications: string[];
   headcount: number;
@@ -38,7 +39,15 @@ export function peopleSearchQuery(value: unknown): PeopleSearchQuery {
   if (
     Object.keys(q).some(
       k =>
-        !['scopeId', 'skills', 'certifications', 'headcount', 'onlyEligible', 'page'].includes(k),
+        ![
+          'scopeId',
+          'hierarchyId',
+          'skills',
+          'certifications',
+          'headcount',
+          'onlyEligible',
+          'page',
+        ].includes(k),
     )
   )
     fail();
@@ -81,6 +90,7 @@ export function peopleSearchQuery(value: unknown): PeopleSearchQuery {
       fail();
   return {
     ...(q.scopeId !== undefined ? { scopeId: identifier(q.scopeId) } : {}),
+    ...(q.hierarchyId !== undefined ? { hierarchyId: identifier(q.hierarchyId) } : {}),
     skills: normalized,
     certifications: certs,
     headcount: Number(q.headcount ?? 1),

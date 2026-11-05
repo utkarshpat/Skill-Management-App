@@ -11,6 +11,8 @@ Object.assign(globalThis, {
   CustomEvent: browser.CustomEvent,
   sessionStorage: browser.sessionStorage,
   IS_REACT_ACT_ENVIRONMENT: true,
+  requestAnimationFrame: browser.requestAnimationFrame.bind(browser),
+  cancelAnimationFrame: browser.cancelAnimationFrame.bind(browser),
 });
 // Node's native channel would keep the test process alive; tabs are tested separately.
 Object.defineProperty(globalThis, 'BroadcastChannel', { configurable: true, value: undefined });

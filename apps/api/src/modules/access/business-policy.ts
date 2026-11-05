@@ -2,7 +2,7 @@
 export interface BusinessScope {
   id: string;
   bundle: 'BUSINESS_OPERATIONS' | 'SYSTEM_ADMIN';
-  kind: 'ORGANIZATION' | 'DELIVERY_UNIT' | 'DEPARTMENT' | 'PROJECT';
+  kind: 'ORGANIZATION' | 'DELIVERY_UNIT' | 'PORTFOLIO' | 'DEPARTMENT' | 'PROJECT';
   scopeId: string | null;
   label: string;
   effect: 'ALLOW' | 'DENY';

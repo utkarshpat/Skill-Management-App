@@ -119,7 +119,11 @@ export function registerBusinessRoutes(
         page: 1,
         pageSize: result.pageSize,
       };
-      const q = businessQuery({ dataset: 'people', scopeId: query.scopeId });
+      const q = businessQuery({
+        dataset: 'people',
+        scopeId: query.scopeId,
+        hierarchyId: query.hierarchyId,
+      });
       const reportOptions = {
         columns: [
           'employee',

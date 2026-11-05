@@ -7,6 +7,7 @@ import { peopleCriterionLabel } from './people-search-prompt';
 import './people-search.css';
 export interface PeopleQuery {
   scopeId?: string;
+  hierarchyId?: string;
   skills: { id: string; minRank: number }[];
   certifications: string[];
   headcount: number;
@@ -145,6 +146,9 @@ export function AssistantPeopleResults({ query }: { query: PeopleQuery }) {
               ? (data.context.scopes.find(s => s.id === query.scopeId)?.label ??
                 'Selected authorized scope')
               : 'All authorized scopes'}{' '}
+            {query.hierarchyId
+              ? ` · ${data.context.hierarchy?.find(n => n.id === query.hierarchyId)?.name ?? 'Selected authorized placement'}`
+              : ''}
             · Updated {new Date(data.context.asOf).toLocaleString()}
           </p>
           <div className="people-search-requirements">

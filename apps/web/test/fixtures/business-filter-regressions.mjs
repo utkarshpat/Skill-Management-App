@@ -44,6 +44,11 @@ const context = {
   canExport: true,
   canManage: false,
   scopes: [],
+  hierarchy: [
+    { id: 'india', kind: 'DELIVERY_UNIT', name: 'India Delivery', parentId: null },
+    { id: 'financial-services', kind: 'PORTFOLIO', name: 'Financial Services', parentId: 'india' },
+    { id: 'northstar', kind: 'DEPARTMENT', name: 'Northstar Bank', parentId: 'financial-services' },
+  ],
 };
 const dashboard = employee => ({
   context,
@@ -280,4 +285,33 @@ await tick();
 tree = render();
 assert.ok(text(tree).includes('Export access revoked'));
 assert.equal(button(tree, 'Interactive HTML').props.disabled, false);
+const hierarchySelector = nodes(tree).find(
+  n => n.props['aria-label'] === 'Organization hierarchy filter',
+);
+assert.ok(hierarchySelector);
+assert.ok(text(hierarchySelector).includes('India Delivery → Financial Services → Northstar Bank'));
+hierarchySelector.props.onChange({ target: { value: 'financial-services' } });
+tree = render();
+await tick();
+assert.ok(calls.at(-1).includes('hierarchyId=financial-services'));
+assert.equal(params.has('page'), false);
+deferred[5].resolve(json(dashboard('Aditi Menon')));
+await tick();
+tree = render();
+assert.ok(text(tree).includes('Aditi Menon'));
+assert.equal(
+  nodes(tree).find(n => n.props['aria-label'] === 'Organization hierarchy filter').props.value,
+  'financial-services',
+);
+assert.ok(text(tree).includes('Organization hierarchy'));
+button(tree, 'Interactive HTML').props.onClick();
+await tick();
+assert.ok(
+  calls.at(-1).includes('hierarchyId=financial-services'),
+  'Export rechecks the same hierarchy filter',
+);
+deferred[6].resolve(json({ error: { message: 'Hierarchy access revoked' } }, 403));
+await tick();
+tree = render();
+assert.ok(text(tree).includes('Hierarchy access revoked'));
 console.log('Business filter lifecycle regressions passed');

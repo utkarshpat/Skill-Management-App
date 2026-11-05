@@ -127,6 +127,12 @@ tables['LearningPlan']['columns']['payload']['declaration'] = re.sub(r'\s+CHECK\
 tables['WorkflowRecord']['columns']['status']['declaration'] = tables['WorkflowRecord']['columns']['status']['declaration'].replace(" CHECK(status IN ('SUBMITTED','CANCELLED'))", '')
 tables['WorkflowEvent']['columns']['action']['declaration'] = tables['WorkflowEvent']['columns']['action']['declaration'].replace(" CHECK(action IN ('CREATE','COMMENT','CANCEL'))", '')
 tables['ProficiencyFramework']['constraints'] = [item for item in tables['ProficiencyFramework']['constraints'] if item['sql'] != "CHECK(account_id IS NOT NULL OR framework_key='enterprise-v1')"]
+# 089 replaces kind-only CHECKs dynamically, retaining binding/admin/expiry checks.
+for name in ['BusinessResponsibility', 'BusinessDemand']:
+    column = tables[name]['columns']['scope_kind']
+    column['declaration'] = re.sub(r"\s+CHECK\(scope_kind IN\([^)]*\)\)", '', column['declaration'])
+    tables[name]['constraints'] = [item for item in tables[name]['constraints'] if not re.fullmatch(r"CHECK\(scope_kind IN\([^)]*\)\)", item['sql'])]
+    tables[name]['constraints'].append({'sql': "CHECK(scope_kind IN('ORGANIZATION','DELIVERY_UNIT','PORTFOLIO','DEPARTMENT','PROJECT'))", 'source': 'database/migrations/089_portfolio_business_scopes.sql'})
 
 for name,t in tables.items():
     assert t['pk'], name

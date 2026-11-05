@@ -2,13 +2,17 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { coverageSource } from './coverage-source.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const label = process.argv.includes('--baseline') ? 'baseline' : 'current';
 const output = join(root, 'artifacts/coverage', label);
 mkdirSync(output, { recursive: true });
 const results = [];
-for (const app of ['api', 'web']) {
+const selection = process.argv.find(value => value.startsWith('--app='))?.slice(6);
+if (selection && !['api', 'web'].includes(selection)) throw Error('Use --app=api or --app=web.');
+const apps = selection ? [selection] : ['api', 'web'];
+for (const app of apps) {
   const cwd = join(root, 'apps', app),
     destination = join(output, app);
   mkdirSync(destination, { recursive: true });
@@ -18,6 +22,8 @@ for (const app of ['api', 'web']) {
     .sort()
     .map(name => 'test/' + name);
   console.log(`Coverage ${label}: ${app}, ${tests.length} test files`);
+  const startedAtUtc = new Date().toISOString();
+  const before = coverageSource(join(cwd, 'src'));
   const result = spawnSync(
     process.execPath,
     [
@@ -37,6 +43,7 @@ for (const app of ['api', 'web']) {
       '--import',
       'tsx',
       '--test',
+      '--test-concurrency=4',
       ...tests,
     ],
     {
@@ -65,9 +72,22 @@ for (const app of ['api', 'web']) {
     sourceFiles: sourceFiles.length,
     measuredFiles: Object.keys(coverage).length - 1,
     coverage: coverage.total,
+    sourceHash: before.hash,
+    stableSource: before.hash === coverageSource(join(cwd, 'src')).hash,
+    startedAtUtc,
+    completedAtUtc: new Date().toISOString(),
   };
+  writeFileSync(join(destination, 'run.json'), JSON.stringify(row, null, 2));
   results.push(row);
   console.log(JSON.stringify(row));
+}
+let previous = [];
+if (selection) {
+  try {
+    previous = JSON.parse(readFileSync(join(output, 'summary.json'), 'utf8')).results ?? [];
+  } catch {
+    /* First selected-app run has no previous result. */
+  }
 }
 writeFileSync(
   join(output, 'summary.json'),
@@ -78,11 +98,20 @@ writeFileSync(
       measuredAtUtc: new Date().toISOString(),
       denominator:
         'All production .ts/.tsx source; only .d.ts excluded; browser and SQL integration are separate.',
-      results,
+      selectedApps: apps,
+      results: [...previous.filter(row => !apps.includes(row.app)), ...results],
     },
     null,
     2,
   ),
 );
-if (results.some(row => row.exitCode !== 0 || row.failed || row.measuredFiles !== row.sourceFiles))
+if (
+  results.some(
+    row =>
+      row.exitCode !== 0 ||
+      row.failed ||
+      !row.stableSource ||
+      row.measuredFiles !== row.sourceFiles,
+  )
+)
   process.exitCode = 1;

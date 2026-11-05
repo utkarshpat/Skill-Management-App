@@ -151,6 +151,12 @@ export class ToolRegistry {
                   description:
                     'Only an authorizedScopes.id responsibility ID; omit for authorized union.',
                 },
+                hierarchyId: {
+                  type: 'string',
+                  format: 'uuid',
+                  description:
+                    'Optional authorizedHierarchy.id returned by analytics. Narrows authorized people to a Delivery Unit, Portfolio/Division or Accounts/Clients placement. Never guess IDs.',
+                },
                 skills: {
                   type: 'array',
                   maxItems: 20,
@@ -188,6 +194,9 @@ export class ToolRegistry {
             eligibleTotal: result.eligibleTotal,
             asOf: result.context.asOf,
             context: { canExport: result.context.canExport },
+            hierarchy: result.query.hierarchyId
+              ? result.context.hierarchy?.find(n => n.id === result.query.hierarchyId)?.name
+              : undefined,
             page: result.page,
             pageSize: result.pageSize,
             requirements: result.requirements,
@@ -403,6 +412,12 @@ export class ToolRegistry {
                     description:
                       'Optional authorizedScopes.id returned by a business tool. This is a responsibility ID, never a Delivery Unit, account/client, project or employee ID. Omit for your authorized scope union; never guess an ID.',
                   },
+                  hierarchyId: {
+                    type: 'string',
+                    format: 'uuid',
+                    description:
+                      'Optional authorizedHierarchy.id from analytics; narrowing placement filter only. Never guess IDs.',
+                  },
                   search: {
                     type: 'string',
                     maxLength: 100,
@@ -451,6 +466,7 @@ export class ToolRegistry {
                 key =>
                   ![
                     'scopeId',
+                    'hierarchyId',
                     'search',
                     'page',
                     'validity',
@@ -473,6 +489,7 @@ export class ToolRegistry {
             return {
               asOf: result.context.asOf,
               filters: args,
+              authorizedHierarchy: result.context.hierarchy ?? [],
               authorizedScopes: result.context.scopes
                 .filter(scope => scope.effect === 'ALLOW')
                 .map(scope => ({ id: scope.id, kind: scope.kind, label: scope.label })),

@@ -121,6 +121,7 @@ if (command !== 'check' && command !== 'migrate') {
           [86, '086_catalogue_forms_shared_criteria.sql'],
           [87, '087_direct_catalogue_management.sql'],
           [88, '088_organization_portfolio.sql'],
+          [89, '089_portfolio_business_scopes.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

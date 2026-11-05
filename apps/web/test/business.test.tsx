@@ -55,6 +55,10 @@ test('business deep-link filters are bounded to recognized keys and reset pagina
     'dataset=certifications&page=3&validity=EXPIRED&actorId=forged&tab=insights',
   );
   assert.equal(businessFilters(params).has('actorId'), false);
+  const hierarchy = updateBusinessFilters(params, { hierarchyId: 'portfolio-financial-services' });
+  assert.equal(businessFilters(hierarchy).get('hierarchyId'), 'portfolio-financial-services');
+  assert.equal(hierarchy.has('page'), false);
+  assert.equal(updateBusinessFilters(hierarchy, { hierarchyId: '' }).has('hierarchyId'), false);
   assert.equal(updateBusinessFilters(params, { issuer: 'Microsoft' }).has('page'), false);
   assert.equal(updateBusinessFilters(params, { page: '4' }).get('page'), '4');
   assert.equal(isSupportedWorkspacePath('/business'), true);
