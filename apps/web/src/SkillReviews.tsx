@@ -268,23 +268,8 @@ export function SkillReviews({
               Earlier individual skill reviews and recorded decisions remain available below.
             </p>
           )}
-          <details
-            open={
-              !unified ||
-              Boolean(data?.total) ||
-              filtered ||
-              Boolean(search) ||
-              params.has('claim')
-                ? true
-                : undefined
-            }
-            className="review-legacy-history"
-          >
-            {unified && (
-              <summary>
-                Earlier individual reviews and history{data?.total ? ` (${data.total})` : ''}
-              </summary>
-            )}
+          <details open className="review-legacy-history">
+            {unified && <summary>Legacy reviews{data?.total ? ` (${data.total})` : ''}</summary>}
             {error && (
               <div className="review-error" role="alert">
                 <span>{error}</span>
