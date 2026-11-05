@@ -63,6 +63,14 @@ These cases are **NOT EXECUTED** here. TypeScript/mock/SQL-text tests and a T-SQ
 
 ## Release gate
 
+### Realistic local workforce scenarios
+
+`e2e/workforce-data.ts` contains fictional Aditi Menon (Business Analyst), Rohan Mehta (Delivery Manager) and Neha Kapoor (Capability Operations Lead), with customer analytics delivery work, SQL/Power BI/Python claims, current/expired reviewed credentials and a partially completed learning plan. These are normal human-readable scenarios, not actual employee records or a company-directory extract. They stay inside the browser test adapter and never seed company SQL.
+
+The additional desktop/mobile browser cases cover skill search/clear and reviewed feedback; learning pause/resume with changing revisions and session-note saves; workshop request recipient, mandatory comment/cancellation text, retained activity and revision changes; expired credential details and absence of employee approval actions. Mock responses check UI command payloads and refreshed state. They do not substitute for installed SQL authorization, persistence, concurrency or file acceptance.
+
+Real-user release remains pending until an approved isolated SQL environment can exercise the 39 blocked suites and real SSO/permission/file scenarios are verified. Do not use the previously generated ZIP or a whole-web percentage as a go-live approval.
+
 The coverage run uses Windows/Node 26.8.2. The repository CI targets Ubuntu/Node 24; that exact target/version combination was not executed by this local report. Verify CI and Linux deployment separately, including native file/image dependencies and casing/path behavior.
 
 Automated checks passing is necessary, not sufficient. Prioritize UI-02/04/05/08, DB-01–09 and AUTH-01–04 before claiming complete real-user acceptance. Then mobile/keyboard/theme and manager navigation. No full penetration test, live database coverage percentage or complete requirements-coverage percentage is claimed. See the companion measured coverage report for executable-source coverage and limitations.

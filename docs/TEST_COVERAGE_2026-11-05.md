@@ -4,12 +4,14 @@ This supersedes the earlier native-V8 partial-file coverage report. The UI revie
 
 ## Results
 
+Release clarification: the earlier ZIP is a build artifact, **not production acceptance**. A 33.07% whole-web line result plus 39 unexecuted SQL suites is insufficient evidence for a full release-readiness claim. No live deployment was performed during that verification. Coverage percentages alone cannot approve a release: current-manager/assigned-reviewer denials, scoped access, real SSO, transactional writes and private files need their own acceptance evidence.
+
 | Check                        | Result                          | Boundary                                                                                                                                                                                                              |
 | ---------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | API automated tests          | 365 passed                      | Synthetic unit/HTTP/store tests; not installed SQL                                                                                                                                                                    |
 | Web automated tests          | 258 passed                      | Helpers, render tests and probes                                                                                                                                                                                      |
 | Architecture / packaging     | 7 passed                        | Includes canaries proving fake MSAL/E2E harness cannot enter deployment source ZIP                                                                                                                                    |
-| Chromium browser E2E         | 22 passed                       | Desktop 1440×1000 and mobile 390×844; synthetic identity provider and HTTP fixtures                                                                                                                                   |
+| Chromium browser E2E         | 30 passed                       | Desktop 1440×1000 and mobile 390×844; synthetic identity provider and HTTP fixtures                                                                                                                                   |
 | Hosted public smoke          | 8 passed                        | Homepage/profile/health/config, anonymous API denials, disabled demo login and missing asset; no authenticated writes                                                                                                 |
 | SQL-backed integrations      | **39 NOT RUN / BLOCKED**        | Existing isolated SQL connection failed; no newly approved target supplied. Company real-user database was not used for mutation tests. Full filename/status inventory is in ignored `artifacts/sql-e2e-status.json`. |
 | Dependencies                 | 0 reported npm audit advisories | Compatible patches to Azure Identity, Vite, concurrently and transitive dependencies; not a penetration-test claim                                                                                                    |
@@ -26,9 +28,9 @@ Measured with c8 9.1.0 and V8, including **all** production `.ts`/`.tsx` files. 
 | API current            |                123 / 123 |     76.03% |   84.50% |    75.92% |
 | Web unit-only baseline |                170 / 170 | **20.57%** |   83.13% |    63.17% |
 | Web current unit-only  |                170 / 170 |     20.56% |   83.13% |    63.17% |
-| Web unit + browser     |                170 / 170 | **33.07%** |   80.65% |    52.37% |
+| Web unit + browser     |                170 / 170 | **42.93%** |   78.68% |    47.96% |
 
-Frontend line coverage increased **12.50 percentage points** versus the complete-inventory baseline. Current recovery handling adds source lines, hence the tiny unit-only denominator difference. Browser execution discovers more functions/branches in previously unexecuted components, so those denominators grow; their percentages are not directly comparable to unit-only counters. The previous 89.79% web number omitted 73 files and must not be compared as whole-web coverage. The previous native API figure also used different V8 attribution; use the c8 series for comparisons.
+Frontend line coverage increased **22.36 percentage points** versus the complete-inventory baseline and **9.86 points** versus the earlier 33.07% unit + browser result. Current recovery handling adds source lines, hence the tiny unit-only denominator difference. Browser execution discovers more functions/branches in previously unexecuted components, so those denominators grow; their percentages are not directly comparable to unit-only counters. The previous 89.79% web number omitted 73 files and must not be compared as whole-web coverage. The previous native API figure also used different V8 attribution; use the c8 series for comparisons.
 
 | Previously missing integration area | Current line coverage |
 | ----------------------------------- | --------------------: |
@@ -39,11 +41,28 @@ Frontend line coverage increased **12.50 percentage points** versus the complete
 | `SkillReviews.tsx`                  |                74.40% |
 | `business/BusinessWorkflows.tsx`    |                61.44% |
 
-Coverage is still incomplete: 36 frontend files have zero hit lines, including major learning, personal skill intake, catalogue and request screens. No 100% requirements coverage or full end-to-end company acceptance is claimed. Prioritize stateful interaction tests for those screens and approved isolated SQL before setting a release-quality coverage threshold.
+Coverage is still incomplete: 20 frontend files have zero hit lines. Learning, personal skills and request screens now have browser execution, but large parts of intake, administration, catalogue and AI flows remain uncovered. No 100% requirements coverage or full end-to-end company acceptance is claimed. Prioritize stateful interaction tests for those screens and approved isolated SQL before setting a release-quality coverage threshold.
+
+## New workflow coverage
+
+| Source                               |  Lines |
+| ------------------------------------ | -----: |
+| `MySkills.tsx`                       | 46.04% |
+| `SkillClaimDialog.tsx`               | 60.66% |
+| `capabilities/SkillCertificates.tsx` | 83.21% |
+| `Learning.tsx`                       | 66.94% |
+| `LearningHome.tsx`                   | 79.30% |
+| `LearningSession.tsx`                | 60.19% |
+| `Requests.tsx`                       | 92.52% |
+| `RequestList.tsx`                    | 90.88% |
+| `RequestActionDialog.tsx`            | 46.03% |
+
+The realistic fixture writes are local browser adapter state. They validate command contents, required text, refreshed views and revision progression, not actual database persistence or SQL authorization.
 
 ## What was added or corrected
 
 - Signed-token missing-claim/app-only/scope/header boundaries and MSAL redirect/account/retry regressions: 21 scenarios, counted with their parent by Node.
+- Eight additional desktop/mobile cases use fictional human-readable workforce data for skill filtering/feedback, learning pause/resume and study notes/resources, request comments/cancellation with changing revisions, and expired reviewed credentials. Fixtures do not contain real employee identities or mutate company data.
 - Local browser tests for Admin/Manager/Employee presentation, keyboard account menu, error/retry/recovery/logout, verified-identity card, mobile overflow, unknown paths, picker synchronization, Provider amendment routing and review history filters.
 - Failed sign-out on the recovery card now displays a recoverable error and enables retry; no unhandled promise or permanently busy state. Desktop/mobile regression cases exercise failure then success.
 - Full-source c8 reports and merged browser coverage with repeatable scripts; CI runs those checks and uploads reports.
@@ -62,7 +81,7 @@ npm run build
 npm audit
 ```
 
-For a before/after baseline, `node scripts/test-coverage.mjs --baseline` writes a separate directory. Baseline here was collected before the recovery fix/browser additions using the same patched dependencies/toolchain. Current evidence: `artifacts/coverage/current/{api,web}/`, `artifacts/coverage/combined-web/`, `artifacts/e2e/report/`, JSON results and retained failure traces. These generated records stay ignored; no source employee exports or tokens are committed. CI uses Ubuntu/Node 24; this local run uses Windows/Node 26.8.2. Remote CI/Linux-native installation remains a separate result to inspect after push.
+For a before/after baseline, `node scripts/test-coverage.mjs --baseline` writes a separate directory. Baseline here was collected before the recovery fix/browser additions using the same patched dependencies/toolchain. Current evidence: `artifacts/coverage/current/{api,web}/`, `artifacts/coverage/combined-web/`, `artifacts/e2e/report/`, JSON results and retained failure traces. These generated records stay ignored; no source employee exports or tokens are committed. CI uses Ubuntu/Node 24; this local run uses Windows/Node 26.8.2. The previous 519d335 CI run passed on Ubuntu/Node 24; the new workforce scenarios still require their own post-push CI result.
 
 ## Remaining functional and environment gates
 
