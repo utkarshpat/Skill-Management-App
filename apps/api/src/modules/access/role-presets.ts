@@ -57,7 +57,7 @@ export const rolePresets: RolePreset[] = [
     key: 'business-analytics',
     name: 'Business Analytics',
     description:
-      'Explicit organization, delivery-unit, department or project responsibility. Manage through People & access profiles.',
+      'Explicit organization, delivery-unit, account/client or project responsibility. Manage through People & access profiles.',
     assignmentMode: 'RESPONSIBILITY',
     permissions: [],
     pending: [],

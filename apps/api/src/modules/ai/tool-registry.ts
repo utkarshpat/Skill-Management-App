@@ -401,7 +401,7 @@ export class ToolRegistry {
                     type: 'string',
                     format: 'uuid',
                     description:
-                      'Optional authorizedScopes.id returned by a business tool. This is a responsibility ID, never a Delivery Unit, department, project or employee ID. Omit for your authorized scope union; never guess an ID.',
+                      'Optional authorizedScopes.id returned by a business tool. This is a responsibility ID, never a Delivery Unit, account/client, project or employee ID. Omit for your authorized scope union; never guess an ID.',
                   },
                   search: {
                     type: 'string',
@@ -881,7 +881,7 @@ export class ToolRegistry {
           function: {
             name: 'request_recipients',
             description:
-              'Search eligible recipients by name for the signed-in requester; returns real IDs, names, supported kinds and actual reporting-manager flag. Names do not prove administrator/department authority.',
+              'Search eligible recipients by name for the signed-in requester; returns real IDs, names, supported kinds and actual reporting-manager flag. Names do not prove administrator or account/client authority.',
             parameters: {
               type: 'object',
               additionalProperties: false,
@@ -948,7 +948,7 @@ export class ToolRegistry {
       this.entries.set('workspace_summary', {
         definition: definition(
           'workspace_summary',
-          'Read workspace people, role and department counts, if administration is permitted.',
+          'Read workspace people, role, Portfolio/Division and accounts/clients counts, if administration is permitted. The departments result field contains the accounts/clients count.',
         ),
 
         permission: (state, person) =>
@@ -961,6 +961,8 @@ export class ToolRegistry {
             people: state.people.length,
             activePeople: state.people.filter(item => item.active).length,
             roles: state.roles.length,
+            portfolios: structure.nodes.filter(node => node.active && node.kind === 'PORTFOLIO')
+              .length,
             departments: structure.nodes.filter(node => node.active && node.kind === 'DEPARTMENT')
               .length,
             source: 'Workspace summary',

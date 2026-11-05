@@ -13,6 +13,7 @@ export interface EmployeeDirectoryRecord {
   active: boolean;
   managerEmployeeCode: string | null;
   deliveryUnit: string | null;
+  portfolio?: string | null;
   department: string | null;
   team: string | null;
 }
@@ -77,6 +78,7 @@ export function validateEmployeeDirectoryRecord(value: unknown): EmployeeDirecto
     email,
     managerEmployeeCode,
     deliveryUnit: text('deliveryUnit', 100),
+    ...(row.portfolio !== undefined ? { portfolio: text('portfolio', 100) } : {}),
     department: text('department', 100),
     team: text('team', 100),
   };
@@ -94,7 +96,15 @@ export function validateDirectoryBinding(
     throw new AccessError(409, 'Employee directory identity needs reconciliation.');
   // Relationships must be persisted through audited synchronization before they
   // can be displayed as the relationships used by SQL authorization.
-  for (const field of ['managerEmployeeCode', 'deliveryUnit', 'department', 'team'] as const)
-    if (record[field] !== query.stored[field])
+  for (const field of [
+    'managerEmployeeCode',
+    'deliveryUnit',
+    'portfolio',
+    'department',
+    'team',
+  ] as const) {
+    if (field === 'portfolio' && record.portfolio === undefined) continue;
+    if ((record[field] ?? null) !== (query.stored[field] ?? null))
       throw new AccessError(409, 'Employee organization changes need synchronization.');
+  }
 }

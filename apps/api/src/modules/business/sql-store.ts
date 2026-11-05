@@ -5,6 +5,7 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import type { BusinessFiles } from './business.js';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
+import { organizationValidationMessage } from '../../shared/organization-terminology.js';
 import { PrivateFileStorage, type StorageOptions } from '../../shared/private-files.js';
 import type { PeopleSearchQuery, PeopleSearchResult } from './people-search.js';
 import {
@@ -110,7 +111,8 @@ export class SqlBusinessStore implements BusinessStore {
     if (number === 51009) throw new AccessError(409, 'Data changed. Reload and preview again.');
     if (number === 51010) throw new AccessError(409, (error as Error).message);
     if (number === 51004) throw new AccessError(404, 'This record is unavailable.');
-    if (number === 51000) throw new AccessError(400, (error as Error).message);
+    if (number === 51000)
+      throw new AccessError(400, organizationValidationMessage((error as Error).message));
     if ([2601, 2627].includes(number ?? 0))
       throw new AccessError(409, 'This entry already exists. Reload before retrying.');
     if (number === 547) throw new AccessError(400, 'Choose records from the current account.');

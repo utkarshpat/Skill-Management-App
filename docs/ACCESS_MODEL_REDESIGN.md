@@ -6,6 +6,20 @@ Status: user-approved Access Management baseline as of 4 October 2026. Developme
 
 ## Locked invariants
 
+### Mandatory Portfolio/Division - approved structural follow-up, 5 November 2026
+
+The approved target is **Delivery Unit -> Portfolio/Division -> Accounts/Clients -> optional organizational Project**. Every client requires an explicitly approved portfolio mapping; no default portfolio may be invented. This structural increment supersedes the earlier three-level label-only topology below. Migration 088 adds `PORTFOLIO` nodes without renaming or replacing existing `DEPARTMENT`/`TEAM` IDs, assignments, responsibilities or historical grants. Installing the schema alone does not backfill clients.
+
+The reporting guide is **India Head -> DU Head -> Portfolio Manager/Delivery Manager -> Account Manager -> Project Manager**. It describes people relationships to collect, not automatic routing or grants. Actual current person-to-person manager IDs remain required. Only the exact assigned current active direct manager can review a reviewable submission, subject to permission, matching DENY and no-self-review checks; ancestors do not inherit that authority.
+
+`PORTFOLIO` is an organization node, **not an implemented permission/responsibility scope**. Existing DU and client scopes resolve through the complete active portfolio ancestry; matching DU DENY still covers client ALLOW. Independent Business `PROJECT` memberships/scopes remain independent. Broken/unmapped client paths fail closed and remain available for explicit repair. Local application, SQL migration and reviewed mapping template are supplied; live SQL acceptance, installation, backfill and deployment remain pending. See the [maintenance rollout procedure](../database/operations/README.md#mandatory-portfoliodivision-rollout).
+
+### Organization display terminology - approved follow-up, 5 November 2026
+
+The user approved **Accounts/Clients** in place of Department and **Project** in place of the organizational Team label. The displayed hierarchy is Workspace -> Delivery Unit -> Accounts/Clients -> Project (optional) -> Employee; direct Accounts/Clients placement remains supported. This is a label-only change, not a model migration. Persisted `DEPARTMENT`/`TEAM` kinds, `departmentId`/`teamId`, profile fields, scope IDs, foreign keys, permission evaluation and historical audit records retain their existing contracts.
+
+An Accounts/Clients placement is not the tenant/workspace Account. The organizational Project (`TEAM`) remains a single placement; separately stored Business projects (`PROJECT`) retain multiple memberships and their independently enforced responsibility scopes. Renaming does not merge them, synchronize records or enable TEAM review/access grants. Manager/reporting-team terminology still refers to current direct reports and is not organizational placement. Existing assigned-current-manager, DENY, active-status and no-self-review constraints remain mandatory. Older sections below use the historical/internal names.
+
 ### Direct catalogue management - approved follow-up, 19 October 2026
 
 Migration 087 adds direct catalogue certification writes for actors with the already implemented full catalogue approval bundle, including own-profile prerequisites and request-approval DENY checks. It does not add grants or scopes. API Preview/Recheck and SQL Transaction/Audit checks remain mandatory; recovery requires the same current authority and exact normalized command. Request-only users retain the existing amendment approval flow. Administrators can save an issuer inline with a certification, atomically reusing an existing issuer where appropriate. Descriptions become optional, and catalogue mappings remain suggestions; personal certificate claim links and manager review policy are unchanged. This follow-up is local work; organization 086 was reported installed, while 087 rollout remains pending. [Details](CATALOGUE_FORMS_2026-10-19.md).

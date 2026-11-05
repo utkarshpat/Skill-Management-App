@@ -10,6 +10,7 @@ const details = {
   workspace: 'Stored company',
   placementStatus: 'ASSIGNED' as const,
   deliveryUnit: 'Services',
+  portfolio: 'Example Division',
   department: 'Engineering',
   team: null,
   managerStatus: 'ASSIGNED' as const,

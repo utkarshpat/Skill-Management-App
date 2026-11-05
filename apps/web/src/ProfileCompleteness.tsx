@@ -48,7 +48,7 @@ export function ProfileCompleteness({
           <dl className="profile-checklist">
             {details.items.map(item => (
               <div key={item.key}>
-                <dt>{item.label}</dt>
+                <dt>{item.key === 'department' ? 'Accounts/Clients' : item.label}</dt>
                 <dd data-state={item.state}>
                   {
                     {
@@ -69,7 +69,7 @@ export function ProfileCompleteness({
           {details.status !== 'COMPLETE' && (
             <p>
               People administrators maintain your work identity and primary capability. Organization
-              administrators maintain your department and reporting assignments.
+              administrators maintain your account/client and reporting assignments.
             </p>
           )}
           {details.status !== 'COMPLETE' && canRequest && (

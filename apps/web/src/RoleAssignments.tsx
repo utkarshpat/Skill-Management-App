@@ -69,7 +69,7 @@ export function RoleAssignments({
         />
       </label>
       <label className="department-filter">
-        Department
+        Accounts/Clients
         <select
           disabled={busy}
           value={department}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
+import { organizationKindLabel } from '../organization-labels';
 import { FormDialog } from '../FormDialog';
 import { Link } from 'react-router';
 import type { BusinessContext } from './business-model';
@@ -34,7 +35,7 @@ interface Administration {
     analyticsAccess?: boolean;
     adminAccess?: boolean;
   }[];
-  nodes: { id: string; name: string; kind: string; active: boolean }[];
+  nodes: { id: string; name: string; kind: string; active: boolean; scopeValid?: boolean }[];
   historicalGrantsForReview: unknown[];
 }
 export function BusinessAdministration({
@@ -252,7 +253,10 @@ export function BusinessAdministration({
   }
   const people = state?.people.filter(p => p.active || p.id === person) ?? [],
     projects = state?.projects.filter(p => p.active || p.id === project || p.id === scope) ?? [],
-    nodes = state?.nodes.filter(n => n.active || n.id === scope || n.id === department) ?? [];
+    nodes =
+      state?.nodes.filter(
+        n => (n.active && n.scopeValid === true) || n.id === scope || n.id === department,
+      ) ?? [];
   return (
     <section className="bo-panel bo-access-admin" onChangeCapture={invalidatePreview}>
       <div className="bo-panel-header">
@@ -589,13 +593,13 @@ export function BusinessAdministration({
                     />
                   </label>
                   <label>
-                    Project department
+                    Project account/client
                     <select value={department} onChange={e => setDepartment(e.target.value)}>
-                      <option value="">No department binding</option>
+                      <option value="">No account/client binding</option>
                       {nodes
                         .filter(n => n.kind === 'DEPARTMENT')
                         .map(n => (
-                          <option key={n.id} value={n.id}>
+                          <option key={n.id} value={n.id} disabled={n.scopeValid !== true}>
                             {n.name}
                           </option>
                         ))}
@@ -666,7 +670,7 @@ export function BusinessAdministration({
                         <option key={k} value={k}>
                           {k === 'ORGANIZATION'
                             ? 'Organization (entire company workspace)'
-                            : k.replaceAll('_', ' ')}
+                            : organizationKindLabel(k)}
                         </option>
                       ))}
                     </select>
@@ -674,9 +678,9 @@ export function BusinessAdministration({
                   {scopeKind === 'ORGANIZATION' && (
                     <p className="bo-note">
                       Organization covers active provisioned employees in this company workspace,
-                      across its delivery units, departments and projects. Matching denies still
-                      apply. It does not grant access to other accounts, private files or unrelated
-                      claim reviews.
+                      across its delivery units, accounts/clients and projects. Matching denies
+                      still apply. It does not grant access to other accounts, private files or
+                      unrelated claim reviews.
                     </p>
                   )}
                   {scopeKind !== 'ORGANIZATION' && (
@@ -688,7 +692,14 @@ export function BusinessAdministration({
                           ? projects
                           : nodes.filter(n => n.kind === scopeKind)
                         ).map(n => (
-                          <option key={n.id} value={n.id}>
+                          <option
+                            key={n.id}
+                            value={n.id}
+                            disabled={
+                              scopeKind !== 'PROJECT' &&
+                              ('scopeValid' in n ? n.scopeValid !== true : true)
+                            }
+                          >
                             {n.name}
                           </option>
                         ))}
@@ -877,8 +888,8 @@ function AccessChangeSummary({ value, state }: { value: unknown; state?: Adminis
     person_id: 'Person',
     projectId: 'Project',
     project_id: 'Project',
-    departmentId: 'Department',
-    department_id: 'Department',
+    departmentId: 'Accounts/Clients',
+    department_id: 'Accounts/Clients',
     name: 'Name',
     effect: 'Effect',
     active: 'State',
@@ -910,7 +921,9 @@ function AccessChangeSummary({ value, state }: { value: unknown; state?: Adminis
                     : 'Disabled'
                   : raw === null
                     ? 'None'
-                    : String(raw).replaceAll('_', ' '));
+                    : key === 'kind' || key === 'scope_kind'
+                      ? organizationKindLabel(String(raw))
+                      : String(raw).replaceAll('_', ' '));
           return (
             <div key={key}>
               <dt>{labels[key]}</dt>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { organizationKindLabel, organizationScopeLabel } from './organization-labels';
 export interface Decision {
   action: string;
   implemented: boolean;
@@ -78,7 +79,7 @@ export function AccessDecisionList({ summary }: { summary: AccessSummary }) {
           <details key={item.action + item.resolvedScope.kind} className="effective-decision">
             <summary>
               <strong>{item.action.replaceAll('.', ' › ')}</strong>
-              <span>{item.resolvedScope.kind.replaceAll('_', ' ').toLowerCase()}</span>
+              <span>{organizationKindLabel(item.resolvedScope.kind).toLowerCase()}</span>
               <span className={'effective-status ' + (item.allowed ? 'allowed' : 'denied')}>
                 {item.allowed ? 'Allowed' : item.implemented ? 'Blocked' : 'Unavailable'}
               </span>
@@ -91,7 +92,7 @@ export function AccessDecisionList({ summary }: { summary: AccessSummary }) {
                   {item.sources.map((source, i) => (
                     <li key={i}>
                       <strong>{source.label}</strong> · {source.kind.toLowerCase()} ·{' '}
-                      {source.effect} · {source.scope}
+                      {source.effect} · {organizationScopeLabel(source.scope)}
                       {source.validUntil && (
                         <> · expires {new Date(source.validUntil).toLocaleString()}</>
                       )}

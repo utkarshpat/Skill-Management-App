@@ -119,7 +119,8 @@ test('amendments: approver starts at type selection and can edit Provider', asyn
 test('review search and category do not collapse the history disclosure', async ({ page }) => {
   await fixture(page, { role: 'manager' });
   await page.goto('/test/e2e/harness.html?fixture=reviews');
-  await page.locator('summary').filter({ hasText: 'Earlier individual reviews' }).click();
+  await expect(page.locator('summary').filter({ hasText: 'Legacy reviews' })).toBeVisible();
+  await expect(page.locator('details.review-legacy-history')).toHaveAttribute('open', '');
   await page.getByRole('searchbox', { name: 'Search review employee or skill' }).fill('Synthetic');
   await expect(page.locator('details.review-legacy-history')).toHaveAttribute('open', '');
   await page.getByLabel('Review category').selectOption('Synthetic');

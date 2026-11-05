@@ -61,3 +61,22 @@ test('scope choices deduplicate bindings by scope identity while retaining selec
   assert.equal(businessScopeLabel(scopes[0]), 'Organization');
   assert.equal(businessScopeLabel(scopes[2]), 'DELIVERY UNIT · UK');
 });
+
+test('accounts/clients display naming preserves responsibility IDs and distinct project scope kinds', () => {
+  const department: BusinessScope = {
+    id: 'existing-responsibility',
+    kind: 'DEPARTMENT',
+    scopeId: 'existing-client',
+    label: 'Example Client',
+    effect: 'ALLOW',
+    bundle: 'BUSINESS_OPERATIONS',
+  };
+  const before = structuredClone(department);
+  assert.equal(businessScopeLabel(department), 'Accounts/Clients · Example Client');
+  const project = { ...department, id: 'project-responsibility', kind: 'PROJECT' };
+  const placement = { ...department, id: 'team-binding', kind: 'TEAM' };
+  assert.equal(businessScopeLabel(project), 'Project · Example Client');
+  assert.equal(businessScopeLabel(placement), 'Project · Example Client');
+  assert.equal(businessScopeChoices([department, project, placement]).length, 3);
+  assert.deepEqual(department, before);
+});

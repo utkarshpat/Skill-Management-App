@@ -63,6 +63,7 @@ export function createEmployeeProfileReader(dependencies: EmployeeProfileDepende
       active: person.active,
       managerEmployeeCode: managerCode(state, id),
       deliveryUnit: organization?.deliveryUnit ?? null,
+      portfolio: organization?.portfolio ?? null,
       department: organization?.department ?? null,
       team: organization?.team ?? null,
     };
@@ -84,6 +85,7 @@ export function createEmployeeProfileReader(dependencies: EmployeeProfileDepende
         entraObjectId: person.entraObjectId ?? identity.objectId,
         managerEmployeeCode: managerCode(state, id),
         deliveryUnit: organization?.deliveryUnit ?? null,
+        portfolio: organization?.portfolio ?? null,
         department: organization?.department ?? null,
         team: organization?.team ?? null,
       };

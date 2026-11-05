@@ -1,3 +1,5 @@
+import { organizationKindLabel } from '../organization-labels';
+
 export interface BusinessScope {
   id: string;
   kind: string;
@@ -17,7 +19,7 @@ export function businessScopeChoices(scopes: BusinessScope[], selectedId = '') {
   return [...choices.values()];
 }
 export function businessScopeLabel(scope: BusinessScope) {
-  const kind = scope.kind.replaceAll('_', ' ');
+  const kind = organizationKindLabel(scope.kind);
   return kind.toLowerCase() === scope.label.toLowerCase()
     ? scope.label
     : `${kind} · ${scope.label}`;
@@ -154,4 +156,20 @@ export function businessPeoplePage(rows: BusinessDashboard['rows']) {
         String(a.employee).localeCompare(String(b.employee)),
     )
     .slice(0, 8);
+}
+
+export interface KnownSkill {
+  name: string;
+  active: boolean;
+}
+
+/** Mapped skills known to be archived; the server rejects them when a certification is saved. */
+export function unavailableMappedSkills(ids: string[], known: Record<string, KnownSkill>) {
+  return ids.filter(id => known[id] !== undefined && !known[id].active).map(id => known[id].name);
+}
+
+export function mappedSkillLabel(id: string, known: Record<string, KnownSkill>) {
+  const skill = known[id];
+  if (!skill) return 'selected skill';
+  return skill.active ? skill.name : `${skill.name} (archived)`;
 }

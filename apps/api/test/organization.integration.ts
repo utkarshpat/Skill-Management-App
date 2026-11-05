@@ -49,6 +49,7 @@ try {
           .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload))
           .execute('dbo.SaveOrganizationChange');
       const unit = randomUUID(),
+        portfolio = randomUUID(),
         department = randomUUID(),
         team = randomUUID();
       await save('node', unit, true, {
@@ -57,10 +58,16 @@ try {
         parentId: null,
         active: true,
       });
+      await save('node', portfolio, true, {
+        type: 'PORTFOLIO',
+        name: 'Integration portfolio',
+        parentId: unit,
+        active: true,
+      });
       await save('node', department, true, {
         type: 'DEPARTMENT',
         name: 'Integration department',
-        parentId: unit,
+        parentId: portfolio,
         active: true,
       });
       await save('node', team, true, {
@@ -74,6 +81,14 @@ try {
         teamId: null,
         managerId: admin.id,
       });
+      const own = await new sql.Request(tx)
+        .input('account_id', sql.UniqueIdentifier, account)
+        .input('actor_id', sql.UniqueIdentifier, qa.id)
+        .execute('dbo.ReadOwnOrganization');
+      assert.equal(own.recordset[0].placementStatus, 'ASSIGNED');
+      assert.equal(own.recordset[0].portfolio, 'Integration portfolio');
+      assert.equal(own.recordset[0].department, 'Integration department');
+      assert.equal(own.recordset[0].team, null);
       const departmentRead = await new sql.Request(tx)
         .input('account_id', sql.UniqueIdentifier, account)
         .execute('dbo.ReadOrganization');
@@ -97,7 +112,7 @@ try {
         .execute('dbo.ReadOrganization');
       assert.equal(
         (read.recordsets as sql.IRecordSet<unknown>[])[1].length,
-        before.nodes.length + 3,
+        before.nodes.length + 4,
       );
       assert.ok(
         (read.recordsets as sql.IRecordSet<{ personId: string; teamId: string }>[])[2].some(
@@ -117,6 +132,7 @@ try {
     await archiveTx.begin();
     try {
       const temporaryUnit = randomUUID(),
+        temporaryPortfolio = randomUUID(),
         temporaryDepartment = randomUUID();
       const change = async (kind: string, id: string, isNew: boolean, payload: object) => {
         const snapshot = await new sql.Request(archiveTx)
@@ -140,10 +156,16 @@ try {
         parentId: null,
         active: true,
       });
+      await change('node', temporaryPortfolio, true, {
+        type: 'PORTFOLIO',
+        name: 'Archive portfolio',
+        parentId: temporaryUnit,
+        active: true,
+      });
       await change('node', temporaryDepartment, true, {
         type: 'DEPARTMENT',
         name: 'Direct membership archive fixture',
-        parentId: temporaryUnit,
+        parentId: temporaryPortfolio,
         active: true,
       });
       await change('assignment', qa.id, false, {
@@ -155,7 +177,7 @@ try {
         change('node', temporaryDepartment, false, {
           type: 'DEPARTMENT',
           name: 'Direct membership archive fixture',
-          parentId: temporaryUnit,
+          parentId: temporaryPortfolio,
           active: false,
         }),
         error =>

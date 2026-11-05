@@ -1,6 +1,6 @@
 # Portfolio hierarchy audit — e37df62
 
-Audited exact commit `e37df62bd094837f8fba952d2d3f403f4323a4c9`, against its parent, using a frozen local archive. The working branch is separate; this audit does not merge or install that commit into the company application.
+Audited exact commit `e37df62bd094837f8fba952d2d3f403f4323a4c9`, against its parent, using a frozen local archive. The user subsequently requested inclusion in the current release branch. The integration retains the prerequisite organization-label/regression commits, local workflow-only AI policy and existing coverage/browser infrastructure. No migration or mapping has been installed in the company environment by this work.
 
 ## Result
 
@@ -29,6 +29,12 @@ No new actionable defect was reproduced in the changed hierarchy, scope evaluati
 | Replaying the applied mapping with its old revision                                             | Rejected with 51009                            |
 
 The SQL target was a newly created `SkillMgmt_PortfolioAudit_*` database on local `SQLEXPRESS`, using fictional Neha Rao/Aditi Menon and Northstar Bank/Financial Services. No company database, application connection setting or existing database was modified. Migration testing required sqlcmd's quoted-identifier option. SQL fixtures and evidence are retained privately under `.local/audit-e37df62/`; the general scope fixture rolled back, and mapping fixtures remain only in that new local audit database. This does not establish Azure managed-identity/RBAC or hosted acceptance.
+
+## Integrated regression checks
+
+The integrated application passes source/test typechecks, production build and generated-document verification. All 62 Chromium desktop/mobile E2E scenarios pass. The review-disclosure regression now asserts the renamed Legacy reviews section is initially open and remains open during search/filtering. Browser fixtures use the canonical `scopeValid` flag and a complete DU/portfolio/client path; Portfolio is not offered as a permission scope.
+
+Merge resolution preserves the concise AI prompt's hierarchy wording, exact current-manager policy and separate workflow-only response guard. The prompt remains below its existing 2,500-character test limit. Package-lock resolution preserves cross-platform optional dependencies and adds the upstream happy-dom test dependencies; lockfile validation passes.
 
 ## Rollout and remaining acceptance
 

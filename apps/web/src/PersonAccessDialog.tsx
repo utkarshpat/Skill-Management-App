@@ -658,7 +658,7 @@ export function PersonAccessDialog({
                 {manager?.employeeCode && <span>ID: {manager.employeeCode}</span>}
               </div>
               <div>
-                <small>Department / Assigned Unit</small>
+                <small>Accounts/Clients / Assigned unit</small>
                 <strong>
                   {organization?.nodes.find(
                     node => node.id === (edge?.teamId ?? edge?.departmentId),

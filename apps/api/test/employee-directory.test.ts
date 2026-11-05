@@ -17,6 +17,7 @@ const organization = {
   workspace: 'Company',
   placementStatus: 'ASSIGNED' as const,
   deliveryUnit: 'UK',
+  portfolio: 'Example Division',
   department: 'NHS',
   team: 'Digital',
   managerStatus: 'ASSIGNED' as const,
@@ -132,6 +133,7 @@ test('identity/relationship conflicts fail instead of silently changing ownershi
     { employeeCode: 'EMP999' },
     { entraObjectId: '00000000-0000-4000-8000-000000000099' },
     { department: 'Different account' },
+    { portfolio: 'Different division' },
     { managerEmployeeCode: 'EMP101' },
   ]) {
     const f = fixture({
@@ -200,8 +202,42 @@ test('normalizer rejects invalid payloads and strips fields outside the employee
     { managerEmployeeCode: 'EMP102' },
     { entraObjectId: 'invalid' },
     { team: 'x'.repeat(101) },
+    { portfolio: 123 },
+    { portfolio: 'x'.repeat(101) },
   ])
     assert.throws(() => validateEmployeeDirectoryRecord({ ...record, ...change }));
+});
+
+test('directory portfolio is optional for legacy sources, but preserves an explicitly supplied value', () => {
+  const record = {
+    employeeCode: 'TEST',
+    displayName: 'Employee',
+    firstName: null,
+    lastName: null,
+    email: null,
+    entraObjectId: identity.objectId,
+    active: true,
+    managerEmployeeCode: null,
+    deliveryUnit: null,
+    department: null,
+    team: null,
+  };
+  assert.equal(validateEmployeeDirectoryRecord(record).portfolio, undefined);
+  assert.equal(validateEmployeeDirectoryRecord({ ...record, portfolio: null }).portfolio, null);
+  assert.equal(
+    validateEmployeeDirectoryRecord({ ...record, portfolio: 'Example Division' }).portfolio,
+    'Example Division',
+  );
+});
+test('a legacy external source can omit portfolio without replacing canonical stored organization', async () => {
+  const f = fixture({
+    source: 'external',
+    readEmployee: async ({ stored }) => {
+      const { portfolio: _portfolio, ...legacy } = stored;
+      return legacy;
+    },
+  });
+  assert.equal((await f.profile(identity))?.organizationDetails?.portfolio, 'Example Division');
 });
 
 test('external directory resolves a persisted manager beyond the SQL actor projection', async () => {

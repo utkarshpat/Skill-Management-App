@@ -1,7 +1,9 @@
 import { test, expect, fixture, ids } from './browser-fixture';
 import type { Page } from '@playwright/test';
 const project = '99999999-9999-4999-8999-000000000001',
-  department = '99999999-9999-4999-8999-000000000002';
+  department = '99999999-9999-4999-8999-000000000002',
+  unit = '99999999-9999-4999-8999-000000000003',
+  portfolio = '99999999-9999-4999-8999-000000000004';
 const administration = {
   revision: 4,
   personalBaseline: true,
@@ -34,7 +36,32 @@ const administration = {
       managerAccess: true,
     },
   ],
-  nodes: [{ id: department, name: 'Analytics', kind: 'DEPARTMENT', active: true }],
+  nodes: [
+    {
+      id: unit,
+      name: 'India Delivery',
+      kind: 'DELIVERY_UNIT',
+      active: true,
+      parentId: null,
+      scopeValid: true,
+    },
+    {
+      id: portfolio,
+      name: 'Financial Services',
+      kind: 'PORTFOLIO',
+      active: true,
+      parentId: unit,
+      scopeValid: false,
+    },
+    {
+      id: department,
+      name: 'Northstar Bank',
+      kind: 'DEPARTMENT',
+      active: true,
+      parentId: portfolio,
+      scopeValid: true,
+    },
+  ],
   historicalGrantsForReview: [
     { bundle: 'Historical scope', reason: 'Unsupported historical grant requires review' },
   ],
@@ -121,7 +148,7 @@ test('access profiles: project, membership, baseline and historical grants remai
   await page.getByRole('button', { name: 'Projects', exact: true }).click();
   await page.getByLabel('Name', { exact: false }).fill('Finance Reporting Automation');
   await page
-    .getByRole('combobox', { name: 'Project department', exact: true })
+    .getByRole('combobox', { name: 'Project account/client', exact: true })
     .selectOption(department);
   await page.getByRole('button', { name: 'Memberships', exact: true }).click();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();

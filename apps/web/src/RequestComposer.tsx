@@ -267,7 +267,8 @@ export function RequestComposer({
             <div className="request-recipient-step">
               <h3>Who should receive this?</h3>
               <p>
-                Find your line manager, a system administrator or a person in another department.
+                Find your line manager, a system administrator or a person in another
+                account/client.
               </p>
               <label className="request-recipient-search">
                 <Search size={18} />

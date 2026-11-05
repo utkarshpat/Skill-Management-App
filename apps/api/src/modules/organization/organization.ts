@@ -1,7 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { AccessError } from '../../shared/errors.js';
 
-export type NodeKind = 'DELIVERY_UNIT' | 'DEPARTMENT' | 'TEAM';
+export type NodeKind = 'DELIVERY_UNIT' | 'PORTFOLIO' | 'DEPARTMENT' | 'TEAM';
+export const parentKind: Record<NodeKind, NodeKind | null> = {
+  DELIVERY_UNIT: null,
+  PORTFOLIO: 'DELIVERY_UNIT',
+  DEPARTMENT: 'PORTFOLIO',
+  TEAM: 'DEPARTMENT',
+};
+function isNodeKind(value: unknown): value is NodeKind {
+  return typeof value === 'string' && Object.hasOwn(parentKind, value);
+}
 export interface OrgNode {
   id: string;
   kind: NodeKind;
@@ -25,6 +34,7 @@ export interface OwnOrganization {
   workspace: string;
   placementStatus: 'ASSIGNED' | 'NOT_ASSIGNED' | 'NEEDS_ATTENTION';
   deliveryUnit: string | null;
+  portfolio?: string | null;
   department: string | null;
   team: string | null;
   managerStatus: 'ASSIGNED' | 'NOT_ASSIGNED' | 'NEEDS_ATTENTION';
@@ -55,7 +65,7 @@ export function organizationChange(input: unknown) {
     throw new AccessError(400, 'Reload the current organization before saving.');
   if (body.kind === 'node') {
     if (
-      !['DELIVERY_UNIT', 'DEPARTMENT', 'TEAM'].includes(String(body.type)) ||
+      !isNodeKind(body.type) ||
       typeof body.name !== 'string' ||
       !body.name.trim() ||
       body.name.trim().length > 100 ||
@@ -76,7 +86,8 @@ export function organizationChange(input: unknown) {
   if (body.kind === 'assignment') {
     const teamId = identifier(body.teamId, true),
       departmentId = identifier(body.departmentId, true);
-    if (teamId && departmentId) throw new AccessError(400, 'Choose either a department or a team.');
+    if (teamId && departmentId)
+      throw new AccessError(400, 'Choose either an account/client or an organizational project.');
     return {
       kind: 'assignment' as const,
       revision: Number(body.revision),
@@ -86,6 +97,23 @@ export function organizationChange(input: unknown) {
     };
   }
   throw new AccessError(400, 'Unknown organization change.');
+}
+
+export function organizationPath(state: Pick<OrganizationState, 'nodes'>, id: string) {
+  const path: OrgNode[] = [];
+  let cursor: string | null = id;
+  while (cursor && path.length < 4) {
+    const matches = state.nodes.filter(node => node.id === cursor);
+    if (matches.length !== 1) return undefined;
+    const node = matches[0];
+    if (!node.active || !isNodeKind(node.kind)) return undefined;
+    const expected = parentKind[node.kind];
+    if (path.length && node.kind !== parentKind[path.at(-1)!.kind]) return undefined;
+    path.push(node);
+    if (expected === null) return node.parentId === null ? path : undefined;
+    cursor = node.parentId;
+  }
+  return undefined;
 }
 
 // Shared derivation for review routing. An absent edge ends the chain; broken,

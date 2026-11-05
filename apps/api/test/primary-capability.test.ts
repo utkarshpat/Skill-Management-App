@@ -161,6 +161,7 @@ test('canonical completeness has exactly six work fields, excludes manager/acces
   assert.equal(result.total, 6);
   assert.equal(result.filled, 6);
   assert.equal(result.status, 'COMPLETE');
+  assert.equal(result.items.find(item => item.key === 'department')?.label, 'Accounts/Clients');
   assert.deepEqual(
     result.items.map(item => item.key),
     ['name', 'employeeCode', 'jobTitle', 'grade', 'department', 'primaryCapability'],

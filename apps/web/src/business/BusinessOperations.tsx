@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { organizationKindLabel } from '../organization-labels';
 import { Navigate, useSearchParams } from 'react-router';
 import {
   ArrowDownToLine,
@@ -562,7 +563,7 @@ function Insights({ context }: { context: BusinessContext }) {
                 </option>
               ))}
             </select>
-            <MetricTooltip text="Select an assigned organization, Delivery Unit, Department or Project responsibility. This does not add access." />
+            <MetricTooltip text="Select an assigned organization, Delivery Unit, Accounts/Clients or Project responsibility. This does not add access." />
           </div>
 
           {/* Employee Search */}
@@ -1317,7 +1318,7 @@ function Insights({ context }: { context: BusinessContext }) {
                         <div>
                           <h2 className="bo-panel-title">
                             Workforce by scope
-                            <MetricTooltip text="Capability benchmark across organizational scopes (Delivery Units, Departments, Projects)." />
+                            <MetricTooltip text="Capability benchmark across organizational scopes (Delivery Units, Accounts/Clients, Projects)." />
                           </h2>
                           <p className="bo-note">
                             Comparison across allowed bindings (up to 30). Project memberships can
@@ -1348,7 +1349,7 @@ function Insights({ context }: { context: BusinessContext }) {
                                   <strong>{c.label}</strong>
                                   <small className="bo-scope-kind-pill">
                                     {' '}
-                                    · {c.kind.replaceAll('_', ' ')}
+                                    · {organizationKindLabel(c.kind)}
                                   </small>
                                 </td>
                                 <td>{c.employees}</td>

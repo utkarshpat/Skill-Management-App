@@ -4,6 +4,7 @@ export interface ProfileOrganizationDetails {
   workspace: string;
   placementStatus: 'ASSIGNED' | 'NOT_ASSIGNED' | 'NEEDS_ATTENTION';
   deliveryUnit: string | null;
+  portfolio?: string | null;
   department: string | null;
   team: string | null;
   managerStatus: 'ASSIGNED' | 'NOT_ASSIGNED' | 'NEEDS_ATTENTION';
@@ -73,7 +74,15 @@ export function ProfileOrganization({
               </dd>
             </div>
             <div className="profile-info-tile">
-              <dt>Department</dt>
+              <dt>Portfolio/Division</dt>
+              <dd>
+                {placement === 'ASSIGNED'
+                  ? details.portfolio || 'Needs administrator attention'
+                  : placementValue}
+              </dd>
+            </div>
+            <div className="profile-info-tile">
+              <dt>Accounts/Clients</dt>
               <dd>
                 {placement === 'ASSIGNED' ? (
                   <span className="profile-dept-tag">{details.department}</span>
@@ -83,13 +92,13 @@ export function ProfileOrganization({
               </dd>
             </div>
             <div className="profile-info-tile">
-              <dt>Team</dt>
+              <dt>Project</dt>
               <dd>
                 {placement === 'ASSIGNED' ? (
                   details.team ? (
                     <span className="profile-team-tag">{details.team}</span>
                   ) : (
-                    <span className="profile-neutral-tag">No team assigned</span>
+                    <span className="profile-neutral-tag">No project assigned</span>
                   )
                 ) : (
                   placementValue
@@ -119,8 +128,8 @@ export function ProfileOrganization({
           )}
           {placement === 'NOT_ASSIGNED' && (
             <p>
-              Your department or team has not been assigned yet. Ask your access administrator to
-              update your placement.
+              Your account/client or project has not been assigned yet. Ask your access
+              administrator to update your placement.
             </p>
           )}
           <p className="profile-organization-policy">

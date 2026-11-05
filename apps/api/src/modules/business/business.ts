@@ -391,17 +391,29 @@ export function previewBusiness(
   if (
     (change.kind === 'MEMBERSHIP' ||
       (change.kind === 'RESPONSIBILITY' && change.payload.kind !== 'ORGANIZATION')) &&
-    (!binding || (change.payload.active === true && !binding.active))
+    (!binding ||
+      (change.payload.active === true &&
+        (!binding.active ||
+          (change.kind === 'RESPONSIBILITY' &&
+            change.payload.kind !== 'PROJECT' &&
+            binding.scopeValid !== true))))
   )
     throw new AccessError(400, 'Choose a valid current scope binding.');
   if (
     change.kind === 'PROJECT' &&
     change.payload.departmentId &&
     !rows('nodes').some(
-      n => n.id === change.payload.departmentId && n.kind === 'DEPARTMENT' && n.active,
+      n =>
+        n.id === change.payload.departmentId &&
+        n.kind === 'DEPARTMENT' &&
+        n.active &&
+        (change.payload.active === false || n.scopeValid === true),
     )
   )
-    throw new AccessError(400, 'Choose an active department.');
+    throw new AccessError(
+      400,
+      'Choose an active account/client with a complete Portfolio/Division path.',
+    );
   if (
     change.kind === 'PROJECT' &&
     rows('projects').some(
