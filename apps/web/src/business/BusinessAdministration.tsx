@@ -45,12 +45,16 @@ interface Administration {
   }[];
   historicalGrantsForReview: unknown[];
 }
+export type ScopedAccessTemplate = 'BUSINESS_OPERATIONS' | 'SYSTEM_ADMIN';
+
 export function BusinessAdministration({
   onSaved,
   selectedPersonId,
+  initialTemplate,
 }: {
   onSaved: (value: BusinessContext) => void;
   selectedPersonId?: string;
+  initialTemplate?: ScopedAccessTemplate;
 }) {
   const [state, setState] = useState<Administration>(),
     [error, setError] = useState(''),
@@ -63,8 +67,10 @@ export function BusinessAdministration({
     [project, setProject] = useState(''),
     [name, setName] = useState(''),
     [department, setDepartment] = useState(''),
-    [bundle, setBundle] = useState('BUSINESS_OPERATIONS'),
-    [scopeKind, setScopeKind] = useState('DEPARTMENT'),
+    [bundle, setBundle] = useState<string>(initialTemplate ?? 'BUSINESS_OPERATIONS'),
+    [scopeKind, setScopeKind] = useState(
+      initialTemplate === 'SYSTEM_ADMIN' ? 'ORGANIZATION' : initialTemplate ? '' : 'DEPARTMENT',
+    ),
     [scope, setScope] = useState(''),
     [effect, setEffect] = useState('ALLOW'),
     [active, setActive] = useState(true),
@@ -682,10 +688,8 @@ export function BusinessAdministration({
                       value={bundle}
                       onChange={e => {
                         setBundle(e.target.value);
-                        if (e.target.value === 'SYSTEM_ADMIN') {
-                          setScopeKind('ORGANIZATION');
-                          setScope('');
-                        }
+                        setScopeKind(e.target.value === 'SYSTEM_ADMIN' ? 'ORGANIZATION' : '');
+                        setScope('');
                       }}
                     >
                       <option value="BUSINESS_OPERATIONS">Business Analytics</option>
@@ -695,6 +699,7 @@ export function BusinessAdministration({
                   <label>
                     Scope
                     <select
+                      required
                       disabled={bundle === 'SYSTEM_ADMIN'}
                       value={scopeKind}
                       onChange={e => {
@@ -702,6 +707,9 @@ export function BusinessAdministration({
                         setScope('');
                       }}
                     >
+                      <option value="" disabled>
+                        Choose scope
+                      </option>
                       {['ORGANIZATION', 'DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT', 'PROJECT'].map(
                         k => (
                           <option key={k} value={k}>
@@ -721,7 +729,7 @@ export function BusinessAdministration({
                       unrelated claim reviews.
                     </p>
                   )}
-                  {scopeKind !== 'ORGANIZATION' && (
+                  {scopeKind && scopeKind !== 'ORGANIZATION' && (
                     <label>
                       Scope binding <span className="bo-required">*</span>
                       <select required value={scope} onChange={e => setScope(e.target.value)}>

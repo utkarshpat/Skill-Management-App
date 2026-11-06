@@ -11,6 +11,7 @@
   background: var(--raised, var(--surface));
 }
 
+.access-section-tabs a,
 .access-section-tabs button {
   appearance: none;
   display: inline-flex;
@@ -29,21 +30,25 @@
   font-weight: 600;
   line-height: 1.4;
   text-align: center;
+  text-decoration: none;
   overflow-wrap: anywhere;
   cursor: pointer;
 }
 
+.access-section-tabs a:hover:not([aria-current='page']),
 .access-section-tabs button:hover:not([aria-current='page']):not(:disabled) {
   background: var(--surface);
   border-color: var(--line);
 }
 
+.access-section-tabs a[aria-current='page'],
 .access-section-tabs button[aria-current='page'] {
   background: var(--accent-soft);
   border-color: var(--accent-ink);
   color: var(--accent-ink);
 }
 
+.access-section-tabs a:focus-visible,
 .access-section-tabs button:focus-visible {
   outline: 2px solid var(--focus, var(--accent-ink));
   outline-offset: 2px;

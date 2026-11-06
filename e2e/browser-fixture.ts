@@ -16,6 +16,7 @@ export type State = {
   pending?: boolean;
   logoutFailure?: boolean;
   realistic?: boolean;
+  businessAdministration?: boolean;
   mutations?: Record<string, unknown>[];
 };
 export async function fixture(page: Page, state: State) {
@@ -193,6 +194,7 @@ export async function fixture(page: Page, state: State) {
       amendments: state.role !== 'employee',
       approveAmendments: state.role === 'admin',
       businessOperations: false,
+      businessAdministration: state.role === 'admin' && Boolean(state.businessAdministration),
     };
     if (path === '/api/workspace')
       return state.failure

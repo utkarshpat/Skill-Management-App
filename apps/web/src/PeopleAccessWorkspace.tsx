@@ -13,6 +13,7 @@ import {
 } from './organization-labels';
 import { EffectiveAccess } from './EffectiveAccess';
 import { AccessAudit } from './AccessAudit';
+import type { ScopedAccessTemplate } from './business/BusinessAdministration';
 import './people-access-workspace.css';
 const BusinessAdministration = lazy(() =>
   import('./business/BusinessAdministration').then(m => ({ default: m.BusinessAdministration })),
@@ -557,6 +558,11 @@ function PersonEditor({
     [page, setPage] = useState(1),
     [template, setTemplate] = useState('');
   const [exceptions, setExceptions] = useState(false);
+  const [scopedTemplate, setScopedTemplate] = useState<ScopedAccessTemplate>();
+  function openScopedTemplate(value: ScopedAccessTemplate) {
+    setScopedTemplate(value);
+    onTab('scoped');
+  }
   const options = useDirectory(endpoint, 'templates', query, page, {}, tab === 'templates');
   const unassignedTemplates = options.data?.items.filter(
     role => !detail.person.roleIds.includes(role.id),
@@ -584,7 +590,10 @@ function PersonEditor({
             key={id}
             aria-current={tab === id ? 'page' : undefined}
             disabled={busy}
-            onClick={() => onTab(id)}
+            onClick={() => {
+              setScopedTemplate(undefined);
+              onTab(id);
+            }}
           >
             {label}
             {id === 'templates' ? ` (${detail.person.roleIds.length})` : ''}
@@ -652,7 +661,31 @@ function PersonEditor({
       )}
       {tab === 'templates' && (
         <section aria-label="Assign and remove templates">
-          <h3>Assigned templates</h3>
+          {canManageScoped && (
+            <>
+              <h3>Built-in access templates</h3>
+              <p>Choose a template to review its scope and create an assignment.</p>
+              <div className="people-person-tabs">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={busy || !detail.person.active}
+                  onClick={() => openScopedTemplate('BUSINESS_OPERATIONS')}
+                >
+                  Assign Business Analytics
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={busy || !detail.person.active}
+                  onClick={() => openScopedTemplate('SYSTEM_ADMIN')}
+                >
+                  Assign Admin
+                </button>
+              </div>
+            </>
+          )}
+          <h3>Assigned custom templates</h3>
           {detail.roles.length === 0 ? (
             <p>No additional templates assigned.</p>
           ) : (
@@ -768,7 +801,12 @@ function PersonEditor({
       )}
       {tab === 'scoped' && canManageScoped && (
         <Suspense fallback={<p>Opening scoped access…</p>}>
-          <BusinessAdministration selectedPersonId={detail.person.id} onSaved={onChanged} />
+          <BusinessAdministration
+            key={scopedTemplate ?? 'scoped'}
+            selectedPersonId={detail.person.id}
+            initialTemplate={scopedTemplate}
+            onSaved={onChanged}
+          />
         </Suspense>
       )}
       {tab === 'effective' && (

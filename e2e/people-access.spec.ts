@@ -3,7 +3,7 @@ import { expect, fixture, ids, test } from './browser-fixture';
 test('People & Access searches on demand and reviews template assignment and removal', async ({
   page,
 }) => {
-  await fixture(page, { role: 'admin' });
+  await fixture(page, { role: 'admin', businessAdministration: true });
   const employee = {
     id: '88888888-8888-4888-8888-000000000002',
     displayName: 'Aditi Menon',
@@ -24,6 +24,49 @@ test('People & Access searches on demand and reviews template assignment and rem
   const previews: string[][] = [];
   const saves: string[][] = [];
   const requests: string[] = [];
+  const scopedPreviews: unknown[] = [];
+  const project = {
+    id: template.id,
+    name: 'Payments Modernisation',
+    active: true,
+    departmentId: null,
+  };
+  await page.route('**/api/business/administration?personId=' + employee.id, route =>
+    route.fulfill({
+      json: {
+        revision,
+        personalBaseline: true,
+        baselineAffectedPeople: 1,
+        people: [
+          {
+            id: employee.id,
+            name: employee.displayName,
+            employeeCode: employee.employeeCode,
+            active: true,
+          },
+        ],
+        projects: [project],
+        memberships: [],
+        responsibilities: [],
+        nodes: [],
+        historicalGrantsForReview: [],
+      },
+    }),
+  );
+  await page.route('**/api/business/administration/preview', route => {
+    const change = route.request().postDataJSON();
+    scopedPreviews.push(change.payload);
+    return route.fulfill({
+      json: {
+        change,
+        before: null,
+        after: change.payload,
+        impact: {},
+        warnings: [],
+        receipt: 'reviewed-scope',
+      },
+    });
+  });
   await page.route('**/api/access**', async route => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -98,6 +141,10 @@ test('People & Access searches on demand and reviews template assignment and rem
   await page.goto('/access');
   const search = page.getByRole('searchbox', { name: 'Find person' });
   await expect(search).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Manage template definitions' })).toHaveCSS(
+    'text-decoration-line',
+    'none',
+  );
   await expect(page.getByText(/Start with a name or employee ID/)).toBeVisible();
   expect(requests).toEqual(['/api/access?summary=1']);
   await search.fill('710902');
@@ -123,4 +170,40 @@ test('People & Access searches on demand and reviews template assignment and rem
       .every(path => path === '/api/access/people/' + employee.id),
   ).toBe(true);
   expect(requests).not.toContain('/api/access/organization');
+
+  const form = page.locator('#bo-access-assignment-form');
+  const scope = form.getByRole('combobox', { name: 'Scope', exact: true });
+  await page.getByRole('button', { name: 'Assign Business Analytics' }).click();
+  await expect(form.getByRole('combobox', { name: 'Responsibility' })).toHaveValue(
+    'BUSINESS_OPERATIONS',
+  );
+  await expect(scope).toHaveValue('');
+  await form.getByRole('textbox', { name: 'Reason' }).fill('Review payments delivery skills');
+  await form.getByRole('button', { name: 'Preview change' }).click();
+  expect(scopedPreviews).toEqual([]);
+  await scope.selectOption('PROJECT');
+  await form.getByRole('combobox', { name: 'Scope binding' }).selectOption(project.id);
+  await form.getByRole('button', { name: 'Preview change' }).click();
+  await expect(dialog).toBeVisible();
+  expect(scopedPreviews[0]).toMatchObject({
+    personId: employee.id,
+    bundle: 'BUSINESS_OPERATIONS',
+    kind: 'PROJECT',
+    scopeId: project.id,
+  });
+  await dialog.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.getByRole('button', { name: 'Templates (0)' }).click();
+  await page.getByRole('button', { name: 'Assign Admin', exact: true }).click();
+  await expect(form.getByRole('combobox', { name: 'Responsibility' })).toHaveValue('SYSTEM_ADMIN');
+  await expect(scope).toHaveValue('ORGANIZATION');
+  await expect(scope).toBeDisabled();
+  await form.getByRole('textbox', { name: 'Reason' }).fill('App administration coverage');
+  await form.getByRole('button', { name: 'Preview change' }).click();
+  await expect(dialog).toBeVisible();
+  expect(scopedPreviews[1]).toMatchObject({
+    personId: employee.id,
+    bundle: 'SYSTEM_ADMIN',
+    kind: 'ORGANIZATION',
+    scopeId: null,
+  });
 });
