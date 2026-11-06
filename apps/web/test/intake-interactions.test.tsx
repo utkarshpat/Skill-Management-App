@@ -56,6 +56,9 @@ test('catalogue browsing advances through all pages, retries the failed page and
       query: state.query,
       cataloguePage: state.page,
       catalogueAttempt: state.attempt,
+      page: 1,
+      personalReady: true,
+      editingSkill: undefined,
       useEffect: (fn: () => () => void) => (cleanup = fn()),
       setTimeout: (fn: () => void) => {
         timer = fn;

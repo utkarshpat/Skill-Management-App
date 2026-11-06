@@ -530,53 +530,63 @@ export function CapabilityComposer({
     return () => abort.abort();
   }, [submissionId, bootstrapAttempt]);
   useEffect(() => {
+    if (
+      page !== 1 ||
+      !personalReady ||
+      editingSkill ||
+      loadedCataloguePage.current === cataloguePage
+    )
+      return;
     const abort = new AbortController();
-    const timer = setTimeout(() => {
-      setSearching(true);
-      setCatalogueError('');
-      json<any>(
-        '/api/my-skills/catalogue?search=' +
-          encodeURIComponent(query) +
-          '&page=' +
-          cataloguePage +
-          '&pageSize=12',
-        undefined,
-        abort.signal,
-      )
-        .then(v => {
-          if (!abort.signal.aborted) {
-            loadedCataloguePage.current = cataloguePage;
-            setCatalogueTotal(v.total);
-            setOptions(old =>
-              cataloguePage === 1
-                ? v.skills
-                : [
-                    ...old,
-                    ...v.skills.filter(
-                      (item: SkillChoice) => !old.some(existing => existing.id === item.id),
-                    ),
-                  ],
-            );
-          }
-        })
-        .catch(e => {
-          if (!abort.signal.aborted) {
-            if (cataloguePage === 1) {
-              setOptions([]);
-              setCatalogueTotal(0);
+    const timer = setTimeout(
+      () => {
+        setSearching(true);
+        setCatalogueError('');
+        json<any>(
+          '/api/my-skills/catalogue?search=' +
+            encodeURIComponent(query) +
+            '&page=' +
+            cataloguePage +
+            '&pageSize=12',
+          undefined,
+          abort.signal,
+        )
+          .then(v => {
+            if (!abort.signal.aborted) {
+              loadedCataloguePage.current = cataloguePage;
+              setCatalogueTotal(v.total);
+              setOptions(old =>
+                cataloguePage === 1
+                  ? v.skills
+                  : [
+                      ...old,
+                      ...v.skills.filter(
+                        (item: SkillChoice) => !old.some(existing => existing.id === item.id),
+                      ),
+                    ],
+              );
             }
-            setCatalogueError(e.message);
-          }
-        })
-        .finally(() => {
-          if (!abort.signal.aborted) setSearching(false);
-        });
-    }, 250);
+          })
+          .catch(e => {
+            if (!abort.signal.aborted) {
+              if (cataloguePage === 1) {
+                setOptions([]);
+                setCatalogueTotal(0);
+              }
+              setCatalogueError(e.message);
+            }
+          })
+          .finally(() => {
+            if (!abort.signal.aborted) setSearching(false);
+          });
+      },
+      cataloguePage === 1 && query.trim() ? 250 : 0,
+    );
     return () => {
       clearTimeout(timer);
       abort.abort();
     };
-  }, [query, cataloguePage, catalogueAttempt]);
+  }, [page, personalReady, editingSkill, query, cataloguePage, catalogueAttempt]);
   async function autofill(cert: SelectedCertificate) {
     if (lock.current || working || (!cert.file && !cert.uploaded)) return;
     lock.current = true;

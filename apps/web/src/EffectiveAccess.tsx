@@ -12,6 +12,47 @@ export function EffectiveAccess({
   actorId: string;
   collapsible?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const content = (
+    <EffectiveAccessContent
+      key={JSON.stringify([endpoint, actorId])}
+      endpoint={endpoint}
+      actorId={actorId}
+    />
+  );
+  if (collapsible) {
+    return (
+      <details
+        className="profile-panel profile-effective-accordion"
+        onToggle={event => setOpen(event.currentTarget.open)}
+      >
+        <summary className="profile-effective-summary">
+          <div className="profile-effective-header-left">
+            <span className="profile-card-icon">
+              <ShieldCheck size={18} />
+            </span>
+            <div>
+              <strong>Effective access & security scope</strong>
+              <small>Inspect verified server permissions and scope evaluation</small>
+            </div>
+          </div>
+          <span className="profile-effective-action">
+            <span>Audit & details</span>
+            <ChevronDown size={16} className="profile-accordion-icon" />
+          </span>
+        </summary>
+        {open && <div className="profile-effective-body">{content}</div>}
+      </details>
+    );
+  }
+  return (
+    <section className="profile-panel">
+      <h2>Effective access</h2>
+      {content}
+    </section>
+  );
+}
+function EffectiveAccessContent({ endpoint, actorId }: { endpoint: string; actorId: string }) {
   const [summary, setSummary] = useState<AccessSummary>(),
     [error, setError] = useState(''),
     [attempt, setAttempt] = useState(0);
@@ -32,7 +73,7 @@ export function EffectiveAccess({
       });
     return () => controller.abort();
   }, [endpoint, actorId, attempt]);
-  const content = summary ? (
+  return summary ? (
     <AccessDecisionList summary={summary} />
   ) : error ? (
     <p role="alert">
@@ -43,33 +84,5 @@ export function EffectiveAccess({
     </p>
   ) : (
     <p role="status">Loading current access…</p>
-  );
-  if (collapsible) {
-    return (
-      <details className="profile-panel profile-effective-accordion">
-        <summary className="profile-effective-summary">
-          <div className="profile-effective-header-left">
-            <span className="profile-card-icon">
-              <ShieldCheck size={18} />
-            </span>
-            <div>
-              <strong>Effective access & security scope</strong>
-              <small>Inspect verified server permissions and scope evaluation</small>
-            </div>
-          </div>
-          <span className="profile-effective-action">
-            <span>Audit & details</span>
-            <ChevronDown size={16} className="profile-accordion-icon" />
-          </span>
-        </summary>
-        <div className="profile-effective-body">{content}</div>
-      </details>
-    );
-  }
-  return (
-    <section className="profile-panel">
-      <h2>Effective access</h2>
-      {content}
-    </section>
   );
 }

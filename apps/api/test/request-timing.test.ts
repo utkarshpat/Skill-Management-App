@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { channel, tracingChannel } from 'node:diagnostics_channel';
 import {
   startRequestTiming,
   measureDatabase,
@@ -81,6 +82,33 @@ test('deferred connection retry events stay with the initiating timing context',
   assert.equal(first.result().databaseConnectionRetries, 2);
   assert.equal(second.result().databaseConnectionRetries, 0);
   assert.equal(databaseRetryListener(), undefined);
+});
+test('driver checkout timing tracks concurrent requests and ignores work outside HTTP timing', async () => {
+  const first = startRequestTiming(),
+    second = startRequestTiming();
+  const checkout = tracingChannel('mssql:pool:acquire');
+  const created = channel('mssql:connection:create');
+  const trace = (create: boolean, fail = false) =>
+    checkout.tracePromise(async () => {
+      await new Promise<void>(resolve => setImmediate(resolve));
+      if (create) created.publish({ server: 'private-server', database: 'private-database' });
+      if (fail) throw Error('Pool unavailable');
+      return 42;
+    }, {});
+  await Promise.all([
+    first.run(async () => {
+      assert.equal(await trace(true), 42);
+      await trace(false);
+    }),
+    second.run(() => assert.rejects(trace(false, true), /Pool unavailable/)),
+    trace(true),
+  ]);
+  assert.equal(first.result().databasePhases.checkout.calls, 2);
+  assert.equal(second.result().databasePhases.checkout.calls, 1);
+  assert.equal(first.result().databasePhysicalConnections, 1);
+  assert.equal(second.result().databasePhysicalConnections, 0);
+  assert.equal(first.result().databasePhases.acquire.calls, 0);
+  assert.doesNotMatch(JSON.stringify(first.result()), /private-server|private-database/);
 });
 test('HTTP timing uses route templates without query strings and cannot break a response', async () => {
   const metrics: any[] = [];

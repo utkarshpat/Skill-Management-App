@@ -60,6 +60,12 @@ test('intake: proficiency and date validation keep drafts editable; discard requ
 test('intake: one skill submission carries exact revisions and follows save before submit', async ({
   page,
 }) => {
+  const catalogueReads: string[] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname === '/api/my-skills/catalogue')
+      catalogueReads.push(url.searchParams.get('pageSize') ?? '');
+  });
   const skill = await intake(page),
     calls: Record<string, unknown>[] = [];
   await page.route('**/api/capability-submissions', r => {
@@ -91,7 +97,9 @@ test('intake: one skill submission carries exact revisions and follows save befo
   });
   await skill.getByRole('radio', { name: 'L2 Autonomous', exact: true }).check();
   await skill.getByLabel('Experience in months', { exact: false }).fill('12');
+  expect(catalogueReads).toEqual(['25']);
   await skill.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect.poll(() => catalogueReads).toEqual(['25', '12']);
   await page
     .locator('.form-dialog-footer')
     .getByRole('button', { name: 'Review', exact: true })

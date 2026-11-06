@@ -124,6 +124,7 @@ export function BusinessWorkflows({
   const directCatalogue = view === 'amendments' && context.canApprove;
   const [requestDetail, setRequestDetail] = useState<Amendment>();
   const [requestError, setRequestError] = useState('');
+  const [openDefinitions, setOpenDefinitions] = useState<Set<string>>(() => new Set());
   const [amendmentStep, setAmendmentStep] = useState(0);
   const [amendmentMode, setAmendmentMode] = useState<'new' | 'edit'>('new');
   const [selectedMaster, setSelectedMaster] = useState<Master>();
@@ -167,6 +168,13 @@ export function BusinessWorkflows({
       ? params.get('request') ||
         (decision?.operation !== 'SHORTLIST' ? String(decision?.payload.id ?? '') : '')
       : '';
+  const needsMasters =
+    catalogueMode ||
+    composing ||
+    Boolean(requestId) ||
+    openDefinitions.size > 0 ||
+    params.get('add') === 'certification' ||
+    Boolean(params.get('draftTicket') && context.actorId);
   useEffect(() => {
     setRequestDetail(undefined);
     setRequestError('');
@@ -200,6 +208,7 @@ export function BusinessWorkflows({
     const abort = new AbortController();
     setError('');
     setList(undefined);
+    setOpenDefinitions(current => (current.size ? new Set() : current));
     if (catalogueMode) return;
     authenticatedFetch(
       '/api/business/workflow/' +
@@ -234,8 +243,9 @@ export function BusinessWorkflows({
     };
   }, []);
   useEffect(() => {
-    const abort = new AbortController();
     setMasters(undefined);
+    if (!needsMasters) return;
+    const abort = new AbortController();
     authenticatedFetch(
       '/api/business/workflow/masters?' +
         new URLSearchParams({
@@ -261,7 +271,7 @@ export function BusinessWorkflows({
         if (!abort.signal.aborted) setError(e.message);
       });
     return () => abort.abort();
-  }, [view, masterPage, masterTerm, attempt]);
+  }, [needsMasters, view, masterPage, masterTerm, attempt]);
   useEffect(() => {
     if (!matching) return;
     const abort = new AbortController();
@@ -564,7 +574,7 @@ export function BusinessWorkflows({
           type="button"
           className="primary-button"
           disabled={
-            !masters ||
+            (catalogueMode && !masters) ||
             (!catalogueMode && !list) ||
             (view === 'amendments'
               ? !context.canAmend && !context.canApprove
@@ -790,7 +800,18 @@ export function BusinessWorkflows({
                                   · Decided {new Date(a.decidedAt).toLocaleDateString()}
                                 </small>
                               )}
-                              <details>
+                              <details
+                                onToggle={event => {
+                                  const open = event.currentTarget.open;
+                                  setOpenDefinitions(previous => {
+                                    if (previous.has(a.id) === open) return previous;
+                                    const next = new Set(previous);
+                                    if (open) next.add(a.id);
+                                    else next.delete(a.id);
+                                    return next;
+                                  });
+                                }}
+                              >
                                 <summary>Definition details</summary>
                                 <DefinitionPreview
                                   details={a.definition}

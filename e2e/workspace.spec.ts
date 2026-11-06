@@ -4,10 +4,28 @@ import { people, plan, request as workforceRequest } from './workforce-data';
 for (const role of ['employee', 'manager', 'admin'] as const) {
   test(`${role}: own profile, navigation and keyboard account menu`, async ({ page }) => {
     await fixture(page, { role });
+    let accessReads = 0;
+    page.on('request', request => {
+      if (new URL(request.url()).pathname === '/api/effective-access') accessReads++;
+    });
     await page.goto('/profile');
     await expect(
       page.getByRole('heading', { name: people[role].displayName, exact: true }),
     ).toBeVisible();
+    const access = page.getByText('Effective access & security scope', { exact: true });
+    await expect(access).toBeVisible();
+    expect(accessReads).toBe(0);
+    if (role === 'employee') {
+      await access.click();
+      await expect(page.getByText('No matching decisions.')).toBeVisible();
+      expect(accessReads).toBe(1);
+      await access.click();
+      await expect(page.getByText('No matching decisions.')).toHaveCount(0);
+      await access.click();
+      await expect(page.getByText('No matching decisions.')).toBeVisible();
+      expect(accessReads).toBe(2);
+      await access.click();
+    }
     const menu = page.getByRole('button', { name: 'Account menu for ' + people[role].displayName });
     await expect(page.getByRole('region', { name: 'Account menu', exact: true })).toBeHidden();
     await menu.focus();
@@ -107,12 +125,20 @@ test('picker: external value, deselection, selection, search and retry controls'
 });
 test('amendments: approver starts at type selection and can edit Provider', async ({ page }) => {
   await fixture(page, { role: 'admin' });
+  let masterReads = 0;
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/business/workflow/masters') masterReads++;
+  });
   await page.goto('/test/e2e/harness.html?fixture=business');
-  await page.getByRole('button', { name: 'New catalogue request' }).click();
+  const create = page.getByRole('button', { name: 'New catalogue request' });
+  await expect(create).toBeEnabled();
+  expect(masterReads).toBe(0);
+  await create.click();
   await expect(page.getByRole('heading', { name: 'What would you like to change?' })).toBeVisible();
   await page.getByRole('button', { name: 'Provider', exact: true }).click();
   await page.getByRole('button', { name: /Update an existing entry/ }).click();
   await page.getByRole('combobox').selectOption('issuer');
+  expect(masterReads).toBe(1);
   await page.getByRole('button', { name: /Next: entry details/ }).click();
   await expect(page.getByText('Update provider: Synthetic issuer')).toBeVisible();
 });

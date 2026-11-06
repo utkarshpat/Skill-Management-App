@@ -16,6 +16,26 @@ const context = {
   canManage: true,
   scopes: [{ id, kind: 'PROJECT', name: 'Customer Insights Modernisation' }],
 };
+test('person-scoped administration binds the requested person and fails closed on unsupported schema or revoked authority', async () => {
+  const f = sqlAdapterFixture();
+  const store = new SqlBusinessStore(account);
+  const reply = (proc: string, value: unknown) => f.reply(proc, [{ json: JSON.stringify(value) }]);
+  try {
+    reply('dbo.BusinessAdministration', { revision: 4, people: [{ id, name: 'Rohan Mehta' }] });
+    reply('dbo.BusinessContext', context);
+    const result = await store.administration(actor, id);
+    assert.deepEqual(result.people, [{ id, name: 'Rohan Mehta' }]);
+    assert.deepEqual(f.calls[0].inputs, { account_id: account, actor_id: actor, person_id: id });
+    f.reject('dbo.BusinessAdministration', { number: 8144, message: 'Too many arguments' });
+    await assert.rejects(store.administration(actor, id), { status: 503 });
+    assert.equal(f.calls.filter(call => call.procedure === 'dbo.BusinessAdministration').length, 2);
+    reply('dbo.BusinessAdministration', { revision: 4, people: [{ id, name: 'Rohan Mehta' }] });
+    reply('dbo.BusinessContext', { ...context, canManage: false });
+    await assert.rejects(store.administration(actor, id), { status: 403 });
+  } finally {
+    await f.finish();
+  }
+});
 test('business adapter rechecks scope on dashboards, people matching, configuration and workflow reads', async () => {
   const f = sqlAdapterFixture(),
     store = new SqlBusinessStore(account),

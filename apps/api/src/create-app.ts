@@ -87,6 +87,7 @@ export function createApp(
       databaseCalls: number;
       databaseMs: number;
       databaseConnectionRetries: number;
+      databasePhysicalConnections: number;
       databasePhases: ReturnType<ReturnType<typeof startRequestTiming>['result']>['databasePhases'];
     }) => void;
   } = {},

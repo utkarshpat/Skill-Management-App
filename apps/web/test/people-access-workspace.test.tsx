@@ -392,3 +392,94 @@ test('revoked person reads clear the editor instead of leaving cached sensitive 
   assert.equal(document.querySelector('input[value="G4"]'), null);
   assert.equal(document.querySelector('.people-person-form'), null);
 });
+
+test('manager search excludes the employee and inactive matches while preserving their placement', async () => {
+  lookup = url => {
+    if (url.searchParams.get('search') !== '7109') return undefined;
+    return Promise.resolve(
+      Response.json({
+        revision: 7,
+        page: 1,
+        pageSize: 10,
+        total: 3,
+        items: [
+          { id, name: 'Aditi Menon', employeeCode: '710902', active: true },
+          { id: manager, name: 'Neha Rao', employeeCode: '710901', active: false },
+          { id: other, name: 'Rohan Mehta', employeeCode: '710903', active: true },
+        ],
+      }),
+    );
+  };
+  await mount();
+  await open();
+  await click('Organization & manager');
+  await fill('Find manager', '7109');
+  await waitSearch();
+  const matches = document.querySelector('.people-manager-results')!;
+  assert.doesNotMatch(matches.textContent ?? '', /Aditi Menon|Neha Rao/);
+  await click('Rohan Mehta', matches);
+  await click('Review organization changes');
+  assert.deepEqual(previews[0].body, {
+    kind: 'assignment',
+    revision: 7,
+    personId: id,
+    teamId: 'project',
+    departmentId: null,
+    managerId: other,
+  });
+  assert.match(
+    document.querySelector('.form-dialog')?.textContent ?? '',
+    /Payments Modernisation.*Rohan Mehta/,
+  );
+  assert.equal(writes.length, 0);
+});
+
+test('template paging keeps unsupported grants unassignable and never reuses the previous page selection', async () => {
+  const unsupported = '20000000-0000-4000-8000-000000000006';
+  lookup = url => {
+    if (url.searchParams.get('kind') !== 'templates') return undefined;
+    const page = Number(url.searchParams.get('page'));
+    return Promise.resolve(
+      Response.json({
+        revision: 7,
+        page,
+        pageSize: 10,
+        total: 11,
+        items:
+          page === 1
+            ? [
+                {
+                  id: role,
+                  name: 'Delivery Support',
+                  permissions: [{ permission: 'request.view', scope: 'OWN', effect: 'ALLOW' }],
+                },
+              ]
+            : [
+                {
+                  id: unsupported,
+                  name: 'Historical finance reports',
+                  permissions: [
+                    { permission: 'reports.view', scope: 'ORGANIZATION', effect: 'ALLOW' },
+                  ],
+                },
+              ],
+      }),
+    );
+  };
+  await mount();
+  await open();
+  await click('Templates');
+  await waitSearch();
+  await fill('Template to assign', role);
+  await click('Next results');
+  await waitSearch();
+  const option = document.querySelector<HTMLOptionElement>(`option[value="${unsupported}"]`);
+  assert.equal(option?.disabled, true);
+  assert.match(option?.textContent ?? '', /Unavailable for assignment/);
+  const reviewButton = [...document.querySelectorAll('button')].find(
+    b => b.textContent?.trim() === 'Review template assignment',
+  );
+  assert.equal(reviewButton?.disabled, true);
+  assert.equal(previews.length, 0);
+  assert.equal(writes.length, 0);
+});
