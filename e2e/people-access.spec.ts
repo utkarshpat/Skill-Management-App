@@ -207,3 +207,48 @@ test('People & Access searches on demand and reviews template assignment and rem
     scopeId: null,
   });
 });
+
+test('fresh personal route skips /api/access while preserving Organization, Activity log and People & Access navigation', async ({
+  page,
+}) => {
+  await fixture(page, { role: 'admin', businessAdministration: true });
+  const accessRequests: string[] = [];
+  await page.route('**/api/access**', async route => {
+    const url = new URL(route.request().url());
+    accessRequests.push(url.pathname + url.search);
+    return route.fulfill({
+      json: {
+        revision: 3,
+        currentPerson: {
+          id: ids.person,
+          displayName: 'Priya Nair',
+          employeeCode: 'ADM-1',
+          active: true,
+          roleIds: [],
+          overrides: [],
+        },
+        canManageUsers: true,
+        canViewAudit: true,
+        people: [],
+        roles: [],
+        audit: [],
+        catalogue: [],
+      },
+    });
+  });
+  await page.goto('/profile');
+  await expect(page.getByRole('heading', { name: 'My profile', exact: true })).toBeVisible();
+  const openNavigation = page.getByRole('button', { name: 'Open navigation' });
+  if (await openNavigation.isVisible()) await openNavigation.click();
+  const sidebar = page.locator('nav[aria-label="Administration sections"]:visible');
+  await expect(sidebar.getByRole('button', { name: 'Organization', exact: true })).toBeVisible();
+  await expect(sidebar.getByRole('button', { name: 'Activity log', exact: true })).toBeVisible();
+  await expect(sidebar.getByRole('button', { name: 'People & Access', exact: true })).toBeVisible();
+  expect(accessRequests).toEqual([]);
+
+  await sidebar.getByRole('button', { name: 'People & Access', exact: true }).click();
+  await expect(page.getByRole('searchbox', { name: 'Find person' })).toBeVisible();
+  expect(new URL(page.url()).searchParams.get('view')).toBe('people');
+  expect(accessRequests).toEqual(['/api/access?summary=1']);
+});
+

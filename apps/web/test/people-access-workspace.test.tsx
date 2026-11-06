@@ -1,5 +1,6 @@
 import test, { after, afterEach, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { registerHooks } from 'node:module';
 import { act } from 'react';
 import { render, settle, closeBrowser, demoResponse, deferred } from './support/browser';
 import {
@@ -10,6 +11,12 @@ import {
   fill,
   change,
 } from './support/interactions';
+const cssHooks = registerHooks({
+  load(url, context, nextLoad) {
+    if (url.endsWith('.css')) return { format: 'module', source: '', shortCircuit: true };
+    return nextLoad(url, context);
+  },
+});
 const { PeopleAccessWorkspace } = component<typeof import('../src/PeopleAccessWorkspace')>(
   'PeopleAccessWorkspace.tsx',
 );
@@ -189,7 +196,10 @@ afterEach(async () => {
   mounted = undefined;
   mock.restoreAll();
 });
-after(closeBrowser);
+after(async () => {
+  cssHooks.deregister();
+  await closeBrowser();
+});
 async function waitSearch() {
   await act(async () => {
     await new Promise(r => setTimeout(r, 340));
@@ -291,11 +301,17 @@ test('organization and manager removal are explicit, person-bound and receipt ch
   await open();
   await click('Organization & manager');
   await waitSearch();
+  await click('Review organization changes');
+  assert.equal(previews.length, 0);
+  assert.match(
+    document.body.textContent ?? '',
+    /Change the organization placement or reporting manager before previewing/,
+  );
   await click('Clear organization assignment');
   await click('Remove manager');
   await click('Review organization changes');
   const command = previews[0];
-  assert.equal(command.path, '/api/access/organization/preview');
+  assert.equal(command.path, '/api/dev-access/organization/preview');
   assert.deepEqual(command.body, {
     kind: 'assignment',
     revision: 7,
@@ -503,4 +519,28 @@ test('template paging keeps unsupported grants unassignable and never reuses the
   assert.equal(reviewButton?.disabled, true);
   assert.equal(previews.length, 0);
   assert.equal(writes.length, 0);
+});
+
+test('permission exceptions preview shows one modal at a time and preserves draft on Back to edit', async () => {
+  await mount();
+  await open();
+  await click('Permission exceptions');
+  await settle();
+  await settle();
+  assert.equal(document.querySelectorAll('dialog').length, 1);
+  await fill('Business reason (Mandatory for audit compliance)', 'Temporary audit verification');
+  await fill('Expiry date (your local time)', '2099-12-31');
+  await click('Review exception');
+  await settle();
+  assert.equal(document.querySelectorAll('dialog').length, 1);
+  assert.match(document.querySelector('dialog')?.textContent ?? '', /Review person change/);
+  await click('Back to edit');
+  await settle();
+  assert.equal(document.querySelectorAll('dialog').length, 1);
+  assert.equal(
+    document.querySelector<HTMLInputElement>('input[placeholder*="Special audit requirement"]')
+      ?.value,
+    'Temporary audit verification',
+  );
+  assert.equal(document.querySelector<HTMLInputElement>('input[type="date"]')?.value, '2099-12-31');
 });

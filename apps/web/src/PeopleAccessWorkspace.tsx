@@ -461,11 +461,12 @@ export function PeopleAccessWorkspace({
               endpoint={endpoint}
               catalogue={catalogue}
               busy={busy}
+              reviewOpen={Boolean(review)}
               canViewAudit={canViewAudit}
               canManageScoped={canManageScoped}
               onPreview={personPreview}
               onOrganizationPreview={(body, label) =>
-                preview('/api/access/organization', body, label)
+                preview(endpoint + '/organization', body, label)
               }
               onChanged={() => {
                 setAttempt(n => n + 1);
@@ -533,6 +534,7 @@ function PersonEditor({
   endpoint,
   catalogue,
   busy,
+  reviewOpen,
   canViewAudit,
   canManageScoped,
   onPreview,
@@ -545,6 +547,7 @@ function PersonEditor({
   endpoint: string;
   catalogue: Catalogue;
   busy: boolean;
+  reviewOpen?: boolean;
   canViewAudit: boolean;
   canManageScoped: boolean;
   onPreview: (p: Person, label: string, rejectOnError?: boolean) => Promise<void>;
@@ -851,6 +854,7 @@ function PersonEditor({
             revision={detail.revision}
             busy={busy}
             exceptionsOnly
+            open={!reviewOpen}
             onClose={() => setExceptions(false)}
             onApplyChange={p =>
               onPreview(p, 'Update permission exceptions for ' + detail.person.displayName, true)
@@ -908,7 +912,9 @@ function NodePicker({
           onChange={e =>
             onChange(
               e.target.value,
-              items.find(n => n.id === e.target.value)?.name ?? selectedName ?? '',
+              e.target.value
+                ? (items.find(n => n.id === e.target.value)?.name ?? selectedName ?? '')
+                : '',
             )
           }
         >
@@ -990,6 +996,17 @@ function PersonOrganization({
   const [names, setNames] = useState<Record<string, string>>(
     Object.fromEntries(nodes.map(n => [n.kind, n.name])),
   );
+  const nextTeamId = changed ? team || null : (assignment?.teamId ?? null);
+  const nextDepartmentId = changed
+    ? team
+      ? null
+      : client || null
+    : (assignment?.departmentId ?? null);
+  const nextManagerId = manager || null;
+  const unchanged =
+    nextTeamId === (assignment?.teamId ?? null) &&
+    nextDepartmentId === (assignment?.departmentId ?? null) &&
+    nextManagerId === (assignment?.managerId ?? null);
   const matches = useDirectory(endpoint, 'people', managerQuery, managerPage);
   return (
     <form
@@ -1003,18 +1020,18 @@ function PersonOrganization({
           );
           return;
         }
+        if (unchanged) {
+          setError('Change the organization placement or reporting manager before previewing.');
+          return;
+        }
         void onPreview(
           {
             kind: 'assignment',
             revision: detail.revision,
             personId: detail.person.id,
-            teamId: changed ? team || null : (assignment?.teamId ?? null),
-            departmentId: changed
-              ? team
-                ? null
-                : client || null
-              : (assignment?.departmentId ?? null),
-            managerId: manager || null,
+            teamId: nextTeamId,
+            departmentId: nextDepartmentId,
+            managerId: nextManagerId,
           },
           'Update ' +
             detail.person.displayName +

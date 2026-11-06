@@ -203,3 +203,144 @@ test('organization module fails closed if mounted without access authentication 
     );
   }
 });
+
+test('organization preview preserves broken or inactive placement on manager-only change and rejects unchanged assignments', async () => {
+  const { previewOrganization } = await import('../src/modules/organization/preview.js');
+  const broken: OrganizationState = {
+    ...state(),
+    nodes: [
+      {
+        id: '30000000-0000-4000-8000-000000000001',
+        kind: 'TEAM',
+        name: 'Inactive Team',
+        parentId: null,
+        active: false,
+      },
+    ],
+    assignments: [
+      {
+        personId: first,
+        teamId: '30000000-0000-4000-8000-000000000001',
+        departmentId: null,
+        managerId: second,
+      },
+    ],
+  };
+  assert.throws(
+    () =>
+      previewOrganization(broken, first, {
+        kind: 'assignment',
+        revision: 1,
+        personId: first,
+        teamId: '30000000-0000-4000-8000-000000000001',
+        departmentId: null,
+        managerId: second,
+      }),
+    /Change the organization placement or reporting manager before previewing/,
+  );
+  const managerOnly = previewOrganization(broken, first, {
+    kind: 'assignment',
+    revision: 1,
+    personId: first,
+    teamId: '30000000-0000-4000-8000-000000000001',
+    departmentId: null,
+    managerId: third,
+  });
+  assert.ok(managerOnly.receipt);
+});
+
+test('demo organization routes enforce Origin checks across lowercase and mixed-case URLs', async () => {
+  const store = await LocalAccessStore.open();
+  const admin = store.snapshot().people[0].id;
+  let saves = 0;
+  const server = createApp(
+    {
+      verify: async () => {
+        throw new Error('unexpected bearer verification');
+      },
+      profile: async () => undefined,
+      organization: {
+        snapshot: async () => state(),
+        save: async () => {
+          saves++;
+        },
+      },
+    },
+    { developmentStore: store },
+  ).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const origin = `http://127.0.0.1:${address.port}`;
+  const change = {
+    kind: 'assignment',
+    revision: 1,
+    personId: first,
+    teamId: null,
+    departmentId: null,
+    managerId: third,
+  };
+  try {
+    const loginRes = await fetch(`${origin}/api/dev-login`, {
+      method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ personId: admin }),
+    });
+    assert.equal(loginRes.status, 200);
+    const cookieHeader = loginRes.headers.get('set-cookie')?.split(';')[0] ?? '';
+    assert.ok(cookieHeader);
+
+    for (const path of [
+      '/api/dev-access/organization/preview',
+      '/API/DEV-ACCESS/organization/preview',
+      '/api/dev-access/organization',
+      '/API/DEV-ACCESS/organization',
+    ]) {
+      const missingOrigin = await fetch(`${origin}${path}`, {
+        method: 'POST',
+        headers: { Cookie: cookieHeader, 'Content-Type': 'application/json' },
+        body: JSON.stringify(change),
+      });
+      assert.equal(missingOrigin.status, 403, `Expected 403 without Origin for ${path}`);
+      const wrongOrigin = await fetch(`${origin}${path}`, {
+        method: 'POST',
+        headers: {
+          Cookie: cookieHeader,
+          Origin: 'http://evil.example',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(change),
+      });
+      assert.equal(wrongOrigin.status, 403, `Expected 403 with cross-origin for ${path}`);
+    }
+    assert.equal(saves, 0);
+
+    const previewRes = await fetch(`${origin}/API/DEV-ACCESS/organization/preview`, {
+      method: 'POST',
+      headers: {
+        Cookie: cookieHeader,
+        Origin: origin,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(change),
+    });
+    assert.equal(previewRes.status, 200);
+    const preview = await previewRes.json();
+    const saveRes = await fetch(`${origin}/API/DEV-ACCESS/organization`, {
+      method: 'POST',
+      headers: {
+        Cookie: cookieHeader,
+        Origin: origin,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...change, previewReceipt: preview.receipt }),
+    });
+    assert.equal(saveRes.status, 200);
+    assert.equal(saves, 1);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close(error => (error ? reject(error) : resolve())),
+    );
+  }
+});
+

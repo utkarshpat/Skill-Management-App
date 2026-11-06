@@ -180,7 +180,7 @@ export function createApp(
   );
   // Access middleware authenticates /api/access before organization routes run.
   accessRoutes(app, dependencies, store, demo);
-  organizationRoutes(app, dependencies);
+  organizationRoutes(app, dependencies, demo);
   skillsRoutes(app, dependencies, store, demo);
   registerClaimsRoutes(
     app,

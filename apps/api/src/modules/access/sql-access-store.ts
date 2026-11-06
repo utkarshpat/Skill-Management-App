@@ -369,6 +369,6 @@ export class SqlAccessStore implements AccessStore {
         );
       throw error;
     }
-    return this.snapshot({ includeAudit: false });
+    return { ...candidate, audit: [] };
   }
 }

@@ -79,6 +79,7 @@ export function PersonAccessDialog({
   error,
   onReload,
   exceptionsOnly = false,
+  open = true,
 }: {
   person: Person;
   roles: Role[];
@@ -98,6 +99,7 @@ export function PersonAccessDialog({
   error?: string;
   onReload?: () => Promise<void>;
   exceptionsOnly?: boolean;
+  open?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<
     'effective' | 'access' | 'roles' | 'exceptions' | 'organization' | 'audit'
@@ -299,6 +301,8 @@ export function PersonAccessDialog({
 
     await preview({ ...person, overrides: updatedOverrides });
   };
+
+  if (!open) return null;
 
   return (
     <FormDialog

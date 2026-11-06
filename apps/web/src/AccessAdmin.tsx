@@ -175,6 +175,7 @@ export function AccessAdmin({
       ? linkedPerson.toLowerCase()
       : undefined;
   const [state, setState] = useState<State>();
+  const [summaryState, setSummaryState] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [role, setRole] = useState<Role>(emptyRole);
@@ -268,7 +269,8 @@ export function AccessAdmin({
     );
   }
   async function load() {
-    const response = await authenticatedFetch(endpoint + (compactPeople ? '?summary=1' : ''));
+    const summary = compactPeople;
+    const response = await authenticatedFetch(endpoint + (summary ? '?summary=1' : ''));
     if (!response.ok)
       throw new Error(
         response.status === 403
@@ -278,14 +280,17 @@ export function AccessAdmin({
             : 'Local access administration is unavailable.',
       );
     const data: State = await response.json();
+    setSummaryState(summary);
     setState(data);
     window.dispatchEvent(new Event('workspace-access-updated'));
     return data;
   }
   useEffect(() => {
+    if (personalTitle) return;
     let active = true;
+    const summary = compactPeople;
     const controller = new AbortController();
-    authenticatedFetch(endpoint + (compactPeople ? '?summary=1' : ''), {
+    authenticatedFetch(endpoint + (summary ? '?summary=1' : ''), {
       signal: controller.signal,
     })
       .then(async response => {
@@ -296,7 +301,10 @@ export function AccessAdmin({
               : 'Sign in with your assigned Microsoft administrator account.',
           );
         const data: State = await response.json();
-        if (active) setState(data);
+        if (active) {
+          setSummaryState(summary);
+          setState(data);
+        }
       })
       .catch(err => {
         if (active) setError(err.message);
@@ -305,7 +313,7 @@ export function AccessAdmin({
       active = false;
       controller.abort();
     };
-  }, [endpoint, compactPeople]);
+  }, [endpoint, compactPeople, Boolean(personalTitle)]);
   async function save(kind: 'role' | 'person') {
     if (!state) return;
     setBusy(true);
@@ -415,8 +423,25 @@ export function AccessAdmin({
       setBusy(false);
     }
   }
-  const name = state?.currentPerson?.displayName ?? 'Workspace administrator';
-  const greetingName = state?.currentPerson ? name.trim().split(/\s+/)[0] || 'there' : 'there';
+  const currentPerson = state?.currentPerson ?? workspaceContext?.person;
+  const name = currentPerson?.displayName ?? 'Workspace administrator';
+  const greetingName = currentPerson ? name.trim().split(/\s+/)[0] || 'there' : 'there';
+  const readyState = !personalTitle && state && (compactPeople || !summaryState) ? state : undefined;
+  const canManageUsers =
+    state?.canManageUsers ??
+    personalCapabilities?.manageUsers ??
+    Boolean(
+      personalCapabilities?.businessAdministration || personalCapabilities?.administration,
+    );
+  const canViewAudit =
+    state?.canViewAudit ??
+    personalCapabilities?.viewAudit ??
+    Boolean(
+      personalCapabilities?.businessAdministration || personalCapabilities?.administration,
+    );
+  const canViewSkills =
+    state?.canViewSkills ??
+    Boolean(personalCapabilities?.catalogue || personalCapabilities?.manageCatalogue);
   const sections = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'organization', label: 'Organization', icon: FolderTree },
@@ -441,15 +466,14 @@ export function AccessAdmin({
                 section.id === 'overview' ||
                 section.id === 'people' ||
                 (section.id === 'skills'
-                  ? state?.canViewSkills
+                  ? canViewSkills
                   : section.id === 'audit'
-                    ? state?.canViewAudit
-                    : state?.canManageUsers),
+                    ? canViewAudit
+                    : canManageUsers),
             )
             .map(({ id, label, icon }) => ({
               id: id === 'overview' ? 'dashboard' : id,
-              label:
-                id === 'people' && state && !state.canManageUsers ? 'Access management' : label,
+              label: id === 'people' && !canManageUsers ? 'Access management' : label,
               icon,
               active:
                 !personalTitle &&
@@ -461,7 +485,7 @@ export function AccessAdmin({
                   close();
                   return;
                 }
-                setTab(id === 'people' && !state?.canManageUsers ? 'roles' : id);
+                setTab(id === 'people' && !canManageUsers ? 'roles' : id);
                 setEditor(undefined);
                 setSearch('');
                 setNotice('');
@@ -516,9 +540,9 @@ export function AccessAdmin({
             </h1>
           </div>
           <div className="page-actions" role="group" aria-label="Page actions" ref={setPageActions}>
-            {state && !personalTitle && tab === 'overview' && (
+            {readyState && tab === 'overview' && (
               <>
-                {state.canManageUsers && (
+                {readyState.canManageUsers && (
                   <button className="admin-primary" onClick={() => createRecord('person')}>
                     <Plus size={17} />
                     Add person
@@ -529,7 +553,7 @@ export function AccessAdmin({
                 </button>
               </>
             )}
-            {state && !personalTitle && tab === 'people' && state.canManageUsers && (
+            {readyState && tab === 'people' && readyState.canManageUsers && (
               <>
                 <button
                   className="secondary-button"
@@ -541,7 +565,7 @@ export function AccessAdmin({
                 </button>
               </>
             )}
-            {state && !personalTitle && tab === 'roles' && (
+            {readyState && tab === 'roles' && (
               <>
                 <button
                   className="secondary-button"
@@ -553,7 +577,7 @@ export function AccessAdmin({
                 </button>
               </>
             )}
-            {state && !personalTitle && tab === 'audit' && (
+            {readyState && tab === 'audit' && (
               <label className="list-search">
                 <Search size={16} aria-hidden="true" />
                 <input
@@ -568,7 +592,9 @@ export function AccessAdmin({
           <NavbarAccount
             name={name}
             identity={
-              state?.authentication === 'microsoft' ? 'Microsoft account' : 'Development session'
+              (state?.authentication ?? workspaceContext?.authentication) === 'microsoft'
+                ? 'Microsoft account'
+                : 'Development session'
             }
             workspaceLink={{ href: '/workspace', label: 'Personal workspace' }}
           />
@@ -641,20 +667,20 @@ export function AccessAdmin({
               {notice}
             </p>
           )}
-          {!state && !error && (
+          {personalTitle && (
+            <Workspace
+              embedded
+              actionsContainer={pageActions}
+              initialWorkspace={workspaceContext}
+            />
+          )}
+          {!personalTitle && !readyState && !error && (
             <div className="admin-loading" role="status">
               Loading your administration workspace…
             </div>
           )}
-          {state && (
+          {readyState && state && (
             <>
-              {personalTitle && (
-                <Workspace
-                  embedded
-                  actionsContainer={pageActions}
-                  initialWorkspace={workspaceContext}
-                />
-              )}
               {!personalTitle && tab === 'overview' && (
                 <>
                   <div className="admin-metrics">
@@ -738,6 +764,7 @@ export function AccessAdmin({
               {!personalTitle && tab === 'organization' && (
                 <Suspense fallback={<div role="status">Opening organization…</div>}>
                   <OrganizationSetup
+                    endpoint={endpoint + '/organization'}
                     actionsContainer={pageActions}
                     onChanged={() => {
                       load().catch(err => setError(err.message));

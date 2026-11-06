@@ -52,16 +52,6 @@ const blank = (kind: Kind = 'DELIVERY_UNIT', parentId: string | null = null) => 
   parentId,
   active: true,
 });
-const endpoint = '/api/access/organization';
-
-/**
- * Organization and reporting hierarchy management interface.
- *
- * Provides visualization and administration of:
- * - Delivery units, portfolios/divisions, accounts/clients, and organizational projects
- * - Person assignments and separate manager reporting lines
- * - Strict Preview → Recheck → Transaction → Audit workflow for structural changes
- */
 export function OrganizationSetup({
   actionsContainer,
   onChanged,
@@ -69,6 +59,7 @@ export function OrganizationSetup({
   onAssignDepartment,
   roleNames,
   initialPersonId,
+  endpoint = '/api/access/organization',
 }: {
   actionsContainer: HTMLElement | null;
   onChanged: () => void;
@@ -76,6 +67,7 @@ export function OrganizationSetup({
   onAssignDepartment: (id: string) => void;
   roleNames: Record<string, string[]>;
   initialPersonId?: string;
+  endpoint?: string;
 }) {
   const [review, setReview] = useState<{
     body: object;

@@ -219,8 +219,12 @@ test('access writes validate candidate changes, use reviewed revisions and trans
   try {
     f.reply('dbo.ReadAccessWorkspace', ...encode(state));
     f.reply('dbo.SaveAccessChange');
-    f.reply('dbo.ReadAccessWorkspace', ...encode({ ...state, revision: state.revision + 1 }));
     assert.equal((await store.save(admin, change)).revision, state.revision + 1);
+    assert.equal(
+      f.calls.filter(c => c.procedure === 'dbo.ReadAccessWorkspace').length,
+      1,
+      'successful save must not re-read the full workspace snapshot after SaveAccessChange',
+    );
     const write = f.calls.find(c => c.procedure === 'dbo.SaveAccessChange')!;
     assert.equal(write.inputs.actor_id, admin);
     assert.equal(write.inputs.expected_revision, state.revision);

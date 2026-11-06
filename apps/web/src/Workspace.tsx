@@ -45,6 +45,8 @@ export interface WorkspaceState {
     claimSkills: boolean;
     catalogue: boolean;
     administration: boolean;
+    manageUsers?: boolean;
+    viewAudit?: boolean;
     manageCatalogue: boolean;
     reviewSkills?: boolean;
     learning?: boolean;
