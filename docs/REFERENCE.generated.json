@@ -1,6 +1,6 @@
 {
   "version": "2026-11-05",
-  "revision": "61f6580b7b0baef3",
+  "revision": "9cc34c1ad3b6c3d9",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -93,7 +93,8 @@
       "088_organization_portfolio.sql",
       "089_portfolio_business_scopes.sql",
       "090_workflow_topic_recipients.sql",
-      "091_search_people_administration.sql"
+      "091_search_people_administration.sql",
+      "092_organization_manager_only_save.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -6814,12 +6815,6 @@
       "source": "apps/api/src/modules/learning/routes.ts"
     },
     {
-      "method": "GET",
-      "path": "/api/access/organization",
-      "module": "organization",
-      "source": "apps/api/src/modules/organization/routes.ts"
-    },
-    {
       "method": "POST",
       "path": "/api/access/organization/preview",
       "module": "organization",
@@ -6827,7 +6822,19 @@
     },
     {
       "method": "POST",
+      "path": "/api/dev-access/organization/preview",
+      "module": "organization",
+      "source": "apps/api/src/modules/organization/routes.ts"
+    },
+    {
+      "method": "POST",
       "path": "/api/access/organization",
+      "module": "organization",
+      "source": "apps/api/src/modules/organization/routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dev-access/organization",
       "module": "organization",
       "source": "apps/api/src/modules/organization/routes.ts"
     },
@@ -7179,7 +7186,7 @@
       "name": "SaveOrganizationChange",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,\n @kind varchar(20),@target_id uniqueidentifier,@is_new bit,@payload nvarchar(max)",
-      "source": "database/migrations/088_organization_portfolio.sql"
+      "source": "database/migrations/092_organization_manager_only_save.sql"
     },
     {
       "name": "ReadSkillCatalogue",

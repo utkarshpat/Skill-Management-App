@@ -150,6 +150,10 @@ test('People & Access searches on demand and reviews template assignment and rem
   await search.fill('710902');
   await page.getByRole('button', { name: /Aditi Menon.*710902/ }).click();
   await expect(page.getByRole('region', { name: 'Selected person' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: employee.displayName })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    .toBe(true);
   await page.getByRole('button', { name: 'Templates (0)' }).click();
   await page.getByLabel('Template to assign').selectOption(template.id);
   await page.getByRole('button', { name: 'Review template assignment' }).click();
@@ -251,4 +255,3 @@ test('fresh personal route skips /api/access while preserving Organization, Acti
   expect(new URL(page.url()).searchParams.get('view')).toBe('people');
   expect(accessRequests).toEqual(['/api/access?summary=1']);
 });
-

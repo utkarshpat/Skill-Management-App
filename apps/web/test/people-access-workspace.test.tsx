@@ -245,6 +245,17 @@ test('blank and one-character searches load no directory; selecting a match read
   assert.match(document.body.textContent ?? '', /Aditi Menon/);
   assert.equal(writes.length, 0);
 });
+test('the selected-person header flags ambiguous placement and manager records', async () => {
+  current.organization.assignments.push({ ...current.organization.assignments[0] });
+  await mount();
+  await open();
+  const context = document.querySelector('.people-person-context');
+  assert.deepEqual(
+    [...(context?.querySelectorAll('strong') ?? [])].map(label => label.textContent),
+    ['Needs administrator attention', 'Needs administrator attention'],
+  );
+});
+
 test('templates are first-class actions, preserve historical grants and save only the reviewed assignment', async () => {
   await mount();
   await open();

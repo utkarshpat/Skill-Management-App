@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, Suspense, lazy } from 'react';
 import { Link } from 'react-router';
+import { Search, UserRound } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { FormDialog } from './FormDialog';
@@ -98,6 +99,28 @@ async function json<T>(url: string, body?: object, signal?: AbortSignal): Promis
     }),
     'The current administration data could not be confirmed.',
   );
+}
+function initials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(part => part[0] ?? '')
+    .join('')
+    .toUpperCase();
+}
+function organizationPathName(nodes: Node[], id: string) {
+  const path: Node[] = [];
+  const seen = new Set<string>();
+  let cursor: string | null = id;
+  while (cursor && !seen.has(cursor) && path.length < 4) {
+    seen.add(cursor);
+    const node = nodes.find(item => item.id === cursor);
+    if (!node) return '';
+    path.unshift(node);
+    cursor = node.parentId;
+  }
+  return cursor || path.length === 0 ? '' : path.map(node => node.name).join(' → ');
 }
 function useDirectory(
   endpoint: string,
@@ -360,35 +383,22 @@ export function PeopleAccessWorkspace({
   return (
     <section className="people-access-workspace" aria-label="Find and manage a person">
       <header className="people-access-intro">
-        <h2>Find a person, then manage their access</h2>
+        <h2>Find and manage people</h2>
         <p>
           Search by name or employee ID. Only matching people and the selected profile are loaded.
         </p>
       </header>
-      <label className="people-access-search">
-        Find person
-        <input
-          type="search"
-          aria-label="Find person"
-          placeholder="Type at least 2 characters…"
-          maxLength={100}
-          value={search}
-          onChange={e => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-        />
-      </label>
       {notice && (
         <p role="status" className="people-access-success">
           {notice}
         </p>
       )}
       {error && (
-        <p role="alert">
+        <p role="alert" className="people-access-error">
           {error}{' '}
           {selected && (
             <button
+              type="button"
               className="secondary-button"
               disabled={busy}
               onClick={() => setAttempt(n => n + 1)}
@@ -399,48 +409,100 @@ export function PeopleAccessWorkspace({
         </p>
       )}
       <div className="people-access-layout">
-        <aside aria-label="Matching people">
-          {search.trim().length < 2 ? (
-            <p>Start with a name or employee ID. The full directory is not loaded.</p>
-          ) : results.loading ? (
-            <p role="status">Searching people…</p>
-          ) : results.error ? (
-            <div role="alert">
-              {results.error}
-              <button className="secondary-button" onClick={results.retry}>
-                Retry search
-              </button>
+        <aside className="people-access-directory" aria-label="Matching people">
+          <div className="people-directory-heading">
+            <div>
+              <h3>People directory</h3>
+              <p>Search by name or employee ID</p>
             </div>
-          ) : (
-            <>
-              <p>{results.data?.total ?? 0} matching people</p>
-              <ul className="people-search-results">
-                {results.data?.items.map(p => (
-                  <li key={p.id}>
-                    <button
-                      disabled={busy}
-                      className={selected === p.id ? 'selected' : ''}
-                      aria-pressed={selected === p.id}
-                      onClick={() => {
-                        setSelected(p.id);
-                        setPersonTab('profile');
-                        setNotice('');
-                        setError('');
-                        selectedPane.current?.focus();
-                      }}
-                    >
-                      <strong>{p.name}</strong>
-                      <span>
-                        {p.employeeCode} · {p.active ? 'Active' : 'Inactive'}
-                      </span>
-                      <span>Manage person →</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <Pager data={results.data} page={page} onPage={setPage} />
-            </>
-          )}
+            {results.data && search.trim().length >= 2 && (
+              <span className="people-directory-count">{results.data.total}</span>
+            )}
+          </div>
+          <label className="people-access-search">
+            <span>Find person</span>
+            <span className="people-search-input">
+              <Search size={17} aria-hidden="true" />
+              <input
+                type="search"
+                aria-label="Find person"
+                placeholder="Enter at least 2 characters"
+                maxLength={100}
+                value={search}
+                onChange={e => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </span>
+          </label>
+          <div className="people-directory-results">
+            {search.trim().length < 2 ? (
+              <p className="people-directory-hint">
+                Start with a name or employee ID. The full directory is not loaded.
+              </p>
+            ) : results.error ? (
+              <div role="alert" className="people-directory-state">
+                {results.error}
+                <button type="button" className="secondary-button" onClick={results.retry}>
+                  Retry search
+                </button>
+              </div>
+            ) : !results.data || results.loading ? (
+              <p role="status" className="people-directory-state">
+                Searching people…
+              </p>
+            ) : (
+              <>
+                <p className="people-directory-result-label">
+                  {results.data.total === 1
+                    ? '1 matching person'
+                    : `${results.data.total} matching people`}
+                </p>
+                <ul className="people-search-results">
+                  {results.data?.items.map(p => (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className={selected === p.id ? 'selected' : ''}
+                        aria-pressed={selected === p.id}
+                        onClick={() => {
+                          setSelected(p.id);
+                          setPersonTab('profile');
+                          setNotice('');
+                          setError('');
+                          selectedPane.current?.focus();
+                        }}
+                      >
+                        <span className="people-directory-person">
+                          <strong>{p.name}</strong>
+                          <span className="people-directory-person-meta">
+                            <span>{p.employeeCode}</span>
+                            <span
+                              className={p.active ? 'people-state-active' : 'people-state-inactive'}
+                            >
+                              {p.active ? 'Active' : 'Inactive'}
+                            </span>
+                          </span>
+                        </span>
+                        <span className="people-directory-avatar" aria-hidden="true">
+                          {initials(p.name)}
+                        </span>
+                        <span className="people-directory-open">
+                          Manage person <span aria-hidden="true">→</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {!results.data?.items.length && (
+                  <p className="people-directory-hint">No people match this search.</p>
+                )}
+                <Pager data={results.data} page={page} onPage={setPage} />
+              </>
+            )}
+          </div>
         </aside>
         <div
           ref={selectedPane}
@@ -451,7 +513,9 @@ export function PeopleAccessWorkspace({
           tabIndex={-1}
         >
           {loading ? (
-            <p role="status">Opening selected person…</p>
+            <p role="status" className="people-selection-state">
+              Opening selected person…
+            </p>
           ) : detail?.person.id === selected ? (
             <PersonEditor
               key={detail.person.id + ':' + detail.revision}
@@ -474,7 +538,15 @@ export function PeopleAccessWorkspace({
               }}
             />
           ) : (
-            !error && <p>Select a matching person to edit their profile, organization or access.</p>
+            !error && (
+              <div className="people-selection-empty">
+                <span className="people-selection-icon" aria-hidden="true">
+                  <UserRound size={23} />
+                </span>
+                <h3>Select a person</h3>
+                <p>Search for someone to review their profile, organization and access.</p>
+              </div>
+            )
           )}
         </div>
       </div>
@@ -578,13 +650,75 @@ function PersonEditor({
     ['effective', 'Effective access'],
     ...(canViewAudit ? [['activity', 'History']] : []),
   ];
+  const { assignments, nodes, people } = detail.organization;
+  const assignment = assignments[0];
+  const invalidAssignment =
+    assignments.length > 1 || (assignment && assignment.personId !== detail.person.id);
+  const placementId = assignment?.teamId ?? assignment?.departmentId;
+  const validPlacement =
+    placementId &&
+    !(assignment.teamId && assignment.departmentId) &&
+    nodes.some(
+      node => node.id === placementId && node.kind === (assignment.teamId ? 'TEAM' : 'DEPARTMENT'),
+    ) &&
+    organizationPathValid(nodes, placementId);
+  const placement =
+    invalidAssignment || (placementId && !validPlacement)
+      ? 'Needs administrator attention'
+      : placementId
+        ? organizationPathName(nodes, placementId)
+        : 'Not assigned';
+  const managers = assignment?.managerId
+    ? people.filter(person => person.id === assignment.managerId)
+    : [];
+  const manager =
+    managers.length === 1 && managers[0].active && managers[0].id !== detail.person.id
+      ? managers[0]
+      : undefined;
+  const managerLabel = invalidAssignment
+    ? 'Needs administrator attention'
+    : manager
+      ? `${manager.displayName}${manager.employeeCode ? ` · ${manager.employeeCode}` : ''}`
+      : assignment?.managerId
+        ? 'Needs administrator attention'
+        : 'Not assigned';
   return (
     <>
       <header className="people-person-heading">
-        <h2>{detail.person.displayName}</h2>
-        <p>
-          {detail.person.employeeCode} · {detail.person.active ? 'Active' : 'Inactive'}
-        </p>
+        <div className="people-person-identity">
+          <span className="people-person-avatar" aria-hidden="true">
+            {initials(detail.person.displayName)}
+          </span>
+          <div className="people-person-title">
+            <div className="people-person-title-line">
+              <h2>{detail.person.displayName}</h2>
+              <span
+                className={
+                  detail.person.active
+                    ? 'people-person-status people-state-active'
+                    : 'people-person-status people-state-inactive'
+                }
+              >
+                {detail.person.active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <p className="people-person-meta">
+              <span>{detail.person.employeeCode}</span>
+              {detail.person.jobTitle && <span>{detail.person.jobTitle}</span>}
+              {detail.person.grade && <span>{detail.person.grade}</span>}
+            </p>
+          </div>
+        </div>
+        <div className="people-person-context">
+          <div>
+            <span>Organization path</span>
+            <strong title={placement}>{placement}</strong>
+          </div>
+          <div>
+            <span>Direct manager</span>
+            <strong title={managerLabel}>{managerLabel}</strong>
+          </div>
+        </div>
       </header>
       <nav className="people-person-tabs" aria-label="Selected person sections">
         {tabs.map(([id, label]) => (
@@ -612,6 +746,10 @@ function PersonEditor({
           }}
         >
           <fieldset disabled={busy}>
+            <div className="people-panel-heading">
+              <h3>Profile details</h3>
+              <p>Personal and employment information for this workspace account.</p>
+            </div>
             <label>
               Full name
               <input
@@ -668,7 +806,7 @@ function PersonEditor({
             <>
               <h3>Built-in access templates</h3>
               <p>Choose a template to review its scope and create an assignment.</p>
-              <div className="people-person-tabs">
+              <div className="people-template-actions">
                 <button
                   type="button"
                   className="secondary-button"

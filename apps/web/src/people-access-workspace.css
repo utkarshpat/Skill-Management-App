@@ -1,155 +1,706 @@
 .people-access-workspace {
-  color: var(--ink, #172333);
-}
-.people-access-workspace button {
-  overflow-wrap: anywhere;
-  white-space: normal;
-  max-width: 100%;
-}
-.people-access-intro h2,
-.people-person-heading h2 {
-  margin: 0 0 0.5rem;
-}
-.people-access-intro p {
-  color: var(--muted, #596578);
-}
-.people-access-search {
   display: grid;
-  gap: 0.4rem;
-  max-width: 42rem;
-  margin: 1.5rem 0;
-  font-weight: 600;
-}
-.people-access-workspace input:not([type='checkbox']),
-.people-access-workspace select {
-  width: 100%;
+  gap: 1.1rem;
   min-width: 0;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.6rem;
-  padding: 0.7rem;
-  background: #fff;
-  color: inherit;
+  color: var(--ink);
 }
+
+.people-access-intro h2,
+.people-directory-heading h3,
+.people-person-heading h2,
+.people-selection-empty h3,
+.people-panel-heading h3 {
+  margin: 0;
+  color: var(--heading, var(--ink));
+  text-wrap: balance;
+}
+
+.people-access-intro h2 {
+  font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+  letter-spacing: -0.02em;
+}
+
+.people-access-intro p,
+.people-directory-heading p,
+.people-selection-empty p,
+.people-panel-heading p {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.people-access-intro p {
+  max-width: 65ch;
+}
+
 .people-access-layout {
   display: grid;
-  grid-template-columns: minmax(14rem, 1fr) minmax(0, 2.8fr);
-  gap: 1.5rem;
+  grid-template-columns: minmax(16rem, 0.78fr) minmax(0, 2fr);
+  gap: 1rem;
   align-items: start;
-}
-.people-access-layout > aside,
-.people-access-selected {
-  background: #fff;
-  border: 1px solid #d5dfe8;
-  border-radius: 1rem;
-  padding: 1.2rem;
   min-width: 0;
 }
+
+.people-access-directory,
+.people-access-selected {
+  min-width: 0;
+  padding: clamp(0.9rem, 1.5vw, 1.2rem);
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: var(--surface);
+}
+
+.people-access-directory {
+  position: sticky;
+  top: 1rem;
+}
+
+.people-directory-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.people-directory-heading h3 {
+  font-size: 1rem;
+}
+
+.people-directory-heading p {
+  font-size: 0.82rem;
+}
+
+.people-directory-count {
+  display: inline-grid;
+  min-width: 2rem;
+  min-height: 2rem;
+  place-items: center;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: var(--raised);
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.people-access-search {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0 0 1rem;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.people-search-input {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  min-height: 2.8rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.people-search-input:focus-within {
+  border-color: var(--focus, var(--accent-ink));
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.people-search-input input {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.6rem;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.people-search-input input::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.people-search-input input:focus-visible {
+  outline: 0;
+}
+
+.people-directory-results {
+  min-width: 0;
+}
+
+.people-directory-hint,
+.people-directory-state {
+  margin: 0;
+  padding: 0.8rem;
+  border-radius: 0.55rem;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.people-directory-state {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.people-directory-state button {
+  justify-self: start;
+}
+
+.people-directory-result-label {
+  margin: 0 0 0.45rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .people-search-results,
 .people-assigned-templates,
 .people-manager-results {
-  list-style: none;
-  padding: 0;
   display: grid;
-  gap: 0.7rem;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
+
 .people-search-results button {
   display: grid;
-  gap: 0.4rem;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: 0.15rem 0.7rem;
+  align-items: center;
   width: 100%;
+  min-height: 4.1rem;
+  padding: 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--ink);
   text-align: left;
-  padding: 0.9rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.7rem;
-  background: #fff;
-  color: inherit;
+  cursor: pointer;
 }
+
+.people-search-results button:hover:not(:disabled) {
+  background: var(--raised);
+}
+
 .people-search-results button.selected {
-  border-color: #087f83;
-  background: #edf8f6;
+  border-color: var(--accent-ink);
+  background: var(--accent-soft);
 }
-.people-search-results button span {
-  color: #526173;
-  font-size: 0.88rem;
+
+.people-search-results button:focus-visible,
+.people-person-tabs button:focus-visible,
+.people-access-workspace button:focus-visible,
+.people-access-workspace summary:focus-visible {
+  outline: 2px solid var(--focus, var(--accent-ink));
+  outline-offset: 2px;
 }
-.people-person-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 1rem 0 1.5rem;
+
+.people-directory-avatar,
+.people-person-avatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
-.people-person-tabs [aria-current='page'] {
-  background: #e7f5f3;
-  color: #07676c;
-  border-color: #07858a;
+
+.people-directory-avatar {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 2.5rem;
+  height: 2.5rem;
 }
-.people-person-form fieldset {
-  border: 0;
-  padding: 0;
+
+.people-directory-person {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
   min-width: 0;
-  display: grid;
-  gap: 1rem;
+  gap: 0.2rem;
 }
-.people-person-form label,
-.people-access-selected section > label,
-.people-node-picker label {
-  display: grid;
-  gap: 0.4rem;
+
+.people-directory-person > strong {
+  overflow: hidden;
+  font-size: 0.87rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.people-person-form .people-checkbox {
+
+.people-directory-person-meta {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.75rem;
 }
-.people-person-form button {
-  justify-self: start;
+
+.people-directory-person-meta > span:first-child {
+  font-variant-numeric: tabular-nums;
 }
-.people-organization-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+
+.people-directory-person-meta > span + span {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--success-soft, var(--raised));
+  color: var(--success-ink, var(--ink));
+  font-size: 0.68rem;
+  font-weight: 650;
 }
-.people-node-picker {
-  display: grid;
-  gap: 0.6rem;
-  border: 1px solid #e0e5eb;
-  border-radius: 0.7rem;
-  padding: 1rem;
+
+.people-directory-person-meta > .people-state-inactive {
+  background: var(--critical-soft, var(--raised));
+  color: var(--critical-ink, var(--muted));
 }
-.people-assigned-templates li {
+
+.people-directory-open {
+  grid-column: 2;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.people-search-paging {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.6rem;
-  border: 1px solid #d5dfe8;
-  border-radius: 0.7rem;
-  padding: 0.9rem;
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.78rem;
 }
-.people-search-paging {
+
+.people-access-selected {
+  min-height: 20rem;
+  scroll-margin-top: 1rem;
+}
+
+.people-selection-empty,
+.people-selection-state {
+  display: grid;
+  min-height: 17rem;
+  align-content: center;
+  justify-items: center;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.people-selection-empty {
+  color: var(--muted);
+}
+
+.people-selection-icon {
+  display: grid;
+  width: 3.2rem;
+  height: 3.2rem;
+  margin-bottom: 0.8rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--raised);
+  color: var(--accent-ink);
+}
+
+.people-selection-empty h3 {
+  font-size: 1.05rem;
+}
+
+.people-selection-empty p {
+  max-width: 34ch;
+  font-size: 0.9rem;
+}
+
+.people-person-heading {
+  display: grid;
+  gap: 1rem;
+  padding: 0.2rem 0 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.people-person-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.people-person-avatar {
+  width: 3.1rem;
+  height: 3.1rem;
+  font-size: 0.95rem;
+}
+
+.people-person-title {
+  min-width: 0;
+}
+
+.people-person-title-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.people-person-heading h2 {
+  overflow-wrap: anywhere;
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  letter-spacing: -0.025em;
+}
+
+.people-person-status {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--success-soft, var(--raised));
+  color: var(--success-ink, var(--ink));
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.people-person-status.people-state-inactive {
+  background: var(--critical-soft, var(--raised));
+  color: var(--critical-ink, var(--muted));
+}
+
+.people-person-meta {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem;
-  margin-top: 0.8rem;
+  gap: 0.35rem 0.65rem;
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
 }
-.people-access-success {
-  padding: 0.8rem;
-  background: #e9f7ef;
-  border-radius: 0.6rem;
-  color: #145b3d;
+
+.people-person-meta span + span::before {
+  content: '·';
+  margin-right: 0.65rem;
+  color: var(--muted);
 }
-.people-access-workspace button:focus-visible,
-.people-access-workspace input:focus-visible,
-.people-access-workspace select:focus-visible {
-  outline: 3px solid #4baeb3;
+
+.people-person-context {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 0.8rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.people-person-context > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
+}
+
+.people-person-context > div > span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.people-person-context strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.83rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+}
+
+.people-person-tabs {
+  display: flex;
+  width: 100%;
+  gap: 0.25rem;
+  margin: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+}
+
+.people-person-tabs .secondary-button {
+  flex: 0 0 auto;
+  min-height: 2.9rem;
+  padding: 0.65rem 0.75rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.people-person-tabs .secondary-button[aria-current='page'] {
+  border-bottom-color: var(--accent-ink);
+  background: transparent;
+  color: var(--accent-ink);
+}
+
+.people-person-tabs .secondary-button:hover:not(:disabled) {
+  background: var(--raised);
+  color: var(--ink);
+}
+
+.people-template-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.people-person-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.people-person-form fieldset {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+  margin: 0;
+  padding: 1rem 0 0;
+  border: 0;
+}
+
+.people-person-form label,
+.people-access-selected section > label,
+.people-node-picker label {
+  display: grid;
+  min-width: 0;
+  gap: 0.4rem;
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.people-access-selected input:not([type='checkbox']),
+.people-access-selected select,
+.people-access-selected textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.7rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.people-access-selected textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.people-access-selected input::placeholder,
+.people-access-selected textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.people-access-selected input:focus-visible,
+.people-access-selected select:focus-visible,
+.people-access-selected textarea:focus-visible {
+  border-color: var(--focus, var(--accent-ink));
+  outline: 2px solid var(--focus, var(--accent-ink));
   outline-offset: 2px;
 }
-@media (max-width: 800px) {
-  .people-access-layout,
+
+.people-person-form .people-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.75rem;
+  font-weight: 500;
+}
+
+.people-person-form .people-checkbox input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent-ink);
+}
+
+.people-panel-heading h3 {
+  font-size: 1rem;
+}
+
+.people-panel-heading p {
+  font-size: 0.86rem;
+}
+
+.people-person-form button {
+  justify-self: start;
+}
+
+.people-organization-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.people-node-picker {
+  display: grid;
+  min-width: 0;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  background: var(--raised);
+}
+
+.people-node-picker input:disabled,
+.people-node-picker select:disabled {
+  opacity: 0.7;
+}
+
+.people-assigned-templates li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.people-assigned-templates li:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.people-access-success,
+.people-access-error {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.people-access-success {
+  border-color: transparent;
+  background: var(--success-soft, var(--raised));
+  color: var(--success-ink, var(--ink));
+}
+
+.people-access-error {
+  background: var(--critical-soft, var(--raised));
+  color: var(--critical-ink, var(--ink));
+}
+
+.people-access-workspace details {
+  margin-top: 1rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.people-access-workspace details summary {
+  min-height: 2.75rem;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.people-access-workspace details p {
+  margin: 0.25rem 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .people-access-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .people-access-directory {
+    position: static;
+  }
+
+  .people-search-results {
+    max-height: 24rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 640px) {
+  .people-access-workspace {
+    gap: 0.85rem;
+  }
+
+  .people-access-directory,
+  .people-access-selected {
+    padding: 0.8rem;
+    border-radius: 0.7rem;
+  }
+
+  .people-access-intro p {
+    font-size: 0.88rem;
+  }
+
+  .people-search-results {
+    max-height: 15rem;
+  }
+
+  .people-person-context {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.7rem;
+  }
+
+  .people-person-context strong {
+    white-space: normal;
+  }
+
+  .people-person-tabs {
+    margin-inline: -0.8rem;
+    width: calc(100% + 1.6rem);
+    padding-inline: 0.55rem;
+  }
+
+  .people-person-tabs .secondary-button {
+    min-height: 2.85rem;
+  }
+
   .people-organization-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .people-person-form button,
+  .people-directory-state button {
+    min-height: 2.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .people-search-results button,
   .people-person-tabs .secondary-button {
-    flex: 1 1 auto;
+    transition:
+      color 160ms ease-out,
+      background-color 160ms ease-out,
+      border-color 160ms ease-out;
   }
 }
