@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { act } from 'react';
 import { registerHooks } from 'node:module';
-import { MemoryRouter, useLocation } from 'react-router';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router';
 import { closeBrowser, render, settle } from './support/browser';
 import { initializeAuth } from '../src/auth';
 
@@ -92,11 +92,11 @@ test('personal pages skip /api/access snapshot and full admin tabs wait for non-
   assert.notEqual(start, -1, 'Expected /api/access effect to guard personalTitle');
   assert.match(
     source,
-    /const readyState = !personalTitle && state && \(compactPeople \|\| !summaryState\) \? state : undefined;/,
+    /const readyState =\s+!personalTitle && state && \(compactPeople \|\| !summaryState\) \? state : undefined;/,
   );
 });
 
-test('fresh personal route preserves Organization, Activity log and People & Access sidebar navigation without fetching /api/access', async () => {
+test('personal navigation follows workspace permissions on a fresh route and after revocation without fetching an admin snapshot', async () => {
   const requests: string[] = [];
   globalThis.fetch = async input => {
     const path = String(input);
@@ -127,8 +127,11 @@ test('fresh personal route preserves Organization, Activity log and People & Acc
   requests.length = 0;
 
   let currentPath = '';
+  let navigate: ReturnType<typeof useNavigate>;
   function Probe() {
     const location = useLocation();
+    navigate = useNavigate();
+    const revoked = location.search === '?revoked=1';
     currentPath = location.pathname + location.search;
     const onPersonal = location.pathname === '/profile';
     const capabilities = {
@@ -137,8 +140,8 @@ test('fresh personal route preserves Organization, Activity log and People & Acc
       claimSkills: true,
       catalogue: true,
       administration: true,
-      manageUsers: true,
-      viewAudit: true,
+      manageUsers: !revoked,
+      viewAudit: !revoked,
       manageCatalogue: true,
       learning: true,
       requests: true,
@@ -201,6 +204,18 @@ test('fresh personal route preserves Organization, Activity log and People & Acc
     requests.includes('/api/dev-access?summary=1'),
     'Navigating to People & Access should request summary=1 rather than landing on Roles',
   );
+
+  const adminRequestCount = requests.filter(path => path.startsWith('/api/dev-access')).length;
+  await act(async () => navigate('/profile?revoked=1'));
+  await settle();
+  assert.equal(currentPath, '/profile?revoked=1');
+  assert.ok(!navButtons().includes('Organization'));
+  assert.ok(!navButtons().includes('Activity log'));
+  assert.ok(navButtons().includes('Access management'));
+  assert.equal(
+    requests.filter(path => path.startsWith('/api/dev-access')).length,
+    adminRequestCount,
+    'Refreshed personal capabilities should update the sidebar without an admin snapshot',
+  );
   await view.unmount();
 });
-

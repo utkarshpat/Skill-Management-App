@@ -12,6 +12,7 @@ const migrations = [
   [89, '089_portfolio_business_scopes.sql'],
   [90, '090_workflow_topic_recipients.sql'],
   [91, '091_search_people_administration.sql'],
+  [92, '092_organization_manager_only_save.sql'],
 ];
 const literal = value => "N'" + value.replaceAll("'", "''") + "'";
 export function transactionMigration(
@@ -80,8 +81,9 @@ WHERE c.kind='DEPARTMENT' AND f.node_id IS NULL;
 Company target: ssskillmgmtappsqlsrvdev / SS-SkillMgmtApp-SQL-Dev.
 No company migration or data change has been performed by creating this package.
 
-If 090 is already recorded and the hierarchy mapping was completed, run only
-04_091_search_people_administration.sql, then deploy the matching app ZIP.
+If 091 is already recorded, run 05_092_organization_manager_only_save.sql before
+deploying the matching app ZIP. If 090 is recorded and the hierarchy mapping is
+complete, run 04_091_search_people_administration.sql first.
 
 1. Confirm a recoverable backup and stop application traffic/other writers.
 2. Run 00_preflight.sql in the company database. Existing baseline through 087 is required.
@@ -91,7 +93,7 @@ If 090 is already recorded and the hierarchy mapping was completed, run only
    default portfolios or manager links. Run execute=0, review revision/hash and the full map,
    then execute=1 with that exact receipt. Installing 088 alone does not map existing clients.
 5. Run 02_089_portfolio_business_scopes.sql, 03_090_workflow_topic_recipients.sql,
-   then 04_091_search_people_administration.sql.
+   04_091_search_people_administration.sql, then 05_092_organization_manager_only_save.sql.
 6. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
    request topic/recipient discovery, current assigned-manager review and People & Access search.
 

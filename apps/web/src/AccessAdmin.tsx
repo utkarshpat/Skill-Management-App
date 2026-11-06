@@ -426,21 +426,15 @@ export function AccessAdmin({
   const currentPerson = state?.currentPerson ?? workspaceContext?.person;
   const name = currentPerson?.displayName ?? 'Workspace administrator';
   const greetingName = currentPerson ? name.trim().split(/\s+/)[0] || 'there' : 'there';
-  const readyState = !personalTitle && state && (compactPeople || !summaryState) ? state : undefined;
+  const readyState =
+    !personalTitle && state && (compactPeople || !summaryState) ? state : undefined;
+  const adminNavigationState = personalTitle ? undefined : state;
   const canManageUsers =
-    state?.canManageUsers ??
-    personalCapabilities?.manageUsers ??
-    Boolean(
-      personalCapabilities?.businessAdministration || personalCapabilities?.administration,
-    );
+    adminNavigationState?.canManageUsers ?? personalCapabilities?.manageUsers ?? false;
   const canViewAudit =
-    state?.canViewAudit ??
-    personalCapabilities?.viewAudit ??
-    Boolean(
-      personalCapabilities?.businessAdministration || personalCapabilities?.administration,
-    );
+    adminNavigationState?.canViewAudit ?? personalCapabilities?.viewAudit ?? false;
   const canViewSkills =
-    state?.canViewSkills ??
+    adminNavigationState?.canViewSkills ??
     Boolean(personalCapabilities?.catalogue || personalCapabilities?.manageCatalogue);
   const sections = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
