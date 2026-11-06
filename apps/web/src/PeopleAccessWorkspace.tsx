@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, Suspense, lazy } from 'react';
+import { Link } from 'react-router';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { FormDialog } from './FormDialog';
@@ -557,6 +558,9 @@ function PersonEditor({
     [template, setTemplate] = useState('');
   const [exceptions, setExceptions] = useState(false);
   const options = useDirectory(endpoint, 'templates', query, page, {}, tab === 'templates');
+  const unassignedTemplates = options.data?.items.filter(
+    role => !detail.person.roleIds.includes(role.id),
+  );
   const tabs = [
     ['profile', 'Profile'],
     ['organization', 'Organization & manager'],
@@ -692,40 +696,49 @@ function PersonEditor({
               }}
             />
           </label>
-          {options.loading ? (
-            <p role="status">Finding templates…</p>
-          ) : options.error ? (
+          {options.error ? (
             <p role="alert">
               {options.error}
               <button onClick={options.retry}>Retry templates</button>
             </p>
+          ) : options.loading || !options.data ? (
+            <p role="status">Finding templates…</p>
+          ) : options.data.total === 0 ? (
+            query.trim() ? (
+              <p role="status">No templates match your search.</p>
+            ) : (
+              <p role="status">
+                No additional templates are defined for this workspace.{' '}
+                <Link to="/access?view=roles">Manage template definitions</Link>
+              </p>
+            )
+          ) : !unassignedTemplates?.length ? (
+            <p role="status">No unassigned templates on this page.</p>
           ) : (
             <>
               <label>
                 Template to assign
                 <select value={template} onChange={e => setTemplate(e.target.value)}>
                   <option value="">Choose a template</option>
-                  {options.data?.items
-                    .filter(r => !detail.person.roleIds.includes(r.id))
-                    .map(r => (
-                      <option
-                        key={r.id}
-                        value={r.id}
-                        disabled={!templateAssignable(r.permissions ?? [], catalogue)}
-                      >
-                        {r.name}
-                        {!templateAssignable(r.permissions ?? [], catalogue)
-                          ? ' · Unavailable for assignment'
-                          : ''}
-                      </option>
-                    ))}
+                  {unassignedTemplates.map(r => (
+                    <option
+                      key={r.id}
+                      value={r.id}
+                      disabled={!templateAssignable(r.permissions ?? [], catalogue)}
+                    >
+                      {r.name}
+                      {!templateAssignable(r.permissions ?? [], catalogue)
+                        ? ' · Unavailable for assignment'
+                        : ''}
+                    </option>
+                  ))}
                 </select>
               </label>
               <button
                 className="microsoft-button"
                 disabled={
                   busy ||
-                  !options.data?.items.some(
+                  !unassignedTemplates.some(
                     r => r.id === template && templateAssignable(r.permissions ?? [], catalogue),
                   )
                 }
@@ -733,7 +746,7 @@ function PersonEditor({
                   void onPreview(
                     { ...detail.person, roleIds: [...detail.person.roleIds, template] },
                     'Assign ' +
-                      options.data?.items.find(r => r.id === template)?.name +
+                      unassignedTemplates.find(r => r.id === template)?.name +
                       ' to ' +
                       detail.person.displayName,
                   )
@@ -741,16 +754,16 @@ function PersonEditor({
               >
                 Review template assignment
               </button>
-              <Pager
-                data={options.data}
-                page={page}
-                onPage={p => {
-                  setPage(p);
-                  setTemplate('');
-                }}
-              />
             </>
           )}
+          <Pager
+            data={options.data}
+            page={page}
+            onPage={p => {
+              setPage(p);
+              setTemplate('');
+            }}
+          />
         </section>
       )}
       {tab === 'scoped' && canManageScoped && (

@@ -253,6 +253,27 @@ test('templates are first-class actions, preserve historical grants and save onl
   assert.equal(changed, 1);
   assert.match(document.body.textContent ?? '', /Saved and audited/);
 });
+test('empty template directories and empty searches explain why there is nothing to select', async () => {
+  lookup = url =>
+    url.searchParams.get('kind') === 'templates'
+      ? Promise.resolve(Response.json({ revision: 7, items: [], total: 0, page: 1, pageSize: 10 }))
+      : undefined;
+  await mount();
+  await open();
+  await click('Templates');
+  await waitSearch();
+  assert.match(document.body.textContent ?? '', /No additional templates are defined/);
+  assert.equal(
+    document.querySelector('a[href="/access?view=roles"]')?.textContent,
+    'Manage template definitions',
+  );
+  assert.equal(document.querySelector('select'), null);
+  await fill('Find template', 'Delivery Support');
+  await waitSearch();
+  assert.match(document.body.textContent ?? '', /No templates match your search/);
+  assert.equal(document.querySelector('select'), null);
+  assert.equal(previews.length, 0);
+});
 test('removing one template preserves other assignments and cancellation makes no write', async () => {
   await mount();
   await open();
