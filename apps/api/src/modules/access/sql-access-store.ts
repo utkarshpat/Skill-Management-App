@@ -10,12 +10,21 @@ import {
   type Assignment,
 } from './local-access-store.js';
 import type { AuditQuery, AuditPage, AuditItem } from './audit.js';
+import type { PersonAdministration } from './administration.js';
 import {
   validatePrimaryCapabilityChange,
   type PrimaryCapability,
   type PrimaryCapabilityDetails,
   type PrimaryCapabilityPage,
 } from './primary-capability.js';
+
+function personCollection<T>(value: T[] | null | undefined): T[] {
+  // Nested SQL FOR JSON emits null for an empty result, which can also be omitted.
+  if (value == null) return [];
+  if (Array.isArray(value)) return value;
+  throw new AccessError(503, 'Person details are unavailable. Reload the person.');
+}
+
 type PermissionRow = {
   permission: Assignment['permission'];
   scope: Assignment['scope'];
@@ -201,11 +210,31 @@ export class SqlAccessStore implements AccessStore {
     );
   }
   async personAdministration(actorId: string, personId: string) {
-    return this.administrationRead<import('./administration.js').PersonAdministration>(
-      actorId,
-      'PERSON',
-      { personId },
-    );
+    const detail = await this.administrationRead<PersonAdministration>(actorId, 'PERSON', {
+      personId,
+    });
+    const { person, organization } = detail;
+    if (
+      person?.id !== personId.toLowerCase() ||
+      !Array.isArray(person.roleIds) ||
+      !organization ||
+      typeof organization !== 'object' ||
+      Array.isArray(organization)
+    )
+      throw new AccessError(503, 'Person details are unavailable. Reload the person.');
+    return {
+      ...detail,
+      person: { ...person, overrides: personCollection(person.overrides) },
+      roles: personCollection(detail.roles).map(role => ({
+        ...role,
+        permissions: personCollection(role.permissions),
+      })),
+      organization: {
+        nodes: personCollection(organization.nodes),
+        assignments: personCollection(organization.assignments),
+        people: personCollection(organization.people),
+      },
+    };
   }
   async primaryCapabilities(
     actorId: string,

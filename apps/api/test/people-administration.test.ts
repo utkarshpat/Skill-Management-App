@@ -200,7 +200,13 @@ test('SQL adapter parameterizes selected-person and paged reads, reports pending
     assert.equal(f.calls.at(-1)?.inputs.page, 2);
     assert.equal(f.calls.at(-1)?.inputs.actor_id, actor);
     f.reply('dbo.ReadPeopleAdministration', [
-      { json: JSON.stringify({ revision: 4, person: { id: employee } }) },
+      {
+        json: JSON.stringify({
+          revision: 4,
+          person: { id: employee, roleIds: [] },
+          organization: {},
+        }),
+      },
     ]);
     assert.equal((await store.personAdministration(actor, employee)).person.id, employee);
     assert.equal(f.calls.at(-1)?.inputs.person_id, employee);
@@ -210,6 +216,47 @@ test('SQL adapter parameterizes selected-person and paged reads, reports pending
       /migration/,
     );
     assert.ok(f.calls.every(c => c.procedure === 'dbo.ReadPeopleAdministration'));
+  } finally {
+    await f.finish();
+  }
+});
+test('SQL person details keep sparse profiles usable and preserve real assignments and overrides', async () => {
+  const f = sqlAdapterFixture();
+  const store = new SqlAccessStore(actor);
+  const assignment = { personId: employee, teamId: role, departmentId: null, managerId: null };
+  const override = { permission: 'profile.view', scope: 'OWN', effect: 'DENY' };
+  const read = (value: unknown) => {
+    f.reply('dbo.ReadPeopleAdministration', [{ json: JSON.stringify(value) }]);
+    return store.personAdministration(actor, employee);
+  };
+  try {
+    // SQL 091 includes null inside person and omits empty collections elsewhere.
+    const person = { id: employee, roleIds: [], overrides: null };
+    const sparse = await read({ revision: 4, person, organization: { assignments: [assignment] } });
+    assert.deepEqual(sparse, {
+      revision: 4,
+      person: { ...person, overrides: [] },
+      roles: [],
+      organization: { nodes: [], assignments: [assignment], people: [] },
+    });
+    const unplaced = await read({ revision: 4, person, organization: {} });
+    assert.deepEqual(unplaced.organization, { nodes: [], assignments: [], people: [] });
+
+    const assigned = await read({
+      revision: 4,
+      person: { ...person, roleIds: [role], overrides: [override] },
+      roles: [{ id: role, name: 'Delivery support' }],
+      organization: { people: [{ id: actor }], assignments: [{ ...assignment, managerId: actor }] },
+    });
+    assert.deepEqual(assigned.person.overrides, [override]);
+    assert.deepEqual(assigned.roles, [{ id: role, name: 'Delivery support', permissions: [] }]);
+    assert.equal(assigned.organization.people[0].id, actor);
+    assert.equal(assigned.organization.assignments[0].managerId, actor);
+
+    await assert.rejects(
+      read({ revision: 4, person: { ...person, overrides: {} }, organization: {} }),
+      /Person details are unavailable/,
+    );
   } finally {
     await f.finish();
   }
