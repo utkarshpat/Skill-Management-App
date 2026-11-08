@@ -3,6 +3,9 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { coverageSource } from './coverage-source.mjs';
+import { readRemappedV8Coverage } from './remap-v8-coverage.mjs';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const label = process.argv.includes('--baseline') ? 'baseline' : 'current';
@@ -57,6 +60,14 @@ for (const app of apps) {
     },
   );
   writeFileSync(join(destination, 'tests.log'), (result.stdout ?? '') + (result.stderr ?? ''));
+  if (app === 'web') {
+    const map = await readRemappedV8Coverage(join(destination, 'tmp'), before.files);
+    const { createContext } = require('istanbul-lib-report');
+    const reports = require('istanbul-reports');
+    const context = createContext({ dir: destination, coverageMap: map });
+    for (const name of ['json-summary', 'json', 'lcov', 'html'])
+      reports.create(name).execute(context);
+  }
   const coverage = JSON.parse(readFileSync(join(destination, 'coverage-summary.json'), 'utf8'));
   const sourceFiles = readdirSync(join(cwd, 'src'), {
     recursive: true,
@@ -73,6 +84,7 @@ for (const app of apps) {
     measuredFiles: Object.keys(coverage).length - 1,
     coverage: coverage.total,
     sourceHash: before.hash,
+    ...(app === 'web' ? { mapping: 'generated-variant-before-source-merge-v1' } : {}),
     stableSource: before.hash === coverageSource(join(cwd, 'src')).hash,
     startedAtUtc,
     completedAtUtc: new Date().toISOString(),

@@ -1,5 +1,7 @@
 # Coverage expansion checkpoint — 8 November 2026
 
+Superseded measurement method: see [the follow-up and corrected source mapping](COVERAGE_FOLLOWUP_2026-11-08.md). This earlier checkpoint used a c8 merge that could mix ESM/CommonJS generated ranges before mapping. Its test outcomes remain historical evidence, but its percentages must not establish the current gate or be directly compared to corrected measurements.
+
 Status: **90% target remains unmet.** This is a tested increment, not release acceptance. Production application code, coverage exclusions and thresholds were not changed. The production baseline is `efeb8a5f9c05` on `utkarsh-patel2-ssgia-perf-instrumentation-deferred-reads`.
 
 ## Fresh verification

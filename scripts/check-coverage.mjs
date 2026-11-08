@@ -32,6 +32,9 @@ for (const [app, report] of [
       const run = JSON.parse(readFileSync(join(root, 'artifacts/e2e/results.json'), 'utf8'));
       if (
         !merged.browserStartTime ||
+        unit.mapping !== 'generated-variant-before-source-merge-v1' ||
+        merged.mapping !== unit.mapping ||
+        merged.unitCompletedAt !== unit.completedAtUtc ||
         merged.sourceHash !== inventory.hash ||
         merged.browserStartTime !== run.stats?.startTime ||
         run.errors?.length ||

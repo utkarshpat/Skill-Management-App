@@ -589,7 +589,7 @@ export function OrganizationSetup({
           )}
           {mode === 'organization' ? (
             <>
-              {editorOpen && (
+              {editorOpen && !review && (
                 <FormDialog
                   title={form.id ? 'Edit branch' : 'Create ' + labels[form.kind].toLowerCase()}
                   busy={busy}
@@ -814,7 +814,8 @@ export function OrganizationSetup({
               )}
             </>
           ) : (
-            editorOpen && (
+            editorOpen &&
+            !review && (
               <FormDialog
                 title="Reporting & membership"
                 busy={busy}

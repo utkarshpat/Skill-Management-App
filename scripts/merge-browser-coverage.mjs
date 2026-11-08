@@ -14,7 +14,13 @@ const inventory = coverageSource(join(root, 'apps/web/src'));
 const unit = JSON.parse(
   readFileSync(join(root, 'artifacts/coverage/current/web/run.json'), 'utf8'),
 );
-if (unit.sourceHash !== inventory.hash || !unit.stableSource || unit.exitCode !== 0 || unit.failed)
+if (
+  unit.sourceHash !== inventory.hash ||
+  !unit.stableSource ||
+  unit.exitCode !== 0 ||
+  unit.failed ||
+  unit.mapping !== 'generated-variant-before-source-merge-v1'
+)
   throw Error('Current passing web unit coverage is required before browser coverage is merged.');
 const map = createCoverageMap({});
 function merge(data) {
@@ -74,6 +80,8 @@ writeFileSync(
       coverage: summary,
       browserStartTime: run.stats.startTime,
       sourceHash: inventory.hash,
+      mapping: unit.mapping,
+      unitCompletedAt: unit.completedAtUtc,
     },
     null,
     2,
