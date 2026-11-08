@@ -2,6 +2,7 @@ import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { transformSync } from 'esbuild';
 import { act } from 'react';
 import { registerHooks } from 'node:module';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router';
@@ -33,7 +34,7 @@ test('personal and people-search routes skip organization reads; other admin vie
     personalTitle: string | undefined,
     canManageUsers = true,
     demo = false,
-    compactPeople = false,
+    summaryRead = false,
   ) {
     cleanup?.();
     cleanup = undefined;
@@ -42,7 +43,7 @@ test('personal and people-search routes skip organization reads; other admin vie
         cleanup = callback();
       },
       personalTitle,
-      compactPeople,
+      summaryRead,
       state: { canManageUsers, revision: 1 },
       organizationAttempt: 0,
       isDemoSession: () => demo,
@@ -92,7 +93,7 @@ test('personal pages skip /api/access snapshot and full admin tabs wait for non-
   assert.notEqual(start, -1, 'Expected /api/access effect to guard personalTitle');
   assert.match(
     source,
-    /const readyState =\s+!personalTitle && state && \(compactPeople \|\| !summaryState\) \? state : undefined;/,
+    /const readyState =\s*!personalTitle && state && \(summaryRead \|\| !summaryState\) \? state : undefined;/,
   );
 });
 
@@ -218,4 +219,40 @@ test('personal navigation follows workspace permissions on a fresh route and aft
     'Refreshed personal capabilities should update the sidebar without an admin snapshot',
   );
   await view.unmount();
+});
+
+test('a late manual refresh cannot replace a different administration view', async () => {
+  const source = await readFile(new URL('../src/AccessAdmin.tsx', import.meta.url), 'utf8');
+  const start = source.indexOf('  async function load() {');
+  const fn = source.slice(start, source.indexOf('  useEffect(', start));
+  const controller = new AbortController();
+  let resolve!: (value: Response) => void;
+  let reads = 0;
+  const updates: unknown[] = [];
+  const context = {
+    accessRead: { current: { url: '/api/access?summary=1', signal: controller.signal } },
+    accessReadUrl: '/api/access?summary=1',
+    summaryRead: true,
+    authenticatedFetch: () => {
+      reads++;
+      return new Promise<Response>(done => {
+        resolve = done;
+      });
+    },
+    setSummaryState: (value: unknown) => updates.push(value),
+    setState: (value: unknown) => updates.push(value),
+    window: { dispatchEvent: () => updates.push('refreshed') },
+    Event,
+  };
+  const compiled = transformSync('(' + fn + ')', { loader: 'ts', target: 'es2022' }).code;
+  const load = vm.runInNewContext(compiled, context) as () => Promise<void>;
+  const pending = load();
+  controller.abort();
+  resolve(Response.json({ revision: 3, people: [], roles: [] }));
+  await pending;
+  assert.deepEqual(updates, []);
+
+  context.accessRead.current = { url: '/api/access', signal: new AbortController().signal };
+  await load();
+  assert.equal(reads, 1, 'an old summary callback must not fetch after switching to the full view');
 });

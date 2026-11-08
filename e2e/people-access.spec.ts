@@ -79,6 +79,7 @@ test('People & Access searches on demand and reviews template assignment and rem
       return json({
         revision,
         currentPerson: { ...person, id: ids.person },
+        presets: [],
         canManageUsers: true,
         canViewAudit: true,
         people: [],
@@ -141,10 +142,12 @@ test('People & Access searches on demand and reviews template assignment and rem
   await page.goto('/access');
   const search = page.getByRole('searchbox', { name: 'Find person' });
   await expect(search).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Manage template definitions' })).toHaveCSS(
-    'text-decoration-line',
-    'none',
+  const tabs = page.getByRole('navigation', { name: 'People and access sections' });
+  await expect(tabs.getByRole('button', { name: 'People' })).toHaveAttribute(
+    'aria-current',
+    'page',
   );
+  await expect(tabs.getByRole('button', { name: 'Templates' })).toBeVisible();
   await expect(page.getByText(/Start with a name or employee ID/)).toBeVisible();
   expect(requests).toEqual(['/api/access?summary=1']);
   await search.fill('710902');
@@ -217,9 +220,28 @@ test('fresh personal route skips /api/access while preserving Organization, Acti
 }) => {
   await fixture(page, { role: 'admin', businessAdministration: true });
   const accessRequests: string[] = [];
+  let scopedReads = 0;
+  await page.route('**/api/business/administration', route => {
+    scopedReads++;
+    return route.fulfill({
+      json: {
+        revision: 3,
+        personalBaseline: true,
+        baselineAffectedPeople: 0,
+        projects: [],
+        memberships: [],
+        responsibilities: [],
+        people: [],
+        nodes: [],
+        historicalGrantsForReview: [],
+      },
+    });
+  });
   await page.route('**/api/access**', async route => {
     const url = new URL(route.request().url());
     accessRequests.push(url.pathname + url.search);
+    if (url.pathname === '/api/access/organization')
+      return route.fulfill({ json: { revision: 3, nodes: [], assignments: [], people: [] } });
     return route.fulfill({
       json: {
         revision: 3,
@@ -231,10 +253,19 @@ test('fresh personal route skips /api/access while preserving Organization, Acti
           roleIds: [],
           overrides: [],
         },
+        presets: [],
         canManageUsers: true,
         canViewAudit: true,
         people: [],
-        roles: [],
+        roles: url.search
+          ? []
+          : [
+              {
+                id: '88888888-8888-4888-8888-000000000003',
+                name: 'Delivery Support',
+                permissions: [],
+              },
+            ],
         audit: [],
         catalogue: [],
       },
@@ -254,4 +285,14 @@ test('fresh personal route skips /api/access while preserving Organization, Acti
   await expect(page.getByRole('searchbox', { name: 'Find person' })).toBeVisible();
   expect(new URL(page.url()).searchParams.get('view')).toBe('people');
   expect(accessRequests).toEqual(['/api/access?summary=1']);
+
+  const tabs = page.getByRole('navigation', { name: 'People and access sections' });
+  await tabs.getByRole('button', { name: 'Projects & scoped access' }).click();
+  await expect(page.locator('#bo-access-assignment-form')).toBeVisible();
+  expect(scopedReads).toBe(1);
+  expect(accessRequests).toEqual(['/api/access?summary=1']);
+
+  await tabs.getByRole('button', { name: 'Templates' }).click();
+  await expect(page.getByRole('button', { name: /Delivery Support/ })).toBeVisible();
+  expect(accessRequests).toContain('/api/access');
 });

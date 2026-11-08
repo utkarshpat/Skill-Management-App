@@ -14,7 +14,7 @@ import { Sidebar } from './Sidebar';
 import { NavbarAccount } from './NavbarAccount';
 import { RoleAssignments } from './RoleAssignments';
 import { PermissionEditor } from './PermissionEditor';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useSearchParams, useNavigate } from 'react-router';
 import { authenticatedFetch, isDemoSession } from './auth';
 import './access-navigation.css';
@@ -169,6 +169,7 @@ export function AccessAdmin({
   const [params, setParams] = useSearchParams();
   const tab = currentView(params);
   const compactPeople = !personalTitle && tab === 'people';
+  const summaryRead = !personalTitle && (tab === 'people' || tab === 'profiles');
   const linkedPerson = params.get('person');
   const initialPersonId =
     linkedPerson && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(linkedPerson)
@@ -197,7 +198,7 @@ export function AccessAdmin({
   const [assignmentDraft, setAssignmentDraft] = useState<Record<string, string[]>>({});
   const [department, setDepartment] = useState('');
   useEffect(() => {
-    if (personalTitle || compactPeople || !state?.canManageUsers || isDemoSession()) {
+    if (personalTitle || summaryRead || !state?.canManageUsers || isDemoSession()) {
       setOrganization(undefined);
       setOrganizationError('');
       setOrganizationLoading(false);
@@ -224,7 +225,7 @@ export function AccessAdmin({
         if (!controller.signal.aborted) setOrganizationLoading(false);
       });
     return () => controller.abort();
-  }, [personalTitle, compactPeople, state?.revision, state?.canManageUsers, organizationAttempt]);
+  }, [personalTitle, summaryRead, state?.revision, state?.canManageUsers, organizationAttempt]);
   const [bulkReview, setBulkReview] = useState(false);
   const [review, setReview] = useState<{
     body: Record<string, unknown>;
@@ -254,6 +255,8 @@ export function AccessAdmin({
     window.scrollTo({ top: 0 });
   }, [tab, personalPath]);
   const endpoint = isDemoSession() ? '/api/dev-access' : '/api/access';
+  const accessReadUrl = endpoint + (summaryRead ? '?summary=1' : '');
+  const accessRead = useRef<{ url: string; signal: AbortSignal }>(undefined);
   function createRecord(kind: 'person' | 'role') {
     setTab(kind === 'person' ? 'people' : 'roles');
     setSearch('');
@@ -269,30 +272,32 @@ export function AccessAdmin({
     );
   }
   async function load() {
-    const summary = compactPeople;
-    const response = await authenticatedFetch(endpoint + (summary ? '?summary=1' : ''));
-    if (!response.ok)
-      throw new Error(
-        response.status === 403
-          ? 'Your ID does not have permission to administer access.'
-          : response.status === 401
-            ? 'Sign in with an assigned administrator ID.'
-            : 'Local access administration is unavailable.',
-      );
-    const data: State = await response.json();
-    setSummaryState(summary);
-    setState(data);
-    window.dispatchEvent(new Event('workspace-access-updated'));
-    return data;
+    const current = accessRead.current;
+    if (!current || current.url !== accessReadUrl || current.signal.aborted) return;
+    try {
+      const response = await authenticatedFetch(current.url, { signal: current.signal });
+      if (!response.ok)
+        throw new Error(
+          response.status === 403
+            ? 'Your ID does not have permission to administer access.'
+            : response.status === 401
+              ? 'Sign in with an assigned administrator ID.'
+              : 'Local access administration is unavailable.',
+        );
+      const data: State = await response.json();
+      if (current.signal.aborted) return;
+      setSummaryState(summaryRead);
+      setState(data);
+      window.dispatchEvent(new Event('workspace-access-updated'));
+    } catch (error) {
+      if (!current.signal.aborted) throw error;
+    }
   }
   useEffect(() => {
     if (personalTitle) return;
-    let active = true;
-    const summary = compactPeople;
     const controller = new AbortController();
-    authenticatedFetch(endpoint + (summary ? '?summary=1' : ''), {
-      signal: controller.signal,
-    })
+    accessRead.current = { url: accessReadUrl, signal: controller.signal };
+    authenticatedFetch(accessReadUrl, { signal: controller.signal })
       .then(async response => {
         if (!response.ok)
           throw new Error(
@@ -301,19 +306,19 @@ export function AccessAdmin({
               : 'Sign in with your assigned Microsoft administrator account.',
           );
         const data: State = await response.json();
-        if (active) {
-          setSummaryState(summary);
+        if (!controller.signal.aborted) {
+          setSummaryState(summaryRead);
           setState(data);
         }
       })
       .catch(err => {
-        if (active) setError(err.message);
+        if (!controller.signal.aborted) setError(err.message);
       });
     return () => {
-      active = false;
       controller.abort();
+      accessRead.current = undefined;
     };
-  }, [endpoint, compactPeople, Boolean(personalTitle)]);
+  }, [accessReadUrl, summaryRead, Boolean(personalTitle)]);
   async function save(kind: 'role' | 'person') {
     if (!state) return;
     setBusy(true);
@@ -426,8 +431,7 @@ export function AccessAdmin({
   const currentPerson = state?.currentPerson ?? workspaceContext?.person;
   const name = currentPerson?.displayName ?? 'Workspace administrator';
   const greetingName = currentPerson ? name.trim().split(/\s+/)[0] || 'there' : 'there';
-  const readyState =
-    !personalTitle && state && (compactPeople || !summaryState) ? state : undefined;
+  const readyState = !personalTitle && state && (summaryRead || !summaryState) ? state : undefined;
   const adminNavigationState = personalTitle ? undefined : state;
   const canManageUsers =
     adminNavigationState?.canManageUsers ?? personalCapabilities?.manageUsers ?? false;
@@ -594,42 +598,40 @@ export function AccessAdmin({
           />
         </header>
         <main id="access-main" className="access-main">
-          {!personalTitle &&
-            !compactPeople &&
-            ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
-              <>
-                <nav className="access-section-tabs" aria-label="People and access sections">
-                  {[
-                    ...(state?.canManageUsers ? [['people', 'People']] : []),
-                    ...(workspaceContext?.capabilities.businessAdministration
-                      ? [['profiles', 'Projects & scoped access']]
-                      : []),
-                    ['roles', 'Templates'],
-                  ].map(([id, label]) => (
-                    <button
-                      type="button"
-                      key={id}
-                      aria-current={tab === id ? 'page' : undefined}
-                      onClick={() => {
-                        setTab(id as View);
-                        setEditor(undefined);
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </nav>
-                {tab === 'profiles' && workspaceContext?.capabilities.businessAdministration && (
-                  <Suspense fallback={<div role="status">Opening scoped access…</div>}>
-                    <BusinessAdministration
-                      onSaved={() => {
-                        void load().catch(err => setError(err.message));
-                      }}
-                    />
-                  </Suspense>
-                )}
-              </>
-            )}
+          {!personalTitle && ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
+            <>
+              <nav className="access-section-tabs" aria-label="People and access sections">
+                {[
+                  ...(state?.canManageUsers ? [['people', 'People']] : []),
+                  ...(workspaceContext?.capabilities.businessAdministration
+                    ? [['profiles', 'Projects & scoped access']]
+                    : []),
+                  ['roles', 'Templates'],
+                ].map(([id, label]) => (
+                  <button
+                    type="button"
+                    key={id}
+                    aria-current={tab === id ? 'page' : undefined}
+                    onClick={() => {
+                      setTab(id as View);
+                      setEditor(undefined);
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+              {tab === 'profiles' && workspaceContext?.capabilities.businessAdministration && (
+                <Suspense fallback={<div role="status">Opening scoped access…</div>}>
+                  <BusinessAdministration
+                    onSaved={() => {
+                      void load().catch(err => setError(err.message));
+                    }}
+                  />
+                </Suspense>
+              )}
+            </>
+          )}
           {error && (
             <div className="access-message" role="alert">
               {error}
@@ -867,12 +869,6 @@ export function AccessAdmin({
               )}
               {compactPeople && (
                 <>
-                  <nav className="access-section-tabs" aria-label="Administration tools">
-                    <Link to="/access?view=roles">Manage template definitions</Link>
-                    {workspaceContext?.capabilities.businessAdministration && (
-                      <Link to="/access?view=profiles">Manage Business projects</Link>
-                    )}
-                  </nav>
                   {state.canManageUsers && (
                     <Suspense fallback={<p role="status">Opening people search…</p>}>
                       <PeopleAccessWorkspace
