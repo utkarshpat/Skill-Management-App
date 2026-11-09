@@ -265,3 +265,167 @@ test('organization load denial retries without exposing an optimistic hierarchy'
   );
   assert.match(document.body.textContent!, /Archived Client/);
 });
+
+test('client branch opens role assignment for the exact client and preselects it for a new project', async () => {
+  await mount();
+  await click('NHS SBS IT');
+  await click('Edit branch');
+  await click('Assign roles');
+  assert.deepEqual(assigned, ['client']);
+  await click('Add project');
+  assert.equal(
+    document.querySelector<HTMLSelectElement>('#organization-editor select[required]')!.value,
+    'client',
+  );
+  await fill('Project name', 'Clinical Reporting');
+  await submit('organization-editor');
+  assert.deepEqual(writes[0].body, {
+    kind: 'node',
+    type: 'TEAM',
+    name: 'Clinical Reporting',
+    parentId: 'client',
+    active: true,
+    revision: 12,
+  });
+  await click('Back to edit');
+  assert.equal(
+    document.querySelector<HTMLInputElement>('#organization-editor input')!.value,
+    'Clinical Reporting',
+  );
+  await click('Cancel');
+  assert.equal(writes.length, 1);
+});
+
+test('archiving a branch is previewed with its existing identity and parent', async () => {
+  await mount();
+  await click('NHS SBS IT');
+  await click('Edit branch');
+  await act(async () =>
+    document
+      .querySelector<HTMLInputElement>('#organization-editor input[type="checkbox"]')!
+      .click(),
+  );
+  assert.equal(writes.length, 0);
+  await submit('organization-editor');
+  assert.deepEqual(writes[0].body, {
+    kind: 'node',
+    id: 'client',
+    type: 'DEPARTMENT',
+    name: 'NHS SBS IT',
+    parentId: 'portfolio',
+    active: false,
+    revision: 12,
+  });
+  await click('Back to edit');
+  assert.equal(
+    document.querySelector<HTMLInputElement>('#organization-editor input[type="checkbox"]')!
+      .checked,
+    false,
+  );
+  assert.equal(changed, 0);
+});
+
+test('opening reporting from a direct member preserves the existing placement and manager', async () => {
+  await mount();
+  await click('NHS SBS IT');
+  await click('Rohan Mehta');
+  assert.match(document.body.textContent!, /Saved reporting chain/);
+  await click('Edit reporting');
+  assert.deepEqual(
+    [...document.querySelectorAll<HTMLSelectElement>('#reporting-editor select')].map(
+      select => select.value,
+    ),
+    ['rohan', 'client', 'priya'],
+  );
+  await click('Cancel');
+  assert.equal(writes.length, 0);
+});
+
+test('assigning from a project starts without an employee and previews only the chosen move', async () => {
+  await mount();
+  await click('NHS Reporting');
+  await click('Assign a person');
+  const fields = [...document.querySelectorAll<HTMLSelectElement>('#reporting-editor select')];
+  assert.deepEqual(
+    fields.map(select => select.value),
+    ['', 'project', ''],
+  );
+  await fill('Person', 'rohan');
+  assert.deepEqual(
+    fields.map(select => select.value),
+    ['rohan', 'client', 'priya'],
+  );
+  await fill('Accounts/Clients or project', 'project');
+  await submit('reporting-editor');
+  assert.deepEqual(writes[0].body, {
+    kind: 'assignment',
+    personId: 'rohan',
+    teamId: 'project',
+    departmentId: null,
+    managerId: 'priya',
+    revision: 12,
+  });
+  assert.equal(changed, 0);
+});
+
+test('tree zoom clamps to its bounds and resetting restores the original scale', async () => {
+  await mount();
+  const zoom = document.querySelector('[aria-label="Tree zoom"]')!;
+  await click('Zoom in tree', zoom);
+  await click('Zoom in tree', zoom);
+  assert.match(zoom.textContent!, /150%/);
+  assert.equal(
+    zoom.querySelector<HTMLButtonElement>('[aria-label="Zoom in tree"]')!.disabled,
+    true,
+  );
+  await click('Zoom out tree', zoom);
+  assert.match(zoom.textContent!, /125%/);
+  await click('Fit tree', zoom);
+  assert.match(zoom.textContent!, /25%/);
+  assert.equal(
+    zoom.querySelector<HTMLButtonElement>('[aria-label="Zoom out tree"]')!.disabled,
+    true,
+  );
+  await click('Reset', zoom);
+  assert.match(zoom.textContent!, /100%/);
+  assert.equal(writes.length, 0);
+});
+
+test('closing a reporting preview preserves the edit but never commits it', async () => {
+  await mount('aditi');
+  await fill('Direct reporting manager', 'priya');
+  await submit('reporting-editor');
+  await click('Close Review reporting & membership');
+  const manager = [...document.querySelectorAll('label')]
+    .find(label => label.textContent?.trim().startsWith('Direct reporting manager'))!
+    .querySelector('select')!;
+  assert.equal(manager.value, 'priya');
+  await click('Close Reporting & membership');
+  assert.equal(document.querySelector('#reporting-editor'), null);
+  assert.equal(writes.length, 1);
+  assert.equal(changed, 0);
+});
+
+test('organization reload after a rejected preview reads the current revision before retry', async () => {
+  await mount();
+  await click('Add delivery unit');
+  await fill('Delivery unit name', 'India Delivery');
+  previewFailure = 503;
+  await submit('organization-editor');
+  assert.match(document.body.textContent!, /Preview is unavailable/);
+  previewFailure = 0;
+  state.revision = 13;
+  await click('Reload organization', document);
+  await submit('organization-editor');
+  assert.deepEqual(
+    writes.map(write => write.body.revision),
+    [12, 13],
+  );
+  await click('Back to edit');
+  const close = document.querySelector<HTMLButtonElement>(
+    '.form-dialog button[aria-label^="Close "]',
+  )!;
+  await click(close.getAttribute('aria-label')!);
+  assert.equal(document.querySelector('#organization-editor'), null);
+  assert.equal(changed, 0);
+});

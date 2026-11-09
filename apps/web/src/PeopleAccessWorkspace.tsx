@@ -468,6 +468,7 @@ export function PeopleAccessWorkspace({
                         className={selected === p.id ? 'selected' : ''}
                         aria-pressed={selected === p.id}
                         onClick={() => {
+                          if (selected === p.id && error && !detail) setAttempt(n => n + 1);
                           setSelected(p.id);
                           setPersonTab('profile');
                           setNotice('');

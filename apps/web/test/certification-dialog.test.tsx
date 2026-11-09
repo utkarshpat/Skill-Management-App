@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import { act } from 'react';
 import { render, settle, closeBrowser, demoResponse } from './support/browser';
 import type { CertificationRecord } from '../src/certifications/types';
+import { change as changeField } from './support/interactions';
 Object.assign(globalThis, {
   Node: window.Node,
   HTMLFormElement: window.HTMLFormElement,
@@ -221,4 +222,91 @@ test('revoked certificate retrieval never permits review or saving and a retry c
   assert.equal(saved.length, 1);
   assert.equal(saved[0][3], true);
   assert.equal(closed, 1);
+});
+
+test('issuer keyboard selection cycles available options and Escape closes only the options', async () => {
+  await mount();
+  const issuer = document.querySelector<HTMLInputElement>('[role="combobox"]')!;
+  await act(async () => issuer.focus());
+  await input('Issuer', '');
+  const key = async (value: string) => {
+    await act(async () =>
+      issuer.dispatchEvent(
+        new window.KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true }),
+      ),
+    );
+    await settle();
+  };
+  await key('ArrowDown');
+  await key('ArrowDown');
+  await key('Enter');
+  assert.equal(issuer.value, 'Microsoft');
+  assert.equal(issuer.getAttribute('aria-expanded'), 'false');
+  assert.equal(saved.length, 0);
+  await key('ArrowDown');
+  await key('ArrowUp');
+  assert.ok(issuer.getAttribute('aria-activedescendant'));
+  await key('Escape');
+  assert.equal(issuer.getAttribute('aria-expanded'), 'false');
+  assert.equal(closed, 0);
+  await click('Next');
+  await click('Save draft');
+  assert.equal((saved[0][2] as any).provider, 'Microsoft');
+});
+
+test('custom category, clear selection and pointer selection preserve the chosen issuer', async () => {
+  await mount();
+  const boxes = document.querySelectorAll<HTMLInputElement>('[role="combobox"]'),
+    issuer = boxes[0],
+    category = boxes[1];
+  const issuerBox = issuer.closest('.cert-combobox')!;
+  const clear = issuerBox.querySelector<HTMLButtonElement>('[aria-label="Clear selection"]')!;
+  await act(async () => clear.click());
+  await settle();
+  assert.equal(issuer.value, '');
+  await input('Issuer', 'Cloud Skills Institute');
+  assert.equal(issuer.value, 'Cloud Skills Institute');
+  await act(async () => category.focus());
+  const other = [...category.closest('.cert-combobox')!.querySelectorAll('[role="option"]')].find(
+    o => o.textContent?.includes('Other'),
+  )!;
+  await act(async () =>
+    other.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true })),
+  );
+  assert.equal(category.placeholder, 'Type custom name...');
+  await input('Category', 'Delivery enablement');
+  await act(async () =>
+    document.body.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true })),
+  );
+  assert.equal(category.getAttribute('aria-expanded'), 'false');
+  await click('Next');
+  await click('Save draft');
+  assert.equal((saved[0][2] as any).provider, 'Cloud Skills Institute');
+  assert.equal((saved[0][2] as any).category, 'Delivery enablement');
+});
+
+test('expiry presets, lifetime choice and edited credential details persist only on explicit save', async () => {
+  await mount();
+  await changeField(
+    document.querySelector<HTMLSelectElement>('[aria-label="Quick-fill expiry date"]')!,
+    '6',
+  );
+  assert.equal(document.querySelector<HTMLInputElement>('#cert-expiry-date')!.value, '2026-07-31');
+  const lifetime = [...document.querySelectorAll('label')]
+    .find(l => l.textContent?.includes('Does not expire'))!
+    .querySelector<HTMLInputElement>('input')!;
+  await act(async () => lifetime.click());
+  assert.match(document.body.textContent!, /Lifetime credential/);
+  await input('Issue date', '2026-02-01');
+  await input('Credential ID', 'SQL-DELIVERY-2026-UPDATED');
+  await input('Issuer / badge link', 'https://education.oracle.com/credential');
+  await input('Supporting notes', 'Updated issuer record reviewed.');
+  assert.equal(saved.length, 0);
+  await click('Next');
+  await click('Save draft');
+  const fields = saved[0][2] as any;
+  assert.equal(fields.expiryDate, null);
+  assert.equal(fields.certificationDate, '2026-02-01');
+  assert.equal(fields.credentialId, 'SQL-DELIVERY-2026-UPDATED');
+  assert.equal(fields.notes, 'Updated issuer record reviewed.');
 });

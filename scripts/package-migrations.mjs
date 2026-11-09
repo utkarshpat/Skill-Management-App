@@ -107,8 +107,8 @@ The optional real-catalogue-data.template.sql is NOT a required schema migration
 to preview, requires a separate actor/revision/hash and issuer-source review, and must not be
 executed as part of this schema rollout without reviewing the proposed data.
 
-The code-first branch and deferred scheduler migration 065 are excluded. Coverage 90% work
-is deferred by the user; this package does not claim that target or hosted acceptance.
+The code-first branch and deferred scheduler migration 065 are excluded. See the
+coverage report for test results. Hosted acceptance requires separate verification.
 `,
   );
   const manifest = {

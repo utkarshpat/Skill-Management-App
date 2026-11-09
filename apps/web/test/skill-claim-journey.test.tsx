@@ -55,7 +55,21 @@ test('skill claim browses paged results, validates proficiency and experience, a
           pageSize: 1,
           total: 2,
           skills: [choices[resultsPage - 1]],
-          categories: choices.map(skill => ({ name: skill.category, count: 1 })),
+          categories: [
+            'Databases',
+            'Programming',
+            'Cloud',
+            'Security',
+            'Delivery',
+            'Testing',
+            'Architecture',
+            'Operations',
+            'Design',
+            'Analytics',
+            'Networks',
+            'Automation',
+            'Accessibility',
+          ].map(name => ({ name, count: 1 })),
         }}
         loading={false}
         busy={false}
@@ -81,6 +95,20 @@ test('skill claim browses paged results, validates proficiency and experience, a
     assert.match(document.body.textContent ?? '', /Select a published skill to continue/);
     await click('Next skill results');
     assert.deepEqual(optionsRequests, [2]);
+    await click('Previous skill results');
+    assert.deepEqual(optionsRequests, [2, 1]);
+    await click('Databases');
+    assert.equal(
+      document
+        .querySelector('.skill-category-card[aria-pressed="true"]')
+        ?.textContent?.includes('Databases'),
+      true,
+    );
+    await click('View all skills');
+    assert.equal(document.querySelector('.skill-category-card[aria-pressed="true"]'), null);
+    await click('More categories');
+    assert.match(document.querySelector('.skill-category-grid')!.textContent!, /Accessibility/);
+    await click('Next skill results');
     await click('JavaScript');
     await click('Next');
     assert.match(document.body.textContent ?? '', /Save your draft to attach evidence/);
@@ -100,6 +128,15 @@ test('skill claim browses paged results, validates proficiency and experience, a
     assert.match(document.body.textContent ?? '', /Review your skill information/);
     assert.match(document.body.textContent ?? '', /24 months/);
     assert.equal(outcomes.length, 0);
+    await click('Edit selection');
+    await click('Next');
+    await click('Next');
+    await click('Edit Evidence references');
+    await fill('Evidence references', 'Reporting reconciliation record REF-102');
+    await click('Back');
+    await click('Next');
+    await click('Next');
+    assert.match(document.body.textContent!, /Reporting reconciliation record REF-102/);
     await click('Save draft');
     await click('Submit for review');
     assert.deepEqual(

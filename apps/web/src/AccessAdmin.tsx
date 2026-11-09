@@ -1008,7 +1008,7 @@ export function AccessAdmin({
                   )}
                 </FormDialog>
               )}
-              {editor === 'role' && (
+              {editor === 'role' && !review && (
                 <FormDialog
                   title={role.id ? 'Edit access template' : 'Create access template'}
                   onClose={() => setEditor(undefined)}
@@ -1067,7 +1067,7 @@ export function AccessAdmin({
                   ]}
                 />
               )}
-              {editor === 'person' && state.canManageUsers && (
+              {editor === 'person' && !review && state.canManageUsers && (
                 <FormDialog
                   title={person.id ? 'Edit person' : 'Create person'}
                   onClose={() => setEditor(undefined)}

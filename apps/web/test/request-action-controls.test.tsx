@@ -168,3 +168,59 @@ test('reassignment pages through recipients and preserves selected person when e
   assert.equal(writes[0].body.recipientId, 'person-4');
   assert.equal(writes[0].body.action, 'REASSIGN');
 });
+
+test('reassignment search resets recipient pagination without changing the stored recipient', async () => {
+  view = await render(
+    <RequestActionDialog
+      record={record}
+      action="REASSIGN"
+      onClose={() => {}}
+      onReload={() => {}}
+      onSaved={() => assert.fail('Unexpected save')}
+    />,
+  );
+  const waitForSearch = async () => {
+    await act(async () => new Promise(resolve => setTimeout(resolve, 280)));
+    await settle();
+  };
+  await waitForSearch();
+  await click('Next recipient results');
+  await click('Previous recipient results');
+  const search = document.querySelector<HTMLInputElement>('input[placeholder^="Search a person"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(
+      search,
+      'Priya',
+    );
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await waitForSearch();
+  assert.equal(search.value, 'Priya');
+  assert.equal(
+    document.querySelector<HTMLButtonElement>('button[aria-label="Previous recipient results"]')!
+      .disabled,
+    true,
+  );
+  assert.equal(writes.length, 0);
+});
+
+test('editing AI draft facts requires regeneration before they can be applied', async () => {
+  view = await render(
+    <RequestActionDialog
+      record={record}
+      action="RESOLVE"
+      onClose={() => {}}
+      onReload={() => {}}
+      onSaved={() => assert.fail('Unexpected save')}
+    />,
+  );
+  await fill('Resolution note', 'Delivery team checked the old mapping.');
+  await click('Draft with AI');
+  await click('Generate draft');
+  await click('Edit facts and regenerate');
+  await fill('Facts for the draft', 'The manager confirmed the new mapping.');
+  await click('Generate draft');
+  assert.equal(writes.length, 2);
+  assert.ok(writes.every(w => w.url === '/api/assistant/workflow-draft'));
+  assert.equal(writes[1].body.notes, 'The manager confirmed the new mapping.');
+});

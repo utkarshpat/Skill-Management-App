@@ -1,6 +1,21 @@
 import test, { after, afterEach, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { act } from 'react';
+import { createRequire } from 'node:module';
+const { useLocation } = createRequire(import.meta.url)(
+  'react-router',
+) as typeof import('react-router');
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-location>{location.pathname + location.search}</output>;
+}
+import type { Artifact } from '../src/AssistantOutput';
+const { learningDraftHandoff } = component<typeof import('../src/learning-draft-handoff')>(
+  'learning-draft-handoff.ts',
+);
+const { businessDraftHandoff } = component<typeof import('../src/business/business-draft-handoff')>(
+  'business/business-draft-handoff.ts',
+);
 import { render, settle, closeBrowser, demoResponse, deferred } from './support/browser';
 import {
   component,
@@ -19,12 +34,19 @@ let navigationFailure = false,
   contextReset = false;
 let outgoing: any[] = [],
   deleted: string[] = [];
+let artifact: Artifact | undefined;
+let grants = false,
+  navActor = 'aditi',
+  actionFailure = false;
+let actions: any[] = [];
 let pending: ReturnType<typeof deferred<Response>> | undefined;
 const navigation = () => ({
-  actorId: 'aditi',
-  pages: [],
+  actorId: navActor,
+  pages: grants ? [{ label: 'Requests', url: '/requests' }] : [],
   canReviewOwnSkill: false,
-  canManageLearning: false,
+  canManageLearning: grants,
+  canDraftDemand: grants,
+  canDraftAmendment: grants,
   status: { configured, provider: 'azure', mode: 'workflows' },
   suggestions: [
     {
@@ -35,6 +57,13 @@ const navigation = () => ({
   ],
 });
 beforeEach(async () => {
+  artifact = undefined;
+  grants = false;
+  navActor = 'aditi';
+  actionFailure = false;
+  actions = [];
+  learningDraftHandoff.clear();
+  businessDraftHandoff.clear();
   navigationFailure = false;
   configured = true;
   historyFailure = false;
@@ -46,6 +75,15 @@ beforeEach(async () => {
   mock.method(globalThis, 'fetch', async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     if (url === '/api/dev-login') return demoResponse();
+    if (url === '/api/assistant/navigation' && init?.method === 'POST') {
+      const body = JSON.parse(String(init.body));
+      actions.push(body);
+      return actionFailure
+        ? Response.json({ error: { message: 'Current action denied' } }, { status: 403 })
+        : Response.json({ destination: body.destination, label: 'Requests' });
+    }
+    if (url === '/api/workflows/options')
+      return Response.json({ canRequest: false, canIncident: false });
     if (url === '/api/assistant/navigation')
       return navigationFailure ? Response.json({}, { status: 403 }) : Response.json(navigation());
     if (url === '/api/assistant/conversations')
@@ -87,6 +125,8 @@ beforeEach(async () => {
         : Response.json({
             conversationId: 'chat-reporting',
             reply: 'Open Requests to review the current request status.',
+            artifact,
+            sources: grants ? [{ label: 'Requests', url: '/requests' }] : [],
           });
     }
     throw Error('Unexpected request ' + url);
@@ -103,6 +143,7 @@ async function mount() {
   view = await render(
     <MemoryRouter>
       <AssistantWidget />
+      <LocationProbe />
     </MemoryRouter>,
   );
   await click('Open AI assistant');
@@ -205,4 +246,117 @@ test('unverified navigation and unconfigured model disable sending', async () =>
   assert.match(document.body.textContent!, /Model connection pending/);
   assert.equal(input().disabled, true);
   assert.equal(outgoing.length, 0);
+});
+
+const suggestion = (kind: Artifact['kind']): Artifact => ({
+  kind,
+  title: 'Client reporting workflow',
+  summary: 'Review delivery reporting',
+  body: 'Improve SQL reporting for the assigned project.',
+  steps: ['Validate report totals'],
+  questions: [],
+});
+const location = () =>
+  new URL(document.querySelector('[data-location]')!.textContent!, 'http://localhost');
+async function replyWith(kind: Artifact['kind']) {
+  artifact = suggestion(kind);
+  await change(input(), 'Help me with my reporting workflow');
+  await click('Send AI message');
+}
+
+test('assistant page action rechecks current permission and never navigates after a denied recheck', async () => {
+  grants = true;
+  await mount();
+  await replyWith('request_draft');
+  actionFailure = true;
+  await click('Open Requests');
+  assert.equal(location().pathname, '/');
+  assert.match(document.body.textContent!, /Current action denied/);
+  actionFailure = false;
+  await click('Open Requests');
+  assert.equal(location().pathname, '/requests');
+  assert.deepEqual(actions, [
+    { destination: '/requests', action: 'open_page' },
+    { destination: '/requests', action: 'open_page' },
+  ]);
+  assert.match(document.body.textContent!, /Your chat stays here/);
+});
+
+test('assistant learning handoff requires the same current actor and remains an unsaved single-use draft', async () => {
+  grants = true;
+  await mount();
+  await replyWith('task_draft');
+  navActor = 'rohan';
+  await click('Review plan & add to calendar');
+  assert.equal(location().pathname, '/');
+  assert.match(document.body.textContent!, /current permissions do not allow/);
+  navActor = 'aditi';
+  await click('Review plan & add to calendar');
+  assert.equal(location().pathname, '/learning');
+  assert.equal(location().searchParams.get('action'), 'draft');
+  const ticket = location().searchParams.get('draftTicket')!;
+  assert.deepEqual(learningDraftHandoff.take('aditi', ticket), {
+    title: 'Client reporting workflow',
+    goal: 'Improve SQL reporting for the assigned project.',
+    tasks: ['Validate report totals'],
+    dailyMinutes: 30,
+  });
+  assert.equal(learningDraftHandoff.take('aditi', ticket), undefined);
+  assert.equal(actions.length, 0);
+});
+
+test('business draft handoffs recheck revoked access and preserve demand versus catalogue destinations', async () => {
+  for (const kind of ['amendment_draft', 'demand_draft'] as const) {
+    await view?.unmount();
+    view = undefined;
+    grants = true;
+    await mount();
+    await replyWith(kind);
+    grants = false;
+    await click('Review business draft');
+    assert.equal(location().pathname, '/');
+    assert.match(document.body.textContent!, /current access does not allow/);
+    grants = true;
+    await click('Review business draft');
+    assert.equal(location().pathname, kind === 'amendment_draft' ? '/skills' : '/business');
+    assert.equal(
+      location().searchParams.get('tab'),
+      kind === 'amendment_draft' ? 'amendments' : 'demand',
+    );
+    const ticket = location().searchParams.get('draftTicket')!;
+    assert.equal(businessDraftHandoff.take('aditi', ticket)?.kind, kind);
+    assert.equal(businessDraftHandoff.take('aditi', ticket), undefined);
+  }
+});
+
+test('request and incident drafts cannot open a composer after current options deny creation', async () => {
+  await mount();
+  for (const kind of ['request_draft', 'incident_draft'] as const) {
+    await replyWith(kind);
+    const labels = kind === 'request_draft' ? 'Review request draft' : 'Review incident draft';
+    await click(labels);
+    assert.match(document.body.textContent!, /current permissions do not allow this draft/);
+    assert.equal(document.querySelector('.request-composer'), null);
+    assert.equal(actions.length, 0);
+  }
+});
+
+test('contextual people search asks for requirements locally and includes the exact narrowing prompt on send', async () => {
+  grants = true;
+  await mount();
+  const prompt =
+    'Find people in Customer Insights Modernisation. Use conversational search, not a saved demand form.';
+  await act(async () =>
+    window.dispatchEvent(
+      new CustomEvent('assistant-context-request', { detail: { prompt, autoSend: true } }),
+    ),
+  );
+  await settle();
+  assert.equal(outgoing.length, 0);
+  assert.match(document.body.textContent!, /What work or project/);
+  await change(input(), 'SQL reporting and current Oracle credentials');
+  await click('Send AI message');
+  assert.match(outgoing[0].message, /Customer Insights Modernisation/);
+  assert.match(outgoing[0].message, /User requirements:\nSQL reporting/);
+  assert.equal(actions.length, 0);
 });

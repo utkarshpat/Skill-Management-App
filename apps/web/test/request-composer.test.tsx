@@ -192,3 +192,69 @@ test('platform defaults show admin names without auto-selecting or silently send
   assert.equal(writes, 0);
   await view.unmount();
 });
+
+test('recipient pagination and review edits preserve the explicitly selected person without sending', async () => {
+  const recipients = [
+    manager,
+    teammate,
+    other,
+    admin,
+    { ...teammate, id: 'meera', name: 'Meera Joshi' },
+  ];
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(String(input), 'http://localhost');
+    assert.notEqual(init?.method, 'POST');
+    if (url.pathname === '/api/dev-login')
+      return Response.json({ mode: 'local-demo', signedIn: true, people: [] });
+    assert.equal(url.pathname, '/api/workflows/options');
+    return Response.json({ ...options, recipients });
+  };
+  const view = await render(
+    <RequestComposer
+      options={options}
+      onClose={() => {}}
+      onSaved={() => assert.fail('Unexpected save')}
+      draft={{
+        kind: 'REQUEST',
+        title: 'SQL reporting access',
+        description: 'Please review my reporting access.',
+      }}
+    />,
+  );
+  try {
+    await choose('SKILL');
+    await click('Next');
+    await click('Next');
+    await waitSearch();
+    const paginate = async (name: string) => {
+      const button = view.container.ownerDocument.querySelector<HTMLButtonElement>(
+        'button[aria-label="' + name + ' recipient results"]',
+      )!;
+      assert.equal(button.disabled, false);
+      await act(async () => button.click());
+    };
+    await paginate('Next');
+    await choose('meera');
+    await paginate('Previous');
+    assert.match(
+      document.querySelector('.request-recipient-confirmation')!.textContent!,
+      /Meera Joshi/,
+    );
+    await click('Next');
+    await click('Edit details');
+    assert.equal(
+      document.querySelector<HTMLInputElement>('dialog input:not([type])')?.value,
+      'SQL reporting access',
+    );
+    await click('Next');
+    await waitSearch();
+    await click('Next');
+    await click('Change recipient');
+    assert.match(
+      document.querySelector('.request-recipient-confirmation')!.textContent!,
+      /Meera Joshi/,
+    );
+  } finally {
+    await view.unmount();
+  }
+});

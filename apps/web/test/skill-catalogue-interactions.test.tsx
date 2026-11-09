@@ -211,3 +211,33 @@ test('catalogue amendment navigation requires canonical current amendment access
   assert.match(document.body.textContent!, /SQL/);
   assert.equal(writes.length, 0);
 });
+
+test('status filtering resets catalogue pagination and closing an unsaved editor does not write', async () => {
+  skills = Array.from({ length: 26 }, (_, i) => ({
+    ...skill,
+    id: 'skill-' + i,
+    name: 'SQL reporting ' + i,
+  }));
+  await mount();
+  await click('Next');
+  await debounce();
+  assert.ok(reads.some(url => url.includes('page=2')));
+  await click('Previous');
+  await debounce();
+  assert.match(reads.at(-1)!, /page=1/);
+  await click('Next');
+  await debounce();
+  await fill('Status', 'ARCHIVED');
+  await debounce();
+  const query = new URL(reads.at(-1)!, 'http://localhost').searchParams;
+  assert.equal(query.get('status'), 'ARCHIVED');
+  assert.equal(query.get('page'), '1');
+  await click('Add skill');
+  await fill('Skill name', 'Unpublished experiment');
+  const close = document.querySelector<HTMLButtonElement>(
+    '.form-dialog button[aria-label^="Close "]',
+  )!;
+  await click(close.getAttribute('aria-label')!);
+  assert.equal(document.querySelector('.form-dialog'), null);
+  assert.equal(writes.length, 0);
+});

@@ -38,7 +38,23 @@ export function Notifications({ id }: { id: string }) {
     [loading, setLoading] = useState(false),
     [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [category, setCategory] = useState('All updates');
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
   const [freshness, setFreshness] = useState<RefreshStatus>();
+  useEffect(() => {
+    if (!open) return;
+    const overflow = document.body.style.overflow;
+    const rootOverflow = document.documentElement.style.overflow;
+    const gutter = document.documentElement.style.scrollbarGutter;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.documentElement.style.scrollbarGutter = 'auto';
+    return () => {
+      document.body.style.overflow = overflow;
+      document.documentElement.style.overflow = rootOverflow;
+      document.documentElement.style.scrollbarGutter = gutter;
+    };
+  }, [open]);
   useEffect(() => {
     const controller = new AbortController();
     let running = false,
@@ -136,7 +152,13 @@ export function Notifications({ id }: { id: string }) {
     feed?.items.filter(
       item =>
         (filter === 'all' || !read.includes(item.id)) &&
-        (category === 'All updates' || notificationDestination(item.href)?.kind === category),
+        (category === 'All updates' ||
+          (notificationDestination(item.href)?.kind ?? 'Workspace update') === category) &&
+        [item.title, item.body, item.subject, item.actorName]
+          .filter(Boolean)
+          .join(' ')
+          .toLocaleLowerCase()
+          .includes(search.trim().toLocaleLowerCase()),
     ) ?? [];
   const categories = [
     'All updates',
@@ -151,6 +173,9 @@ export function Notifications({ id }: { id: string }) {
         type="button"
         aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
         popoverTarget={id}
+        aria-controls={id}
+        aria-expanded={open}
+        aria-haspopup="dialog"
         onClick={() => window.dispatchEvent(new Event('notifications-opened'))}
       >
         <Bell size={21} />
@@ -163,8 +188,11 @@ export function Notifications({ id }: { id: string }) {
       <section
         id={id}
         popover="auto"
-        className="navbar-popover notification-popover"
+        className="navbar-popover notification-popover notification-drawer"
+        role="dialog"
+        aria-modal="false"
         aria-label="Notifications"
+        onToggle={event => setOpen(event.newState === 'open')}
       >
         <div className="notification-heading">
           <div>
@@ -212,6 +240,23 @@ export function Notifications({ id }: { id: string }) {
         ) : (
           feed && (
             <>
+              <div className="notification-search">
+                <label htmlFor={id + '-search'}>Search notifications</label>
+                <div>
+                  <input
+                    id={id + '-search'}
+                    type="search"
+                    value={search}
+                    placeholder="Search updates, people or subjects"
+                    onChange={event => setSearch(event.target.value)}
+                  />
+                  {search && (
+                    <button className="admin-text-button" onClick={() => setSearch('')}>
+                      Clear search
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className="notification-toolbar">
                 <div role="group" aria-label="Notification filter">
                   <button aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
@@ -253,15 +298,28 @@ export function Notifications({ id }: { id: string }) {
                 <div className="notification-empty">
                   <Bell size={24} />
                   <strong>
-                    {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
+                    {search.trim() || category !== 'All updates'
+                      ? 'No matching notifications'
+                      : filter === 'unread'
+                        ? 'No unread notifications'
+                        : 'No notifications yet'}
                   </strong>
                   <p>
-                    {filter === 'unread'
-                      ? 'Your recent updates are still available in All.'
-                      : 'Updates about your requests, claims and learning will appear here.'}
+                    {search.trim() || category !== 'All updates'
+                      ? 'Try another search or reset your filters.'
+                      : filter === 'unread'
+                        ? 'Your recent updates are still available in All.'
+                        : 'Updates about your requests, claims and learning will appear here.'}
                   </p>
-                  {filter === 'unread' && (
-                    <button className="admin-text-button" onClick={() => setFilter('all')}>
+                  {(filter === 'unread' || search.trim() || category !== 'All updates') && (
+                    <button
+                      className="admin-text-button"
+                      onClick={() => {
+                        setFilter('all');
+                        setCategory('All updates');
+                        setSearch('');
+                      }}
+                    >
                       View all updates
                     </button>
                   )}

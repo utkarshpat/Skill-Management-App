@@ -217,3 +217,26 @@ test('team report menus recheck aggregate scope for each format and notify on re
   assert.match(document.body.textContent ?? '', /Reporting access revoked/);
   assert.equal(revoked, 1);
 });
+
+test('team summary and chart filters can be cleared independently without changing review access', async () => {
+  const reviews: string[] = [];
+  view = await render(<TeamCapability onReviews={id => reviews.push(id)} />);
+  await settle();
+  const result = () => document.querySelector('#team-member-results')!.textContent!;
+  const legend = () => document.querySelector('.team-chart-legend')!;
+  await click('Assigned pending', legend());
+  assert.doesNotMatch(result(), /Rohan Mehta/);
+  await click('Show all members', legend());
+  assert.match(result(), /Rohan Mehta/);
+  await click('Manager reviewed', legend());
+  assert.doesNotMatch(result(), /Rohan Mehta/);
+  const stat = (color: string) => document.querySelector<HTMLButtonElement>('.team-stat.' + color)!;
+  await act(async () => stat('blue').click());
+  assert.match(result(), /Rohan Mehta/);
+  await act(async () => stat('amber').click());
+  assert.doesNotMatch(result(), /Rohan Mehta/);
+  await click('SQL');
+  await click('Clear skill selection');
+  assert.match(result(), /Rohan Mehta/);
+  assert.deepEqual(reviews, []);
+});
