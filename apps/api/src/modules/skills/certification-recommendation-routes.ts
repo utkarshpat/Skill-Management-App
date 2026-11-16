@@ -1,3 +1,4 @@
+import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import type { Express, Request, Response } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import type { LocalPerson } from '../access/index.js';
@@ -36,7 +37,7 @@ export function registerCertificationRecommendationRoutes(
     } else {
       try {
         if (!deps?.resolveAccess) throw Error();
-        actor = await deps.resolveAccess(await deps.verify(req.headers.authorization));
+        actor = await deps.resolveAccess(await verifyRequestIdentity(req, deps.verify));
       } catch {
         res.status(401).json({ error: { message: 'Sign in to continue.' } });
         return;

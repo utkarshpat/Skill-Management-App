@@ -43,3 +43,28 @@ This is a pending maintenance operation, not a completed migration/backfill. Obt
 6. Release the matching web/API build only after SQL acceptance and approved mapping succeed; then restore traffic and verify current direct-manager review. The title guide does not establish actual manager-person assignments or new Portfolio scopes.
 
 Do not delete unsupported historical grants or disable constraints to make mapping succeed. A pre-existing inconsistent archived branch/assignment can block canonical validation; review and repair it explicitly, then obtain a fresh preview instead of forcing the batch. If installation/backfill/acceptance fails, keep traffic stopped and use the reviewed recovery procedure/backup; an older application build is not a safe rollback for an incompletely mapped 088 schema.
+
+### Org roster identity linking
+
+Run the identity linking job with a trusted normalized JSON roster containing an array of
+employees with string `employeeCode` and `workEmail` fields. Work email must be the Microsoft UPN.
+The roster must refer to existing profiles in the selected workspace. The job updates identity
+bindings while preserving profile status and access assignments.
+
+Configure `ACCESS_ACCOUNT_ID`, `ENTRA_TENANT_ID`, `AZURE_SQL_SERVER` and `AZURE_SQL_DATABASE`.
+Use dedicated Graph application credentials in `ORG_GRAPH_CLIENT_ID` and
+`ORG_GRAPH_CLIENT_SECRET` with tenant-approved application `User.Read.All`. These credentials
+are only for this separate DBA roster-linking utility; they are not used by interactive OIDC
+sign-in, which does not call Graph or require Graph `User.Read`. Keep the Graph secret
+in operator secret storage. Use an authorized SQL operator identity with access to the existing
+`dbo.OperationsIdentityBindingAudit` table. Run from the repository root.
+
+```text
+npm run access:link-roster -w apps/api -- <absolute-roster.json>
+npm run access:link-roster -w apps/api -- <absolute-roster.json> --apply <reviewed-receipt>
+```
+
+The apply run repeats the Graph lookup and checks the receipt against current SQL state before
+writing. Missing users, disabled directory accounts, duplicate mappings and conflicting bindings
+stop the batch. Keep the roster and preview output private. Connect the normalized roster input to
+the company API once its contract and credentials are available.

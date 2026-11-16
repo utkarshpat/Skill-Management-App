@@ -2,6 +2,8 @@
 
 Version: 2026-10-06. Applies to this repository on `main`, SQL migrations 001–051, Vercel Services (`api` + `web`), Microsoft Entra sign-in and private Blob evidence. This is a preparation/runbook document, **not evidence that a new environment or a data migration has been completed**. Follow [the handover](HANDOVER.md) and [the approved access baseline](ACCESS_MODEL_REDESIGN.md).
 
+> Authentication update — 16 November 2026: the SPA/MSAL setup below is historical and superseded for current hosted company sign-in. The current flow is backend OIDC with Web callback URIs, server-only client secret and cookie session. For current settings use [REAL_USER_SSO.md](REAL_USER_SSO.md). Do not copy old VITE auth settings into a current deployment.
+
 ## 1. Choose the path before creating anything
 
 | Path                                        | What it preserves                                                                                        | Prerequisite                                                                        |
@@ -46,7 +48,7 @@ Record these outside Git in a restricted operator folder. Never place real emplo
 | Tenant and subscription IDs                               | Existing IDs                                 | Verified target IDs                         |
 | SQL server / database / collation                         | Source names and collation                   | Target names; same collation                |
 | Application `ACCESS_ACCOUNT_ID`                           | Existing workspace UUID                      | **Same UUID for a full migration**          |
-| SPA / API application IDs                                 | Current registration IDs                     | Retained in same tenant or newly registered |
+| Web / API application IDs                                 | Current registration IDs                     | Retained in same tenant or newly registered |
 | Runtime application ID / enterprise-application object ID | Existing identity                            | New restricted runtime identity             |
 | Blob account / container                                  | Existing private storage                     | New private account; preserve blob paths    |
 | Deployment                                                | Current exact commit + environment version   | Preview and final production deployment IDs |
@@ -198,9 +200,9 @@ SELECT USER_NAME() AS runtime_user,
 
 Expected: required execution grants present, direct table SELECT absent, owner membership absent. Test wrong-account denial and real actor API checks too; these booleans alone do not prove isolation.
 
-## 10. Set up API/SPA sign-in and employee identity mapping
+## 10. Historical SPA/API sign-in setup and employee identity mapping
 
-Same tenant: retain the existing approved SPA/API registrations and person object IDs where appropriate; still use the intended tenant and reviewed caller IDs. New tenant:
+The following is the older MSAL SPA deployment procedure and is not the current company login flow. For current sign-in, configure the backend OIDC Web callbacks and secret as documented in [REAL_USER_SSO.md](REAL_USER_SSO.md). For a future cross-tenant data migration, retain the identity-reconciliation controls below, but map the target tenant to the current OIDC integration rather than copying the SPA-specific setup. Same tenant: retain approved registrations and person object IDs where appropriate; still use the intended tenant and reviewed IDs. New tenant:
 
 1. Register separate single-tenant **API** and **SPA** applications. API → Expose an API → `api://<API-CLIENT-ID>` → delegated `access_as_user`. SPA → API permissions → that delegated scope; obtain the required consent.
 2. Set the API access-token version to 2 as required by the code. Register exact SPA callbacks: `http://localhost:5173/`, the chosen preview origin followed by `/`, and the stable production origin followed by `/`. Do not use wildcard redirects. SPA uses PKCE; it has no client secret.
@@ -241,7 +243,7 @@ Copy example files into ignored `.env` files. Do not overwrite the only source c
 | AI provider/model/key variables                                    | Explicitly retained approved provider or newly configured provider; SQL migration does not move provider quotas |
 | `KNOWLEDGE_TRANSFER_ENABLED`                                       | `true` if keeping the temporary guide                                                                           |
 
-Browser build variables: `VITE_ENTRA_TENANT_ID`, `VITE_ENTRA_WEB_CLIENT_ID`, `VITE_ENTRA_API_CLIENT_ID`, `VITE_AUTH_REDIRECT_URI`. They contain IDs/origin only, **never SQL/storage/model secrets**. Refer to `apps/api/.env.example`, `apps/web/.env.example` and the handover.
+Historical browser-build variables: `VITE_ENTRA_TENANT_ID`, `VITE_ENTRA_WEB_CLIENT_ID`, `VITE_ENTRA_API_CLIENT_ID`, `VITE_AUTH_REDIRECT_URI`. These are not consumed by the current backend OIDC mode. Keep all secrets server-side; refer to [current SSO settings](REAL_USER_SSO.md).
 
 ```powershell
 npm run db:check -w apps/api

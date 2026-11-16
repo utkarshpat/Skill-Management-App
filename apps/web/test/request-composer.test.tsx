@@ -85,6 +85,7 @@ test('employee topics fail closed; team/reporting defaults change to other peopl
   let fail = false;
   globalThis.fetch = async input => {
     const url = new URL(String(input), 'http://localhost');
+    if (url.pathname === '/api/auth/config') return Response.json({ enabled: false });
     if (url.pathname === '/api/dev-login')
       return Response.json({ mode: 'local-demo', signedIn: true, people: [] });
     assert.equal(url.pathname, '/api/workflows/options');
@@ -144,6 +145,7 @@ test('platform defaults show admin names without auto-selecting or silently send
   let writes = 0;
   globalThis.fetch = async (input, init) => {
     const url = new URL(String(input), 'http://localhost');
+    if (url.pathname === '/api/auth/config') return Response.json({ enabled: false });
     if (url.pathname === '/api/dev-login')
       return Response.json({ mode: 'local-demo', signedIn: true, people: [] });
     assert.notEqual(init?.method, 'POST');
@@ -204,6 +206,7 @@ test('recipient pagination and review edits preserve the explicitly selected per
   globalThis.fetch = async (input, init) => {
     const url = new URL(String(input), 'http://localhost');
     assert.notEqual(init?.method, 'POST');
+    if (url.pathname === '/api/auth/config') return Response.json({ enabled: false });
     if (url.pathname === '/api/dev-login')
       return Response.json({ mode: 'local-demo', signedIn: true, people: [] });
     assert.equal(url.pathname, '/api/workflows/options');

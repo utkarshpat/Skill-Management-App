@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
+import { currentRequestId } from '../../shared/request-timing.js';
+import { errorType, logEvent } from '../../shared/logger.js';
 export interface AiBudget {
   acquire(actor: string): Promise<() => Promise<void>>;
 }
@@ -68,8 +70,11 @@ export class SqlAiBudget implements AiBudget {
     return async () => {
       try {
         await run('release');
-      } catch {
-        console.warn('AI lease release failed; the bounded lease will expire.');
+      } catch (error) {
+        logEvent('warn', 'ai.budget.release_failed', {
+          requestId: currentRequestId(),
+          errorType: errorType(error),
+        });
       }
     };
   }

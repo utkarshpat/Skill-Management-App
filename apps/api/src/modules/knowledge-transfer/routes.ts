@@ -1,3 +1,4 @@
+import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import { readActorAccess } from '../access/index.js';
 import type { Express } from 'express';
 import type { AccessStore } from '../access/index.js';
@@ -40,7 +41,7 @@ export function registerKnowledgeRoutes(
       }
     } else {
       try {
-        actor = await deps.resolveAccess?.(await deps.verify(req.headers.authorization));
+        actor = await deps.resolveAccess?.(await verifyRequestIdentity(req, deps.verify));
       } catch {
         res.status(401).json({ error: { message: 'Sign in to read the project handover.' } });
         return;

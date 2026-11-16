@@ -4,6 +4,7 @@ import { performance } from 'node:perf_hooks';
 
 export type DatabasePhase = 'token' | 'connect' | 'acquire' | 'checkout' | 'operation';
 type Timing = {
+  requestId: string;
   databaseCalls: number;
   databaseMs: number;
   databaseConnectionRetries: number;
@@ -37,10 +38,11 @@ function observeDriverCheckout() {
   });
 }
 
-export function startRequestTiming() {
+export function startRequestTiming(requestId = '') {
   observeDriverCheckout();
   const started = performance.now();
   const timing: Timing = {
+    requestId,
     databaseCalls: 0,
     databaseMs: 0,
     databaseConnectionRetries: 0,
@@ -71,6 +73,9 @@ export function startRequestTiming() {
       ) as Timing['databasePhases'],
     }),
   };
+}
+export function currentRequestId() {
+  return context.getStore()?.requestId;
 }
 // Capture the initiating context when the driver creates a connection, so a
 // deferred retry event cannot be attributed to a different concurrent request.

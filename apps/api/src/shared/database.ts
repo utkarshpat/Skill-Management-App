@@ -1,4 +1,10 @@
-import { measureDatabase, measureDatabasePhase, databaseRetryListener } from './request-timing.js';
+import {
+  currentRequestId,
+  databaseRetryListener,
+  measureDatabase,
+  measureDatabasePhase,
+} from './request-timing.js';
+import { errorType, logEvent } from './logger.js';
 import { timedSqlCredential } from './database-credential.js';
 import { SharedDatabasePool } from './shared-database-pool.js';
 import { EventEmitter } from 'node:events';
@@ -113,12 +119,20 @@ async function connectRuntime() {
 export async function withRuntimeDatabase<T>(
   action: (pool: sql.ConnectionPool) => Promise<T>,
 ): Promise<T> {
-  return measureDatabase(() =>
-    availability.run(async () => {
-      const pool = await measureDatabasePhase('acquire', () => runtimePool.get());
-      return measureDatabasePhase('operation', () => action(pool));
-    }),
-  );
+  try {
+    return await measureDatabase(() =>
+      availability.run(async () => {
+        const pool = await measureDatabasePhase('acquire', () => runtimePool.get());
+        return measureDatabasePhase('operation', () => action(pool));
+      }),
+    );
+  } catch (error) {
+    logEvent('error', 'database.request_failed', {
+      requestId: currentRequestId(),
+      errorType: errorType(error),
+    });
+    throw error;
+  }
 }
 export async function closeRuntimeDatabase() {
   await runtimePool.close();

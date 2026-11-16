@@ -1,8 +1,7 @@
 import { AccessAudit } from './AccessAudit';
 import { organizationKindLabel } from './organization-labels';
 import type { Decision } from './EffectiveAccess';
-import { EmploymentFields, EmploymentChange, type Employment } from './EmploymentDetails';
-import { PrimaryCapabilityFields } from './PrimaryCapabilityFields';
+import type { Employment } from './EmploymentDetails';
 import { SidebarNavigation } from './SidebarNavigation';
 import { AccessDirectory } from './AccessDirectory';
 import { Workspace, type WorkspaceState } from './Workspace';
@@ -103,19 +102,6 @@ interface State {
   }[];
 }
 const emptyRole = (): Role => ({ id: '', name: '', permissions: [] });
-const emptyPerson = (): Person => ({
-  id: '',
-  displayName: '',
-  employeeCode: '',
-  jobTitle: null,
-  grade: null,
-  primaryCapabilityId: null,
-  primaryCapabilityName: null,
-  primaryCapabilityStatus: null,
-  active: true,
-  roleIds: [],
-  overrides: [],
-});
 type View =
   | 'overview'
   | 'roles'
@@ -180,8 +166,7 @@ export function AccessAdmin({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [role, setRole] = useState<Role>(emptyRole);
-  const [person, setPerson] = useState<Person>(emptyPerson);
-  const [editor, setEditor] = useState<'role' | 'person'>(),
+  const [editor, setEditor] = useState<'role'>(),
     [editorPage, setEditorPage] = useState(0),
     [editorRevision, setEditorRevision] = useState(0);
   const [search, setSearch] = useState('');
@@ -257,18 +242,17 @@ export function AccessAdmin({
   const endpoint = isDemoSession() ? '/api/dev-access' : '/api/access';
   const accessReadUrl = endpoint + (summaryRead ? '?summary=1' : '');
   const accessRead = useRef<{ url: string; signal: AbortSignal }>(undefined);
-  function createRecord(kind: 'person' | 'role') {
-    setTab(kind === 'person' ? 'people' : 'roles');
+  function createTemplate() {
+    setTab('roles');
     setSearch('');
     setNotice('');
     setError('');
-    setEditor(kind);
+    setEditor('role');
     setEditorPage(0);
     setEditorRevision(state?.revision ?? 0);
-    if (kind === 'person') setPerson(emptyPerson());
-    else setRole(emptyRole());
+    setRole(emptyRole());
     requestAnimationFrame(() =>
-      document.querySelector<HTMLInputElement>(`#${kind}-editor input`)?.focus(),
+      document.querySelector<HTMLInputElement>('#role-editor input')?.focus(),
     );
   }
   async function load() {
@@ -319,14 +303,13 @@ export function AccessAdmin({
       accessRead.current = undefined;
     };
   }, [accessReadUrl, summaryRead, Boolean(personalTitle)]);
-  async function save(kind: 'role' | 'person') {
+  async function saveTemplate() {
     if (!state) return;
     setBusy(true);
     setError('');
     setNotice('');
     try {
-      const value = kind === 'role' ? role : person;
-      const body = { ...value, id: value.id || undefined, kind, revision: editorRevision };
+      const body = { ...role, id: role.id || undefined, kind: 'role', revision: editorRevision };
       const response = await authenticatedFetch(endpoint + '/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -540,36 +523,14 @@ export function AccessAdmin({
           <div className="page-actions" role="group" aria-label="Page actions" ref={setPageActions}>
             {readyState && tab === 'overview' && (
               <>
-                {readyState.canManageUsers && (
-                  <button className="admin-primary" onClick={() => createRecord('person')}>
-                    <Plus size={17} />
-                    Add person
-                  </button>
-                )}
-                <button className="secondary-button" onClick={() => createRecord('role')}>
+                <button className="secondary-button" onClick={createTemplate}>
                   Create template
-                </button>
-              </>
-            )}
-            {readyState && tab === 'people' && readyState.canManageUsers && (
-              <>
-                <button
-                  className="secondary-button"
-                  disabled={busy}
-                  onClick={() => createRecord('person')}
-                >
-                  <Plus size={16} />
-                  New person
                 </button>
               </>
             )}
             {readyState && tab === 'roles' && (
               <>
-                <button
-                  className="secondary-button"
-                  disabled={busy}
-                  onClick={() => createRecord('role')}
-                >
+                <button className="secondary-button" disabled={busy} onClick={createTemplate}>
                   <Plus size={16} />
                   New template
                 </button>
@@ -970,10 +931,7 @@ export function AccessAdmin({
                     The server will recheck current permissions and revision before saving this
                     change and its audit.
                   </p>
-                  <h3>{String(review.body.displayName ?? review.body.name)}</h3>
-                  {review.body.kind === 'person' && (
-                    <EmploymentChange before={review.before} after={review.after} />
-                  )}
+                  <h3>{String(review.body.name)}</h3>
                   <details>
                     <summary>Review exact assignments and details</summary>
                     <pre>{JSON.stringify(review.body, null, 2)}</pre>
@@ -1014,7 +972,7 @@ export function AccessAdmin({
                   onClose={() => setEditor(undefined)}
                   busy={busy}
                   formId="role-editor"
-                  onSubmit={() => void save('role')}
+                  onSubmit={() => void saveTemplate()}
                   page={editorPage}
                   onPageChange={setEditorPage}
                   message={error && <p role="alert">{error}</p>}
@@ -1062,110 +1020,6 @@ export function AccessAdmin({
                           onChange={permissions => setRole({ ...role, permissions })}
                           catalogue={state.catalogue}
                         />
-                      ),
-                    },
-                  ]}
-                />
-              )}
-              {editor === 'person' && !review && state.canManageUsers && (
-                <FormDialog
-                  title={person.id ? 'Edit person' : 'Create person'}
-                  onClose={() => setEditor(undefined)}
-                  busy={busy}
-                  formId="person-editor"
-                  onSubmit={() => void save('person')}
-                  page={editorPage}
-                  onPageChange={setEditorPage}
-                  message={error && <p role="alert">{error}</p>}
-                  footer={
-                    <>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        disabled={busy}
-                        onClick={() => setEditor(undefined)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="microsoft-button"
-                        form="person-editor"
-                        type="submit"
-                        disabled={busy}
-                      >
-                        {busy ? 'Checking…' : 'Preview change'}
-                      </button>
-                    </>
-                  }
-                  pages={[
-                    {
-                      label: 'Details',
-                      content: (
-                        <>
-                          <div className="dialog-field-grid">
-                            <label>
-                              Display name
-                              <input
-                                required
-                                maxLength={100}
-                                value={person.displayName}
-                                onChange={event =>
-                                  setPerson({ ...person, displayName: event.target.value })
-                                }
-                              />
-                            </label>
-                            <label>
-                              Person ID
-                              <input
-                                required
-                                maxLength={40}
-                                value={person.employeeCode}
-                                onChange={event =>
-                                  setPerson({ ...person, employeeCode: event.target.value })
-                                }
-                              />
-                            </label>
-                          </div>
-                          <EmploymentFields
-                            value={person}
-                            onChange={details => setPerson({ ...person, ...details })}
-                          />
-                          <PrimaryCapabilityFields
-                            key={person.id || 'new'}
-                            endpoint={endpoint}
-                            value={person}
-                            disabled={busy}
-                            onChange={details => setPerson({ ...person, ...details })}
-                          />
-                          <label className="access-check">
-                            <input
-                              type="checkbox"
-                              checked={person.active}
-                              onChange={event =>
-                                setPerson({ ...person, active: event.target.checked })
-                              }
-                            />
-                            Active account
-                          </label>
-                          <p>
-                            After saving, find this person to assign templates or update their
-                            organization.
-                          </p>
-                        </>
-                      ),
-                    },
-                    {
-                      label: 'Exceptions',
-                      content: (
-                        <>
-                          <PermissionEditor
-                            individual
-                            label="Individual permission overrides"
-                            value={person.overrides}
-                            onChange={overrides => setPerson({ ...person, overrides })}
-                            catalogue={state.catalogue}
-                          />
-                        </>
                       ),
                     },
                   ]}

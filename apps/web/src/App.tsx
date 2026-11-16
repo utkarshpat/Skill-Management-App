@@ -152,15 +152,22 @@ export function App() {
           if (active) setSession('anonymous');
         });
     };
+    const companyExpired = () => {
+      setSessionNotice('Your company session expired. Sign in again to continue.');
+      setSession('anonymous');
+    };
+    window.addEventListener('company-session-expired', companyExpired);
     window.addEventListener('development-session-expired', expired);
     return () => {
       active = false;
+      window.removeEventListener('company-session-expired', companyExpired);
       window.removeEventListener('development-session-expired', expired);
     };
   }, []);
+  const [entryPath] = useState(pathname);
   useEffect(() => {
     let active = true;
-    initializeAuth()
+    initializeAuth({ automatic: isSupportedWorkspacePath(entryPath) && entryPath !== '/preview' })
       .then(() => {
         if (active) setSession(signedIn() ? 'signed-in' : 'anonymous');
       })
@@ -170,7 +177,7 @@ export function App() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [entryPath]);
   if (pathname === '/preview') return <Overview />;
   if (session === 'loading')
     return (
@@ -309,6 +316,15 @@ function Welcome({
 }) {
   const [error, setError] = useState('');
   const [signingIn, setSigningIn] = useState(false);
+  const signInResult = new URLSearchParams(window.location.search).get('signin');
+  function startSignIn(chooseAccount = false) {
+    setError('');
+    setSigningIn(true);
+    signIn({ chooseAccount }).catch(() => {
+      setError('Sign-in could not start. Please try again.');
+      setSigningIn(false);
+    });
+  }
   return (
     <div className="welcome-page">
       <a className="skip-link" href="#welcome-main">
@@ -356,17 +372,10 @@ function Welcome({
           {sessionNotice && <p role="status">{sessionNotice}</p>}
           <button
             className="microsoft-button"
-            disabled={signingIn || !signInConfigured || authError}
+            disabled={signingIn || !signInConfigured}
             aria-busy={signingIn}
             aria-describedby="signin-status"
-            onClick={() => {
-              setError('');
-              setSigningIn(true);
-              signIn().catch(() => {
-                setError('Sign-in could not start. Please refresh and try again.');
-                setSigningIn(false);
-              });
-            }}
+            onClick={() => startSignIn()}
           >
             <span className="microsoft-symbol" aria-hidden="true">
               <i />
@@ -378,11 +387,13 @@ function Welcome({
           </button>
           <p id="signin-status" className="signin-status" role="status">
             {error ||
-              (authError
-                ? 'Sign-in could not finish. Please return to this page and try again.'
-                : signInConfigured
-                  ? 'Use your Microsoft account to access your assigned workspace.'
-                  : 'Sign-in is being set up. Access will be available soon.')}
+              (signInResult === 'company-required'
+                ? 'Sign in with your @soprasteria.com work account.'
+                : signInResult === 'failed' || authError
+                  ? 'Sign-in could not finish. Try again or choose your work account.'
+                  : signInConfigured
+                    ? 'Use your Microsoft account to access your assigned workspace.'
+                    : 'Sign-in is being set up. Access will be available soon.')}
           </p>
           <DevelopmentLogin onSessionReady={onDevelopmentSessionReady} />
         </section>

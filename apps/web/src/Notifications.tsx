@@ -6,6 +6,7 @@ import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { startActivityRefresh, type RefreshStatus } from './activity-refresh';
 import { RefreshIndicator } from './RefreshIndicator';
+import { reportClientAction } from './client-diagnostics';
 interface Item {
   id: string;
   at: string;
@@ -132,6 +133,7 @@ export function Notifications({ id }: { id: string }) {
   }, [feed?.personId]);
   function mark(ids: string[], isRead = true) {
     if (!feed) return;
+    reportClientAction(isRead ? 'notifications.mark_read' : 'notifications.mark_unread');
     const next = isRead
       ? [...new Set([...read, ...ids])].slice(-100)
       : read.filter(id => !ids.includes(id));
@@ -144,6 +146,7 @@ export function Notifications({ id }: { id: string }) {
   }
   function opened(event: MouseEvent<HTMLAnchorElement>, itemId: string) {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    reportClientAction('notifications.item_open');
     mark([itemId]);
     event.currentTarget.closest<HTMLElement>('[popover]')?.hidePopover();
   }
@@ -176,7 +179,10 @@ export function Notifications({ id }: { id: string }) {
         aria-controls={id}
         aria-expanded={open}
         aria-haspopup="dialog"
-        onClick={() => window.dispatchEvent(new Event('notifications-opened'))}
+        onClick={() => {
+          reportClientAction('notifications.open');
+          window.dispatchEvent(new Event('notifications-opened'));
+        }}
       >
         <Bell size={21} />
         {unread > 0 && (
@@ -205,7 +211,10 @@ export function Notifications({ id }: { id: string }) {
               type="button"
               aria-label="Refresh notifications"
               disabled={loading}
-              onClick={() => setAttempt(value => value + 1)}
+              onClick={() => {
+                reportClientAction('notifications.refresh');
+                setAttempt(value => value + 1);
+              }}
             >
               <RefreshCw size={17} className={loading ? 'notification-spin' : ''} />
             </button>
@@ -215,6 +224,7 @@ export function Notifications({ id }: { id: string }) {
               aria-label="Close notifications"
               popoverTarget={id}
               popoverTargetAction="hide"
+              onClick={() => reportClientAction('notifications.close')}
             >
               <X size={18} />
             </button>
@@ -259,17 +269,32 @@ export function Notifications({ id }: { id: string }) {
               </div>
               <div className="notification-toolbar">
                 <div role="group" aria-label="Notification filter">
-                  <button aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
+                  <button
+                    aria-pressed={filter === 'all'}
+                    onClick={() => {
+                      reportClientAction('notifications.filter_changed');
+                      setFilter('all');
+                    }}
+                  >
                     All
                   </button>
-                  <button aria-pressed={filter === 'unread'} onClick={() => setFilter('unread')}>
+                  <button
+                    aria-pressed={filter === 'unread'}
+                    onClick={() => {
+                      reportClientAction('notifications.filter_changed');
+                      setFilter('unread');
+                    }}
+                  >
                     Unread ({unread})
                   </button>
                 </div>
                 <button
                   className="admin-text-button"
                   disabled={!unread}
-                  onClick={() => mark(feed.items.map(item => item.id))}
+                  onClick={() => {
+                    reportClientAction('notifications.mark_all_read');
+                    mark(feed.items.map(item => item.id));
+                  }}
                 >
                   <Check size={14} />
                   Read all
@@ -281,7 +306,14 @@ export function Notifications({ id }: { id: string }) {
                 aria-label="Notification category"
               >
                 {categories.map(c => (
-                  <button key={c} aria-pressed={category === c} onClick={() => setCategory(c)}>
+                  <button
+                    key={c}
+                    aria-pressed={category === c}
+                    onClick={() => {
+                      reportClientAction('notifications.category_changed');
+                      setCategory(c);
+                    }}
+                  >
                     {c}
                   </button>
                 ))}

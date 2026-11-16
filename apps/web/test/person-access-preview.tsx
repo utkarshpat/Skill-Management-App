@@ -69,6 +69,7 @@ window.fetch = async (input, init) => {
   const path =
     typeof input === 'string' ? input : input instanceof URL ? input.pathname : input.url;
   const method = init?.method ?? 'GET';
+  if (path === '/api/auth/config') return json({ enabled: false });
   if (path === '/api/dev-login') return json({ mode: 'local-demo', signedIn: true, people: [] });
   if (path.startsWith('/api/dev-access/effective/'))
     return json({ actorId: target.id, revision, decisions: [], unsupportedAssignments: [] });

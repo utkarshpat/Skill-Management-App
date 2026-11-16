@@ -47,7 +47,7 @@ Any execution must bind the exact target, source hash and reviewed inventory, re
 
 ## Identity transition
 
-Microsoft company users already have an Entra object ID even if it is absent from the workbook. A company administrator may export the directory mapping, or a subsequent sign-in flow may capture `tid`/`oid` from the validated API access token and stage an explicit employee identity-binding request. Email/name matching is a reconciliation hint, not authentication or authorization. Do not automatically attach privileged access from `preferred_username`, display name or a typed email.
+Microsoft company users already have an Entra object ID even if it is absent from the workbook. A company administrator may export the directory mapping. The current backend OIDC flow verifies `tid`/`oid` from the ID token, but it does not automatically link an employee by email or stage an in-app binding request. Email/name matching is a reconciliation hint, not authentication or authorization. Do not automatically attach privileged access from `preferred_username`, display name or a typed email.
 
 Profiles can be imported inactive/pending until verified identity binding and real SSO are ready. Do not make unmapped real employees active while temporary demo login is enabled: the old demo selector permits active unbound people. The initial real administrator's verified binding and usable access must be ready before retiring the only working administrator unless a reviewed maintenance/setup recovery path is explicitly selected. Authentication is the next requested increment, not implemented by this document.
 

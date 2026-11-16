@@ -1,3 +1,4 @@
+import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import { readActorAccess } from './actor-context.js';
 import { auditQuery, readAuditPage } from './audit.js';
 import type { Express } from 'express';
@@ -185,7 +186,7 @@ export function registerRoutes(
     let identity: Identity;
     try {
       if (!dependencies?.resolveAccess || !dependencies.access) throw new Error();
-      identity = await dependencies.verify(req.headers.authorization);
+      identity = await verifyRequestIdentity(req, dependencies.verify);
     } catch {
       res
         .status(401)

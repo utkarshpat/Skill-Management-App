@@ -1,10 +1,10 @@
 # Organization Onboarding & SSO Integration Requirements
 
-> Current status — 5 November 2026: see [current company operations](CURRENT_OPERATIONS.md) and [SSO/bulk provisioning](REAL_USER_SSO.md). Company hosting/sign-in are observed and the operator reports bulk binding complete; older deferred/demo steps below are historical. Live upstream directory synchronization remains unimplemented. Keep KT enabled.
+> Updated 16 November 2026: for the current company implementation and operator-reported hosted sign-in/logout result, follow [current company operations](CURRENT_OPERATIONS.md) and [SSO/provisioning](REAL_USER_SSO.md). Historical prerequisites and example values in this checklist are not current App Service settings. Live upstream directory synchronization remains unimplemented. Keep KT enabled.
 
 Ye document organization ki **IT / Security team** aur **HR / HRMS Data team** ke sath share karne ke liye banaya gaya hai. Isme Microsoft Entra ID (Azure AD) SSO setup aur Employee Database export ki exact requirements shamil hain.
 
-**Status (7 October 2026):** Yeh onboarding data-collection checklist hai, automated HRMS/CSV/XLSX importer ka implemented contract nahi. Current approved access policy [Access Management baseline](ACCESS_MODEL_REDESIGN.md) hai. Existing authenticated APIs/SQL checks, workspace identity mapping aur preview/recheck/audit workflow remain mandatory. Production rollout ke liye [migration runbook](AZURE_MIGRATION_RUNBOOK.md) bhi follow karein.
+**Status (7 October 2026; historical checklist):** Yeh onboarding data-collection checklist hai, automated HRMS/CSV/XLSX importer ka implemented contract nahi. Current approved access policy [Access Management baseline](ACCESS_MODEL_REDESIGN.md) hai. Existing authenticated APIs/SQL checks, workspace identity mapping aur preview/recheck/audit workflow remain mandatory. Current SSO ka exact configuration [REAL_USER_SSO.md](REAL_USER_SSO.md) mein hai; neeche ke purane SPA/build-time examples current flow ko describe nahi karte.
 
 ---
 
@@ -12,11 +12,11 @@ Ye document organization ki **IT / Security team** aur **HR / HRMS Data team** k
 
 _(Target Audience: IT Administrator / Azure Cloud & Security Team)_
 
-Application Microsoft Entra ID (OAuth 2.0 / OIDC with PKCE) use karti hai. Iske liye Azure Portal mein **do App Registrations** configure karein: SPA web client aur delegated API. Current application contract dono client IDs explicitly validate karta hai:
+Current company hosting uses server-side Microsoft Entra **OIDC authorization code with PKCE**. The backend validates the ID token and issues an opaque HttpOnly application session. SAML is not configured. The application is currently reusing the user-approved GatePass India registration; protect its other consumers and do not change shared settings without the registration owner. Current IDs, exact callback URLs and operations are documented in [REAL_USER_SSO.md](REAL_USER_SSO.md).
 
 ### 1. Required Azure AD Configuration Parameters
 
-Client ki IT team ko yeh non-secret IDs provide karne hain. API runtime par `ENTRA_*` values aur web build par matching `VITE_ENTRA_TENANT_ID`, `VITE_ENTRA_API_CLIENT_ID`, `VITE_ENTRA_WEB_CLIENT_ID` configure karein. Vite values build-time hain; changes ke baad web rebuild/redeploy zaroori hai. SPA ko client secret nahi dena hai:
+The following table is retained only as a historical generic two-registration design example. Do not copy its sample IDs or VITE settings into the current deployment. The current runtime requires the verified tenant, Web client and API client IDs plus `PUBLIC_APP_ORIGIN`, `SERVE_WEB=true`, and a server-only `ENTRA_WEB_CLIENT_SECRET`. The secret must never be sent to the SPA/browser.
 
 | Parameter Key         | Description                                              | Example Format                         |
 | --------------------- | -------------------------------------------------------- | -------------------------------------- |
@@ -26,17 +26,12 @@ Client ki IT team ko yeh non-secret IDs provide karne hain. API runtime par `ENT
 
 ### 2. Azure App Registration Configuration Steps
 
-1. **Web Frontend App (`ENTRA_WEB_CLIENT_ID`)**:
-   - **Platform**: Single-page application (SPA).
-   - **Redirect URI**: `https://<our-app-domain>/` (aur current local default `http://127.0.0.1:5173/`). Code ka default `window.location.origin + '/'` hai. Exact origin/port, trailing slash aur scheme Entra SPA registration se match hone chahiye. Agar `VITE_AUTH_REDIRECT_URI` explicitly set karein, us exact supported URI ko register karein; `/auth/callback` default route nahi hai. Same URI post-logout redirect ke liye use hoti hai.
-   - **Grant Type**: Authorization Code Flow with PKCE.
-2. **Backend API App (`ENTRA_API_CLIENT_ID`)**:
-   - **Expose an API**: Application ID URI set karein (e.g., `api://<api-client-id>`).
-   - **Add Scope**: Delegated scope `access_as_user` add karein; consent organization ki approved security policy ke according configure karein. Web client `api://<api-client-id>/access_as_user` request karta hai.
-   - Web App ko is scope ke liye authorized client application mein add karein.
-3. **Required JWT Token Claims**:
-   - Token version: `2.0` (`ver: "2.0"`).
-   - API **access token** validate hota hai, ID token nahi. `iss` configured tenant ka v2 issuer, `aud` API client ID, RS256 signature, `exp`, `iat`, `nbf`, `tid`, UUID `oid`, `scp` containing `access_as_user`, `azp` web client ID aur `ver=2.0` enforced hain. `preferred_username` / `upn` required authorization claims nahi hain. Identity `(tenant ID, object ID)` se mapped hoti hai; email/display name se account auto-link nahi hota.
+1. **Current backend Web client**: Platform **Web**. Add exact callbacks `https://<app-origin>/api/auth/callback` and `https://<app-origin>/api/auth/signed-out`. Local or preview origins must be explicitly registered and isolated; never use wildcard redirect URIs.
+2. **Secret and server settings**: Store `ENTRA_WEB_CLIENT_SECRET` only in the approved server secret store. For the current company, the selected expiry is 24 months; record the actual expiration date in the organization's secret inventory and create an owner-controlled reminder before it expires. Rotate before expiry. Secret ID is not the credential value.
+3. **Current token validation**: The backend validates the OIDC **ID token** (signature/JWKS, issuer, web-client audience, nonce, lifetime, tenant and UUID `oid`). It requires `preferred_username` to end in `@soprasteria.com`. The runtime identity key is `(tenant ID, object ID)` and the existing active employee binding/effective access is still required. No Graph lookup or Graph `User.Read` permission is needed for login. No email-based first-login auto-linking is implemented.
+4. **Sign-out and automatic sign-in**: Bare-domain entry attempts OIDC `prompt=none`, using a remembered login hint where available; if Entra requires interaction, the user sees the Microsoft sign-in fallback. Sign-out revokes the local application session and redirects to Entra OIDC logout; this is not SAML SLO or an all-app sign-out guarantee. Corporate Conditional Access/MFA and enterprise-app assignment continue to apply.
+
+The API's `access_as_user` scope and old SPA redirect can remain in the shared GatePass registration for other consumers. They are not requested by the current backend OIDC login flow. Do not remove them or change token settings without confirming GatePass dependencies.
 
 ---
 

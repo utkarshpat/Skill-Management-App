@@ -218,31 +218,6 @@ test('failed access recheck preserves the edited template and requires a new pre
   assert.equal(saves.length, 2);
 });
 
-test('new person preview preserves employment fields without granting templates or hierarchy authority', async () => {
-  await mount('/access?view=overview');
-  await click('Add person');
-  await fill('Display name', 'Priya Nair');
-  await fill('Person ID', '710904');
-  await fill('Business job title', 'Delivery Analyst');
-  await fill('Grade', 'B2');
-  await click('Preview change');
-  assert.equal(previews[0].displayName, 'Priya Nair');
-  assert.equal(previews[0].jobTitle, 'Delivery Analyst');
-  assert.equal(previews[0].grade, 'B2');
-  assert.deepEqual(previews[0].roleIds, []);
-  assert.deepEqual(previews[0].overrides, []);
-  assert.equal(previews[0].managerId, undefined);
-  assert.equal(document.querySelectorAll('.form-dialog').length, 1);
-  await click('Back to edit', review());
-  assert.equal(
-    document.querySelector<HTMLInputElement>('#person-editor input')!.value,
-    'Priya Nair',
-  );
-  assert.equal(saves.length, 0);
-  await click('Cancel');
-  assert.equal(document.querySelector('.form-dialog'), null);
-});
-
 test('preset proposals remain editable and failed preview never writes', async () => {
   await mount();
   await click('Learning coordination');
@@ -366,43 +341,6 @@ test('activity log follows the current cursor, resets on search and keeps denied
   assert.equal(currentAudit().has('before'), false);
 });
 
-test('person account status and scoped exception stay staged until the reviewed preview is confirmed', async () => {
-  await mount('/access?view=overview');
-  await click('Add person');
-  await fill('Display name', 'Priya Nair');
-  await fill('Person ID', '710904');
-  const active = [...editor().querySelectorAll('label')]
-    .find(label => label.textContent?.includes('Active account'))!
-    .querySelector('input')!;
-  await act(async () => active.click());
-  await click('Exceptions');
-  const permission = editor().querySelector<HTMLInputElement>(
-    '[aria-label="View requests · Own records"]',
-  )!;
-  await act(async () => permission.click());
-  await fill('Effect', 'DENY');
-  await fill('Expires (required)', '2030-02-01T09:00');
-  await fill('Reason (required)', 'Hold requests pending the account review.');
-  await click('Back to permissions');
-  await click('Preview change');
-  assert.equal(saves.length, 0);
-  assert.equal(previews[0].active, false);
-  assert.deepEqual(previews[0].overrides, [
-    {
-      permission: 'request.view',
-      effect: 'DENY',
-      scope: 'OWN',
-      validUntil: new Date('2030-02-01T09:00').toISOString(),
-      reason: 'Hold requests pending the account review.',
-    },
-  ]);
-  await click('Close Review access change', review());
-  assert.ok(document.querySelector('dialog[aria-label="Create person"]'));
-  await click('Close Create person');
-  assert.equal(document.querySelector('dialog'), null);
-  assert.equal(saves.length, 0);
-});
-
 test('overview template shortcut opens the template editor and close discards the unsaved request', async () => {
   await mount('/access?view=overview');
   await click('Create template');
@@ -411,6 +349,18 @@ test('overview template shortcut opens the template editor and close discards th
   await fill('Template name', 'Reporting support', dialog);
   await click('Close Create access template', dialog);
   assert.equal(document.querySelector('dialog'), null);
+  assert.equal(previews.length, 0);
+  assert.equal(saves.length, 0);
+});
+
+test('people and overview leave profile creation to the organization directory', async () => {
+  for (const tab of ['people', 'overview']) {
+    await mount('/access?view=' + tab);
+    const actions = document.querySelector('[aria-label="Page actions"]')!;
+    assert.doesNotMatch(actions.textContent!, /Add person|New person/);
+    await view!.unmount();
+    view = undefined;
+  }
   assert.equal(previews.length, 0);
   assert.equal(saves.length, 0);
 });

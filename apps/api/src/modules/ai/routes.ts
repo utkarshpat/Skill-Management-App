@@ -1,3 +1,4 @@
+import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import { readActorAccess } from '../access/index.js';
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
@@ -35,7 +36,7 @@ export function registerRoutes(
       try {
         if (!dependencies?.resolveAccess) throw new Error();
         actor = await dependencies.resolveAccess(
-          await dependencies.verify(req.headers.authorization),
+          await verifyRequestIdentity(req, dependencies.verify),
         );
       } catch {
         res.status(401).json({

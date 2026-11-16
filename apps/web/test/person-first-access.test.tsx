@@ -57,6 +57,7 @@ test('person overview exposes reporting and access; advanced assignments remain 
   globalThis.fetch = async input => {
     const path = String(input);
     requests.push(path);
+    if (path === '/api/auth/config') return Response.json({ enabled: false });
     if (path.includes('/dev-login'))
       return Response.json({ mode: 'local-demo', signedIn: true, people: [] });
     return Response.json({
@@ -164,6 +165,7 @@ test('organization handoff selects only the requested person and retains invalid
   globalThis.fetch = async input => {
     const path = String(input);
     requests.push(path);
+    if (path === '/api/auth/config') return Response.json({ enabled: false });
     if (path.includes('/dev-login'))
       return Response.json({ mode: 'local-demo', signedIn: true, people: [] });
     return Response.json({ ...organization, assignments, people: [manager, person], revision: 1 });

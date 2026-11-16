@@ -1,6 +1,6 @@
 {
-  "version": "2026-11-05",
-  "revision": "9cc34c1ad3b6c3d9",
+  "version": "2026-11-16",
+  "revision": "76af369dc4be55f2",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -7135,6 +7135,12 @@
     {
       "method": "GET",
       "path": "/api/auth/config",
+      "module": "application",
+      "source": "apps/api/src/create-app.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/diagnostics/client",
       "module": "application",
       "source": "apps/api/src/create-app.ts"
     },

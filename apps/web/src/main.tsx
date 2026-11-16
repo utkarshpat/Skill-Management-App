@@ -4,6 +4,8 @@ import { App } from './App';
 import { ToastHost } from './ToastHost';
 import { ThemeProvider } from './Theme';
 import { WorkspaceRecovery } from './WorkspaceRecovery';
+import { ClientErrorBoundary } from './ClientErrorBoundary';
+import { installClientDiagnostics } from './client-diagnostics';
 import { BrowserRouter } from 'react-router';
 import { installDeploymentRecovery } from './deployment-recovery';
 import './styles.css';
@@ -17,14 +19,17 @@ import './toast.css';
 import './modern-ui.css';
 
 if (import.meta.env.PROD) installDeploymentRecovery();
+installClientDiagnostics();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <WorkspaceRecovery>
       <BrowserRouter>
         <ThemeProvider>
-          <App />
-          <ToastHost />
+          <ClientErrorBoundary>
+            <App />
+            <ToastHost />
+          </ClientErrorBoundary>
         </ThemeProvider>
       </BrowserRouter>
     </WorkspaceRecovery>
