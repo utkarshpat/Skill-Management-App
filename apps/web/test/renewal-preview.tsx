@@ -30,6 +30,7 @@ const choice = {
 window.fetch = async (input, init) => {
   const path = String(input);
   let data: any;
+  if (path === '/api/auth/config') return Response.json({ enabled: false });
   if (path === '/api/dev-login') data = { mode: 'local-demo', signedIn: true, people: [] };
   else if (path.endsWith('/availability')) data = { aiAvailable: false, fileAvailable: true };
   else if (path.endsWith('/options'))

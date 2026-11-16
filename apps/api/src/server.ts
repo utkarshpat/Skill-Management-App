@@ -11,6 +11,8 @@ import { applicationDependencies } from './application-dependencies.js';
 import { privateStorageConfig } from './shared/private-files.js';
 import { ownProfile } from './modules/identity/index.js';
 import { closeRuntimeDatabase } from './shared/database.js';
+import { currentRequestId } from './shared/request-timing.js';
+import { errorType, logEvent } from './shared/logger.js';
 import { developmentLoginEnabled, hostedDemoConfig } from './modules/identity/index.js';
 import { SqlAccessStore } from './modules/access/sql-access-store.js';
 import { createEmployeeProfileReader } from './modules/identity/employee-profile.js';
@@ -121,7 +123,11 @@ const assistant = access
       organization,
       provider,
       claims,
-      usage => console.info(JSON.stringify({ event: 'ai.usage', ...usage })),
+      usage =>
+        logEvent('info', 'ai.usage', {
+          requestId: currentRequestId(),
+          ...usage,
+        }),
       catalogue,
       process.env.ACCESS_ACCOUNT_ID
         ? new SqlConversationsStore(process.env.ACCESS_ACCOUNT_ID)
@@ -199,11 +205,9 @@ const app = createApp(
     developmentStore,
     hostedDemo,
     identityConfig: config,
-    ...(process.env.HTTP_TIMING_ENABLED === 'true'
-      ? {
-          onRequestTiming: (metric: object) =>
-            console.info(JSON.stringify({ event: 'http.timing', ...metric })),
-        }
+    companyOidcSecret: process.env.ENTRA_WEB_CLIENT_SECRET,
+    ...(config && process.env.SERVE_WEB === 'true' && process.env.PUBLIC_APP_ORIGIN
+      ? { companySessionOrigin: process.env.PUBLIC_APP_ORIGIN }
       : {}),
   },
 );
@@ -212,15 +216,22 @@ export default app;
 if (process.env.VERCEL !== '1') {
   const host = process.env.HOST ?? (process.env.WEBSITE_HOSTNAME ? '0.0.0.0' : '127.0.0.1');
   const server = app.listen(port, host, () => {
-    console.log(`Capability API: http://${host}:${port}`);
+    logEvent('info', 'server.started', { host, port });
   });
+  server.on('error', error =>
+    logEvent('error', 'server.listener_failed', { errorType: errorType(error) }),
+  );
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {
-    process.once(signal, () =>
+    process.once(signal, () => {
+      logEvent('info', 'server.shutdown_started', { signal });
       server.close(() => {
         closeRuntimeDatabase()
           .then(() => process.exit(0))
-          .catch(() => process.exit(1));
-      }),
-    );
+          .catch(error => {
+            logEvent('error', 'server.shutdown_failed', { errorType: errorType(error) });
+            process.exit(1);
+          });
+      });
+    });
   }
 }

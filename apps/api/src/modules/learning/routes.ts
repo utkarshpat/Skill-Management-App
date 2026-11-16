@@ -1,3 +1,4 @@
+import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import { readActorAccess } from '../access/index.js';
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
@@ -34,7 +35,7 @@ export function registerLearningRoutes(
     } else {
       try {
         if (!deps?.resolveAccess) throw Error();
-        actor = await deps.resolveAccess(await deps.verify(req.headers.authorization));
+        actor = await deps.resolveAccess(await verifyRequestIdentity(req, deps.verify));
       } catch {
         res.status(401).json({ error: { message: 'Sign in to continue.' } });
         return;

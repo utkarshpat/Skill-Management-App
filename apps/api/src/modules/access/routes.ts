@@ -1,3 +1,4 @@
+import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import { readActorAccess } from './actor-context.js';
 import { auditQuery, readAuditPage } from './audit.js';
 import type { Express } from 'express';
@@ -36,7 +37,7 @@ export function registerRoutes(
       req.path.startsWith('/effective/'));
   async function effectiveHandler(req: import('express').Request, res: import('express').Response) {
     try {
-      const access = req.path.startsWith('/api/dev-access/') ? store! : dependencies!.access!;
+      const access = res.locals.demoPersonId ? store! : dependencies!.access!;
       const id =
         access.storage === 'azure-sql' ? administrationId(req.params.id) : String(req.params.id);
       const targetState = await readActorAccess(access, id),
@@ -95,7 +96,7 @@ export function registerRoutes(
   });
   const auditHandler: import('express').RequestHandler = async (req, res) => {
     try {
-      const access = req.path.startsWith('/api/dev-access/') ? store : dependencies?.access;
+      const access = res.locals.demoPersonId ? store : dependencies?.access;
       if (!access) throw new AccessError(503, 'Activity storage is unavailable.');
       const person = res.locals.accessPerson,
         state = res.locals.accessState;
@@ -161,7 +162,7 @@ export function registerRoutes(
       return;
     }
     try {
-      const state = await store!.snapshot({ includeAudit: false });
+      const state = res.locals.accessState;
       await recheckAccessChange(state, res.locals.demoPersonId, req.body);
       await validatePrimaryCapabilityChange(store!, state, res.locals.demoPersonId, req.body);
       await store!.save(res.locals.demoPersonId, req.body);
@@ -185,7 +186,7 @@ export function registerRoutes(
     let identity: Identity;
     try {
       if (!dependencies?.resolveAccess || !dependencies.access) throw new Error();
-      identity = await dependencies.verify(req.headers.authorization);
+      identity = await verifyRequestIdentity(req, dependencies.verify);
     } catch {
       res
         .status(401)
@@ -310,11 +311,16 @@ export function registerRoutes(
   });
   app.post('/api/access', async (req, res) => {
     try {
-      await recheckAccessChange(
-        await dependencies!.access!.snapshot({ includeAudit: false }),
-        res.locals.accessPerson.id,
-        req.body,
-      );
+      const state = res.locals.accessState;
+      await recheckAccessChange(state, res.locals.accessPerson.id, req.body);
+      if (dependencies!.access!.storage !== 'azure-sql') {
+        await validatePrimaryCapabilityChange(
+          dependencies!.access!,
+          state,
+          res.locals.accessPerson.id,
+          req.body,
+        );
+      }
       await dependencies!.access!.save(res.locals.accessPerson.id, req.body);
       res.json({ saved: true });
     } catch (error) {

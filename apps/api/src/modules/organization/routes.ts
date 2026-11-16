@@ -1,4 +1,4 @@
-import type { Express } from 'express';
+import type { Express, Request, RequestHandler } from 'express';
 import { can } from '../access/index.js';
 import { AccessError } from '../../shared/errors.js';
 import { previewOrganization } from './preview.js';
@@ -6,20 +6,19 @@ import type { OrganizationStore } from './organization.js';
 export interface HttpDependencies {
   organization?: OrganizationStore;
 }
-export function registerRoutes(app: Express, dependencies: HttpDependencies | undefined) {
-  app.get('/api/access/organization', async (_req, res) => {
-    if (
-      !dependencies?.organization ||
-      !res.locals.accessState ||
-      !res.locals.accessPerson ||
-      !can(res.locals.accessState, res.locals.accessPerson, 'users.manage')
-    ) {
+export function registerRoutes(
+  app: Express,
+  dependencies: HttpDependencies | undefined,
+  demo?: { mutationAllowed(req: Request): boolean },
+) {
+  const requireDemoMutation: RequestHandler = (req, res, next) => {
+    if (!demo?.mutationAllowed(req)) {
       res.sendStatus(403);
       return;
     }
-    res.json(await dependencies.organization.snapshot());
-  });
-  app.post('/api/access/organization/preview', async (req, res) => {
+    next();
+  };
+  const previewHandler: RequestHandler = async (req, res) => {
     if (
       !dependencies?.organization ||
       !res.locals.accessState ||
@@ -44,8 +43,8 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
       }
       throw error;
     }
-  });
-  app.post('/api/access/organization', async (req, res) => {
+  };
+  const saveHandler: RequestHandler = async (req, res) => {
     if (
       !dependencies?.organization ||
       !res.locals.accessState ||
@@ -81,5 +80,21 @@ export function registerRoutes(app: Express, dependencies: HttpDependencies | un
       }
       throw error;
     }
+  };
+  app.get(['/api/access/organization', '/api/dev-access/organization'], async (_req, res) => {
+    if (
+      !dependencies?.organization ||
+      !res.locals.accessState ||
+      !res.locals.accessPerson ||
+      !can(res.locals.accessState, res.locals.accessPerson, 'users.manage')
+    ) {
+      res.sendStatus(403);
+      return;
+    }
+    res.json(await dependencies.organization.snapshot());
   });
+  app.post('/api/access/organization/preview', previewHandler);
+  app.post('/api/dev-access/organization/preview', requireDemoMutation, previewHandler);
+  app.post('/api/access/organization', saveHandler);
+  app.post('/api/dev-access/organization', requireDemoMutation, saveHandler);
 }

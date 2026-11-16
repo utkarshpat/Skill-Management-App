@@ -1,5 +1,6 @@
 import test, { after, afterEach, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { registerHooks } from 'node:module';
 import { act } from 'react';
 import { render, settle, closeBrowser, demoResponse, deferred } from './support/browser';
 import {
@@ -10,6 +11,12 @@ import {
   fill,
   change,
 } from './support/interactions';
+const cssHooks = registerHooks({
+  load(url, context, nextLoad) {
+    if (url.endsWith('.css')) return { format: 'module', source: '', shortCircuit: true };
+    return nextLoad(url, context);
+  },
+});
 const { PeopleAccessWorkspace } = component<typeof import('../src/PeopleAccessWorkspace')>(
   'PeopleAccessWorkspace.tsx',
 );
@@ -91,6 +98,7 @@ let current = initial(),
   writeFailure = false;
 let mounted: Awaited<ReturnType<typeof render>> | undefined;
 let lookup: ((url: URL) => Promise<Response> | undefined) | undefined;
+let detailRead: ((url: URL, options?: RequestInit) => Response | undefined) | undefined;
 beforeEach(async () => {
   current = initial();
   requests = [];
@@ -101,11 +109,14 @@ beforeEach(async () => {
   lookupFailure = false;
   writeFailure = false;
   lookup = undefined;
+  detailRead = undefined;
   mock.method(globalThis, 'fetch', async (input: string | URL | Request, options?: RequestInit) => {
     const path = String(input);
     requests.push(path);
     if (path === '/api/dev-login') return demoResponse();
     const url = new URL(path, 'http://localhost');
+    const customResponse = detailRead?.(url, options);
+    if (customResponse) return customResponse;
     if (url.pathname.endsWith('/directory')) {
       const custom = lookup?.(url);
       if (custom) return custom;
@@ -189,7 +200,10 @@ afterEach(async () => {
   mounted = undefined;
   mock.restoreAll();
 });
-after(closeBrowser);
+after(async () => {
+  cssHooks.deregister();
+  await closeBrowser();
+});
 async function waitSearch() {
   await act(async () => {
     await new Promise(r => setTimeout(r, 340));
@@ -197,12 +211,13 @@ async function waitSearch() {
   await settle();
   await settle();
 }
-async function mount() {
+async function mount(options: { canManageScoped?: boolean; canViewAudit?: boolean } = {}) {
   mounted = await render(
     <MemoryRouter>
       <PeopleAccessWorkspace
         endpoint="/api/dev-access"
         catalogue={catalogue}
+        {...options}
         onChanged={() => changed++}
       />
     </MemoryRouter>,
@@ -235,6 +250,17 @@ test('blank and one-character searches load no directory; selecting a match read
   assert.match(document.body.textContent ?? '', /Aditi Menon/);
   assert.equal(writes.length, 0);
 });
+test('the selected-person header flags ambiguous placement and manager records', async () => {
+  current.organization.assignments.push({ ...current.organization.assignments[0] });
+  await mount();
+  await open();
+  const context = document.querySelector('.people-person-context');
+  assert.deepEqual(
+    [...(context?.querySelectorAll('strong') ?? [])].map(label => label.textContent),
+    ['Needs administrator attention', 'Needs administrator attention'],
+  );
+});
+
 test('templates are first-class actions, preserve historical grants and save only the reviewed assignment', async () => {
   await mount();
   await open();
@@ -291,11 +317,17 @@ test('organization and manager removal are explicit, person-bound and receipt ch
   await open();
   await click('Organization & manager');
   await waitSearch();
+  await click('Review organization changes');
+  assert.equal(previews.length, 0);
+  assert.match(
+    document.body.textContent ?? '',
+    /Change the organization placement or reporting manager before previewing/,
+  );
   await click('Clear organization assignment');
   await click('Remove manager');
   await click('Review organization changes');
   const command = previews[0];
-  assert.equal(command.path, '/api/access/organization/preview');
+  assert.equal(command.path, '/api/dev-access/organization/preview');
   assert.deepEqual(command.body, {
     kind: 'assignment',
     revision: 7,
@@ -502,5 +534,197 @@ test('template paging keeps unsupported grants unassignable and never reuses the
   );
   assert.equal(reviewButton?.disabled, true);
   assert.equal(previews.length, 0);
+  assert.equal(writes.length, 0);
+});
+
+test('permission exceptions preview shows one modal at a time and preserves draft on Back to edit', async () => {
+  await mount();
+  await open();
+  await click('Permission exceptions');
+  await settle();
+  await settle();
+  assert.equal(document.querySelectorAll('dialog').length, 1);
+  await fill('Business reason (Mandatory for audit compliance)', 'Temporary audit verification');
+  await fill('Expiry date (your local time)', '2099-12-31');
+  await click('Review exception');
+  await settle();
+  assert.equal(document.querySelectorAll('dialog').length, 1);
+  assert.match(document.querySelector('dialog')?.textContent ?? '', /Review person change/);
+  await click('Back to edit');
+  await settle();
+  assert.equal(document.querySelectorAll('dialog').length, 1);
+  assert.equal(
+    document.querySelector<HTMLInputElement>('input[placeholder*="Special audit requirement"]')
+      ?.value,
+    'Temporary audit verification',
+  );
+  assert.equal(document.querySelector<HTMLInputElement>('input[type="date"]')?.value, '2099-12-31');
+});
+
+test('employee ID corrections and deactivation are shown in preview and cancel without saving', async () => {
+  await mount();
+  await open();
+  await fill('Employee ID', '710992');
+  await act(async () =>
+    document.querySelector<HTMLInputElement>('.people-checkbox input')!.click(),
+  );
+  await click('Review profile changes');
+  assert.equal(previews[0].body.employeeCode, '710992');
+  assert.equal(previews[0].body.active, false);
+  assert.deepEqual(previews[0].body.roleIds, [oldRole]);
+  assert.deepEqual(previews[0].body.overrides, current.person.overrides);
+  assert.match(document.querySelector('.form-dialog')!.textContent!, /710902.*710992/);
+  assert.match(document.querySelector('.form-dialog')!.textContent!, /Status.*Active.*Inactive/);
+  await click('Back to edit');
+  assert.equal(writes.length, 0);
+  assert.equal(changed, 0);
+});
+
+test('inactive employees cannot receive built-in templates through the People & Access shortcuts', async () => {
+  current.person.active = false;
+  await mount({ canManageScoped: true });
+  await open();
+  await click('Templates');
+  for (const label of ['Assign Business Analytics', 'Assign Admin']) {
+    const button = [...document.querySelectorAll('button')].find(
+      b => b.textContent?.trim() === label,
+    );
+    assert.equal(button?.disabled, true);
+  }
+  assert.equal(previews.length, 0);
+  assert.equal(writes.length, 0);
+});
+
+test('effective access rejects another person’s response and retries the selected identity', async () => {
+  let calls = 0;
+  detailRead = url => {
+    if (!url.pathname.endsWith('/effective/' + id)) return;
+    calls++;
+    return calls === 1
+      ? Response.json({ actorId: other })
+      : Response.json(
+          { error: { message: 'Access explanations temporarily unavailable' } },
+          { status: 503 },
+        );
+  };
+  await mount();
+  await open();
+  assert.equal(calls, 0);
+  await click('Effective access');
+  assert.match(document.querySelector('[role="alert"]')!.textContent!, /Access identity mismatch/);
+  await click('Retry', document.querySelector('[role="alert"]')!);
+  assert.equal(calls, 2);
+  assert.match(document.querySelector('[role="alert"]')!.textContent!, /temporarily unavailable/);
+  assert.equal(writes.length, 0);
+});
+
+test('selecting the same person after a denied detail read retries without showing stale access', async () => {
+  denied = true;
+  await mount();
+  await open();
+  assert.match(document.querySelector('[role="alert"]')!.textContent!, /Access no longer assigned/);
+  const path = '/api/dev-access/people/' + id;
+  assert.equal(requests.filter(request => request === path).length, 1);
+  assert.equal(document.querySelector('.people-person-form'), null);
+  denied = false;
+  await click('Aditi Menon');
+  assert.equal(requests.filter(request => request === path).length, 2);
+  assert.ok(document.querySelector('.people-person-form'));
+});
+
+test('a profile preview without a receipt cannot enable saving or discard the draft', async () => {
+  detailRead = url =>
+    url.pathname.endsWith('/preview')
+      ? Response.json({ receipt: '', warnings: ['Incomplete preview'] })
+      : undefined;
+  await mount();
+  await open();
+  await fill('Full name', 'Aditi R. Menon');
+  await click('Review profile changes');
+  assert.match(
+    document.querySelector('[role="alert"]')!.textContent!,
+    /preview could not be confirmed/,
+  );
+  assert.equal(document.querySelector('dialog'), null);
+  assert.equal(
+    document.querySelector<HTMLInputElement>('.people-person-form input')!.value,
+    'Aditi R. Menon',
+  );
+  assert.equal(writes.length, 0);
+});
+
+test('an unconfirmed write invalidates its receipt and reloads the selected person without resending', async () => {
+  const submitted: unknown[] = [];
+  detailRead = (url, options) => {
+    if (url.pathname !== '/api/dev-access' || options?.method !== 'POST') return;
+    submitted.push(JSON.parse(String(options.body)));
+    return Response.json({ saved: false });
+  };
+  await mount();
+  await open();
+  await fill('Full name', 'Aditi R. Menon');
+  await click('Review profile changes');
+  await click('Confirm & save');
+  assert.deepEqual(submitted, [{ ...previews[0].body, previewReceipt: 'reviewed-person' }]);
+  assert.equal(changed, 0);
+  assert.equal(document.querySelector('dialog'), null);
+  assert.match(document.querySelector('[role="alert"]')!.textContent!, /Save was not confirmed/);
+  await click('Reload person');
+  assert.equal(
+    document.querySelector<HTMLInputElement>('.people-person-form input')!.value,
+    'Aditi Menon',
+  );
+  assert.equal(submitted.length, 1);
+});
+
+test('person history stays scoped to the selected identity and can recover from revocation', async () => {
+  let revoked = true;
+  let audits = 0;
+  detailRead = url => {
+    if (!url.pathname.endsWith('/audit')) return;
+    audits++;
+    assert.equal(url.searchParams.get('personId'), id);
+    assert.equal(url.searchParams.get('details'), 'true');
+    return revoked
+      ? Response.json({}, { status: 403 })
+      : Response.json({
+          items: [
+            {
+              revision: 7,
+              action: 'person.updated',
+              at: '2026-11-08T09:00:00Z',
+              actorId: manager,
+              actorName: 'Neha Rao',
+              targetId: id,
+              targetName: 'Aditi Menon',
+              before: { grade: 'G2' },
+              after: { grade: 'G3' },
+            },
+          ],
+          nextCursor: null,
+          hasMore: false,
+        });
+  };
+  const waitForAudit = async () => {
+    await act(async () => new Promise(resolve => setTimeout(resolve, 15)));
+    await settle();
+  };
+  await mount({ canViewAudit: true });
+  await open();
+  assert.equal(audits, 0);
+  await click('History');
+  await waitForAudit();
+  assert.match(
+    document.querySelector('[role="alert"]')!.textContent!,
+    /Activity access is unavailable/,
+  );
+  assert.equal(document.querySelector('.audit-scroll'), null);
+  revoked = false;
+  await click('Retry activity');
+  await waitForAudit();
+  const history = document.querySelector('.audit-scroll')!;
+  assert.match(history.textContent!, /Neha Rao.*Aditi Menon/s);
+  assert.match(history.querySelector('pre')!.textContent!, /"before".*G2.*"after".*G3/s);
+  assert.equal(audits, 2);
   assert.equal(writes.length, 0);
 });

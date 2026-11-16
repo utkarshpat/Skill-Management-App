@@ -1,3 +1,4 @@
+import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import { readActorAccess } from '../access/index.js';
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
@@ -32,7 +33,7 @@ export function registerRoutes(
       let identity: Identity;
       try {
         if (!dependencies?.resolveAccess) throw new Error();
-        identity = await dependencies.verify(req.headers.authorization);
+        identity = await verifyRequestIdentity(req, dependencies.verify);
       } catch {
         res.status(401).json({
           error: {

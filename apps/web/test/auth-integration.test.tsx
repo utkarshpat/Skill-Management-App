@@ -124,7 +124,8 @@ async function fixture() {
   let transport: typeof fetch = async input => {
     if (String(input) === '/api/dev-login')
       return demo ? demoResponse() : new Response('', { status: 404 });
-    if (String(input) === '/api/auth/config') return Response.json(config);
+    if (String(input) === '/api/auth/config')
+      return Response.json(demo ? { enabled: false } : config);
     return Response.json({ ok: true });
   };
   mock.method(globalThis, 'fetch', (input: string | URL | Request, init?: RequestInit) =>
@@ -160,17 +161,17 @@ after(async () => {
   await closeBrowser();
 });
 
-test('SSO initialization coalesces discovery/configuration and attaches the SDK token while preserving headers', async () => {
+test('SSO initializes without demo discovery and coalesces concurrent configuration reads', async () => {
   const f = await fixture();
   const requests: { path: string; init?: RequestInit }[] = [];
   f.transport(async (input, init) => {
     const path = String(input);
     requests.push({ path, init });
-    if (path === '/api/dev-login') return new Response('', { status: 404 });
+    assert.notEqual(path, '/api/dev-login');
     return Response.json(path === '/api/auth/config' ? config : { ok: true });
   });
   await Promise.all([f.auth.initializeAuth(), f.auth.initializeAuth()]);
-  assert.equal(requests.filter(r => r.path === '/api/dev-login').length, 1);
+  assert.equal(f.auth.developmentLoginState.status, 'disabled');
   assert.equal(requests.filter(r => r.path === '/api/auth/config').length, 1);
   assert.equal(f.calls.initialize, 1);
   assert.equal(f.options()?.auth.clientId, config.webClientId);
@@ -258,7 +259,7 @@ test('disabled SSO never invents a token or a signed-in account', async () => {
 
 test('login uses explicit account selection; logout uses the active account and clears pending drafts', async () => {
   const f = await fixture();
-  await f.auth.signIn();
+  await f.auth.signIn({ chooseAccount: true });
   assert.deepEqual(f.calls.login, [
     { scopes: [`api://${config.apiClientId}/access_as_user`], prompt: 'select_account' },
   ]);
@@ -536,4 +537,124 @@ test('concurrent reads share transport but writes remain independent and error r
     assert.equal(response.status, 409);
     assert.equal((await response.json()).error.message, 'Conflict');
   }
+});
+
+test('a valid company cookie restores workspace access without loading MSAL or sending a bearer', async () => {
+  const f = await fixture();
+  const requests: string[] = [];
+  f.transport(async (input, init) => {
+    const path = String(input);
+    requests.push(path);
+    assert.equal(new Headers(init?.headers).has('Authorization'), false);
+    if (path === '/api/auth/config')
+      return Response.json({ ...config, cookieSession: true, sessionActive: true });
+    return Response.json({ ok: true });
+  });
+  await f.auth.initializeAuth();
+  assert.equal(f.auth.signedIn(), true);
+  const result = await f.auth.authenticatedFetch('/api/workspace', {
+    headers: { Authorization: 'discard' },
+  });
+  assert.deepEqual(await result.json(), { ok: true });
+  assert.deepEqual(requests, ['/api/auth/config', '/api/workspace']);
+  assert.equal(f.calls.initialize, 0);
+});
+
+test('concurrent company initialization exchanges one bearer and expiry never retries a write', async () => {
+  const f = await fixture();
+  let exchanges = 0;
+  let writes = 0;
+  f.transport(async (input, init) => {
+    const path = String(input);
+    if (path === '/api/auth/config')
+      return Response.json({ ...config, cookieSession: true, sessionActive: false });
+    if (path === '/api/auth/session') {
+      exchanges++;
+      assert.equal(init?.method, 'POST');
+      assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer test-access-token');
+      return new Response(null, { status: 204 });
+    }
+    assert.equal(path, '/api/workflows');
+    assert.equal(new Headers(init?.headers).has('Authorization'), false);
+    writes++;
+    return new Response(null, { status: 401 });
+  });
+  await Promise.all([f.auth.initializeAuth(), f.auth.initializeAuth()]);
+  assert.equal(exchanges, 1);
+  assert.equal((await f.auth.authenticatedFetch('/api/workflows', { method: 'POST' })).status, 401);
+  assert.equal(f.auth.signedIn(), false);
+  assert.equal(writes, 1);
+  await assert.rejects(
+    f.auth.authenticatedFetch('/api/workflows', { method: 'POST' }),
+    /sign in again/,
+  );
+  assert.equal(writes, 1);
+});
+
+test('backend-managed sign-in redirects to the server without initializing MSAL', async () => {
+  const f = await fixture();
+  const paths: string[] = [];
+  f.transport(async input => {
+    assert.equal(String(input), '/api/auth/config');
+    return Response.json({
+      ...config,
+      cookieSession: true,
+      backendSignIn: true,
+      sessionActive: false,
+    });
+  });
+  mock.method(window.location, 'assign', (path: string) => paths.push(path));
+  await f.auth.initializeAuth();
+  assert.equal(f.auth.signedIn(), false);
+  await f.auth.signIn();
+  assert.deepEqual(paths, ['/api/auth/login?mode=default&returnTo=%2F']);
+  await f.auth.signIn({ chooseAccount: true });
+  assert.equal(paths[1], '/api/auth/login?mode=choose&returnTo=%2F');
+  const replacements: string[] = [];
+  mock.method(window.location, 'replace', (path: string) => replacements.push(path));
+  try {
+    for (const result of ['failed', 'company-required', 'signed-out']) {
+      window.history.replaceState(null, '', '/?signin=' + result);
+      await f.auth.initializeAuth({ automatic: true });
+      assert.deepEqual(replacements, []);
+    }
+    window.history.replaceState(null, '', '/');
+    await Promise.all([
+      f.auth.initializeAuth({ automatic: true }),
+      f.auth.initializeAuth({ automatic: true }),
+    ]);
+    assert.deepEqual(replacements, ['/api/auth/login?mode=silent&returnTo=%2F']);
+  } finally {
+    window.history.replaceState(null, '', '/');
+  }
+  assert.equal(f.calls.initialize, 0);
+});
+
+test('backend logout revokes the cookie and uses the registered Web return without loading MSAL', async () => {
+  const f = await fixture();
+  const paths: string[] = [];
+  f.transport(async (input, init) => {
+    if (String(input) === '/api/auth/config')
+      return Response.json({
+        ...config,
+        cookieSession: true,
+        backendSignIn: true,
+        sessionActive: true,
+      });
+    assert.equal(String(input), '/api/auth/session');
+    assert.equal(init?.method, 'DELETE');
+    assert.deepEqual(paths, []);
+    return Response.json({ logoutHint: 'opaque-account-hint' });
+  });
+  mock.method(window.location, 'assign', (path: string) => paths.push(path));
+  await f.auth.signOut();
+  assert.equal(f.auth.signedIn(), false);
+  assert.equal(f.calls.initialize, 0);
+  const logout = new URL(paths[0]);
+  assert.equal(logout.origin, 'https://login.microsoftonline.com');
+  assert.equal(logout.searchParams.get('logout_hint'), 'opaque-account-hint');
+  assert.equal(
+    logout.searchParams.get('post_logout_redirect_uri'),
+    'http://localhost:3000/api/auth/signed-out',
+  );
 });

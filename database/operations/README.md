@@ -29,6 +29,8 @@ Final integration adds **090_workflow_topic_recipients.sql** after 089 Portfolio
 
 **091_search_people_administration.sql** supports the People & Access search and selected-person views. If 090 is already recorded and the hierarchy rollout is complete, run the standalone ledger-aware 091 wrapper, then deploy the matching application ZIP. Verify a blank People & Access page, employee ID search, selected profile and a template preview. The migration changes stored procedures and their execution permissions.
 
+**092_organization_manager_only_save.sql** updates the save procedure so a manager-only change can preserve historical placement and a no-op assignment is rejected. If version 091 is already recorded, run the ledger-aware `05_092_organization_manager_only_save.sql` wrapper or the normal migration runner before deploying the matching application. Verify the saved manager, preserved placement and audit entry.
+
 Subsequent user-approved increment: [089 Portfolio Business scopes and hierarchy filters](../../docs/PORTFOLIO_SCOPES_2026-11-05.md) requires successful 088 mapping first. Install 089 in the same approved maintenance rollout before releasing its matching API/web build. It adds explicit Business Analytics scopes, not inherited title/review authority or generic role scope support. The structural-only limitation in the historical 088 steps below describes 088 alone.
 
 This is a pending maintenance operation, not a completed migration/backfill. Obtain a recoverable backup and reviewed workspace, current authorized app-admin actor, Delivery Unit/client UUIDs and Portfolio/Division UUID/name mapping. Do not copy employee rosters into source or invent manager links. Every existing client, including archived records, must appear exactly once. Reuse an exact existing portfolio or approve a new UUID; the template permits a legacy direct-DU parent or the already-approved target portfolio, not unrelated reorganization.
@@ -41,3 +43,28 @@ This is a pending maintenance operation, not a completed migration/backfill. Obt
 6. Release the matching web/API build only after SQL acceptance and approved mapping succeed; then restore traffic and verify current direct-manager review. The title guide does not establish actual manager-person assignments or new Portfolio scopes.
 
 Do not delete unsupported historical grants or disable constraints to make mapping succeed. A pre-existing inconsistent archived branch/assignment can block canonical validation; review and repair it explicitly, then obtain a fresh preview instead of forcing the batch. If installation/backfill/acceptance fails, keep traffic stopped and use the reviewed recovery procedure/backup; an older application build is not a safe rollback for an incompletely mapped 088 schema.
+
+### Org roster identity linking
+
+Run the identity linking job with a trusted normalized JSON roster containing an array of
+employees with string `employeeCode` and `workEmail` fields. Work email must be the Microsoft UPN.
+The roster must refer to existing profiles in the selected workspace. The job updates identity
+bindings while preserving profile status and access assignments.
+
+Configure `ACCESS_ACCOUNT_ID`, `ENTRA_TENANT_ID`, `AZURE_SQL_SERVER` and `AZURE_SQL_DATABASE`.
+Use dedicated Graph application credentials in `ORG_GRAPH_CLIENT_ID` and
+`ORG_GRAPH_CLIENT_SECRET` with tenant-approved application `User.Read.All`. These credentials
+are only for this separate DBA roster-linking utility; they are not used by interactive OIDC
+sign-in, which does not call Graph or require Graph `User.Read`. Keep the Graph secret
+in operator secret storage. Use an authorized SQL operator identity with access to the existing
+`dbo.OperationsIdentityBindingAudit` table. Run from the repository root.
+
+```text
+npm run access:link-roster -w apps/api -- <absolute-roster.json>
+npm run access:link-roster -w apps/api -- <absolute-roster.json> --apply <reviewed-receipt>
+```
+
+The apply run repeats the Graph lookup and checks the receipt against current SQL state before
+writing. Missing users, disabled directory accounts, duplicate mappings and conflicting bindings
+stop the batch. Keep the roster and preview output private. Connect the normalized roster input to
+the company API once its contract and credentials are available.

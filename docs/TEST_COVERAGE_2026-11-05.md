@@ -1,6 +1,6 @@
 # Coverage and release verification — 5 November 2026
 
-Latest user decision: coverage expansion to 90% is deferred until after the audited main integration. See [the final integration audit](FINAL_MERGE_AUDIT_2026-11-05.md). CI still runs and reports the 90% check, with `continue-on-error` for this explicitly deferred target. The measurements below predate the final UI/workflow merge and must not be presented as fresh coverage of that merge. Final release manifests record functional test/build results separately.
+Coverage work resumed after deployment. See [the 8 November checkpoint](TEST_COVERAGE_2026-11-08.md) for fresh measurements and remaining gaps. The earlier user decision deferred expansion until after the audited main integration; that deferral is historical. CI still reports the 90% check with the existing `continue-on-error` setting. The measurements below predate the final UI/workflow merge and must not be presented as fresh coverage of that merge. Final release manifests record functional test/build results separately.
 
 ## Earlier local coverage follow-up
 

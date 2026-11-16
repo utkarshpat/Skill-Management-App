@@ -12,6 +12,7 @@
     "db:check": "node --env-file-if-exists=.env --import tsx src/database-cli.ts check",
     "db:migrate": "node --env-file-if-exists=.env --import tsx src/database-cli.ts migrate",
     "access:presets": "node --env-file-if-exists=.env --import tsx src/role-presets-cli.ts",
+    "access:link-roster": "node --env-file-if-exists=.env --import tsx src/employee-identity-link-cli.ts",
     "access:import": "node --env-file-if-exists=.env --import tsx src/access-import-cli.ts",
     "test:organization": "node --env-file-if-exists=.env --import tsx test/organization.integration.ts",
     "test:catalogue": "node --env-file-if-exists=.env --import tsx test/skill-catalogue.integration.ts",

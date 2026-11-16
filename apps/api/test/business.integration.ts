@@ -25,6 +25,7 @@ const migrations = await Promise.all(
     '069_business_record_attribution.sql',
     '070_business_submitted_files.sql',
     '088_organization_portfolio.sql',
+    '092_organization_manager_only_save.sql',
   ].map(file => readFile(new URL('../../../database/migrations/' + file, import.meta.url), 'utf8')),
 );
 await withDatabase(async pool => {

@@ -122,8 +122,10 @@ export function RequestList({
     else setStatus(value);
   }
   function view(value: boolean) {
-    setInbox(value);
-    setList(undefined);
+    if (value !== inbox) {
+      setInbox(value);
+      setList(undefined);
+    }
     clear();
   }
   const s = list?.summary,

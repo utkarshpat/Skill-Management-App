@@ -38,6 +38,7 @@ function fixture() {
   const reads = new Map<string, ReturnType<typeof deferred<Response>>>();
   globalThis.fetch = async input => {
     const path = new URL(String(input), 'http://localhost').pathname;
+    if (path === '/api/auth/config') return Response.json({ enabled: false });
     if (path === '/api/dev-login')
       return Response.json({ mode: 'local-demo', signedIn: true, people: [] });
     assert.ok(

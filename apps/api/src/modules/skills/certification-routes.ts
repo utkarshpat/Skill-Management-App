@@ -1,3 +1,4 @@
+import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import { raw, type Express } from 'express';
 import { uploadChunk } from './upload-chunks.js';
 import { streamPrivateFile } from '../../shared/private-file-response.js';
@@ -74,7 +75,7 @@ export function registerCertificationRoutes(
         if (!deps?.resolveAccess) throw new AccessError(401, 'Sign in to continue.');
         let identity: Identity;
         try {
-          identity = await deps.verify(req.headers.authorization);
+          identity = await verifyRequestIdentity(req, deps.verify);
         } catch {
           throw new AccessError(401, 'Sign in to continue.');
         }

@@ -47,6 +47,8 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
       reviewSkills: ownProfile && canReviewAssigned(state, person),
       catalogue,
       administration,
+      manageUsers: can(state, person, 'users.manage'),
+      viewAudit: can(state, person, 'audit.view'),
       manageCatalogue: can(state, person, 'skill.catalogue.manage'),
     },
     upcoming: [

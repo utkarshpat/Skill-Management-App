@@ -124,6 +124,7 @@ if (command !== 'check' && command !== 'migrate') {
           [89, '089_portfolio_business_scopes.sql'],
           [90, '090_workflow_topic_recipients.sql'],
           [91, '091_search_people_administration.sql'],
+          [92, '092_organization_manager_only_save.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

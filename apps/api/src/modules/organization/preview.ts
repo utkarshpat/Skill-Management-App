@@ -20,12 +20,28 @@ export function previewOrganization(state: OrganizationState, actorId: string, i
   if (change.kind === 'assignment') {
     if (!state.people.some(p => p.id === change.targetId && p.active))
       throw new AccessError(400, 'Choose an active person.');
-    before = state.assignments.find(edge => edge.personId === change.targetId) ?? null;
+    const existing = state.assignments.find(edge => edge.personId === change.targetId) ?? null;
+    before = existing;
     const edge = { personId: change.targetId, ...change.payload };
+    if (
+      edge.teamId === (existing?.teamId ?? null) &&
+      edge.departmentId === (existing?.departmentId ?? null) &&
+      edge.managerId === (existing?.managerId ?? null)
+    )
+      throw new AccessError(
+        400,
+        'Change the organization placement or reporting manager before previewing.',
+      );
     if (edge.managerId && !state.people.some(p => p.id === edge.managerId && p.active))
       throw new AccessError(400, 'Choose an active manager.');
+    const preservedPlacement =
+      Boolean(existing) &&
+      !(existing?.teamId && existing?.departmentId) &&
+      edge.teamId === (existing?.teamId ?? null) &&
+      edge.departmentId === (existing?.departmentId ?? null);
     const nodeId = edge.teamId ?? edge.departmentId;
     if (
+      !preservedPlacement &&
       nodeId &&
       !state.nodes.some(
         node =>
@@ -33,7 +49,7 @@ export function previewOrganization(state: OrganizationState, actorId: string, i
       )
     )
       throw new AccessError(400, 'Choose an active matching organization node.');
-    if (nodeId && !organizationPath(state, nodeId))
+    if (!preservedPlacement && nodeId && !organizationPath(state, nodeId))
       throw new AccessError(
         400,
         'Placement needs an active Delivery Unit, Portfolio/Division and account/client path.',

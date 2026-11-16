@@ -1,8 +1,7 @@
 import { AccessAudit } from './AccessAudit';
 import { organizationKindLabel } from './organization-labels';
 import type { Decision } from './EffectiveAccess';
-import { EmploymentFields, EmploymentChange, type Employment } from './EmploymentDetails';
-import { PrimaryCapabilityFields } from './PrimaryCapabilityFields';
+import type { Employment } from './EmploymentDetails';
 import { SidebarNavigation } from './SidebarNavigation';
 import { AccessDirectory } from './AccessDirectory';
 import { Workspace, type WorkspaceState } from './Workspace';
@@ -14,7 +13,7 @@ import { Sidebar } from './Sidebar';
 import { NavbarAccount } from './NavbarAccount';
 import { RoleAssignments } from './RoleAssignments';
 import { PermissionEditor } from './PermissionEditor';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useSearchParams, useNavigate } from 'react-router';
 import { authenticatedFetch, isDemoSession } from './auth';
 import './access-navigation.css';
@@ -103,19 +102,6 @@ interface State {
   }[];
 }
 const emptyRole = (): Role => ({ id: '', name: '', permissions: [] });
-const emptyPerson = (): Person => ({
-  id: '',
-  displayName: '',
-  employeeCode: '',
-  jobTitle: null,
-  grade: null,
-  primaryCapabilityId: null,
-  primaryCapabilityName: null,
-  primaryCapabilityStatus: null,
-  active: true,
-  roleIds: [],
-  overrides: [],
-});
 type View =
   | 'overview'
   | 'roles'
@@ -169,17 +155,18 @@ export function AccessAdmin({
   const [params, setParams] = useSearchParams();
   const tab = currentView(params);
   const compactPeople = !personalTitle && tab === 'people';
+  const summaryRead = !personalTitle && (tab === 'people' || tab === 'profiles');
   const linkedPerson = params.get('person');
   const initialPersonId =
     linkedPerson && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(linkedPerson)
       ? linkedPerson.toLowerCase()
       : undefined;
   const [state, setState] = useState<State>();
+  const [summaryState, setSummaryState] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [role, setRole] = useState<Role>(emptyRole);
-  const [person, setPerson] = useState<Person>(emptyPerson);
-  const [editor, setEditor] = useState<'role' | 'person'>(),
+  const [editor, setEditor] = useState<'role'>(),
     [editorPage, setEditorPage] = useState(0),
     [editorRevision, setEditorRevision] = useState(0);
   const [search, setSearch] = useState('');
@@ -196,7 +183,7 @@ export function AccessAdmin({
   const [assignmentDraft, setAssignmentDraft] = useState<Record<string, string[]>>({});
   const [department, setDepartment] = useState('');
   useEffect(() => {
-    if (personalTitle || compactPeople || !state?.canManageUsers || isDemoSession()) {
+    if (personalTitle || summaryRead || !state?.canManageUsers || isDemoSession()) {
       setOrganization(undefined);
       setOrganizationError('');
       setOrganizationLoading(false);
@@ -223,7 +210,7 @@ export function AccessAdmin({
         if (!controller.signal.aborted) setOrganizationLoading(false);
       });
     return () => controller.abort();
-  }, [personalTitle, compactPeople, state?.revision, state?.canManageUsers, organizationAttempt]);
+  }, [personalTitle, summaryRead, state?.revision, state?.canManageUsers, organizationAttempt]);
   const [bulkReview, setBulkReview] = useState(false);
   const [review, setReview] = useState<{
     body: Record<string, unknown>;
@@ -253,41 +240,48 @@ export function AccessAdmin({
     window.scrollTo({ top: 0 });
   }, [tab, personalPath]);
   const endpoint = isDemoSession() ? '/api/dev-access' : '/api/access';
-  function createRecord(kind: 'person' | 'role') {
-    setTab(kind === 'person' ? 'people' : 'roles');
+  const accessReadUrl = endpoint + (summaryRead ? '?summary=1' : '');
+  const accessRead = useRef<{ url: string; signal: AbortSignal }>(undefined);
+  function createTemplate() {
+    setTab('roles');
     setSearch('');
     setNotice('');
     setError('');
-    setEditor(kind);
+    setEditor('role');
     setEditorPage(0);
     setEditorRevision(state?.revision ?? 0);
-    if (kind === 'person') setPerson(emptyPerson());
-    else setRole(emptyRole());
+    setRole(emptyRole());
     requestAnimationFrame(() =>
-      document.querySelector<HTMLInputElement>(`#${kind}-editor input`)?.focus(),
+      document.querySelector<HTMLInputElement>('#role-editor input')?.focus(),
     );
   }
   async function load() {
-    const response = await authenticatedFetch(endpoint + (compactPeople ? '?summary=1' : ''));
-    if (!response.ok)
-      throw new Error(
-        response.status === 403
-          ? 'Your ID does not have permission to administer access.'
-          : response.status === 401
-            ? 'Sign in with an assigned administrator ID.'
-            : 'Local access administration is unavailable.',
-      );
-    const data: State = await response.json();
-    setState(data);
-    window.dispatchEvent(new Event('workspace-access-updated'));
-    return data;
+    const current = accessRead.current;
+    if (!current || current.url !== accessReadUrl || current.signal.aborted) return;
+    try {
+      const response = await authenticatedFetch(current.url, { signal: current.signal });
+      if (!response.ok)
+        throw new Error(
+          response.status === 403
+            ? 'Your ID does not have permission to administer access.'
+            : response.status === 401
+              ? 'Sign in with an assigned administrator ID.'
+              : 'Local access administration is unavailable.',
+        );
+      const data: State = await response.json();
+      if (current.signal.aborted) return;
+      setSummaryState(summaryRead);
+      setState(data);
+      window.dispatchEvent(new Event('workspace-access-updated'));
+    } catch (error) {
+      if (!current.signal.aborted) throw error;
+    }
   }
   useEffect(() => {
-    let active = true;
+    if (personalTitle) return;
     const controller = new AbortController();
-    authenticatedFetch(endpoint + (compactPeople ? '?summary=1' : ''), {
-      signal: controller.signal,
-    })
+    accessRead.current = { url: accessReadUrl, signal: controller.signal };
+    authenticatedFetch(accessReadUrl, { signal: controller.signal })
       .then(async response => {
         if (!response.ok)
           throw new Error(
@@ -296,24 +290,26 @@ export function AccessAdmin({
               : 'Sign in with your assigned Microsoft administrator account.',
           );
         const data: State = await response.json();
-        if (active) setState(data);
+        if (!controller.signal.aborted) {
+          setSummaryState(summaryRead);
+          setState(data);
+        }
       })
       .catch(err => {
-        if (active) setError(err.message);
+        if (!controller.signal.aborted) setError(err.message);
       });
     return () => {
-      active = false;
       controller.abort();
+      accessRead.current = undefined;
     };
-  }, [endpoint, compactPeople]);
-  async function save(kind: 'role' | 'person') {
+  }, [accessReadUrl, summaryRead, Boolean(personalTitle)]);
+  async function saveTemplate() {
     if (!state) return;
     setBusy(true);
     setError('');
     setNotice('');
     try {
-      const value = kind === 'role' ? role : person;
-      const body = { ...value, id: value.id || undefined, kind, revision: editorRevision };
+      const body = { ...role, id: role.id || undefined, kind: 'role', revision: editorRevision };
       const response = await authenticatedFetch(endpoint + '/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -415,8 +411,18 @@ export function AccessAdmin({
       setBusy(false);
     }
   }
-  const name = state?.currentPerson?.displayName ?? 'Workspace administrator';
-  const greetingName = state?.currentPerson ? name.trim().split(/\s+/)[0] || 'there' : 'there';
+  const currentPerson = state?.currentPerson ?? workspaceContext?.person;
+  const name = currentPerson?.displayName ?? 'Workspace administrator';
+  const greetingName = currentPerson ? name.trim().split(/\s+/)[0] || 'there' : 'there';
+  const readyState = !personalTitle && state && (summaryRead || !summaryState) ? state : undefined;
+  const adminNavigationState = personalTitle ? undefined : state;
+  const canManageUsers =
+    adminNavigationState?.canManageUsers ?? personalCapabilities?.manageUsers ?? false;
+  const canViewAudit =
+    adminNavigationState?.canViewAudit ?? personalCapabilities?.viewAudit ?? false;
+  const canViewSkills =
+    adminNavigationState?.canViewSkills ??
+    Boolean(personalCapabilities?.catalogue || personalCapabilities?.manageCatalogue);
   const sections = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'organization', label: 'Organization', icon: FolderTree },
@@ -441,15 +447,14 @@ export function AccessAdmin({
                 section.id === 'overview' ||
                 section.id === 'people' ||
                 (section.id === 'skills'
-                  ? state?.canViewSkills
+                  ? canViewSkills
                   : section.id === 'audit'
-                    ? state?.canViewAudit
-                    : state?.canManageUsers),
+                    ? canViewAudit
+                    : canManageUsers),
             )
             .map(({ id, label, icon }) => ({
               id: id === 'overview' ? 'dashboard' : id,
-              label:
-                id === 'people' && state && !state.canManageUsers ? 'Access management' : label,
+              label: id === 'people' && !canManageUsers ? 'Access management' : label,
               icon,
               active:
                 !personalTitle &&
@@ -461,7 +466,7 @@ export function AccessAdmin({
                   close();
                   return;
                 }
-                setTab(id === 'people' && !state?.canManageUsers ? 'roles' : id);
+                setTab(id === 'people' && !canManageUsers ? 'roles' : id);
                 setEditor(undefined);
                 setSearch('');
                 setNotice('');
@@ -516,44 +521,22 @@ export function AccessAdmin({
             </h1>
           </div>
           <div className="page-actions" role="group" aria-label="Page actions" ref={setPageActions}>
-            {state && !personalTitle && tab === 'overview' && (
+            {readyState && tab === 'overview' && (
               <>
-                {state.canManageUsers && (
-                  <button className="admin-primary" onClick={() => createRecord('person')}>
-                    <Plus size={17} />
-                    Add person
-                  </button>
-                )}
-                <button className="secondary-button" onClick={() => createRecord('role')}>
+                <button className="secondary-button" onClick={createTemplate}>
                   Create template
                 </button>
               </>
             )}
-            {state && !personalTitle && tab === 'people' && state.canManageUsers && (
+            {readyState && tab === 'roles' && (
               <>
-                <button
-                  className="secondary-button"
-                  disabled={busy}
-                  onClick={() => createRecord('person')}
-                >
-                  <Plus size={16} />
-                  New person
-                </button>
-              </>
-            )}
-            {state && !personalTitle && tab === 'roles' && (
-              <>
-                <button
-                  className="secondary-button"
-                  disabled={busy}
-                  onClick={() => createRecord('role')}
-                >
+                <button className="secondary-button" disabled={busy} onClick={createTemplate}>
                   <Plus size={16} />
                   New template
                 </button>
               </>
             )}
-            {state && !personalTitle && tab === 'audit' && (
+            {readyState && tab === 'audit' && (
               <label className="list-search">
                 <Search size={16} aria-hidden="true" />
                 <input
@@ -568,48 +551,48 @@ export function AccessAdmin({
           <NavbarAccount
             name={name}
             identity={
-              state?.authentication === 'microsoft' ? 'Microsoft account' : 'Development session'
+              (state?.authentication ?? workspaceContext?.authentication) === 'microsoft'
+                ? 'Microsoft account'
+                : 'Development session'
             }
             workspaceLink={{ href: '/workspace', label: 'Personal workspace' }}
           />
         </header>
         <main id="access-main" className="access-main">
-          {!personalTitle &&
-            !compactPeople &&
-            ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
-              <>
-                <nav className="access-section-tabs" aria-label="People and access sections">
-                  {[
-                    ...(state?.canManageUsers ? [['people', 'People']] : []),
-                    ...(workspaceContext?.capabilities.businessAdministration
-                      ? [['profiles', 'Projects & scoped access']]
-                      : []),
-                    ['roles', 'Templates'],
-                  ].map(([id, label]) => (
-                    <button
-                      type="button"
-                      key={id}
-                      aria-current={tab === id ? 'page' : undefined}
-                      onClick={() => {
-                        setTab(id as View);
-                        setEditor(undefined);
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </nav>
-                {tab === 'profiles' && workspaceContext?.capabilities.businessAdministration && (
-                  <Suspense fallback={<div role="status">Opening scoped access…</div>}>
-                    <BusinessAdministration
-                      onSaved={() => {
-                        void load().catch(err => setError(err.message));
-                      }}
-                    />
-                  </Suspense>
-                )}
-              </>
-            )}
+          {!personalTitle && ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
+            <>
+              <nav className="access-section-tabs" aria-label="People and access sections">
+                {[
+                  ...(state?.canManageUsers ? [['people', 'People']] : []),
+                  ...(workspaceContext?.capabilities.businessAdministration
+                    ? [['profiles', 'Projects & scoped access']]
+                    : []),
+                  ['roles', 'Templates'],
+                ].map(([id, label]) => (
+                  <button
+                    type="button"
+                    key={id}
+                    aria-current={tab === id ? 'page' : undefined}
+                    onClick={() => {
+                      setTab(id as View);
+                      setEditor(undefined);
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+              {tab === 'profiles' && workspaceContext?.capabilities.businessAdministration && (
+                <Suspense fallback={<div role="status">Opening scoped access…</div>}>
+                  <BusinessAdministration
+                    onSaved={() => {
+                      void load().catch(err => setError(err.message));
+                    }}
+                  />
+                </Suspense>
+              )}
+            </>
+          )}
           {error && (
             <div className="access-message" role="alert">
               {error}
@@ -641,20 +624,20 @@ export function AccessAdmin({
               {notice}
             </p>
           )}
-          {!state && !error && (
+          {personalTitle && (
+            <Workspace
+              embedded
+              actionsContainer={pageActions}
+              initialWorkspace={workspaceContext}
+            />
+          )}
+          {!personalTitle && !readyState && !error && (
             <div className="admin-loading" role="status">
               Loading your administration workspace…
             </div>
           )}
-          {state && (
+          {readyState && state && (
             <>
-              {personalTitle && (
-                <Workspace
-                  embedded
-                  actionsContainer={pageActions}
-                  initialWorkspace={workspaceContext}
-                />
-              )}
               {!personalTitle && tab === 'overview' && (
                 <>
                   <div className="admin-metrics">
@@ -738,6 +721,7 @@ export function AccessAdmin({
               {!personalTitle && tab === 'organization' && (
                 <Suspense fallback={<div role="status">Opening organization…</div>}>
                   <OrganizationSetup
+                    endpoint={endpoint + '/organization'}
                     actionsContainer={pageActions}
                     onChanged={() => {
                       load().catch(err => setError(err.message));
@@ -846,12 +830,6 @@ export function AccessAdmin({
               )}
               {compactPeople && (
                 <>
-                  <nav className="access-section-tabs" aria-label="Administration tools">
-                    <Link to="/access?view=roles">Manage template definitions</Link>
-                    {workspaceContext?.capabilities.businessAdministration && (
-                      <Link to="/access?view=profiles">Manage Business projects</Link>
-                    )}
-                  </nav>
                   {state.canManageUsers && (
                     <Suspense fallback={<p role="status">Opening people search…</p>}>
                       <PeopleAccessWorkspace
@@ -953,10 +931,7 @@ export function AccessAdmin({
                     The server will recheck current permissions and revision before saving this
                     change and its audit.
                   </p>
-                  <h3>{String(review.body.displayName ?? review.body.name)}</h3>
-                  {review.body.kind === 'person' && (
-                    <EmploymentChange before={review.before} after={review.after} />
-                  )}
+                  <h3>{String(review.body.name)}</h3>
                   <details>
                     <summary>Review exact assignments and details</summary>
                     <pre>{JSON.stringify(review.body, null, 2)}</pre>
@@ -991,13 +966,13 @@ export function AccessAdmin({
                   )}
                 </FormDialog>
               )}
-              {editor === 'role' && (
+              {editor === 'role' && !review && (
                 <FormDialog
                   title={role.id ? 'Edit access template' : 'Create access template'}
                   onClose={() => setEditor(undefined)}
                   busy={busy}
                   formId="role-editor"
-                  onSubmit={() => void save('role')}
+                  onSubmit={() => void saveTemplate()}
                   page={editorPage}
                   onPageChange={setEditorPage}
                   message={error && <p role="alert">{error}</p>}
@@ -1045,110 +1020,6 @@ export function AccessAdmin({
                           onChange={permissions => setRole({ ...role, permissions })}
                           catalogue={state.catalogue}
                         />
-                      ),
-                    },
-                  ]}
-                />
-              )}
-              {editor === 'person' && state.canManageUsers && (
-                <FormDialog
-                  title={person.id ? 'Edit person' : 'Create person'}
-                  onClose={() => setEditor(undefined)}
-                  busy={busy}
-                  formId="person-editor"
-                  onSubmit={() => void save('person')}
-                  page={editorPage}
-                  onPageChange={setEditorPage}
-                  message={error && <p role="alert">{error}</p>}
-                  footer={
-                    <>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        disabled={busy}
-                        onClick={() => setEditor(undefined)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="microsoft-button"
-                        form="person-editor"
-                        type="submit"
-                        disabled={busy}
-                      >
-                        {busy ? 'Checking…' : 'Preview change'}
-                      </button>
-                    </>
-                  }
-                  pages={[
-                    {
-                      label: 'Details',
-                      content: (
-                        <>
-                          <div className="dialog-field-grid">
-                            <label>
-                              Display name
-                              <input
-                                required
-                                maxLength={100}
-                                value={person.displayName}
-                                onChange={event =>
-                                  setPerson({ ...person, displayName: event.target.value })
-                                }
-                              />
-                            </label>
-                            <label>
-                              Person ID
-                              <input
-                                required
-                                maxLength={40}
-                                value={person.employeeCode}
-                                onChange={event =>
-                                  setPerson({ ...person, employeeCode: event.target.value })
-                                }
-                              />
-                            </label>
-                          </div>
-                          <EmploymentFields
-                            value={person}
-                            onChange={details => setPerson({ ...person, ...details })}
-                          />
-                          <PrimaryCapabilityFields
-                            key={person.id || 'new'}
-                            endpoint={endpoint}
-                            value={person}
-                            disabled={busy}
-                            onChange={details => setPerson({ ...person, ...details })}
-                          />
-                          <label className="access-check">
-                            <input
-                              type="checkbox"
-                              checked={person.active}
-                              onChange={event =>
-                                setPerson({ ...person, active: event.target.checked })
-                              }
-                            />
-                            Active account
-                          </label>
-                          <p>
-                            After saving, find this person to assign templates or update their
-                            organization.
-                          </p>
-                        </>
-                      ),
-                    },
-                    {
-                      label: 'Exceptions',
-                      content: (
-                        <>
-                          <PermissionEditor
-                            individual
-                            label="Individual permission overrides"
-                            value={person.overrides}
-                            onChange={overrides => setPerson({ ...person, overrides })}
-                            catalogue={state.catalogue}
-                          />
-                        </>
                       ),
                     },
                   ]}

@@ -1,5 +1,8 @@
+import { registerCompanyCallback } from './modules/identity/company-oidc.js';
+import { registerCompanySessions } from './modules/identity/company-session.js';
 import { registerBusinessRoutes, type BusinessDependencies } from './modules/business/index.js';
 import { startRequestTiming } from './shared/request-timing.js';
+import { errorType, logEvent } from './shared/logger.js';
 import { registerWebHosting } from './shared/web-hosting.js';
 import {
   registerCapabilityRoutes,
@@ -78,6 +81,8 @@ export function createApp(
     developmentStore?: AccessStore;
     hostedDemo?: HostedDemoConfig;
     identityConfig?: IdentityConfig;
+    companySessionOrigin?: string;
+    companyOidcSecret?: string;
     onRequestTiming?: (metric: {
       requestId: string;
       method: string;
@@ -117,31 +122,81 @@ export function createApp(
   app.use((req, res, next) => {
     res.locals.requestId = randomUUID();
     res.setHeader('X-Request-Id', res.locals.requestId);
-    if (!options.onRequestTiming) {
-      next();
-      return;
-    }
-    const timing = startRequestTiming();
+    const apiRequest = req.path === '/api' || req.path.startsWith('/api/');
+    const assetRequest =
+      !apiRequest &&
+      (req.path.startsWith('/assets/') || req.path.startsWith('/brand/') || /\.[a-z\d]{1,8}$/i.test(req.path));
+    const timingEnabled =
+      apiRequest &&
+      (options.onRequestTiming !== undefined || process.env.HTTP_TIMING_ENABLED !== 'false');
+    const timing = timingEnabled ? startRequestTiming(res.locals.requestId) : undefined;
     res.once('finish', () => {
+      // Successful hashed bundles/images are high-volume and have no API/DB timing value.
+      if (assetRequest && res.statusCode < 400) return;
+      const timingResult = timing?.result();
+      const fields = {
+        requestId: res.locals.requestId,
+        method: req.method,
+        route: apiRequest
+          ? typeof req.route?.path === 'string'
+            ? req.route.path
+            : 'api.unmatched'
+          : assetRequest
+            ? 'web.asset'
+            : 'web.document',
+        status: res.statusCode,
+        ...(timingResult ?? {}),
+      };
+      const level: 'error' | 'warn' | 'info' =
+        res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info';
+      const changesState = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+      const event = apiRequest && changesState ? 'app.action' : 'http.request';
+      logEvent(level, event, {
+        ...fields,
+        ...(event === 'app.action' && {
+          outcome:
+            res.statusCode < 400
+              ? 'success'
+              : res.statusCode === 401 || res.statusCode === 403
+                ? 'denied'
+                : res.statusCode >= 500
+                  ? 'failed'
+                  : 'rejected',
+        }),
+      });
       try {
-        options.onRequestTiming?.({
-          requestId: res.locals.requestId,
-          method: req.method,
-          route: req.route?.path ? String(req.route.path) : 'unmatched',
-          status: res.statusCode,
-          ...timing.result(),
-        });
+        if (timingResult) options.onRequestTiming?.({ ...fields, ...timingResult });
       } catch {
         /* Telemetry failures cannot change request behavior. */
       }
     });
-    timing.run(next);
+    if (timing) timing.run(next);
+    else next();
   });
   // Combined drafts carry bounded details for up to twenty items, including catalogue criteria.
   app.use('/api/capability-submissions', express.json({ limit: '1mb' }));
   app.use(express.json({ limit: '128kb' }));
-  // Public registration identifiers only. Keep browser/API settings aligned at runtime.
-  app.get('/api/auth/config', (_req, res) => {
+  const companySession =
+    dependencies && options.identityConfig && options.companySessionOrigin
+      ? registerCompanySessions(
+          app,
+          options.companySessionOrigin,
+          options.companyOidcSecret ? undefined : dependencies.verify,
+        )
+      : undefined;
+  const backendSignIn = Boolean(companySession && options.companyOidcSecret);
+  if (options.companyOidcSecret) {
+    if (!companySession || !options.identityConfig || !options.companySessionOrigin)
+      throw Error('Backend sign-in requires Entra and an HTTPS company session origin.');
+    registerCompanyCallback(
+      app,
+      options.companySessionOrigin,
+      options.identityConfig,
+      options.companyOidcSecret,
+      companySession.issue,
+    );
+  }
+  app.get('/api/auth/config', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const config = options.identityConfig;
     res.json(
@@ -151,10 +206,70 @@ export function createApp(
             tenantId: config.tenantId,
             apiClientId: config.apiClientId,
             webClientId: config.webClientId,
+            ...(companySession && {
+              cookieSession: true,
+              sessionActive: companySession.active(req),
+              backendSignIn,
+            }),
           }
         : { enabled: false },
     );
   });
+  if (options.webRoot && options.companySessionOrigin) {
+    let clientEventWindow = Date.now();
+    let clientEvents = 0;
+    app.post('/api/diagnostics/client', (req, res) => {
+      res.set('Cache-Control', 'no-store');
+      if (req.get('Origin') !== options.companySessionOrigin) {
+        res.sendStatus(403);
+        return;
+      }
+      const kind = req.body?.kind;
+      const action = req.body?.action;
+      const errorType = req.body?.errorType;
+      if (
+        kind === 'user.action'
+          ? typeof action !== 'string' ||
+            ![
+              'notifications.open',
+              'notifications.close',
+              'notifications.refresh',
+              'notifications.item_open',
+              'notifications.mark_read',
+              'notifications.mark_unread',
+              'notifications.mark_all_read',
+              'notifications.filter_changed',
+              'notifications.category_changed',
+            ].includes(action)
+          : !['window.error', 'unhandledrejection', 'react.error'].includes(kind) ||
+            typeof errorType !== 'string' ||
+            !/^[A-Za-z][A-Za-z0-9_]{0,49}$/.test(errorType)
+      ) {
+        res.sendStatus(400);
+        return;
+      }
+      const now = Date.now();
+      if (now - clientEventWindow >= 60_000) {
+        clientEventWindow = now;
+        clientEvents = 0;
+      }
+      if (clientEvents < 120) {
+        clientEvents++;
+        if (kind === 'user.action')
+          logEvent('info', 'client.user_action', {
+            requestId: res.locals.requestId,
+            action,
+          });
+        else
+          logEvent('error', 'client.runtime_error', {
+            requestId: res.locals.requestId,
+            clientEvent: kind,
+            errorType,
+          });
+      }
+      res.sendStatus(204);
+    });
+  }
   identityRoutes(
     app,
     dependencies
@@ -180,7 +295,7 @@ export function createApp(
   );
   // Access middleware authenticates /api/access before organization routes run.
   accessRoutes(app, dependencies, store, demo);
-  organizationRoutes(app, dependencies);
+  organizationRoutes(app, dependencies, demo);
   skillsRoutes(app, dependencies, store, demo);
   registerClaimsRoutes(
     app,
@@ -232,10 +347,18 @@ export function createApp(
   });
   const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
     if (res.headersSent) {
+      logEvent('error', 'http.error_after_headers', {
+        requestId: res.locals.requestId,
+        errorType: errorType(error),
+      });
       next(error);
       return;
     }
     if (error instanceof DatabaseQuotaUnavailable) {
+      logEvent('warn', 'database.quota_unavailable', {
+        requestId: res.locals.requestId,
+        retryAfter: error.retryAfter,
+      });
       res.setHeader('Retry-After', error.retryAfter);
       res.status(503).json({
         error: {
@@ -248,6 +371,11 @@ export function createApp(
     }
     const malformed = error instanceof SyntaxError && 'body' in error;
     const tooLarge = error?.type === 'entity.too.large';
+    if (!malformed && !tooLarge)
+      logEvent('error', 'http.unhandled_error', {
+        requestId: res.locals.requestId,
+        errorType: errorType(error),
+      });
     res.status(malformed ? 400 : tooLarge ? 413 : 500).json({
       error: {
         code: malformed || tooLarge ? 'VALIDATION' : 'INTERNAL_ERROR',

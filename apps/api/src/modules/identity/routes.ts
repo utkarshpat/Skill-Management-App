@@ -1,3 +1,4 @@
+import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import { loadNotificationFeed } from './notification-feed.js';
 import { AccessError } from '../../shared/errors.js';
 import type { Express } from 'express';
@@ -48,19 +49,17 @@ export function registerRoutes(
     res.setHeader('Cache-Control', 'no-store');
     try {
       if (!dependencies) throw new Error('Identity unavailable');
-      const identity = await dependencies.verify(req.headers.authorization);
+      const identity = await verifyRequestIdentity(req, dependencies.verify);
       res.json({ tenantId: identity.tenantId, objectId: identity.objectId });
     } catch {
       res.setHeader('WWW-Authenticate', 'Bearer');
-      res
-        .status(401)
-        .json({
-          error: {
-            code: 'NOT_AUTHORIZED',
-            message: 'Sign in with your company account.',
-            requestId: res.locals.requestId,
-          },
-        });
+      res.status(401).json({
+        error: {
+          code: 'NOT_AUTHORIZED',
+          message: 'Sign in with your company account.',
+          requestId: res.locals.requestId,
+        },
+      });
     }
   });
   app.use('/api/dev-login', (req, res, next) => {
@@ -161,7 +160,7 @@ export function registerRoutes(
       let identity: Identity;
       try {
         if (!dependencies?.resolveAccess) throw new Error();
-        identity = await dependencies.verify(req.headers.authorization);
+        identity = await verifyRequestIdentity(req, dependencies.verify);
       } catch {
         res.setHeader('WWW-Authenticate', 'Bearer');
         res.status(401).json({
@@ -312,7 +311,7 @@ export function registerRoutes(
     let identity: Identity;
     try {
       if (!dependencies) throw new Error('Identity unavailable');
-      identity = await dependencies.verify(req.headers.authorization);
+      identity = await verifyRequestIdentity(req, dependencies.verify);
     } catch {
       res.setHeader('WWW-Authenticate', 'Bearer');
       res.status(401).json({

@@ -190,6 +190,8 @@ export async function fixture(page: Page, state: State) {
       catalogue: true,
       reviewSkills: state.role === 'manager',
       administration: state.role === 'admin',
+      manageUsers: state.role === 'admin',
+      viewAudit: state.role === 'admin',
       manageCatalogue: state.role === 'admin',
       amendments: state.role !== 'employee',
       approveAmendments: state.role === 'admin',

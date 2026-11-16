@@ -1,6 +1,6 @@
 # Employee directory boundary
 
-> Current status — 5 November 2026: see [current company operations](CURRENT_OPERATIONS.md) and [SSO/bulk provisioning](REAL_USER_SSO.md). Company hosting/sign-in are observed and the operator reports bulk binding complete; older deferred/demo steps below are historical. Live upstream directory synchronization remains unimplemented. Keep KT enabled.
+> Current status — 16 November 2026: hosted OIDC sign-in, automatic SSO and sign-out are operator-reported working; see [current company operations](CURRENT_OPERATIONS.md) and [SSO/bulk provisioning](REAL_USER_SSO.md). OIDC verifies tenant/object ID before resolving an already-bound local person. Login does not discover or link employees by email. Live upstream directory synchronization remains unimplemented. Keep KT enabled.
 
 Implemented on 9 October 2026: the own SSO profile goes through `createEmployeeProfileReader` and an injected `EmployeeDirectoryProvider`. The default `StoredEmployeeDirectoryProvider` uses the already-authorized DB snapshot. It adds no SQL calls. Existing application person UUIDs, roles, permissions, skill/certification ownership and SQL reporting checks remain canonical.
 
@@ -8,7 +8,7 @@ The normalized source contract has `employeeCode`, `displayName`, `firstName`, `
 
 ## Current flow
 
-Validated SSO identity → resolve existing local person → current local profile permission check → canonical stored employee/organisation snapshot → provider → strict DTO validation and identity/organisation reconciliation checks → existing profile response. Directory payloads cannot assign roles or capabilities. External providers trigger a fresh identity, active-status and permission recheck after I/O. Source errors or missing employees do not silently fall back to stored facts. Existing legacy-profile fallback for an identity not mapped to the custom-access workspace is preserved independently of directory failure.
+Verified backend OIDC identity (tenant/object ID) → resolve the existing bound local person → current local profile permission check → canonical stored employee/organisation snapshot → provider → strict DTO validation and identity/organisation reconciliation checks → existing profile response. Directory payloads cannot assign roles or capabilities. External providers trigger a fresh identity, active-status and permission recheck after I/O. Source errors or missing employees do not silently fall back to stored facts. Existing legacy-profile fallback for an identity not mapped to the custom-access workspace is preserved independently of directory failure.
 
 Routes and frontend retain their existing profile contract; optional nullable firstName/lastName/email are additive. Organisation is fetched once for SSO profiles and reused by the route. Demo profiles continue using their existing profile/organisation paths.
 
