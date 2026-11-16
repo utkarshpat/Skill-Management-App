@@ -125,6 +125,7 @@ if (command !== 'check' && command !== 'migrate') {
           [90, '090_workflow_topic_recipients.sql'],
           [91, '091_search_people_administration.sql'],
           [92, '092_organization_manager_only_save.sql'],
+          [93, '093_scheduled_certification_reminders.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

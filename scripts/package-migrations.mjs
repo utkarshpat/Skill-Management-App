@@ -13,6 +13,7 @@ const migrations = [
   [90, '090_workflow_topic_recipients.sql'],
   [91, '091_search_people_administration.sql'],
   [92, '092_organization_manager_only_save.sql'],
+  [93, '093_scheduled_certification_reminders.sql'],
 ];
 const literal = value => "N'" + value.replaceAll("'", "''") + "'";
 export function transactionMigration(
@@ -94,7 +95,8 @@ complete, run 04_091_search_people_administration.sql first.
    then execute=1 with that exact receipt. Installing 088 alone does not map existing clients.
 5. Run 02_089_portfolio_business_scopes.sql, 03_090_workflow_topic_recipients.sql,
    04_091_search_people_administration.sql, then 05_092_organization_manager_only_save.sql.
-6. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
+6. Apply 06_093_scheduled_certification_reminders.sql after 092. See the scheduler runbook.
+7. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
    request topic/recipient discovery, current assigned-manager review and People & Access search.
 
 Use the root numbered wrappers for manual SSMS installation. They guard the target, preserve
