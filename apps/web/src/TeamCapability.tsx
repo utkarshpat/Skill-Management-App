@@ -34,8 +34,12 @@ export function TeamCapability({
   onReviews,
   supportingContent,
   canAskAi = false,
+  linkedPerson,
+  onLinkedPersonClear,
 }: {
   canAskAi?: boolean;
+  linkedPerson?: string;
+  onLinkedPersonClear?: () => void;
   onReviews: (personId: string) => void;
   supportingContent?: ReactNode;
 }) {
@@ -43,7 +47,7 @@ export function TeamCapability({
     [search, setSearch] = useState(''),
     [query, setQuery] = useState(''),
     [page, setPage] = useState(1),
-    [person, setPerson] = useState<string>(),
+    [person, setPerson] = useState<string | undefined>(linkedPerson),
     [attempt, setAttempt] = useState(0),
     [loading, setLoading] = useState(true),
     [error, setError] = useState('');
@@ -115,7 +119,11 @@ export function TeamCapability({
     setSkillFilter('');
     setLevelFilter(undefined);
   }
+  useEffect(() => {
+    if (linkedPerson) openPerson(linkedPerson);
+  }, [linkedPerson]);
   function reset() {
+    onLinkedPersonClear?.();
     setPerson(undefined);
     setPage(1);
     setQuery('');
@@ -178,6 +186,11 @@ export function TeamCapability({
           <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
             Retry
           </button>
+        </div>
+      )}
+      {!loading && data && person && !selected && (
+        <div className="review-error" role="status">
+          <span>This employee is not one of your current direct reports.</span>
         </div>
       )}
       {!loading && data && selected ? (

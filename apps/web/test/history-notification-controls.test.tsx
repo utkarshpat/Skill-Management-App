@@ -66,7 +66,7 @@ beforeEach(async () => {
             at: '2026-11-08T10:00:00Z',
             title: 'Expiry reminder ' + number,
             body: 'Credential expires soon.',
-            href: '/skill-reviews?type=certifications',
+            href: '/skill-reviews?tab=team&person=2b5a1c9e-1111-4a2b-8c3d-000000000031',
           };
         }),
       });
@@ -194,7 +194,7 @@ test('notifications retain per-person read state, filter categories and allow ex
   assert.equal(document.querySelectorAll('.notification-list li').length, 2);
 });
 
-test('manager expiry reminder links to Reviews and the drawer reaches reminder 31', async () => {
+test('manager expiry reminder opens the employee and the drawer reaches reminder 31', async () => {
   expiryReminders = true;
   view = await render(
     <MemoryRouter>
@@ -205,11 +205,18 @@ test('manager expiry reminder links to Reviews and the drawer reaches reminder 3
   await settle();
   assert.equal(document.querySelectorAll('.notification-list li').length, 30);
   const reviewLinks = [
-    ...document.querySelectorAll('a[href="/skill-reviews?type=certifications"]'),
+    ...document.querySelectorAll(
+      'a[href="/skill-reviews?tab=team&person=2b5a1c9e-1111-4a2b-8c3d-000000000031"]',
+    ),
   ];
-  assert.ok(reviewLinks.some(link => link.textContent?.includes('Review certification')));
+  assert.ok(reviewLinks.some(link => link.textContent?.includes('View employee')));
+  assert.ok(document.querySelector('[aria-label="Notifications, 30 unread"]'));
   await click('More reminders');
   await settle();
+  // The badge keeps first-page unread updates while a later page is shown.
+  assert.ok(document.querySelector('[aria-label="Notifications, 30 unread"]'));
+  await click('Read all on this page');
+  assert.ok(document.querySelector('[aria-label="Notifications, 30 unread"]'));
   assert.ok(reads.includes('/api/notifications?reminderPage=2'));
   assert.match(
     document.querySelector('.notification-list')?.textContent ?? '',
@@ -219,6 +226,20 @@ test('manager expiry reminder links to Reviews and the drawer reaches reminder 3
   await click('Previous reminders');
   await settle();
   assert.equal(document.querySelectorAll('.notification-list li').length, 30);
+});
+
+test('read marks beyond the first hundred stay read', async () => {
+  window.localStorage.setItem(
+    'skill-notifications-read:aditi',
+    JSON.stringify(['request', ...Array.from({ length: 150 }, (_, index) => 'old-' + index)]),
+  );
+  view = await render(
+    <MemoryRouter>
+      <Notifications id="test-notifications" />
+    </MemoryRouter>,
+  );
+  await settle();
+  assert.ok(document.querySelector('[aria-label="Notifications, 1 unread"]'));
 });
 
 test('notification refresh keeps session read marks when storage writes fail', async () => {

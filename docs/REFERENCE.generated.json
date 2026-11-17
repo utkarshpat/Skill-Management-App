@@ -1,6 +1,6 @@
 {
   "version": "2026-11-16",
-  "revision": "2eb20c765d404411",
+  "revision": "bd0103ee26547975",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -98,7 +98,8 @@
       "093_scheduled_certification_reminders.sql",
       "094_read_only_notification_projections.sql",
       "095_paginate_expiry_reminders.sql",
-      "096_analytics_credential_coverage.sql"
+      "096_analytics_credential_coverage.sql",
+      "097_direct_report_expiry_reminder_link.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -7539,7 +7540,7 @@
       "name": "CertificationExpiryNotifications",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@reminder_page int=1",
-      "source": "database/migrations/095_paginate_expiry_reminders.sql"
+      "source": "database/migrations/097_direct_report_expiry_reminder_link.sql"
     },
     {
       "name": "CertificationRecommendationCan",

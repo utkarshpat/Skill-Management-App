@@ -17,6 +17,7 @@ const migrations = [
   [94, '094_read_only_notification_projections.sql'],
   [95, '095_paginate_expiry_reminders.sql'],
   [96, '096_analytics_credential_coverage.sql'],
+  [97, '097_direct_report_expiry_reminder_link.sql'],
 ];
 const literal = value => "N'" + value.replaceAll("'", "''") + "'";
 export function transactionMigration(
@@ -59,7 +60,7 @@ export function migrationPackage(sourceCommit) {
   const add = (name, content) => (files[name] = new TextEncoder().encode(content));
   for (const [index, [version, file]] of migrations.entries()) {
     const source = readFileSync(resolve(root, 'database/migrations', file), 'utf8');
-    add(`0${index + 1}_${file}`, transactionMigration(source, version));
+    add(`${String(index + 1).padStart(2, '0')}_${file}`, transactionMigration(source, version));
     add('reference/' + file, source);
   }
   for (const path of [
@@ -103,7 +104,8 @@ complete, run 04_091_search_people_administration.sql first.
    reads authorization-equivalent while avoiding command-path workspace write locks.
 8. Apply 08_095_paginate_expiry_reminders.sql after 094.
 9. Apply 09_096_analytics_credential_coverage.sql after 095.
-10. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
+10. Apply 10_097_direct_report_expiry_reminder_link.sql after 096.
+11. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
    request topic/recipient discovery, current assigned-manager review and People & Access search.
 
 Use the root numbered wrappers for manual SSMS installation. They guard the target, preserve

@@ -215,9 +215,10 @@ const app = createApp(
 export default app;
 if (process.env.VERCEL !== '1') {
   const host = process.env.HOST ?? (process.env.WEBSITE_HOSTNAME ? '0.0.0.0' : '127.0.0.1');
-  if (process.env.WEBSITE_HOSTNAME && access) await warmRuntimeDatabase();
   const server = app.listen(port, host, () => {
     logEvent('info', 'server.started', { host, port });
+    // Warm SQL after listening so health probes are not blocked by a slow database resume.
+    if (process.env.WEBSITE_HOSTNAME && access) void warmRuntimeDatabase();
   });
   server.on('error', error => {
     process.exitCode = 1;

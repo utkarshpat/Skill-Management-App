@@ -19,11 +19,14 @@ export function notificationDestination(href: string) {
     '/skill-reviews': {
       label: url.searchParams.has('recommendation')
         ? 'Open certification recommendation'
-        : url.searchParams.get('type') === 'certifications'
-          ? 'Review certification'
-          : url.searchParams.has('submission')
-            ? 'Open review request'
-            : 'Review skill claim',
+        : url.searchParams.has('person')
+          ? 'View employee'
+          : url.searchParams.get('type') === 'certifications' ||
+              url.searchParams.has('certification')
+            ? 'Review certification'
+            : url.searchParams.has('submission')
+              ? 'Open review request'
+              : 'Review skill claim',
       kind: 'Skills & reviews',
       icon: ClipboardCheck,
     },

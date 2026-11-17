@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { useLocation, useSearchParams } from 'react-router';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { CertificationReviewDialog } from './certifications/CertificationReviewDialog';
@@ -49,11 +50,7 @@ export function ReviewWorkspace({
     </Suspense>
   );
 }
-function CertificationReviewPanel({
-  view,
-}: {
-  view: 'queue' | 'analytics' | 'recommendations';
-}) {
+function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'recommendations' }) {
   const [data, setData] = useState<CertificationPage>();
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState('');
@@ -76,8 +73,13 @@ function CertificationReviewPanel({
     [loading, setLoading] = useState(true),
     [opening, setOpening] = useState(false);
   const [credential, setCredential] = useState<CertificationRecord>();
+  const [params] = useSearchParams(),
+    location = useLocation(),
+    consumed = useRef<string>(undefined);
+  const linked = view === 'queue' ? params.get('certification')?.toLowerCase() : undefined;
 
   useEffect(() => {
+    if (search.trim() === query) return;
     const timer = setTimeout(() => {
       setPage(1);
       setQuery(search.trim());
@@ -121,6 +123,26 @@ function CertificationReviewPanel({
       });
     return () => controller.abort();
   }, [page, query, attempt, view]);
+  // Notification links open only records the authorized review queue returns.
+  useEffect(() => {
+    if (!linked || loading) return;
+    const navigation = location.key + ':' + linked;
+    if (consumed.current === navigation) return;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(linked) || error) {
+      consumed.current = navigation;
+      return;
+    }
+    if (!data || data.page !== page) return;
+    const match = data.records.find(record => record.id.toLowerCase() === linked);
+    if (match) {
+      consumed.current = navigation;
+      setCredential(match);
+    } else if (!query && page * data.pageSize < data.total) setPage(n => n + 1);
+    else {
+      consumed.current = navigation;
+      toast.info('This certification is no longer awaiting your review.');
+    }
+  }, [linked, loading, error, data, query, page, location.key]);
   useEffect(() => {
     if (view === 'queue') return;
     const controller = new AbortController();

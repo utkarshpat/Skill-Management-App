@@ -24,10 +24,14 @@ interface Feed {
   hasMoreReminders?: boolean;
 }
 const key = (personId: string) => `skill-notifications-read:${personId}`;
+// Each reminder page repeats up to 30 recent updates and adds 30 reminders.
+const readMarkerLimit = 1000;
 function readIds(personId: string): string[] {
   try {
     const value = JSON.parse(localStorage.getItem(key(personId)) ?? '[]');
-    return Array.isArray(value) ? value.filter(item => typeof item === 'string').slice(-100) : [];
+    return Array.isArray(value)
+      ? value.filter(item => typeof item === 'string').slice(-readMarkerLimit)
+      : [];
   } catch {
     return [];
   }
@@ -44,6 +48,11 @@ export function Notifications({ id }: { id: string }) {
   const [open, setOpen] = useState(false);
   const [freshness, setFreshness] = useState<RefreshStatus>();
   const [reminderPage, setReminderPage] = useState(1);
+  // The navbar badge reflects the first page, which the drawer reopens to.
+  const [firstPage, setFirstPage] = useState<Feed>();
+  useEffect(() => {
+    if (!open) setReminderPage(1);
+  }, [open]);
   const unsavedReadIds = useRef(new Map<string, string[]>());
   useEffect(() => {
     if (!open) return;
@@ -77,7 +86,10 @@ export function Notifications({ id }: { id: string }) {
           signal: controller.signal,
         });
         if (!response.ok) {
-          if ([401, 403].includes(response.status)) setFeed(undefined);
+          if ([401, 403].includes(response.status)) {
+            setFeed(undefined);
+            setFirstPage(undefined);
+          }
           const body = await response.json().catch(() => undefined);
           throw new Error(body?.error?.message ?? 'Notifications could not be loaded.');
         }
@@ -87,6 +99,7 @@ export function Notifications({ id }: { id: string }) {
         );
         if (!controller.signal.aborted) {
           setFeed(body);
+          if (reminderPage === 1) setFirstPage(body);
           setRead(unsavedReadIds.current.get(body.personId) ?? readIds(body.personId));
           setError('');
           if (body.partial) return false;
@@ -143,7 +156,7 @@ export function Notifications({ id }: { id: string }) {
     if (!feed) return;
     reportClientAction(isRead ? 'notifications.mark_read' : 'notifications.mark_unread');
     const next = isRead
-      ? [...new Set([...read, ...ids])].slice(-100)
+      ? [...new Set([...read, ...ids])].slice(-readMarkerLimit)
       : read.filter(id => !ids.includes(id));
     setRead(next);
     try {
@@ -160,6 +173,9 @@ export function Notifications({ id }: { id: string }) {
     event.currentTarget.closest<HTMLElement>('[popover]')?.hidePopover();
   }
   const unread = feed?.items.filter(item => !read.includes(item.id)).length ?? 0;
+  const badgeFeed = firstPage?.personId === feed?.personId ? firstPage : feed;
+  const badgeUnread = badgeFeed?.items.filter(item => !read.includes(item.id)).length ?? 0;
+  const paged = reminderPage > 1 || Boolean(feed?.hasMoreReminders);
   const items =
     feed?.items.filter(
       item =>
@@ -183,7 +199,7 @@ export function Notifications({ id }: { id: string }) {
       <button
         className="navbar-icon notification-trigger"
         type="button"
-        aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+        aria-label={badgeUnread ? `Notifications, ${badgeUnread} unread` : 'Notifications'}
         popoverTarget={id}
         aria-controls={id}
         aria-expanded={open}
@@ -194,9 +210,9 @@ export function Notifications({ id }: { id: string }) {
         }}
       >
         <Bell size={21} />
-        {unread > 0 && (
+        {badgeUnread > 0 && (
           <span className="notification-count" aria-hidden="true">
-            {unread}
+            {badgeUnread}
           </span>
         )}
       </button>
@@ -212,7 +228,13 @@ export function Notifications({ id }: { id: string }) {
         <div className="notification-heading">
           <div>
             <h2>Notifications</h2>
-            <p>{unread ? `${unread} unread updates` : 'You’re up to date'}</p>
+            <p>
+              {unread
+                ? `${unread} unread${paged ? ' on this page' : ' updates'}`
+                : paged
+                  ? 'No unread updates on this page'
+                  : 'You’re up to date'}
+            </p>
           </div>
           <div>
             <button
@@ -306,7 +328,7 @@ export function Notifications({ id }: { id: string }) {
                   }}
                 >
                   <Check size={14} />
-                  Read all
+                  {paged ? 'Read all on this page' : 'Read all'}
                 </button>
               </div>
               <div

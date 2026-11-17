@@ -240,3 +240,28 @@ test('team summary and chart filters can be cleared independently without changi
   assert.match(result(), /Rohan Mehta/);
   assert.deepEqual(reviews, []);
 });
+
+test('linked employee opens directly and clearing it returns to the team', async () => {
+  let cleared = 0;
+  view = await render(
+    <TeamCapability
+      linkedPerson="aditi"
+      onLinkedPersonClear={() => cleared++}
+      onReviews={() => {}}
+    />,
+  );
+  await settle();
+  assert.equal(requests.filter(url => url.startsWith('/api/skill-reviews/team')).length, 1);
+  assert.match(requests[0], /person=aditi/);
+  await click('All direct reports');
+  await settle();
+  assert.equal(cleared, 1);
+  assert.doesNotMatch(requests.at(-1) ?? '', /person=/);
+});
+
+test('linked employee outside current reports shows no capability', async () => {
+  respond = async () => Response.json({ people: [], skills: [], total: 0, pageSize: 2 });
+  view = await render(<TeamCapability linkedPerson="former" onReviews={() => {}} />);
+  await settle();
+  assert.match(document.body.textContent ?? '', /not one of your current direct reports/);
+});

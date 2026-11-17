@@ -28,6 +28,14 @@ test('combined outcomes, catalogue requests and renewal updates have distinct ac
     notificationDestination('/skill-reviews?submission=123')?.label,
     'Open review request',
   );
+  assert.equal(
+    notificationDestination('/skill-reviews?certification=123')?.label,
+    'Review certification',
+  );
+  assert.equal(
+    notificationDestination('/skill-reviews?tab=team&person=123')?.label,
+    'View employee',
+  );
   assert.equal(notificationDestination('/skills?tab=amendments')?.label, 'View catalogue request');
   assert.equal(notificationDay('invalid'), 'Earlier updates');
   const now = new Date(2026, 9, 13, 12);

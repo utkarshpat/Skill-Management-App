@@ -29,12 +29,17 @@ import { reviewView } from './review-navigation';
 async function result<T>(response: Response): Promise<T> {
   const data = await response.json().catch(() => undefined);
   if (!response.ok)
-    throw Error(
-      data?.error?.message ??
-        'This action could not finish. Reload to check the current state before retrying.',
+    throw Object.assign(
+      Error(
+        data?.error?.message ??
+          'This action could not finish. Reload to check the current state before retrying.',
+      ),
+      { status: response.status },
     );
   return data;
 }
+const accessDenied = (reason: unknown) =>
+  [401, 403].includes((reason as { status?: number } | undefined)?.status ?? 0);
 interface ReviewQueue {
   claims: Claim[];
   total: number;
@@ -72,6 +77,7 @@ export function SkillReviews({
     [loading, setLoading] = useState(true),
     [opening, setOpening] = useState(false),
     [error, setError] = useState(''),
+    [denied, setDenied] = useState(false),
     [claim, setClaim] = useState<Claim>();
   useEffect(() => setView(reviewView(params)), [params]);
   useEffect(() => {
@@ -97,11 +103,13 @@ export function SkillReviews({
       .then(result<ReviewQueue>)
       .then(value => {
         if (!controller.signal.aborted) {
+          setDenied(false);
           setData(value);
         }
       })
       .catch(reason => {
         if (!controller.signal.aborted) {
+          setDenied(accessDenied(reason));
           setData(undefined);
           setClaim(undefined);
           setError(reason.message);
@@ -205,8 +213,11 @@ export function SkillReviews({
     next.delete('submission');
     next.delete('recommendation');
     next.delete('type');
+    next.delete('person');
+    next.delete('certification');
     setParams(next, { replace: true });
   };
+  const linkedPerson = params.get('person')?.toLowerCase();
   const navigation = (
     <nav
       className="review-workspace-tabs"
@@ -243,7 +254,7 @@ export function SkillReviews({
   const workspace = (
     <div
       className="review-shell review-workspace-content"
-      hidden={(!unified && initialLoading) || Boolean(error && !data)}
+      hidden={(!unified && initialLoading) || Boolean((!unified || denied) && error && !data)}
     >
       {navigation}
       {view === 'recommendations' && data?.canRecommend ? (
@@ -256,6 +267,18 @@ export function SkillReviews({
           <TeamCapability
             canAskAi={Boolean(data.canAskTeamAi)}
             supportingContent={teamContent}
+            linkedPerson={
+              linkedPerson &&
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(linkedPerson)
+                ? linkedPerson
+                : undefined
+            }
+            onLinkedPersonClear={() => {
+              if (!params.has('person')) return;
+              const next = new URLSearchParams(params);
+              next.delete('person');
+              setParams(next, { replace: true });
+            }}
             onReviews={id => {
               setPerson(id);
               setStatus('SUBMITTED');
@@ -268,7 +291,8 @@ export function SkillReviews({
         </>
       ) : (
         <>
-          {queueContent}
+          {/* Unmount on denial so nested queues cannot open deep-link dialogs over a denied page. */}
+          {!(denied && !data) && queueContent}
           {unified && error && data && (
             <div className="review-error" role="alert">
               <span>{error}</span>
