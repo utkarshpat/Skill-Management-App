@@ -126,6 +126,10 @@ if (command !== 'check' && command !== 'migrate') {
           [91, '091_search_people_administration.sql'],
           [92, '092_organization_manager_only_save.sql'],
           [93, '093_scheduled_certification_reminders.sql'],
+          [94, '094_read_only_notification_projections.sql'],
+          [95, '095_paginate_expiry_reminders.sql'],
+          [96, '096_analytics_credential_coverage.sql'],
+          [97, '097_direct_report_expiry_reminder_link.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

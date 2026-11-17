@@ -255,7 +255,7 @@ test('review permission denial closes and blocks a submission deep-link dialog',
   assert.ok(other.every(path => path.includes(submission)));
   await view.unmount();
 });
-test('certification notification link opens that record from the authorized queue', async () => {
+test('certification notification link opens from the authorized queue after a transient failure', async () => {
   const { reads } = permissiveFixture(path => path.startsWith('/api/certifications/' + linkedId));
   await initializeAuth();
   const view = await render(
@@ -266,6 +266,13 @@ test('certification notification link opens that record from the authorized queu
   await waitFor(() => reads.size === 3);
   await resolve(reads, '/api/skill-reviews', skills);
   await resolve(reads, '/api/capability-submissions', { records: [] });
+  await resolve(reads, '/api/certifications', { error: { message: 'Queue unavailable.' } }, 503);
+  assert.equal(document.querySelector('dialog'), null);
+  const retry = document.querySelector<HTMLButtonElement>('.assigned-review-error button');
+  assert.ok(retry);
+  reads.delete('/api/certifications');
+  await act(async () => retry.click());
+  await waitFor(() => reads.has('/api/certifications'));
   await resolve(reads, '/api/certifications', {
     records: [certification],
     total: 1,

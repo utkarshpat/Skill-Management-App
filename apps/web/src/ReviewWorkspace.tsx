@@ -125,10 +125,10 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
   }, [page, query, attempt, view]);
   // Notification links open only records the authorized review queue returns.
   useEffect(() => {
-    if (!linked || loading) return;
+    if (!linked || loading || error) return;
     const navigation = location.key + ':' + linked;
     if (consumed.current === navigation) return;
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(linked) || error) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(linked)) {
       consumed.current = navigation;
       return;
     }
