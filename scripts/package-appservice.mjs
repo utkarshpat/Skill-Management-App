@@ -19,6 +19,8 @@ const required = [
   'apps/web/tsconfig.json',
   'apps/web/vite.config.ts',
   'apps/web/index.html',
+  'app_data/jobs/triggered/certification-reminders/run.sh',
+  'app_data/jobs/triggered/certification-reminders/settings.job',
 ];
 const sourceExtensions =
   /\.(?:ts|tsx|js|jsx|mjs|cjs|css|json|svg|png|jpg|jpeg|webp|ico|woff2?|ttf|txt|html|wasm)$/i;
