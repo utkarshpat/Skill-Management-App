@@ -53,7 +53,7 @@ test('hosting archive excludes local secrets/dependencies and preserves workspac
     assert.ok(unpacked['apps/web/index.html']);
     assert.ok(unpacked['apps/api/src/server.ts']);
     assert.ok(unpacked['apps/api/src/shared/web-hosting.ts']);
-    const reminderJob = 'app_data/jobs/triggered/certification-reminders';
+    const reminderJob = 'App_Data/jobs/triggered/certification-reminders';
     const runner = Buffer.from(unpacked[`${reminderJob}/run.sh`]).toString();
     assert.match(runner, /^#!\/bin\/bash\n/);
     assert.doesNotMatch(runner, /\r/);
