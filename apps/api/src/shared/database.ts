@@ -3,11 +3,15 @@ import {
   databaseRetryListener,
   measureDatabase,
   measureDatabasePhase,
+  measureDatabaseProcedure,
+  startRequestTiming,
+  type TimedProcedure,
 } from './request-timing.js';
 import { errorType, logEvent } from './logger.js';
 import { timedSqlCredential } from './database-credential.js';
 import { SharedDatabasePool } from './shared-database-pool.js';
 import { EventEmitter } from 'node:events';
+import { randomUUID } from 'node:crypto';
 import {
   DefaultAzureCredential,
   ClientSecretCredential,
@@ -37,6 +41,10 @@ export function databaseConfig(env: NodeJS.ProcessEnv): sql.config {
     idleTimeoutMillis > 300_000
   )
     throw new Error('AZURE_SQL_POOL_IDLE_TIMEOUT_MS must be an integer from 1000 to 300000.');
+  const poolSetting = env.AZURE_SQL_POOL_MAX?.trim();
+  const poolMax = poolSetting ? Number(poolSetting) : 2;
+  if ((poolSetting && !/^\d+$/.test(poolSetting)) || poolMax < 1 || poolMax > 10)
+    throw new Error('AZURE_SQL_POOL_MAX must be an integer from 1 to 10.');
   return {
     server,
     database,
@@ -52,7 +60,7 @@ export function databaseConfig(env: NodeJS.ProcessEnv): sql.config {
     requestTimeout: 30000,
     // Reuse connections between ordinary page interactions without keeping
     // any connections permanently open or sending background keep-alives.
-    pool: { min: 0, max: 2, idleTimeoutMillis },
+    pool: { min: 0, max: poolMax, idleTimeoutMillis },
   };
 }
 
@@ -89,11 +97,9 @@ async function connectRuntime() {
       type: 'token-credential',
       options: {
         credential: timedSqlCredential(
-          new ManagedIdentityCredential(
-            process.env.AZURE_SQL_MANAGED_IDENTITY_CLIENT_ID
-              ? { clientId: process.env.AZURE_SQL_MANAGED_IDENTITY_CLIENT_ID }
-              : {},
-          ),
+          new ManagedIdentityCredential({
+            clientId: process.env.AZURE_SQL_MANAGED_IDENTITY_CLIENT_ID || undefined,
+          }),
         ),
       },
     };
@@ -118,12 +124,15 @@ async function connectRuntime() {
 }
 export async function withRuntimeDatabase<T>(
   action: (pool: sql.ConnectionPool) => Promise<T>,
+  procedure?: TimedProcedure,
 ): Promise<T> {
   try {
     return await measureDatabase(() =>
       availability.run(async () => {
         const pool = await measureDatabasePhase('acquire', () => runtimePool.get());
-        return measureDatabasePhase('operation', () => action(pool));
+        return measureDatabasePhase('operation', () =>
+          procedure ? measureDatabaseProcedure(procedure, () => action(pool)) : action(pool),
+        );
       }),
     );
   } catch (error) {
@@ -136,4 +145,25 @@ export async function withRuntimeDatabase<T>(
 }
 export async function closeRuntimeDatabase() {
   await runtimePool.close();
+}
+
+export async function warmRuntimeDatabase() {
+  const requestId = randomUUID();
+  const timing = startRequestTiming(requestId);
+  try {
+    await timing.run(async () => {
+      const pool = await runtimePool.get();
+      // mssql discards its initial test connection. A query leaves a reusable
+      // connection in the existing pool until the normal idle timeout.
+      await pool.request().query('SELECT 1');
+    });
+    logEvent('info', 'database.startup_warmup_completed', { requestId, ...timing.result() });
+  } catch (error) {
+    // Let the app start and allow ordinary requests to recover if SQL is down.
+    logEvent('warn', 'database.startup_warmup_failed', {
+      requestId,
+      ...timing.result(),
+      errorType: errorType(error),
+    });
+  }
 }

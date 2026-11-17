@@ -143,13 +143,16 @@ test('claim SQL adapter scopes every call and reconstructs versions, team aggreg
     f.reply('dbo.TransitionSkillClaim');
     await store.transition(actor, transition);
     assert.equal(f.calls.at(-1)?.inputs.expected_revision, 3);
-    f.reply('dbo.ReadSkillClaimNotifications', [
-      { id, at, title: 'SQL review', body: 'Changes requested', href: '/my-skills' },
-    ]);
-    f.reply('dbo.ReadCapabilitySubmissionNotifications', [
-      { id: skill, at, title: 'Capability review', body: 'Reviewed', href: '/my-skills' },
-    ]);
+    const batch = `EXEC dbo.ReadSkillClaimNotifications @account_id=@account_id, @actor_id=@actor_id;
+          EXEC dbo.ReadCapabilitySubmissionNotifications @account_id=@account_id, @actor_id=@actor_id;`;
+    f.reply(
+      batch,
+      [{ id, at, title: 'SQL review', body: 'Changes requested', href: '/my-skills' }],
+      [{ id: skill, at, title: 'Capability review', body: 'Reviewed', href: '/my-skills' }],
+    );
     assert.equal((await store.notifications(actor)).length, 2);
+    f.reject(batch, { number: 51003 });
+    await assert.rejects(store.notifications(actor), { status: 403 });
     for (const call of f.calls) {
       assert.equal(call.inputs.account_id, account);
       assert.equal(call.inputs.actor_id, actor);

@@ -13,6 +13,26 @@ import { createApp } from '../src/create-app.js';
 import { AccessError } from '../src/shared/errors.js';
 import type { LearningPlan } from '../src/modules/learning/index.js';
 const actor = '00000000-0000-4000-8000-000000000001';
+test('dashboard distinguishes an invalid sign-in from a failed workspace lookup', async () => {
+  const server = createApp({
+    verify: async authorization => {
+      if (authorization !== 'Bearer trusted') throw Error('Invalid sign-in');
+      return { tenantId: actor, objectId: actor };
+    },
+    profile: async () => undefined,
+    resolveAccess: async () => {
+      throw Error('Database unavailable');
+    },
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/api/dashboard`;
+  try {
+    assert.equal((await fetch(url)).status, 401);
+    assert.equal((await fetch(url, { headers: { Authorization: 'Bearer trusted' } })).status, 500);
+  } finally {
+    server.close();
+  }
+});
 test('pending dashboard counts combined requests once and uses full queue total beyond bounded previews', async () => {
   const { state, person } = fixture([
     own('profile.view'),

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { CertificationReviewDialog } from './certifications/CertificationReviewDialog';
@@ -17,13 +17,6 @@ export function ReviewWorkspace({
 }: {
   certificationsAllowed?: boolean;
 }) {
-  const [skillsReady, setSkillsReady] = useState(false);
-  const [submissionsReady, setSubmissionsReady] = useState(false);
-  const [certificationsReady, setCertificationsReady] = useState(false);
-  const ready = skillsReady && submissionsReady && (!certificationsAllowed || certificationsReady);
-  const skillsLoaded = useCallback(() => setSkillsReady(true), []);
-  const submissionsLoaded = useCallback(() => setSubmissionsReady(true), []);
-  const certificationsLoaded = useCallback(() => setCertificationsReady(true), []);
   return (
     <Suspense
       fallback={
@@ -40,19 +33,10 @@ export function ReviewWorkspace({
     >
       <SkillReviews
         unified
-        initialQueueLoading={!submissionsReady || (certificationsAllowed && !certificationsReady)}
-        onInitialLoad={skillsLoaded}
         queueContent={
           <>
-            <CapabilitySubmissions
-              review
-              showEmpty
-              onInitialLoad={submissionsLoaded}
-              active={ready}
-            />
-            {certificationsAllowed && (
-              <CertificationReviewPanel view="queue" onInitialLoad={certificationsLoaded} />
-            )}
+            <CapabilitySubmissions review showEmpty />
+            {certificationsAllowed && <CertificationReviewPanel view="queue" />}
           </>
         }
         teamContent={
@@ -67,10 +51,8 @@ export function ReviewWorkspace({
 }
 function CertificationReviewPanel({
   view,
-  onInitialLoad,
 }: {
   view: 'queue' | 'analytics' | 'recommendations';
-  onInitialLoad?: () => void;
 }) {
   const [data, setData] = useState<CertificationPage>();
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
@@ -116,7 +98,10 @@ function CertificationReviewPanel({
     setLoading(true);
     setCredential(undefined);
     const params = new URLSearchParams({ view: 'queue', page: String(page), search: query });
-    authenticatedFetch('/api/certifications?' + params, { signal: controller.signal })
+    authenticatedFetch('/api/certifications?' + params, {
+      signal: controller.signal,
+      headers: { 'X-Certification-View': 'review-only' },
+    })
       .then(r =>
         readApiResponse<CertificationPage>(r, 'Certification review queue could not be loaded.'),
       )
@@ -132,11 +117,10 @@ function CertificationReviewPanel({
       .finally(() => {
         if (!controller.signal.aborted) {
           setLoading(false);
-          onInitialLoad?.();
         }
       });
     return () => controller.abort();
-  }, [page, query, attempt, view, onInitialLoad]);
+  }, [page, query, attempt, view]);
   useEffect(() => {
     if (view === 'queue') return;
     const controller = new AbortController();

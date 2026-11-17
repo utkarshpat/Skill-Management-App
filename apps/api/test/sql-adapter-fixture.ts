@@ -38,6 +38,9 @@ export function sqlAdapterFixture() {
         const sets = next.sets ?? [[]];
         return { recordsets: sets, recordset: sets[0], rowsAffected: [] };
       },
+      query(statement: string) {
+        return request.execute(statement);
+      },
     };
     return request as unknown as sql.Request;
   });

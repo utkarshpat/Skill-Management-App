@@ -58,15 +58,11 @@ export function SkillReviews({
   queueContent,
   teamContent,
   recommendationContent,
-  initialQueueLoading = false,
-  onInitialLoad,
 }: {
   unified?: boolean;
   queueContent?: ReactNode;
   teamContent?: ReactNode;
   recommendationContent?: ReactNode;
-  initialQueueLoading?: boolean;
-  onInitialLoad?: () => void;
 } = {}) {
   const [params, setParams] = useSearchParams(),
     [view, setView] = useState<'queue' | 'team' | 'recommendations'>('queue');
@@ -102,7 +98,6 @@ export function SkillReviews({
       .then(value => {
         if (!controller.signal.aborted) {
           setData(value);
-          onInitialLoad?.();
         }
       })
       .catch(reason => {
@@ -116,15 +111,15 @@ export function SkillReviews({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [page, attempt, query, category, status, person, onInitialLoad]);
+  }, [page, attempt, query, category, status, person]);
   useEffect(() => {
     const id = params.get('claim');
-    if (!id || loading || initialQueueLoading || !data) return;
+    if (!id || loading || !data) return;
     const next = new URLSearchParams(params);
     next.delete('claim');
     setParams(next, { replace: true });
     void openClaim(id);
-  }, [params, loading, data, initialQueueLoading]);
+  }, [params, loading, data]);
   function displayClaim(item: Claim) {
     if (unified && item.activeSubmissionId) {
       const next = new URLSearchParams(params);
@@ -244,11 +239,11 @@ export function SkillReviews({
       )}
     </nav>
   );
-  const initialLoading = (!data && loading) || (view === 'queue' && initialQueueLoading && !error);
+  const initialLoading = !data && loading;
   const workspace = (
     <div
       className="review-shell review-workspace-content"
-      hidden={initialLoading || Boolean(error && !data)}
+      hidden={(!unified && initialLoading) || Boolean(error && !data)}
     >
       {navigation}
       {view === 'recommendations' && data?.canRecommend ? (
@@ -333,7 +328,9 @@ export function SkillReviews({
                   <p>
                     {loading
                       ? 'Checking current assignments…'
-                      : `${data?.total ?? 0} ${data?.total === 1 ? 'claim' : 'claims'}${filtered ? ' matching your filters' : ' assigned to you'}`}
+                      : data
+                        ? `${data.total} ${data.total === 1 ? 'claim' : 'claims'}${filtered ? ' matching your filters' : ' assigned to you'}`
+                        : 'Assigned review data is unavailable.'}
                   </p>
                 </div>
               </header>
@@ -593,7 +590,7 @@ export function SkillReviews({
   );
   return (
     <>
-      {initialLoading && (
+      {!unified && initialLoading && (
         <section className="review-loading" role="status" aria-busy="true">
           <div className="review-loading-icon" aria-hidden="true">
             <RefreshCw size={24} />

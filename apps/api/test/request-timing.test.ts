@@ -6,10 +6,34 @@ import {
   startRequestTiming,
   measureDatabase,
   measureDatabasePhase,
+  measureDatabaseProcedure,
   databaseRetryListener,
 } from '../src/shared/request-timing.js';
 import { timedSqlCredential } from '../src/shared/database-credential.js';
 import { createApp } from '../src/create-app.js';
+
+test('procedure timings retain repeated calls and stay isolated by request', async () => {
+  const dashboard = startRequestTiming();
+  const notifications = startRequestTiming();
+  await Promise.all([
+    dashboard.run(async () => {
+      await measureDatabaseProcedure('BusinessContext', async () => {});
+      await measureDatabaseProcedure('BusinessDashboard', async () => {});
+      await measureDatabaseProcedure('BusinessContext', async () => {});
+    }),
+    notifications.run(() =>
+      measureDatabaseProcedure('BusinessAmendmentNotifications', async () => {}),
+    ),
+  ]);
+  assert.deepEqual(
+    dashboard.result().databaseProcedures?.map(entry => entry.procedure),
+    ['BusinessContext', 'BusinessDashboard', 'BusinessContext'],
+  );
+  assert.deepEqual(
+    notifications.result().databaseProcedures?.map(entry => entry.procedure),
+    ['BusinessAmendmentNotifications'],
+  );
+});
 test('overlapping request contexts count only their own database work, including failures', async () => {
   const first = startRequestTiming(),
     second = startRequestTiming();
@@ -97,14 +121,25 @@ test('driver checkout timing tracks concurrent requests and ignores work outside
     }, {});
   await Promise.all([
     first.run(async () => {
-      assert.equal(await trace(true), 42);
+      assert.equal(await measureDatabaseProcedure('BusinessDashboard', () => trace(true)), 42);
       await trace(false);
     }),
-    second.run(() => assert.rejects(trace(false, true), /Pool unavailable/)),
+    second.run(() =>
+      assert.rejects(
+        measureDatabaseProcedure('ResolveAccessIdentity', () => trace(false, true)),
+        /Pool unavailable/,
+      ),
+    ),
     trace(true),
   ]);
   assert.equal(first.result().databasePhases.checkout.calls, 2);
   assert.equal(second.result().databasePhases.checkout.calls, 1);
+  assert.equal(first.result().databaseProcedures?.[0].checkoutCalls, 1);
+  assert.equal(second.result().databaseProcedures?.[0].checkoutCalls, 1);
+  assert.equal(
+    second.result().databaseProcedures?.[0].checkoutMs,
+    second.result().databasePhases.checkout.ms,
+  );
   assert.equal(first.result().databasePhysicalConnections, 1);
   assert.equal(second.result().databasePhysicalConnections, 0);
   assert.equal(first.result().databasePhases.acquire.calls, 0);

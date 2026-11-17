@@ -40,12 +40,14 @@ export function registerKnowledgeRoutes(
         return;
       }
     } else {
+      let identity: Identity;
       try {
-        actor = await deps.resolveAccess?.(await verifyRequestIdentity(req, deps.verify));
+        identity = await verifyRequestIdentity(req, deps.verify);
       } catch {
         res.status(401).json({ error: { message: 'Sign in to read the project handover.' } });
         return;
       }
+      actor = await deps.resolveAccess?.(identity);
     }
     if (!actor) {
       res.sendStatus(403);

@@ -385,6 +385,12 @@ function Welcome({
             </span>
             {signingIn ? 'Signing in…' : 'Continue with Microsoft'}
           </button>
+          {(signInResult === 'failed' || signInResult === 'company-required' || authError) &&
+            signInConfigured && (
+              <button type="button" disabled={signingIn} onClick={() => startSignIn(true)}>
+                Choose your Microsoft account
+              </button>
+            )}
           <p id="signin-status" className="signin-status" role="status">
             {error ||
               (signInResult === 'company-required'

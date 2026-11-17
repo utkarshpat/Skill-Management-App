@@ -101,13 +101,18 @@ test('backend callback binds PKCE and nonce, consumes state once, and authorizes
     });
     assert.equal(legacy.status, 401);
     assert.equal(legacy.headers.get('set-cookie'), null);
-    const silent = await start('?mode=silent');
+    const silent = await start(
+      '?mode=silent&returnTo=' + encodeURIComponent('/requests?view=mine#open'),
+    );
     const noMicrosoftSession = await get(
       '/api/auth/callback?error=login_required&state=' +
         silent.authorization.searchParams.get('state'),
       silent.cookie,
     );
-    assert.equal(noMicrosoftSession.headers.get('location'), '/?signin=failed');
+    assert.equal(
+      noMicrosoftSession.headers.get('location'),
+      '/requests?view=mine&signin=failed#open',
+    );
     assert.equal(exchanges, 0);
     const first = await start('?mode=silent&returnTo=%2Frequests');
     assert.equal(first.authorization.searchParams.get('prompt'), 'none');
@@ -142,8 +147,9 @@ test('backend callback binds PKCE and nonce, consumes state once, and authorizes
     assert.deepEqual(await logout.json(), { logoutHint: loginHint });
     assert.equal((await get('/api/actor', cookie)).status, 401);
     wrongNonce = true;
-    const second = await start('?mode=choose');
+    const second = await start('?mode=choose', savedHint);
     assert.equal(second.authorization.searchParams.get('prompt'), 'select_account');
+    assert.equal(second.authorization.searchParams.has('login_hint'), false);
     const rejected = await get(second.callback, second.cookie);
     assert.equal(rejected.headers.get('location'), '/?signin=failed');
     assert.ok(

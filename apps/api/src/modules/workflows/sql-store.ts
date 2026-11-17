@@ -176,7 +176,23 @@ export class SqlWorkflowStore implements WorkflowStore {
     await this.run(actor, input.action, input.id, 1, false, input);
   }
   async notifications(actor: string) {
-    const r = await this.run(actor, 'NOTIFICATIONS');
+    let r;
+    try {
+      r = await withRuntimeDatabase(pool =>
+        pool
+          .request()
+          .input('account_id', sql.UniqueIdentifier, this.accountId)
+          .input('actor_id', sql.UniqueIdentifier, actor)
+          .execute('dbo.ReadWorkflowNotifications'),
+      );
+    } catch (error) {
+      const n = (error as { number?: number }).number;
+      if (n === 51003)
+        throw new AccessError(403, 'Your current permissions do not allow this action.');
+      if (n === 2812 || n === 208)
+        throw new AccessError(503, 'Workflow notifications are unavailable.');
+      throw error;
+    }
     return r.recordset.map(
       (e: { id: string; at: Date; title: string; body: string; href: string }) => ({
         ...e,

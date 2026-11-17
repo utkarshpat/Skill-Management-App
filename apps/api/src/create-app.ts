@@ -125,7 +125,9 @@ export function createApp(
     const apiRequest = req.path === '/api' || req.path.startsWith('/api/');
     const assetRequest =
       !apiRequest &&
-      (req.path.startsWith('/assets/') || req.path.startsWith('/brand/') || /\.[a-z\d]{1,8}$/i.test(req.path));
+      (req.path.startsWith('/assets/') ||
+        req.path.startsWith('/brand/') ||
+        /\.[a-z\d]{1,8}$/i.test(req.path));
     const timingEnabled =
       apiRequest &&
       (options.onRequestTiming !== undefined || process.env.HTTP_TIMING_ENABLED !== 'false');
@@ -134,13 +136,23 @@ export function createApp(
       // Successful hashed bundles/images are high-volume and have no API/DB timing value.
       if (assetRequest && res.statusCode < 400) return;
       const timingResult = timing?.result();
+      const registeredPath = req.route?.path;
+      const matchedPath =
+        typeof registeredPath === 'string'
+          ? registeredPath
+          : Array.isArray(registeredPath)
+            ? registeredPath.find(
+                path =>
+                  typeof path === 'string' &&
+                  path.replace(/\/$/, '').toLowerCase() ===
+                    req.path.replace(/\/$/, '').toLowerCase(),
+              )
+            : undefined;
       const fields = {
         requestId: res.locals.requestId,
         method: req.method,
         route: apiRequest
-          ? typeof req.route?.path === 'string'
-            ? req.route.path
-            : 'api.unmatched'
+          ? (matchedPath ?? 'api.unmatched')
           : assetRequest
             ? 'web.asset'
             : 'web.document',
@@ -282,6 +294,9 @@ export function createApp(
             dependencies.recommendations,
           ),
           certificationNotifications: dependencies.certifications?.notifications.bind(
+            dependencies.certifications,
+          ),
+          certificationExpiryNotifications: dependencies.certifications?.expiryNotifications?.bind(
             dependencies.certifications,
           ),
           certificationRecommendationNotifications:

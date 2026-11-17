@@ -52,3 +52,12 @@ test('database validation can retain query probes and rejects unsupported modes'
     /must be socket or query/,
   );
 });
+
+test('SQL pool capacity can be tuned while idle connections can still drain', () => {
+  const env = { AZURE_SQL_SERVER: 'sql-dev.database.windows.net', AZURE_SQL_DATABASE: 'dev' };
+  const config = databaseConfig({ ...env, AZURE_SQL_POOL_MAX: '5' });
+  assert.equal(config.pool?.max, 5);
+  assert.equal(config.pool?.min, 0);
+  for (const value of ['0', '11', '2.5', '1e1', 'NaN'])
+    assert.throws(() => databaseConfig({ ...env, AZURE_SQL_POOL_MAX: value }), /1 to 10/);
+});

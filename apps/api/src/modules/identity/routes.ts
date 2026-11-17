@@ -32,6 +32,11 @@ export interface HttpDependencies {
   ) => Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
   certificationNotifications?: (
     actorId: string,
+    reminderPage?: number,
+  ) => Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
+  certificationExpiryNotifications?: (
+    actorId: string,
+    reminderPage: number,
   ) => Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
   certificationRecommendationNotifications?: (
     actorId: string,
@@ -201,6 +206,13 @@ export function registerRoutes(
       }
       const notificationPolicy = JSON.stringify(effectiveAccessSummary(state, person));
       try {
+        const input = req.query.reminderPage ?? '1';
+        const reminderPage =
+          typeof input === 'string' && /^\d{1,9}$/.test(input) ? Number(input) : 0;
+        if (!reminderPage) {
+          res.status(400).json({ error: { message: 'Invalid reminder page.' } });
+          return;
+        }
         const feed = await loadNotificationFeed(notificationsFor(state, person), [
           {
             name: 'reviews',
@@ -210,7 +222,16 @@ export function registerRoutes(
             name: 'certifications',
             load: () =>
               can(state, person, 'skill.view', true)
-                ? (dependencies?.certificationNotifications?.(person.id) ?? Promise.resolve([]))
+                ? (dependencies?.certificationNotifications?.(person.id, reminderPage) ??
+                  Promise.resolve([]))
+                : Promise.resolve([]),
+          },
+          {
+            name: 'certification-expiry',
+            load: () =>
+              can(state, person, 'skill.view', true)
+                ? (dependencies?.certificationExpiryNotifications?.(person.id, reminderPage) ??
+                  Promise.resolve([]))
                 : Promise.resolve([]),
           },
           {
@@ -236,7 +257,7 @@ export function registerRoutes(
           },
         ]);
         const fresh = await readActorAccess(dependencies?.access ?? store, actor, {
-          includeAudit: true,
+          includeAudit: false,
         });
         const current = fresh?.people.find(
           item => item.id === actor && item.active && (!demo?.subject(req) || !item.entraObjectId),

@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router';
 import { ArrowUpRight, Bell, Check, RefreshCw, X } from 'lucide-react';
 import { notificationDestination, notificationDay } from './notification-model';
@@ -21,6 +21,7 @@ interface Feed {
   personId: string;
   items: Item[];
   partial?: boolean;
+  hasMoreReminders?: boolean;
 }
 const key = (personId: string) => `skill-notifications-read:${personId}`;
 function readIds(personId: string): string[] {
@@ -42,6 +43,8 @@ export function Notifications({ id }: { id: string }) {
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [freshness, setFreshness] = useState<RefreshStatus>();
+  const [reminderPage, setReminderPage] = useState(1);
+  const unsavedReadIds = useRef(new Map<string, string[]>());
   useEffect(() => {
     if (!open) return;
     const overflow = document.body.style.overflow;
@@ -66,7 +69,11 @@ export function Notifications({ id }: { id: string }) {
       running = true;
       setLoading(true);
       try {
-        const response = await authenticatedFetch('/api/notifications', {
+        const path =
+          reminderPage === 1
+            ? '/api/notifications'
+            : '/api/notifications?reminderPage=' + reminderPage;
+        const response = await authenticatedFetch(path, {
           signal: controller.signal,
         });
         if (!response.ok) {
@@ -80,7 +87,7 @@ export function Notifications({ id }: { id: string }) {
         );
         if (!controller.signal.aborted) {
           setFeed(body);
-          setRead(readIds(body.personId));
+          setRead(unsavedReadIds.current.get(body.personId) ?? readIds(body.personId));
           setError('');
           if (body.partial) return false;
           const next = JSON.stringify([body.personId, body.items]);
@@ -123,10 +130,11 @@ export function Notifications({ id }: { id: string }) {
       stop();
       controller.abort();
     };
-  }, [attempt]);
+  }, [attempt, reminderPage]);
   useEffect(() => {
     const changed = (event: StorageEvent) => {
-      if (feed && event.key === key(feed.personId)) setRead(readIds(feed.personId));
+      if (feed && event.key === key(feed.personId) && !unsavedReadIds.current.has(feed.personId))
+        setRead(readIds(feed.personId));
     };
     window.addEventListener('storage', changed);
     return () => window.removeEventListener('storage', changed);
@@ -140,8 +148,9 @@ export function Notifications({ id }: { id: string }) {
     setRead(next);
     try {
       localStorage.setItem(key(feed.personId), JSON.stringify(next));
+      unsavedReadIds.current.delete(feed.personId);
     } catch {
-      /* Read state still works in this session. */
+      unsavedReadIds.current.set(feed.personId, next);
     }
   }
   function opened(event: MouseEvent<HTMLAnchorElement>, itemId: string) {
@@ -438,6 +447,25 @@ export function Notifications({ id }: { id: string }) {
                 </ul>
               )}
               <RefreshIndicator status={freshness} />
+              {(reminderPage > 1 || feed.hasMoreReminders) && (
+                <div role="group" aria-label="Expiry reminder pages">
+                  <button
+                    type="button"
+                    disabled={loading || reminderPage === 1}
+                    onClick={() => setReminderPage(page => page - 1)}
+                  >
+                    Previous reminders
+                  </button>
+                  <span>Reminder page {reminderPage}</span>
+                  <button
+                    type="button"
+                    disabled={loading || !feed.hasMoreReminders}
+                    onClick={() => setReminderPage(page => page + 1)}
+                  >
+                    More reminders
+                  </button>
+                </div>
+              )}
               <small className="notification-device-note">
                 Read status is saved on this device.
               </small>

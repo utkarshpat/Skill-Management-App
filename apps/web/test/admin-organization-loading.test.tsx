@@ -20,12 +20,9 @@ after(async () => {
   cssHooks.deregister();
   await closeBrowser();
 });
-test('personal and people-search routes skip organization reads; other admin views discard aborted replies', async () => {
+test('only overview and assignments fetch organization summaries and discard aborted replies', async () => {
   const source = await readFile(new URL('../src/AccessAdmin.tsx', import.meta.url), 'utf8');
-  const start = source.indexOf(
-    '  useEffect(() => {',
-    source.indexOf('const [department, setDepartment]'),
-  );
+  const start = source.indexOf('  const needsOrganizationSummary =');
   const effect = source.slice(start, source.indexOf('  const [bulkReview', start));
   let cleanup: (() => void) | undefined;
   const requests: { signal: AbortSignal; resolve: (value: unknown) => void }[] = [];
@@ -34,7 +31,7 @@ test('personal and people-search routes skip organization reads; other admin vie
     personalTitle: string | undefined,
     canManageUsers = true,
     demo = false,
-    summaryRead = false,
+    tab = 'overview',
   ) {
     cleanup?.();
     cleanup = undefined;
@@ -43,7 +40,7 @@ test('personal and people-search routes skip organization reads; other admin vie
         cleanup = callback();
       },
       personalTitle,
-      summaryRead,
+      tab,
       state: { canManageUsers, revision: 1 },
       organizationAttempt: 0,
       isDemoSession: () => demo,
@@ -63,9 +60,11 @@ test('personal and people-search routes skip organization reads; other admin vie
     });
   }
   mount('My workspace');
-  mount(undefined, true, false, true);
+  for (const tab of ['people', 'profiles', 'roles', 'audit', 'organization', 'skills']) {
+    mount(undefined, true, false, tab);
+  }
   assert.equal(requests.length, 0);
-  mount(undefined);
+  mount(undefined, true, false, 'assignments');
   assert.equal(requests.length, 1);
   assert.equal(display.loading, true);
   requests[0].resolve({ nodes: [{ id: 'department' }] });

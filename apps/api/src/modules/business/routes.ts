@@ -11,7 +11,7 @@ import {
   identifier,
   type BusinessStore,
 } from './business.js';
-import { assertBusinessScope } from './sql-store.js';
+import { assertBusinessScope, SqlBusinessStore } from './sql-store.js';
 import { businessCsv, businessXlsx } from './export.js';
 import { businessWorkflow } from './workflows.js';
 import { createHash } from 'node:crypto';
@@ -53,13 +53,22 @@ export function registerBusinessRoutes(
         throw new AccessError(403, 'Active workspace required.');
       if (!deps?.business)
         throw new AccessError(503, 'Business Operations storage is not configured.');
+      res.locals.businessActor = actor;
+      if (
+        deps.business instanceof SqlBusinessStore &&
+        req.method === 'GET' &&
+        /^\/dashboard\/?$/i.test(req.path)
+      ) {
+        // SQL authorizes the dashboard read and the adapter rechecks its scope before delivery.
+        next();
+        return;
+      }
       const context = await deps.business.context(actor);
       if (!context.canView && !context.canManage && !context.canAmend)
         throw new AccessError(
           403,
           'Business responsibility or current manager relationship is required.',
         );
-      res.locals.businessActor = actor;
       res.locals.businessContext = context;
       next();
     } catch (error) {

@@ -66,7 +66,12 @@ export interface CertificationStore {
   change(actor: string, change: CertificationChange): Promise<number | void>;
   notifications(
     actor: string,
+    reminderPage?: number,
   ): Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
+  expiryNotifications?(
+    actor: string,
+    reminderPage: number,
+  ): ReturnType<CertificationStore['notifications']>;
 }
 const fail = (message: string): never => {
   throw new AccessError(400, message);

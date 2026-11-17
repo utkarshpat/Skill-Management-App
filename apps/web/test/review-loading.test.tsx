@@ -61,7 +61,7 @@ async function resolve(
   await act(async () => reads.get(path)!.resolve(Response.json(data, { status })));
   await settle();
 }
-test('initial queues read in parallel and reveal a complete layout once, without temporary credential cards or single-tab navigation', async () => {
+test('initial queues read in parallel and show combined submissions before slower queues settle', async () => {
   const reads = fixture();
   await initializeAuth();
   const view = await render(
@@ -71,16 +71,13 @@ test('initial queues read in parallel and reveal a complete layout once, without
   );
   await waitFor(() => reads.size === 3);
   const content = () => document.querySelector<HTMLElement>('.review-workspace-content')!;
-  assert.equal(content().hidden, true);
-  assert.match(
-    document.querySelector('.review-loading')!.textContent ?? '',
-    /Checking your permissions/,
-  );
+  assert.equal(content().hidden, false);
+  assert.match(content().textContent ?? '', /Loading review requests/);
   assert.equal(document.querySelector('.assigned-review-total'), null);
   await resolve(reads, '/api/capability-submissions', { records: [] });
-  assert.equal(content().hidden, true);
+  assert.match(content().textContent ?? '', /All caught up/);
   await resolve(reads, '/api/skill-reviews', skills);
-  assert.equal(content().hidden, true);
+  assert.equal(content().hidden, false);
   await resolve(reads, '/api/certifications', { records: [], total: 0, pageSize: 10 });
   assert.equal(content().hidden, false);
   assert.equal(document.querySelectorAll('.review-workspace-tabs button').length, 3);
@@ -90,7 +87,7 @@ test('initial queues read in parallel and reveal a complete layout once, without
   assert.equal(reads.size, 3);
   await view.unmount();
 });
-test('failed queue reads settle the shared loader into explicit errors, not an invented empty queue', async () => {
+test('failed combined queue shows its error while other queues stay visible', async () => {
   const reads = fixture();
   await initializeAuth();
   const view = await render(

@@ -38,7 +38,8 @@ export function registerCompanyCallback(
     /(?:^|;\s*)__Host-skill-oidc=([\w-]{43})(?=;|$)/.exec(req.get('Cookie') ?? '')?.[1];
   app.get('/api/auth/login', (req, res) => {
     res.set('Cache-Control', 'no-store');
-    const mode = req.query.mode === 'silent' || req.query.mode === 'choose' ? req.query.mode : 'default';
+    const mode =
+      req.query.mode === 'silent' || req.query.mode === 'choose' ? req.query.mode : 'default';
     logEvent('info', 'auth.oidc.login_started', { requestId: res.locals.requestId, mode });
     const now = Date.now();
     for (const [state, flow] of pending) if (flow.expiresAt <= now) pending.delete(state);
@@ -74,7 +75,7 @@ export function registerCompanyCallback(
     const savedHint = new RegExp('(?:^|;\\s*)' + loginHintCookie + '=([^;]+)').exec(
       req.get('Cookie') ?? '',
     )?.[1];
-    if (savedHint) {
+    if (savedHint && mode !== 'choose') {
       try {
         const loginHint = decodeURIComponent(savedHint);
         if (loginHint.length <= 2048 && !/[\u0000-\u001f\u007f]/.test(loginHint))
@@ -108,6 +109,15 @@ export function registerCompanyCallback(
     }
     pending.delete(state);
     res.clearCookie(flowCookie, browserCookie);
+    const retry = (result: 'failed' | 'company-required') => {
+      const target = new URL(origin + flow.returnTo);
+      target.searchParams.set('signin', result);
+      res.redirect(
+        target.pathname.startsWith('//')
+          ? target.href
+          : target.pathname + target.search + target.hash,
+      );
+    };
     let failureReason = 'callback_processing_failed';
     try {
       if (flow.expiresAt <= Date.now() || typeof req.query.code !== 'string' || !req.query.code) {
@@ -155,7 +165,7 @@ export function registerCompanyCallback(
         !/^[^@\s]+@soprasteria\.com$/i.test(payload.preferred_username)
       ) {
         logEvent('warn', 'auth.oidc.domain_rejected', { requestId: res.locals.requestId });
-        res.redirect('/?signin=company-required');
+        retry('company-required');
         return;
       }
       failureReason = 'session_unavailable';
@@ -177,7 +187,7 @@ export function registerCompanyCallback(
         reason: failureReason,
         errorType: errorType(error),
       });
-      res.redirect('/?signin=failed');
+      retry('failed');
     }
   });
 }

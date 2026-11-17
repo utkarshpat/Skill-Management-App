@@ -32,14 +32,17 @@ export function registerDashboardRoutes(
         return;
       }
       actor = demo.subject(req);
-    } else
+    } else {
+      let identity: Identity;
       try {
         if (!deps?.resolveAccess) throw Error();
-        actor = await deps.resolveAccess(await verifyRequestIdentity(req, deps.verify));
+        identity = await verifyRequestIdentity(req, deps.verify);
       } catch {
         res.sendStatus(401);
         return;
       }
+      actor = await deps!.resolveAccess!(identity);
+    }
     const state = await readActorAccess(deps?.access ?? store, actor),
       person = state?.people.find(
         p => p.id === actor && p.active && (!demo?.subject(req) || !p.entraObjectId),

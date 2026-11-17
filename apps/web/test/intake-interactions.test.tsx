@@ -24,6 +24,8 @@ test('catalogue browsing advances through all pages, retries the failed page and
   const searchStart = source.indexOf('setQuery(e.target.value);');
   const searchEnd = source.indexOf('setSearching(true);', searchStart);
   const search = compile(source.slice(searchStart, searchEnd + 'setSearching(true);'.length));
+  const retry = 'setCatalogueAttempt(attempt => attempt + 1)';
+  assert.ok(source.includes(retry));
   const state = {
     page: 1,
     query: '',
@@ -34,7 +36,7 @@ test('catalogue browsing advances through all pages, retries the failed page and
   };
   const loaded = { current: 0 };
   const requests: string[] = [];
-  let failPage = 3;
+  let failPage = 1;
   let delayed: ((value: unknown) => void) | undefined;
   let delayNext = false;
   const setters = {
@@ -90,6 +92,11 @@ test('catalogue browsing advances through all pages, retries the failed page and
     return cleanup;
   }
   await readPage();
+  assert.match(state.error, /Temporary/);
+  assert.equal(state.options.length, 0);
+  vm.runInNewContext(retry, setters);
+  await readPage();
+  failPage = 3;
   vm.runInNewContext(more, setters);
   await readPage();
   vm.runInNewContext(more, setters);
@@ -99,7 +106,7 @@ test('catalogue browsing advances through all pages, retries the failed page and
   assert.match(state.error, /Temporary/);
   vm.runInNewContext(more, setters);
   await readPage();
-  assert.deepEqual(requests, [':1', ':2', ':3', ':3']);
+  assert.deepEqual(requests, [':1', ':1', ':2', ':3', ':3']);
   assert.equal(loaded.current, 3);
   assert.equal(state.options.length, 36);
   assert.equal(new Set(state.options.map(o => o.id)).size, 36);

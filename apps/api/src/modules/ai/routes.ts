@@ -33,11 +33,10 @@ export function registerRoutes(
       }
       actor = demo.subject(req);
     } else {
+      let identity: Identity;
       try {
-        if (!dependencies?.resolveAccess) throw new Error();
-        actor = await dependencies.resolveAccess(
-          await verifyRequestIdentity(req, dependencies.verify),
-        );
+        if (!dependencies?.resolveAccess) throw Error();
+        identity = await verifyRequestIdentity(req, dependencies.verify);
       } catch {
         res.status(401).json({
           error: {
@@ -48,6 +47,7 @@ export function registerRoutes(
         });
         return;
       }
+      actor = await dependencies!.resolveAccess!(identity);
     }
     const state = await readActorAccess(access, actor),
       person = state?.people.find(

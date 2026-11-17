@@ -155,41 +155,40 @@ export class SqlCertificationStore implements CertificationStore {
   }
 
   async notifications(actor: string) {
-    const [sets, expiry] = await Promise.all([
-      this.run(actor, 'NOTIFICATIONS', {}),
-      this.database(pool =>
-        pool
-          .request()
-          .input('account_id', sql.UniqueIdentifier, this.account)
-          .input('actor_id', sql.UniqueIdentifier, actor)
-          .execute('dbo.CertificationExpiryNotifications'),
-      ).catch(error => {
-        const number = (error as { number?: number }).number;
-        if (number === 51003)
-          throw new AccessError(403, 'Certification reminder access is no longer available.');
-        if (number === 51004) throw new AccessError(404, 'Certification reminders unavailable.');
-        if (number === 2812 || number === 208)
-          throw new AccessError(
-            503,
-            'Certification reminders are unavailable. Apply migration 057 first.',
-          );
-        throw error;
-      }),
-    ]);
-    const regular = sets[0].map(row => ({
+    return this.readNotifications(actor, 'dbo.ReadCertificationNotifications');
+  }
+
+  async expiryNotifications(actor: string, reminderPage: number) {
+    return this.readNotifications(actor, 'dbo.CertificationExpiryNotifications', reminderPage);
+  }
+
+  private async readNotifications(
+    actor: string,
+    procedure: 'dbo.ReadCertificationNotifications' | 'dbo.CertificationExpiryNotifications',
+    reminderPage?: number,
+  ) {
+    const result = await this.database(pool => {
+      const request = pool
+        .request()
+        .input('account_id', sql.UniqueIdentifier, this.account)
+        .input('actor_id', sql.UniqueIdentifier, actor);
+      if (reminderPage !== undefined) request.input('reminder_page', sql.Int, reminderPage);
+      return request.execute(procedure);
+    }).catch(error => {
+      const number = (error as { number?: number }).number;
+      if (number === 51003)
+        throw new AccessError(403, 'Certification notification access is no longer available.');
+      if (number === 51004) throw new AccessError(404, 'Certification notifications unavailable.');
+      if (number === 2812 || number === 208)
+        throw new AccessError(503, 'Certification notifications are unavailable.');
+      throw error;
+    });
+    return result.recordset.map(row => ({
       id: String(row.id),
       at: row.at instanceof Date ? row.at.toISOString() : String(row.at),
       title: String(row.title),
       body: String(row.body),
       href: String(row.href),
     }));
-    const expiryItems = expiry.recordset.map(row => ({
-      id: String(row.id),
-      at: row.at instanceof Date ? row.at.toISOString() : String(row.at),
-      title: String(row.title),
-      body: String(row.body),
-      href: String(row.href),
-    }));
-    return [...regular, ...expiryItems];
   }
 }

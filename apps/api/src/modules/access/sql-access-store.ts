@@ -156,7 +156,7 @@ export class SqlAccessStore implements AccessStore {
         .input('include_notifications', sql.Bit, options.includeAudit ?? false)
         .execute('dbo.ReadActorAccessContext');
       return this.decode(result.recordsets as unknown as ResultSets, true);
-    });
+    }, 'ReadActorAccessContext');
   }
   async person(id: string) {
     return (await this.actorSnapshot(id)).people.find(person => person.id === id && person.active);
@@ -326,7 +326,7 @@ export class SqlAccessStore implements AccessStore {
         .input('object_id', sql.UniqueIdentifier, identity.objectId)
         .execute('dbo.ResolveAccessIdentity');
       return result.recordset[0]?.id?.toLowerCase() as string | undefined;
-    });
+    }, 'ResolveAccessIdentity');
   }
   async save(actorId: string, input: unknown) {
     // Reuse the validated permission model, then recheck authority/revision inside the SQL transaction.

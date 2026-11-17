@@ -84,6 +84,7 @@ export function registerClaimsRoutes(
       return;
     }
     res.locals.claimActor = person.id;
+    res.locals.claimAccessRevision = state.revision;
     next();
   });
   for (const root of ['/api/my-skills', '/api/skill-reviews']) {
@@ -282,9 +283,9 @@ export function registerClaimsRoutes(
     try {
       if (!dependencies?.claims?.reviews)
         throw new AccessError(503, 'Skill reviews are not configured.');
-      const before = await (dependencies?.access ?? store)?.snapshot({ includeAudit: false });
-      if (!before) throw new AccessError(403, 'Review access unavailable.');
-      const revision = before.revision;
+      // Use the revision checked during admission. Delivery still rechecks access
+      // and rejects a result if the revision changed during the queue read.
+      const revision = res.locals.claimAccessRevision;
       const query = reviewQuery(req.query),
         data = await dependencies.claims.reviews(
           res.locals.claimActor,

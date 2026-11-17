@@ -585,7 +585,8 @@ test('compact certification admission avoids an initial roster read and retains 
   let actor = f.owner.id,
     compactReads = 0,
     fullReads = 0,
-    recordReads = 0;
+    recordReads = 0,
+    emptyQueue = false;
   let changeDuringRead: (() => void) | undefined;
   f.store.actorSnapshot = id => {
     compactReads++;
@@ -611,6 +612,7 @@ test('compact certification admission avoids an initial roster read and retains 
       read: async () => {
         recordReads++;
         changeDuringRead?.();
+        if (emptyQueue) return { records: [], total: 0 };
         return { records: [f.record], total: 1 };
       },
       get: async () => f.record,
@@ -630,10 +632,22 @@ test('compact certification admission avoids an initial roster read and retains 
     assert.equal((await fetch(root + '?view=queue')).status, 200);
     assert.equal(compactReads, 2);
     assert.equal(fullReads, 2);
+    const reviewOnly = { headers: { 'X-Certification-View': 'review-only' } };
+    emptyQueue = true;
+    const empty = await fetch(root + '?view=queue', reviewOnly);
+    assert.equal(empty.status, 200);
+    assert.equal(((await empty.json()) as { canSubmitNew: boolean }).canSubmitNew, false);
+    assert.equal(compactReads, 4);
+    assert.equal(fullReads, 2);
+    changeDuringRead = () => {
+      f.state.revision++;
+    };
+    assert.equal((await fetch(root + '?view=queue', reviewOnly)).status, 409);
+    emptyQueue = false;
     changeDuringRead = () => {
       f.state.reporting![0].managerId = f.unrelated.id;
     };
-    assert.equal((await fetch(root + '?view=queue')).status, 403);
+    assert.equal((await fetch(root + '?view=queue', reviewOnly)).status, 403);
     actor = f.owner.id;
     changeDuringRead = () => {
       f.owner.active = false;

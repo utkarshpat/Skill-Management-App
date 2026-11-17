@@ -155,7 +155,7 @@ export function AccessAdmin({
   const [params, setParams] = useSearchParams();
   const tab = currentView(params);
   const compactPeople = !personalTitle && tab === 'people';
-  const summaryRead = !personalTitle && (tab === 'people' || tab === 'profiles');
+  const summaryRead = !personalTitle && (tab === 'people' || tab === 'profiles' || tab === 'audit');
   const linkedPerson = params.get('person');
   const initialPersonId =
     linkedPerson && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(linkedPerson)
@@ -182,8 +182,9 @@ export function AccessAdmin({
   const [organizationLoading, setOrganizationLoading] = useState(false);
   const [assignmentDraft, setAssignmentDraft] = useState<Record<string, string[]>>({});
   const [department, setDepartment] = useState('');
+  const needsOrganizationSummary = !personalTitle && (tab === 'overview' || tab === 'assignments');
   useEffect(() => {
-    if (personalTitle || summaryRead || !state?.canManageUsers || isDemoSession()) {
+    if (!needsOrganizationSummary || !state?.canManageUsers || isDemoSession()) {
       setOrganization(undefined);
       setOrganizationError('');
       setOrganizationLoading(false);
@@ -210,7 +211,7 @@ export function AccessAdmin({
         if (!controller.signal.aborted) setOrganizationLoading(false);
       });
     return () => controller.abort();
-  }, [personalTitle, summaryRead, state?.revision, state?.canManageUsers, organizationAttempt]);
+  }, [needsOrganizationSummary, state?.revision, state?.canManageUsers, organizationAttempt]);
   const [bulkReview, setBulkReview] = useState(false);
   const [review, setReview] = useState<{
     body: Record<string, unknown>;
@@ -607,8 +608,10 @@ export function AccessAdmin({
               </button>
             </div>
           )}
-          {organizationLoading && <p role="status">Loading organization details…</p>}
-          {organizationError && (
+          {needsOrganizationSummary && organizationLoading && (
+            <p role="status">Loading organization details…</p>
+          )}
+          {needsOrganizationSummary && organizationError && (
             <div className="access-message" role="alert">
               {organizationError}
               <button

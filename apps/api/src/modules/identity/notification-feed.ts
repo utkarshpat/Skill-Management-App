@@ -24,9 +24,15 @@ export async function loadNotificationFeed(
       failedSources.push(sources[index].name);
     }
   });
+  const reminders = items.filter(item => item.id.startsWith('cert-expiry-'));
+  const recent = items.filter(item => !item.id.startsWith('cert-expiry-'));
+  recent.sort((a, b) => b.at.localeCompare(a.at));
   return {
     ...base,
-    items: items.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 30),
+    items: [...recent.slice(0, 30), ...reminders.slice(0, 30)].sort((a, b) =>
+      b.at.localeCompare(a.at),
+    ),
+    hasMoreReminders: reminders.length > 30,
     partial: failedSources.length > 0,
     failedSources,
   };

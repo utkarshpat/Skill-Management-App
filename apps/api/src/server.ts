@@ -10,7 +10,7 @@ import { identityConfig } from './modules/identity/index.js';
 import { applicationDependencies } from './application-dependencies.js';
 import { privateStorageConfig } from './shared/private-files.js';
 import { ownProfile } from './modules/identity/index.js';
-import { closeRuntimeDatabase } from './shared/database.js';
+import { closeRuntimeDatabase, warmRuntimeDatabase } from './shared/database.js';
 import { currentRequestId } from './shared/request-timing.js';
 import { errorType, logEvent } from './shared/logger.js';
 import { developmentLoginEnabled, hostedDemoConfig } from './modules/identity/index.js';
@@ -215,12 +215,14 @@ const app = createApp(
 export default app;
 if (process.env.VERCEL !== '1') {
   const host = process.env.HOST ?? (process.env.WEBSITE_HOSTNAME ? '0.0.0.0' : '127.0.0.1');
+  if (process.env.WEBSITE_HOSTNAME && access) await warmRuntimeDatabase();
   const server = app.listen(port, host, () => {
     logEvent('info', 'server.started', { host, port });
   });
-  server.on('error', error =>
-    logEvent('error', 'server.listener_failed', { errorType: errorType(error) }),
-  );
+  server.on('error', error => {
+    process.exitCode = 1;
+    logEvent('error', 'server.listener_failed', { errorType: errorType(error) });
+  });
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     process.once(signal, () => {
       logEvent('info', 'server.shutdown_started', { signal });

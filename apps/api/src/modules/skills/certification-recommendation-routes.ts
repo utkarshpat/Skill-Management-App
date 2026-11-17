@@ -35,13 +35,15 @@ export function registerCertificationRecommendationRoutes(
       }
       actor = (await demo.person(req))?.id;
     } else {
+      let identity: Identity;
       try {
         if (!deps?.resolveAccess) throw Error();
-        actor = await deps.resolveAccess(await verifyRequestIdentity(req, deps.verify));
+        identity = await verifyRequestIdentity(req, deps.verify);
       } catch {
         res.status(401).json({ error: { message: 'Sign in to continue.' } });
         return;
       }
+      actor = await deps!.resolveAccess!(identity);
     }
     const state = await readActorAccess(deps?.access ?? store, actor),
       person = state?.people.find(item => item.id === actor && item.active);

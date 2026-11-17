@@ -1406,7 +1406,18 @@ export function CapabilityComposer({
                       </div>
                     </details>
                   </div>
-                  {catalogueError && <p role="alert">{catalogueError}</p>}
+                  {catalogueError && (
+                    <div>
+                      <p role="alert">{catalogueError}</p>
+                      <button
+                        type="button"
+                        disabled={working || searching}
+                        onClick={() => setCatalogueAttempt(attempt => attempt + 1)}
+                      >
+                        Retry catalogue
+                      </button>
+                    </div>
+                  )}
                   <div className="cap-suggestion-bar">
                     <div className="cap-skill-results" aria-busy={searching}>
                       {[

@@ -14,6 +14,9 @@ const migrations = [
   [91, '091_search_people_administration.sql'],
   [92, '092_organization_manager_only_save.sql'],
   [93, '093_scheduled_certification_reminders.sql'],
+  [94, '094_read_only_notification_projections.sql'],
+  [95, '095_paginate_expiry_reminders.sql'],
+  [96, '096_analytics_credential_coverage.sql'],
 ];
 const literal = value => "N'" + value.replaceAll("'", "''") + "'";
 export function transactionMigration(
@@ -96,7 +99,11 @@ complete, run 04_091_search_people_administration.sql first.
 5. Run 02_089_portfolio_business_scopes.sql, 03_090_workflow_topic_recipients.sql,
    04_091_search_people_administration.sql, then 05_092_organization_manager_only_save.sql.
 6. Apply 06_093_scheduled_certification_reminders.sql after 092. See the scheduler runbook.
-7. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
+7. Apply 07_094_read_only_notification_projections.sql after 093. It keeps notification
+   reads authorization-equivalent while avoiding command-path workspace write locks.
+8. Apply 08_095_paginate_expiry_reminders.sql after 094.
+9. Apply 09_096_analytics_credential_coverage.sql after 095.
+10. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
    request topic/recipient discovery, current assigned-manager review and People & Access search.
 
 Use the root numbered wrappers for manual SSMS installation. They guard the target, preserve
@@ -137,12 +144,13 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }).trim();
   const result = migrationPackage(sourceCommit);
   mkdirSync(resolve(root, 'artifacts'), { recursive: true });
-  const path = resolve(root, `artifacts/skills-migrations-${sourceCommit.slice(0, 12)}.zip`);
+  const sha256 = createHash('sha256').update(result.archive).digest('hex');
+  const path = resolve(root, `artifacts/skills-migrations-${sha256.slice(0, 12)}.zip`);
   writeFileSync(path, result.archive);
   console.log(
     JSON.stringify({
       path,
-      sha256: createHash('sha256').update(result.archive).digest('hex'),
+      sha256,
       sourceCommit,
     }),
   );

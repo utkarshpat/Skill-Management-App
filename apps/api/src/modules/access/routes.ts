@@ -31,6 +31,7 @@ export function registerRoutes(
   const compactRead = (req: import('express').Request) =>
     req.method === 'GET' &&
     ((req.path === '/' && req.query.summary === '1') ||
+      req.path === '/organization' ||
       req.path === '/directory' ||
       req.path === '/primary-capabilities' ||
       req.path.startsWith('/people/') ||

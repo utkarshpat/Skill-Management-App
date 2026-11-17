@@ -1,6 +1,6 @@
 {
   "version": "2026-11-16",
-  "revision": "34dc72c1ab9fcb7e",
+  "revision": "2eb20c765d404411",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -95,7 +95,10 @@
       "090_workflow_topic_recipients.sql",
       "091_search_people_administration.sql",
       "092_organization_manager_only_save.sql",
-      "093_scheduled_certification_reminders.sql"
+      "093_scheduled_certification_reminders.sql",
+      "094_read_only_notification_projections.sql",
+      "095_paginate_expiry_reminders.sql",
+      "096_analytics_credential_coverage.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -7535,8 +7538,8 @@
     {
       "name": "CertificationExpiryNotifications",
       "kind": "PROCEDURE",
-      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/093_scheduled_certification_reminders.sql"
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@reminder_page int=1",
+      "source": "database/migrations/095_paginate_expiry_reminders.sql"
     },
     {
       "name": "CertificationRecommendationCan",
@@ -7650,7 +7653,7 @@
       "name": "BusinessDashboard",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@payload nvarchar(max),@export bit=0",
-      "source": "database/migrations/089_portfolio_business_scopes.sql"
+      "source": "database/migrations/096_analytics_credential_coverage.sql"
     },
     {
       "name": "BusinessScopeCovers",
@@ -7813,6 +7816,18 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier",
       "source": "database/migrations/093_scheduled_certification_reminders.sql"
+    },
+    {
+      "name": "ReadCertificationNotifications",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/094_read_only_notification_projections.sql"
+    },
+    {
+      "name": "ReadWorkflowNotifications",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/094_read_only_notification_projections.sql"
     }
   ],
   "groups": {

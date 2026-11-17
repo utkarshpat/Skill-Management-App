@@ -95,6 +95,7 @@ export function registerCertificationRoutes(
   app.get('/api/certifications', async (req, res, next) => {
     try {
       const query = certificationQuery(req.query);
+      const queueOnly = query.view === 'queue' && req.get('X-Certification-View') === 'review-only';
       let { state, actor } = res.locals.certificationContext as {
         state: LocalAccessState;
         actor: LocalPerson;
@@ -103,7 +104,9 @@ export function registerCertificationRoutes(
         throw new AccessError(403, 'Assigned certification review is unavailable.');
       const snapshotRevision = state.revision;
       const result = await deps!.certifications!.read(actor.id, query);
-      ({ state, actor } = await context(actor.id));
+      // An empty review-only page has no reporting edges or personal
+      // submission actions to resolve. Recheck the actor and revision either way.
+      ({ state, actor } = await context(actor.id, queueOnly && !result.records.length));
       if (query.view === 'queue' && !canReviewAssigned(state, actor))
         throw new AccessError(403, 'Assigned certification review is unavailable.');
       // Do not deliver records if current reporting scope changed during the SQL read.
@@ -127,7 +130,7 @@ export function registerCertificationRoutes(
         page: query.page,
         pageSize: 25,
         canManage: can(state, actor, 'skill.claim', true),
-        canSubmitNew: canSubmitNewCertification(state, actor),
+        canSubmitNew: !queueOnly && canSubmitNewCertification(state, actor),
         canReview: canReviewAssigned(state, actor),
         canRecommend: effectiveAccess(state, actor, 'learning.recommend', 'DIRECT_REPORTS').allowed,
         canViewRecommendations: can(state, actor, 'learning.view', true),

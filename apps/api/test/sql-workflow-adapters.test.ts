@@ -67,7 +67,7 @@ test('workflow adapter retains participant identities, filters, history and revi
     f.reply('dbo.WorkflowWorkspace');
     await store.change(actor, change);
     assert.equal(f.calls.at(-1)?.inputs.payload, JSON.stringify(change));
-    f.reply('dbo.WorkflowWorkspace', [
+    f.reply('dbo.ReadWorkflowNotifications', [
       { id, at, title: 'Workshop request', body: 'Updated', href: '/requests' },
     ]);
     assert.equal((await store.notifications(actor))[0].at, at.toISOString());
@@ -100,6 +100,14 @@ test('workflow adapter retains participant identities, filters, history and revi
     ]) {
       f.reject('dbo.WorkflowWorkspace', { number });
       await assert.rejects(store.reassignmentOptions(actor, id, 'Rohan'), { status });
+    }
+    for (const [number, status] of [
+      [51003, 403],
+      [2812, 503],
+      [208, 503],
+    ]) {
+      f.reject('dbo.ReadWorkflowNotifications', { number });
+      await assert.rejects(store.notifications(actor), { status });
     }
     f.reject('dbo.WorkflowWorkspace', { number: 51003 });
     await assert.rejects(store.options(actor, 'Rohan'), { status: 403 });

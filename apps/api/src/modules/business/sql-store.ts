@@ -87,19 +87,28 @@ export class SqlBusinessStore implements BusinessStore {
   ): Promise<T> {
     identifier(actor);
     try {
-      return await withRuntimeDatabase(async pool => {
-        let request = pool
-          .request()
-          .input('account_id', sql.UniqueIdentifier, this.accountId)
-          .input('actor_id', sql.UniqueIdentifier, actor);
-        if (payload)
-          request = request.input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload));
-        if (extra) request = extra(request);
-        const result = await request.execute(procedure);
-        if (!result.recordset?.[0]?.json)
-          throw new AccessError(503, 'Business Operations storage is unavailable.');
-        return readSqlJson<T>(result.recordset[0].json);
-      });
+      return await withRuntimeDatabase(
+        async pool => {
+          let request = pool
+            .request()
+            .input('account_id', sql.UniqueIdentifier, this.accountId)
+            .input('actor_id', sql.UniqueIdentifier, actor);
+          if (payload)
+            request = request.input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload));
+          if (extra) request = extra(request);
+          const result = await request.execute(procedure);
+          if (!result.recordset?.[0]?.json)
+            throw new AccessError(503, 'Business Operations storage is unavailable.');
+          return readSqlJson<T>(result.recordset[0].json);
+        },
+        procedure === 'dbo.BusinessContext'
+          ? 'BusinessContext'
+          : procedure === 'dbo.BusinessDashboard'
+            ? 'BusinessDashboard'
+            : procedure === 'dbo.BusinessAmendmentNotifications'
+              ? 'BusinessAmendmentNotifications'
+              : undefined,
+      );
     } catch (error) {
       return this.failure(error);
     }

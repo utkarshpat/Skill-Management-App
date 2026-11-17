@@ -15,6 +15,7 @@ let failure = 0,
   empty = false,
   partial = false,
   reads: string[] = [];
+let expiryReminders = false;
 const entries = [
   {
     revision: 5,
@@ -42,6 +43,7 @@ beforeEach(async () => {
   failure = 0;
   empty = false;
   partial = false;
+  expiryReminders = false;
   reads = [];
   window.localStorage.clear();
   mock.method(document, 'hasFocus', () => true);
@@ -49,6 +51,26 @@ beforeEach(async () => {
     const url = String(input);
     if (url === '/api/dev-login') return demoResponse();
     reads.push(url);
+    if (
+      expiryReminders &&
+      (url === '/api/notifications' || url === '/api/notifications?reminderPage=2')
+    ) {
+      const first = url === '/api/notifications';
+      return Response.json({
+        personId: 'aditi',
+        hasMoreReminders: first,
+        items: Array.from({ length: first ? 30 : 1 }, (_, index) => {
+          const number = first ? index + 1 : 31;
+          return {
+            id: 'cert-expiry-direct-report-' + number,
+            at: '2026-11-08T10:00:00Z',
+            title: 'Expiry reminder ' + number,
+            body: 'Credential expires soon.',
+            href: '/skill-reviews?type=certifications',
+          };
+        }),
+      });
+    }
     if (failure)
       return Response.json(
         { error: { message: 'Current activity access denied' } },
@@ -170,6 +192,50 @@ test('notifications retain per-person read state, filter categories and allow ex
   assert.equal(document.querySelectorAll('.notification-list li').length, 1);
   await click('All updates', category);
   assert.equal(document.querySelectorAll('.notification-list li').length, 2);
+});
+
+test('manager expiry reminder links to Reviews and the drawer reaches reminder 31', async () => {
+  expiryReminders = true;
+  view = await render(
+    <MemoryRouter>
+      <Notifications id="test-reminders" />
+    </MemoryRouter>,
+  );
+  await settle();
+  await settle();
+  assert.equal(document.querySelectorAll('.notification-list li').length, 30);
+  const reviewLinks = [
+    ...document.querySelectorAll('a[href="/skill-reviews?type=certifications"]'),
+  ];
+  assert.ok(reviewLinks.some(link => link.textContent?.includes('Review certification')));
+  await click('More reminders');
+  await settle();
+  assert.ok(reads.includes('/api/notifications?reminderPage=2'));
+  assert.match(
+    document.querySelector('.notification-list')?.textContent ?? '',
+    /Expiry reminder 31/,
+  );
+  assert.equal(document.querySelectorAll('.notification-list li').length, 1);
+  await click('Previous reminders');
+  await settle();
+  assert.equal(document.querySelectorAll('.notification-list li').length, 30);
+});
+
+test('notification refresh keeps session read marks when storage writes fail', async () => {
+  mock.method(Storage.prototype, 'setItem', () => {
+    throw Error('Storage unavailable');
+  });
+  view = await render(
+    <MemoryRouter>
+      <Notifications id="test-notifications" />
+    </MemoryRouter>,
+  );
+  await settle();
+  await click('Mark read', document.querySelector('.notification-item-actions')!);
+  assert.ok(document.querySelector('[aria-label="Notifications, 1 unread"]'));
+  await click('Refresh notifications');
+  await settle();
+  assert.ok(document.querySelector('[aria-label="Notifications, 1 unread"]'));
 });
 
 test('notification storage synchronization is isolated to the current person and denied refresh clears content', async () => {

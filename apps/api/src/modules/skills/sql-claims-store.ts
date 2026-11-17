@@ -315,22 +315,28 @@ export class SqlClaimsStore implements ClaimsStore {
   }
   async notifications(actorId: string) {
     return withRuntimeDatabase(async pool => {
-      const result = await pool
+      const { recordsets } = await pool
         .request()
         .input('account_id', sql.UniqueIdentifier, this.accountId)
-        .input('actor_id', sql.UniqueIdentifier, actorId)
-        .execute('dbo.ReadSkillClaimNotifications');
-      const combined = await pool
-        .request()
-        .input('account_id', sql.UniqueIdentifier, this.accountId)
-        .input('actor_id', sql.UniqueIdentifier, actorId)
-        .execute('dbo.ReadCapabilitySubmissionNotifications');
-      return [...result.recordset, ...combined.recordset].map(
+        .input('actor_id', sql.UniqueIdentifier, actorId).query<{
+        id: string;
+        at: Date;
+        title: string;
+        body: string;
+        href: string;
+      }>(`EXEC dbo.ReadSkillClaimNotifications @account_id=@account_id, @actor_id=@actor_id;
+          EXEC dbo.ReadCapabilitySubmissionNotifications @account_id=@account_id, @actor_id=@actor_id;`);
+      if (!Array.isArray(recordsets)) throw Error('Expected both claim notification result sets.');
+      const [legacy, combined] = recordsets;
+      return [...legacy, ...combined].map(
         (row: { id: string; at: Date; title: string; body: string; href: string }) => ({
           ...row,
           at: row.at.toISOString(),
         }),
       );
+    }).catch(error => {
+      if ((error as { number?: number })?.number === 51003) throw claimError(error);
+      throw error;
     });
   }
 }

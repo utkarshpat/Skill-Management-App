@@ -3,6 +3,12 @@ import { channel, tracingChannel } from 'node:diagnostics_channel';
 import { performance } from 'node:perf_hooks';
 
 export type DatabasePhase = 'token' | 'connect' | 'acquire' | 'checkout' | 'operation';
+export type TimedProcedure =
+  | 'ResolveAccessIdentity'
+  | 'ReadActorAccessContext'
+  | 'BusinessContext'
+  | 'BusinessDashboard'
+  | 'BusinessAmendmentNotifications';
 type Timing = {
   requestId: string;
   databaseCalls: number;
@@ -10,26 +16,47 @@ type Timing = {
   databaseConnectionRetries: number;
   databasePhysicalConnections: number;
   databasePhases: Record<DatabasePhase, { calls: number; ms: number }>;
+  databaseProcedures: ProcedureTiming[];
+};
+type ProcedureTiming = {
+  procedure: TimedProcedure;
+  ms: number;
+  checkoutMs: number;
+  checkoutCalls: number;
 };
 const context = new AsyncLocalStorage<Timing>();
+const procedureContext = new AsyncLocalStorage<ProcedureTiming>();
 let observingDriver = false;
 
 function observeDriverCheckout() {
   if (observingDriver) return;
   observingDriver = true;
-  const spans = new WeakMap<object, { timing: Timing; started: number }>();
+  const spans = new WeakMap<
+    object,
+    { timing: Timing; started: number; procedure?: ProcedureTiming }
+  >();
   // Observe the driver's public diagnostics. Retain only timings and counts.
   tracingChannel('mssql:pool:acquire').subscribe({
     start(event) {
       const timing = context.getStore();
-      if (timing) spans.set(event, { timing, started: performance.now() });
+      if (timing)
+        spans.set(event, {
+          timing,
+          started: performance.now(),
+          procedure: procedureContext.getStore(),
+        });
     },
     asyncStart(event) {
       const span = spans.get(event);
       if (!span) return;
       spans.delete(event);
+      const ms = performance.now() - span.started;
       span.timing.databasePhases.checkout.calls++;
-      span.timing.databasePhases.checkout.ms += performance.now() - span.started;
+      span.timing.databasePhases.checkout.ms += ms;
+      if (span.procedure) {
+        span.procedure.checkoutCalls++;
+        span.procedure.checkoutMs += ms;
+      }
     },
   });
   channel('mssql:connection:create').subscribe(() => {
@@ -47,6 +74,7 @@ export function startRequestTiming(requestId = '') {
     databaseMs: 0,
     databaseConnectionRetries: 0,
     databasePhysicalConnections: 0,
+    databaseProcedures: [],
     databasePhases: {
       token: { calls: 0, ms: 0 },
       connect: { calls: 0, ms: 0 },
@@ -71,11 +99,35 @@ export function startRequestTiming(requestId = '') {
           { calls: span.calls, ms: Math.round(span.ms * 100) / 100 },
         ]),
       ) as Timing['databasePhases'],
+      databaseAuthenticationMs: Math.round(timing.databasePhases.token.ms * 100) / 100,
+      ...(timing.databaseProcedures.length
+        ? {
+            databaseProcedures: timing.databaseProcedures.map(entry => ({
+              ...entry,
+              checkoutMs: Math.round(entry.checkoutMs * 100) / 100,
+            })),
+          }
+        : {}),
     }),
   };
 }
 export function currentRequestId() {
   return context.getStore()?.requestId;
+}
+export async function measureDatabaseProcedure<T>(
+  procedure: TimedProcedure,
+  action: () => Promise<T>,
+): Promise<T> {
+  const entries = context.getStore()?.databaseProcedures;
+  if (!entries || entries.length >= 12) return action();
+  const entry = { procedure, ms: 0, checkoutMs: 0, checkoutCalls: 0 };
+  entries.push(entry);
+  const started = performance.now();
+  try {
+    return await procedureContext.run(entry, action);
+  } finally {
+    entry.ms = Math.round((performance.now() - started) * 100) / 100;
+  }
 }
 // Capture the initiating context when the driver creates a connection, so a
 // deferred retry event cannot be attributed to a different concurrent request.
