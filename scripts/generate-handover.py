@@ -199,6 +199,7 @@ groups={
  'Skills & claims':['SkillCatalogue','ProficiencyFramework','ProficiencyLevel','SkillDefinitionVersion','SkillVersionCriterion','SkillClaimDraft','SkillClaimNotification','SkillClaimEvidence','CertificationRecord','CertificationReminderSchedule','CertificationExpiryReminder','CertificationImageRecord','CapabilitySubmission','CapabilitySubmissionItem','SkillCertificationLink','CapabilityIntakeFile'],
  'Learning & recommendations':['LearningPlan','LearningSession','LearningQuiz','LearningAttempt','LearningRecommendation','LearningRecommendationEvent','CertificationRecommendation','CertificationRecommendationEvent'],
  'Requests & incidents':['WorkflowRecord','WorkflowEvent'],
+ 'Announcements':['AnnouncementPublisher','Announcement','AnnouncementResponse'],
  'Business Operations':['BusinessProject','BusinessProjectMember','BusinessResponsibility','CredentialProvider','CredentialDefinition','CredentialSkillMapping','MasterAmendment','BusinessDemand','BusinessShortlist'],
  'AI & budget':['AiConversation','AiAccountBudget','AiActorBudget'],
  'Private files':['PrivateFileCounter','PrivateFileObject','PrivateUploadPart'],

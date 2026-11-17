@@ -24,7 +24,7 @@ interface Feed {
   hasMoreReminders?: boolean;
 }
 const key = (personId: string) => `skill-notifications-read:${personId}`;
-// Each reminder page repeats up to 30 recent updates and adds 30 reminders.
+// Reminder pages repeat recent updates and active announcements, then add 30 reminders.
 const readMarkerLimit = 1000;
 function readIds(personId: string): string[] {
   try {
@@ -128,6 +128,7 @@ export function Notifications({ id }: { id: string }) {
       load,
       [
         'notifications-updated',
+        'announcements-updated',
         'notifications-remote-updated',
         'notifications-opened',
         'learning-updated',

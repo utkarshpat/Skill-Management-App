@@ -50,6 +50,7 @@ test('defaults prioritize daily work across permission combinations and put prof
     'my-skills',
     'skill-reviews',
     'requests',
+    'announcements',
     'skills',
     'organization',
     'people',
@@ -65,7 +66,7 @@ test('defaults prioritize daily work across permission combinations and put prof
       learning: false,
       requests: true,
     }).map(i => i.id),
-    ['requests', 'profile'],
+    ['requests', 'announcements', 'profile'],
   );
 });
 test('portfolio navigation combines both destinations without restoring denied tabs or reviews', () => {

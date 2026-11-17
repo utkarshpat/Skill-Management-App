@@ -25,10 +25,12 @@ import { CertificationRecommendations } from './CertificationRecommendations';
 import { loadCertificationPortfolio } from './certification-portfolio';
 import './certifications.css';
 import '../skills-profile.css';
+import { ExcelBulkActions } from '../ExcelBulkActions';
 
 export function Certifications({
   actionsContainer,
   personalOnly = false,
+  workspace,
 }: {
   personalOnly?: boolean;
   workspace?: WorkspaceState;
@@ -159,6 +161,18 @@ export function Certifications({
   }
   const actions = (
     <div className="cert-header-actions">
+      {data &&
+        view === 'mine' &&
+        workspace?.capabilities.ownProfile &&
+        workspace.capabilities.administration &&
+        workspace.capabilities.manageUsers &&
+        workspace.capabilities.viewAudit && (
+          <ExcelBulkActions
+            kind="certifications"
+            showImport
+            onImported={() => setAttempt(value => value + 1)}
+          />
+        )}
       {data?.canManage && (
         <button className="admin-primary" disabled={loading} onClick={() => setCombined(true)}>
           <Plus size={16} /> Add skill

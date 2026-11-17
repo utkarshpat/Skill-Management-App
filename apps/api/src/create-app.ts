@@ -1,5 +1,9 @@
 import { registerCompanyCallback } from './modules/identity/company-oidc.js';
 import { registerCompanySessions } from './modules/identity/company-session.js';
+import {
+  registerAnnouncementRoutes,
+  type SqlAnnouncements,
+} from './modules/announcements/announcement-routes.js';
 import { registerBusinessRoutes, type BusinessDependencies } from './modules/business/index.js';
 import { startRequestTiming } from './shared/request-timing.js';
 import { errorType, logEvent } from './shared/logger.js';
@@ -47,6 +51,10 @@ import {
 } from './modules/recommendations/index.js';
 import { registerDashboardRoutes } from './modules/dashboard/index.js';
 import {
+  registerExcelBulkRoutes,
+  type SqlExcelBulkData,
+} from './modules/skills/excel-bulk-routes.js';
+import {
   registerCertificationRoutes,
   type CertificationDependencies,
 } from './modules/skills/certification-routes.js';
@@ -72,7 +80,10 @@ export type AppDependencies = IdentityDependencies &
   CertificationDependencies &
   CertificationRecommendationDependencies &
   KnowledgeDependencies &
-  BusinessDependencies;
+  BusinessDependencies & {
+    excelBulk?: Pick<SqlExcelBulkData, 'execute'>;
+    announcements?: SqlAnnouncements;
+  };
 
 export function createApp(
   dependencies?: AppDependencies,
@@ -187,6 +198,7 @@ export function createApp(
   });
   // Combined drafts carry bounded details for up to twenty items, including catalogue criteria.
   app.use('/api/capability-submissions', express.json({ limit: '1mb' }));
+  app.use('/api/announcements/draft', express.json({ limit: '1mb' }));
   app.use(express.json({ limit: '128kb' }));
   const companySession =
     dependencies && options.identityConfig && options.companySessionOrigin
@@ -287,6 +299,9 @@ export function createApp(
     dependencies
       ? {
           ...dependencies,
+          announcementNotifications: dependencies.announcements?.notifications.bind(
+            dependencies.announcements,
+          ),
           skillNotifications: dependencies.claims?.notifications?.bind(dependencies.claims),
           workflowNotifications: dependencies.workflows?.notifications.bind(dependencies.workflows),
           amendmentNotifications: dependencies.business?.notifications?.bind(dependencies.business),
@@ -322,6 +337,8 @@ export function createApp(
   );
   registerLearningRoutes(app, dependencies, store, demo);
   registerCertificationRoutes(app, dependencies, store, demo);
+  registerExcelBulkRoutes(app, dependencies);
+  registerAnnouncementRoutes(app, dependencies);
   registerCapabilityRoutes(app, dependencies, store, demo);
   registerCertificationRecommendationRoutes(app, dependencies, store, demo);
   registerRecommendationRoutes(app, dependencies, store, demo);

@@ -37,6 +37,7 @@ export class SqlClaimsStore implements ClaimsStore {
           sql.IRecordSet<{ skillName: string; rank: number; people: number; memberIds: string }>,
           sql.IRecordSet<{ rank: number; count: number; memberIds: string }>,
           sql.IRecordSet<{ category: string; count: number }>,
+          sql.IRecordSet<NonNullable<TeamCapability['certifications']>[number]>?,
         ];
         return {
           total: sets[0][0].total,
@@ -45,6 +46,7 @@ export class SqlClaimsStore implements ClaimsStore {
           scope: 'DIRECT_REPORTS',
           people: sets[1].map(p => ({ ...p, id: p.id.toLowerCase() })),
           skills: sets[2].map(s => ({ ...s, personId: s.personId.toLowerCase() })),
+          ...(query.person && sets[7] ? { certifications: sets[7] } : {}),
           ...(sets[3]?.[0]
             ? {
                 analytics: {

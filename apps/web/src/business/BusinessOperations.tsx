@@ -49,6 +49,7 @@ import { BusinessRecordDate } from './BusinessRecordDate';
 import { BusinessRecordFiles } from './BusinessRecordFiles';
 import { AnalyticsOverview } from './AnalyticsOverview';
 import { peopleSearchPrompt } from './people-search-prompt';
+import { ExcelBulkActions } from '../ExcelBulkActions';
 import { CredentialCoverage } from './CredentialCoverage';
 
 export function BusinessOperations() {
@@ -492,6 +493,33 @@ function Insights({ context }: { context: BusinessContext }) {
           </button>
         </nav>
         <div className="an-navigation-actions">
+          {analyticalView === 'certifications' && data?.context.canExport && (
+            <ExcelBulkActions
+              kind="certifications"
+              filter={
+                '?' +
+                new URLSearchParams({
+                  view: 'scope',
+                  ...Object.fromEntries(
+                    [
+                      ['scope', params.get('scopeId')],
+                      ['hierarchy', params.get('hierarchyId')],
+                      ...[
+                        'search',
+                        'category',
+                        'issuer',
+                        'status',
+                        'validity',
+                        'skillId',
+                        'from',
+                        'to',
+                      ].map(name => [name, params.get(name)]),
+                    ].filter((entry): entry is [string, string] => Boolean(entry[1])),
+                  ),
+                })
+              }
+            />
+          )}
           {data?.context.canExport && (
             <button
               type="button"

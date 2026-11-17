@@ -1,9 +1,12 @@
+import { Announcements } from './Announcements';
 import { AccessAudit } from './AccessAudit';
 import { organizationKindLabel } from './organization-labels';
 import type { Decision } from './EffectiveAccess';
 import type { Employment } from './EmploymentDetails';
 import { SidebarNavigation } from './SidebarNavigation';
-import { AccessDirectory } from './AccessDirectory';
+import { TemplateCards } from './TemplateCards';
+import { TemplatePermissionBundles } from './TemplatePermissionBundles';
+import './template-cards.css';
 import { Workspace, type WorkspaceState } from './Workspace';
 import { personalNavigationItems, personalPageTitle } from './WorkspaceNavigation';
 import { readOrganizationSummary, type OrganizationSummary } from './organization-summary';
@@ -12,7 +15,6 @@ import { NavigationDrawer } from './NavigationDrawer';
 import { Sidebar } from './Sidebar';
 import { NavbarAccount } from './NavbarAccount';
 import { RoleAssignments } from './RoleAssignments';
-import { PermissionEditor } from './PermissionEditor';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useSearchParams, useNavigate } from 'react-router';
 import { authenticatedFetch, isDemoSession } from './auth';
@@ -533,7 +535,7 @@ export function AccessAdmin({
               <>
                 <button className="secondary-button" disabled={busy} onClick={createTemplate}>
                   <Plus size={16} />
-                  New template
+                  Create template
                 </button>
               </>
             )}
@@ -559,6 +561,7 @@ export function AccessAdmin({
             workspaceLink={{ href: '/workspace', label: 'Personal workspace' }}
           />
         </header>
+        {personalPath !== '/announcements' && <Announcements />}
         <main id="access-main" className="access-main">
           {!personalTitle && ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
             <>
@@ -749,87 +752,24 @@ export function AccessAdmin({
                 </Suspense>
               )}
               {!personalTitle && tab === 'roles' && (
-                <>
-                  {state.canManageUsers && (
-                    <button className="secondary-button" onClick={() => setTab('assignments')}>
-                      Bulk template assignments
-                    </button>
-                  )}
-                  <details className="profile-panel role-presets">
-                    <summary>Start from a permission set</summary>
-                    <div className="preset-buttons">
-                      {state.presets.map(preset => (
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          key={preset.key}
-                          onClick={() => {
-                            if (preset.assignmentMode === 'RESPONSIBILITY') {
-                              navigate('/access?view=profiles');
-                              return;
-                            }
-                            setRole(
-                              structuredClone(
-                                state.roles.find(item => item.name === preset.name) ?? {
-                                  id: '',
-                                  name: preset.name,
-                                  permissions: preset.permissions,
-                                },
-                              ),
-                            );
-                            setEditor('role');
-                            setEditorPage(0);
-                            setEditorRevision(state.revision);
-                            setError('');
-                          }}
-                        >
-                          {preset.name}
-                        </button>
-                      ))}
-                    </div>
-                    {state.presets
-                      .filter(preset => preset.name === role.name)
-                      .map(preset => (
-                        <div key={preset.key} className="preset-detail">
-                          <p>{preset.description}</p>
-                          {preset.pending.length > 0 && (
-                            <p>
-                              Pending organization setup:{' '}
-                              {preset.pending
-                                .map(
-                                  item =>
-                                    (state.catalogue.find(entry => entry.code === item.permission)
-                                      ?.label ?? item.permission) +
-                                    ' (' +
-                                    organizationKindLabel(item.scope).toLowerCase() +
-                                    ')',
-                                )
-                                .join(', ')}
-                              . These proposals do not grant access yet.
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                  </details>
-                  <AccessDirectory
-                    key="roles"
-                    kind="roles"
-                    people={state.people}
-                    roles={state.roles}
-                    busy={busy}
-                    onPerson={() => {}}
-                    onRole={id => {
-                      const item = state.roles.find(role => role.id === id);
-                      if (item) {
-                        setRole(structuredClone(item));
-                        setEditor('role');
-                        setEditorPage(0);
-                        setEditorRevision(state.revision);
-                        setError('');
-                      }
-                    }}
-                  />
-                </>
+                <TemplateCards
+                  roles={state.roles}
+                  people={state.people}
+                  catalogue={state.catalogue}
+                  busy={busy}
+                  canManagePeople={state.canManageUsers}
+                  canManageScoped={Boolean(workspaceContext?.capabilities.businessAdministration)}
+                  onAssignPerson={() => setTab('people')}
+                  onScopedAssignments={() => navigate('/access?view=profiles')}
+                  onAssignments={() => setTab('assignments')}
+                  onEdit={item => {
+                    setRole(structuredClone(item));
+                    setEditor('role');
+                    setEditorPage(0);
+                    setEditorRevision(state.revision);
+                    setError('');
+                  }}
+                />
               )}
               {compactPeople && (
                 <>
@@ -1017,8 +957,7 @@ export function AccessAdmin({
                     {
                       label: 'Permissions',
                       content: (
-                        <PermissionEditor
-                          label="Template permissions"
+                        <TemplatePermissionBundles
                           value={role.permissions}
                           onChange={permissions => setRole({ ...role, permissions })}
                           catalogue={state.catalogue}

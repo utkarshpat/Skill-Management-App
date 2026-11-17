@@ -172,8 +172,9 @@ const review = () => document.querySelector('[aria-label="Review access change"]
 
 test('new access template previews its permission set and returns to the same draft before receipt save', async () => {
   await mount();
-  await click('New template');
+  await click('Create template');
   await fill('Template name', 'Reporting support');
+  await click('Customize individual permissions');
   const allowed = editor().querySelector<HTMLInputElement>(
     '[aria-label="View requests · Own records"]',
   )!;
@@ -200,7 +201,7 @@ test('new access template previews its permission set and returns to the same dr
 
 test('failed access recheck preserves the edited template and requires a new preview', async () => {
   await mount();
-  await click('Edit Delivery Support');
+  await click('Edit template Delivery Support');
   await fill('Template name', 'Client delivery support');
   await click('Preview change');
   saveFailure = 409;
@@ -218,11 +219,13 @@ test('failed access recheck preserves the edited template and requires a new pre
   assert.equal(saves.length, 2);
 });
 
-test('preset proposals remain editable and failed preview never writes', async () => {
+test('individual customization remains available and failed preview never writes', async () => {
   await mount();
-  await click('Learning coordination');
-  assert.match(document.body.textContent!, /These proposals do not grant access yet/);
+  await click('Create template');
   await fill('Template name', 'Personal learning coordination');
+  await click('Customize individual permissions');
+  const allowed = editor().querySelector<HTMLInputElement>('[aria-label="View learning · Own records"]')!;
+  await act(async () => allowed.click());
   previewFailure = 403;
   await click('Preview change');
   assert.match(document.body.textContent!, /cannot preview this change/);

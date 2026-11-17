@@ -1,4 +1,4 @@
-import { Bell, BookOpen, ClipboardCheck, Inbox } from 'lucide-react';
+import { Bell, BookOpen, ClipboardCheck, Inbox, Megaphone } from 'lucide-react';
 export function notificationDestination(href: string) {
   if (!href.startsWith('/') || href.startsWith('//') || /[\\\u0000-\u0020\u007f]/.test(href))
     return undefined;
@@ -10,6 +10,7 @@ export function notificationDestination(href: string) {
   }
   if (url.origin !== 'https://workspace.invalid') return undefined;
   const actions: Record<string, { label: string; kind: string; icon: typeof Bell }> = {
+    '/announcements': { label: 'Open announcement', kind: 'Announcements', icon: Megaphone },
     '/requests': { label: 'View request', kind: 'Requests', icon: Inbox },
     '/learning': {
       label: url.searchParams.has('recommendation') ? 'Open recommendation' : 'Open learning',

@@ -1,10 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { authenticatedFetch } from './auth';
 import { FormDialog } from './FormDialog';
 import { SkillClaimDialog } from './SkillClaimDialog';
 import type { Claim } from './MySkills';
 import { Recommendations } from './Recommendations';
+import { CapabilitySubmissions } from './capabilities/CapabilitySubmissions';
 import { TeamCapability } from './TeamCapability';
 import type { ClaimReviewDecision } from './ClaimReviewAccess';
 import { toast } from './toast';
@@ -61,11 +62,13 @@ const reviewLabels: Record<string, string> = {
 export function SkillReviews({
   unified = false,
   queueContent,
+  includeCombined = false,
   teamContent,
   recommendationContent,
 }: {
   unified?: boolean;
   queueContent?: ReactNode;
+  includeCombined?: boolean;
   teamContent?: ReactNode;
   recommendationContent?: ReactNode;
 } = {}) {
@@ -251,6 +254,391 @@ export function SkillReviews({
     </nav>
   );
   const initialLoading = !data && loading;
+  function refreshReviews() {
+    setAttempt(n => n + 1);
+  }
+  function renderQueue(
+    combined?: Parameters<
+      NonNullable<ComponentProps<typeof CapabilitySubmissions>['renderQueue']>
+    >[0],
+  ) {
+    const matchingSubmissions = (combined?.records ?? []).filter(
+      item =>
+        (!person || item.personId?.toLowerCase() === person.toLowerCase()) &&
+        (!query ||
+          [item.name, item.label].some(value =>
+            value?.toLowerCase().includes(query.toLowerCase()),
+          )),
+    );
+    const showCombined = status === 'ALL' || status === 'SUBMITTED';
+    const submissions = showCombined && page === 1 ? matchingSubmissions : [];
+    const combinedIds = new Set(submissions.map(item => item.id.toLowerCase()));
+    const claims = (data?.claims ?? []).filter(
+      item =>
+        item.status !== 'SUBMITTED' ||
+        !item.activeSubmissionId ||
+        !combinedIds.has(item.activeSubmissionId.toLowerCase()),
+    );
+    return (
+      <>
+        {!unified && error && (
+          <div className="review-error" role="alert">
+            <span>{error}</span>
+            <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
+              Retry
+            </button>
+          </div>
+        )}
+        {!includeCombined && (data?.summary || loading) && (
+          <div className="review-metrics" aria-label="Filter reviews by status">
+            {metrics.map(item => (
+              <button
+                className={'review-metric ' + item.tone}
+                key={item.key}
+                disabled={loading}
+                aria-pressed={status === item.key}
+                title={`${item.label} (${loading ? '—' : (item.value ?? 0)}): ${item.hint}`}
+                onClick={() => {
+                  setStatus(item.key);
+                  setPage(1);
+                }}
+              >
+                <span className="review-metric-icon">
+                  <item.icon size={19} />
+                </span>
+                <span className="review-metric-label">{item.label}</span>
+                <strong className="review-metric-count">{loading ? '—' : (item.value ?? 0)}</strong>
+              </button>
+            ))}
+          </div>
+        )}
+        <section
+          className="review-workbench"
+          aria-label={includeCombined ? 'Assigned reviews' : 'Assigned skill reviews'}
+          aria-busy={loading}
+        >
+          <header>
+            <div>
+              <h3>
+                {includeCombined
+                  ? 'Assigned reviews'
+                  : status === 'ALL'
+                    ? 'All assigned reviews'
+                    : reviewLabels[status]}
+              </h3>
+              {!includeCombined && (
+                <p>
+                  {loading
+                    ? 'Checking current assignments…'
+                    : data
+                      ? `${data.total} ${data.total === 1 ? 'claim' : 'claims'}${filtered ? ' matching your filters' : ' assigned to you'}`
+                      : 'Assigned review data is unavailable.'}
+                </p>
+              )}
+            </div>
+          </header>
+          <form
+            className="review-filters"
+            onSubmit={e => {
+              e.preventDefault();
+              setPage(1);
+              setQuery(search.trim());
+            }}
+          >
+            <div className="review-search">
+              <Search size={18} />
+              <input
+                type="search"
+                aria-label="Search review employee or skill"
+                placeholder="Search employee, code, skill or request…"
+                maxLength={100}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              <button type="submit" disabled={loading}>
+                Search
+              </button>
+            </div>
+            <select
+              aria-label="Review category"
+              value={category}
+              onChange={e => {
+                setCategory(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">
+                {includeCombined ? 'All skill categories' : 'All categories'}
+              </option>
+              {data?.categories?.map(c => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+            <select
+              aria-label="Review status"
+              value={status}
+              onChange={e => {
+                setStatus(e.target.value);
+                setPage(1);
+              }}
+            >
+              {Object.entries(reviewLabels).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="review-clear"
+              disabled={!filtered && !search}
+              onClick={clear}
+            >
+              Clear
+            </button>
+          </form>
+          {person && (
+            <div className="review-filter-note">
+              Showing one team member’s assigned reviews.
+              <button
+                onClick={() => {
+                  setPerson(undefined);
+                  setPage(1);
+                }}
+              >
+                Show all direct reports
+              </button>
+            </div>
+          )}
+          {opening && (
+            <p className="review-opening" role="status">
+              Checking current claim access…
+            </p>
+          )}
+          {includeCombined && category && (
+            <p className="review-filter-note">
+              Skill category filters apply to individual skill claims.
+            </p>
+          )}
+          {showCombined && page > 1 && matchingSubmissions.length > 0 && (
+            <p className="review-filter-note">Combined submissions appear on page 1.</p>
+          )}
+          {combined?.error && (
+            <div className="review-error" role="alert">
+              <span>{combined.error}</span>
+              <button className="secondary-button" onClick={combined.retry}>
+                Retry
+              </button>
+            </div>
+          )}
+          {combined?.loading && (
+            <p className="review-opening" role="status">
+              Loading combined submissions…
+            </p>
+          )}
+          {loading && (
+            <div className="review-loading" role="status">
+              <span className="review-loading-icon">
+                <RefreshCw size={22} className="review-spin" />
+              </span>
+              <strong>Loading your review queue</strong>
+              <p>Checking current assignments and claim status.</p>
+            </div>
+          )}
+          {!loading &&
+            data &&
+            !claims.length &&
+            !submissions.length &&
+            !combined?.loading &&
+            !combined?.error && (
+              <div className="review-empty">
+                <span className="review-empty-icon">
+                  {filtered ? <Search size={30} /> : <CheckCheck size={32} />}
+                </span>
+                <h3>
+                  {filtered
+                    ? 'No matching reviews'
+                    : includeCombined
+                      ? 'No combined or individual skill reviews on this page'
+                      : 'You’re all caught up'}
+                </h3>
+                <p>
+                  {filtered
+                    ? 'Try another employee, category or review status.'
+                    : 'New requests assigned to you will appear here.'}
+                </p>
+                <div className="review-empty-actions">
+                  {filtered ? (
+                    <button className="secondary-button" onClick={clear}>
+                      Reset filters
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="secondary-button"
+                        onClick={() => {
+                          setStatus('ALL');
+                          setPage(1);
+                        }}
+                      >
+                        View all review states
+                        <ArrowRight size={16} />
+                      </button>
+                      {data.canViewTeam && (
+                        <button className="review-text-action" onClick={() => changeView('team')}>
+                          Explore team analytics
+                          <ArrowRight size={16} />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          {((!loading && claims.length > 0) || submissions.length > 0) && (
+            <div className="my-skills-table-wrap">
+              <table className="my-skills-table review-table">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>{includeCombined ? 'Request' : 'Skill / category'}</th>
+                    <th>{includeCombined ? 'Details' : 'Claimed proficiency'}</th>
+                    <th>Status</th>
+                    <th>Updated</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissions.map(item => (
+                    <tr key={'submission-' + item.id}>
+                      <td>
+                        <strong>{item.name}</strong>
+                      </td>
+                      <td>
+                        <strong>{item.label || 'Capability submission'}</strong>
+                        <span className="review-subtext">Combined submission</span>
+                      </td>
+                      <td>
+                        {item.skills} {item.skills === 1 ? 'skill' : 'skills'} ·{' '}
+                        {item.certifications}{' '}
+                        {item.certifications === 1 ? 'certificate' : 'certificates'}
+                      </td>
+                      <td>
+                        <span className="review-status submitted">Pending review</span>
+                      </td>
+                      <td>
+                        {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : '—'}
+                      </td>
+                      <td>
+                        <button className="admin-primary" onClick={() => combined?.open(item.id)}>
+                          Review request <ArrowRight size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {!loading &&
+                    claims.map(item => (
+                      <tr key={item.id}>
+                        <td>
+                          <div className="review-person">
+                            <span className="review-person-avatar" aria-hidden="true">
+                              {(item.personName ?? '')
+                                .split(' ')
+                                .filter(Boolean)
+                                .slice(0, 2)
+                                .map(n => n[0])
+                                .join('')}
+                            </span>
+                            <strong>{item.personName}</strong>
+                          </div>
+                        </td>
+                        <td>
+                          <strong>{item.skillName}</strong>
+                          <span className="review-subtext">
+                            {includeCombined ? 'Individual skill · ' : ''}
+                            {item.category}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="review-level">L{item.rank}</span>
+                          <span className="review-subtext">{item.levelName}</span>
+                        </td>
+                        <td>
+                          <span className={'review-status ' + item.status.toLowerCase()}>
+                            {reviewLabels[item.status] ?? item.status}
+                          </span>
+                        </td>
+                        <td>{new Date(item.updatedAt).toLocaleDateString()}</td>
+                        <td>
+                          <button
+                            className={
+                              item.status === 'SUBMITTED' ? 'admin-primary' : 'secondary-button'
+                            }
+                            disabled={opening}
+                            onClick={() => void openClaim(item.id)}
+                          >
+                            {item.status === 'SUBMITTED' ? 'Review claim' : 'View history'}
+                            <ArrowRight size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {!loading && data && data.total > 0 && (
+            <footer>
+              <span>
+                Showing {(page - 1) * data.pageSize + 1}–
+                {Math.min(page * data.pageSize, data.total)} of {data.total} individual skill claims
+              </span>
+              <div className="review-pagination">
+                <button
+                  aria-label="Previous reviews page"
+                  className="secondary-button"
+                  disabled={page === 1}
+                  onClick={() => setPage(n => n - 1)}
+                >
+                  <ChevronLeft size={17} />
+                </button>
+                <span>Page {page}</span>
+                <button
+                  aria-label="Next reviews page"
+                  className="secondary-button"
+                  disabled={page * data.pageSize >= data.total}
+                  onClick={() => setPage(n => n + 1)}
+                >
+                  <ChevronRight size={17} />
+                </button>
+              </div>
+            </footer>
+          )}
+        </section>
+        <p className="review-policy-note">
+          <ShieldCheck size={15} />
+          Only requests assigned to you from current direct reports appear here.
+        </p>
+        {!initialLoading && !claim && !error && (opening || Boolean(params.get('claim'))) && (
+          <FormDialog
+            title="Skill review"
+            busy={opening}
+            onClose={() => {
+              const next = new URLSearchParams(params);
+              next.delete('claim');
+              setParams(next, { replace: true });
+            }}
+          >
+            <div className="notification-destination-loading" role="status">
+              <RefreshCw size={26} className="notification-spin" />
+              <strong>Opening skill review…</strong>
+              <p>Checking the current claim and your available actions.</p>
+            </div>
+          </FormDialog>
+        )}
+      </>
+    );
+  }
   const workspace = (
     <div
       className="review-shell review-workspace-content"
@@ -292,7 +680,7 @@ export function SkillReviews({
       ) : (
         <>
           {/* Unmount on denial so nested queues cannot open deep-link dialogs over a denied page. */}
-          {!(denied && !data) && queueContent}
+
           {unified && error && data && (
             <div className="review-error" role="alert">
               <span>{error}</span>
@@ -301,299 +689,13 @@ export function SkillReviews({
               </button>
             </div>
           )}
-          {unified && (
-            <p className="review-history-note">
-              Earlier individual skill reviews and recorded decisions remain available below.
-            </p>
-          )}
-          <details open className="review-legacy-history">
-            {unified && <summary>Legacy reviews{data?.total ? ` (${data.total})` : ''}</summary>}
-            {!unified && error && (
-              <div className="review-error" role="alert">
-                <span>{error}</span>
-                <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
-                  Retry
-                </button>
-              </div>
-            )}
-            {(data?.summary || loading) && (
-              <div className="review-metrics" aria-label="Filter reviews by status">
-                {metrics.map(item => (
-                  <button
-                    className={'review-metric ' + item.tone}
-                    key={item.key}
-                    disabled={loading}
-                    aria-pressed={status === item.key}
-                    title={`${item.label} (${loading ? '—' : (item.value ?? 0)}): ${item.hint}`}
-                    onClick={() => {
-                      setStatus(item.key);
-                      setPage(1);
-                    }}
-                  >
-                    <span className="review-metric-icon">
-                      <item.icon size={19} />
-                    </span>
-                    <span className="review-metric-label">{item.label}</span>
-                    <strong className="review-metric-count">
-                      {loading ? '—' : (item.value ?? 0)}
-                    </strong>
-                  </button>
-                ))}
-              </div>
-            )}
-            <section
-              className="review-workbench"
-              aria-label="Assigned skill reviews"
-              aria-busy={loading}
-            >
-              <header>
-                <div>
-                  <h3>{status === 'ALL' ? 'All assigned reviews' : reviewLabels[status]}</h3>
-                  <p>
-                    {loading
-                      ? 'Checking current assignments…'
-                      : data
-                        ? `${data.total} ${data.total === 1 ? 'claim' : 'claims'}${filtered ? ' matching your filters' : ' assigned to you'}`
-                        : 'Assigned review data is unavailable.'}
-                  </p>
-                </div>
-              </header>
-              <form
-                className="review-filters"
-                onSubmit={e => {
-                  e.preventDefault();
-                  setPage(1);
-                  setQuery(search.trim());
-                }}
-              >
-                <div className="review-search">
-                  <Search size={18} />
-                  <input
-                    type="search"
-                    aria-label="Search review employee or skill"
-                    placeholder="Search employee, code or skill…"
-                    maxLength={100}
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                  />
-                  <button type="submit" disabled={loading}>
-                    Search
-                  </button>
-                </div>
-                <select
-                  aria-label="Review category"
-                  value={category}
-                  onChange={e => {
-                    setCategory(e.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="">All categories</option>
-                  {data?.categories?.map(c => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-                <select
-                  aria-label="Review status"
-                  value={status}
-                  onChange={e => {
-                    setStatus(e.target.value);
-                    setPage(1);
-                  }}
-                >
-                  {Object.entries(reviewLabels).map(([key, label]) => (
-                    <option key={key} value={key}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="review-clear"
-                  disabled={!filtered && !search}
-                  onClick={clear}
-                >
-                  Clear
-                </button>
-              </form>
-              {person && (
-                <div className="review-filter-note">
-                  Showing one team member’s assigned claims.
-                  <button
-                    onClick={() => {
-                      setPerson(undefined);
-                      setPage(1);
-                    }}
-                  >
-                    Show all direct reports
-                  </button>
-                </div>
-              )}
-              {opening && (
-                <p className="review-opening" role="status">
-                  Checking current claim access…
-                </p>
-              )}
-              {loading && (
-                <div className="review-loading" role="status">
-                  <span className="review-loading-icon">
-                    <RefreshCw size={22} className="review-spin" />
-                  </span>
-                  <strong>Loading your review queue</strong>
-                  <p>Checking current assignments and claim status.</p>
-                </div>
-              )}
-              {!loading && data && !data.claims.length && (
-                <div className="review-empty">
-                  <span className="review-empty-icon">
-                    {filtered ? <Search size={30} /> : <CheckCheck size={32} />}
-                  </span>
-                  <h3>{filtered ? 'No matching reviews' : 'You’re all caught up'}</h3>
-                  <p>
-                    {filtered
-                      ? 'Try another employee, category or review status.'
-                      : 'There are no skill claims awaiting your review. New submissions assigned to you will appear here.'}
-                  </p>
-                  <div className="review-empty-actions">
-                    {filtered ? (
-                      <button className="secondary-button" onClick={clear}>
-                        Reset filters
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          className="secondary-button"
-                          onClick={() => {
-                            setStatus('ALL');
-                            setPage(1);
-                          }}
-                        >
-                          View all review states
-                          <ArrowRight size={16} />
-                        </button>
-                        {data.canViewTeam && (
-                          <button className="review-text-action" onClick={() => changeView('team')}>
-                            Explore team analytics
-                            <ArrowRight size={16} />
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-              {!loading && data && data.claims.length > 0 && (
-                <div className="my-skills-table-wrap">
-                  <table className="my-skills-table review-table">
-                    <thead>
-                      <tr>
-                        <th>Employee</th>
-                        <th>Skill / category</th>
-                        <th>Claimed proficiency</th>
-                        <th>Status</th>
-                        <th>Updated</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.claims.map(item => (
-                        <tr key={item.id}>
-                          <td>
-                            <div className="review-person">
-                              <span className="review-person-avatar" aria-hidden="true">
-                                {(item.personName ?? '')
-                                  .split(' ')
-                                  .filter(Boolean)
-                                  .slice(0, 2)
-                                  .map(n => n[0])
-                                  .join('')}
-                              </span>
-                              <strong>{item.personName}</strong>
-                            </div>
-                          </td>
-                          <td>
-                            <strong>{item.skillName}</strong>
-                            <span className="review-subtext">{item.category}</span>
-                          </td>
-                          <td>
-                            <span className="review-level">L{item.rank}</span>
-                            <span className="review-subtext">{item.levelName}</span>
-                          </td>
-                          <td>
-                            <span className={'review-status ' + item.status.toLowerCase()}>
-                              {reviewLabels[item.status] ?? item.status}
-                            </span>
-                          </td>
-                          <td>{new Date(item.updatedAt).toLocaleDateString()}</td>
-                          <td>
-                            <button
-                              className={
-                                item.status === 'SUBMITTED' ? 'admin-primary' : 'secondary-button'
-                              }
-                              disabled={opening}
-                              onClick={() => void openClaim(item.id)}
-                            >
-                              {item.status === 'SUBMITTED' ? 'Review claim' : 'View history'}
-                              <ArrowRight size={15} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {!loading && data && data.total > 0 && (
-                <footer>
-                  <span>
-                    Showing {(page - 1) * data.pageSize + 1}–
-                    {Math.min(page * data.pageSize, data.total)} of {data.total} claims
-                  </span>
-                  <div className="review-pagination">
-                    <button
-                      aria-label="Previous reviews page"
-                      className="secondary-button"
-                      disabled={page === 1}
-                      onClick={() => setPage(n => n - 1)}
-                    >
-                      <ChevronLeft size={17} />
-                    </button>
-                    <span>Page {page}</span>
-                    <button
-                      aria-label="Next reviews page"
-                      className="secondary-button"
-                      disabled={page * data.pageSize >= data.total}
-                      onClick={() => setPage(n => n + 1)}
-                    >
-                      <ChevronRight size={17} />
-                    </button>
-                  </div>
-                </footer>
-              )}
-            </section>
-            <p className="review-policy-note">
-              <ShieldCheck size={15} />
-              Only assigned claims from your current direct reports appear here. Private drafts stay
-              with the employee.
-            </p>
-            {!initialLoading && !claim && !error && (opening || Boolean(params.get('claim'))) && (
-              <FormDialog
-                title="Skill review"
-                busy={opening}
-                onClose={() => {
-                  const next = new URLSearchParams(params);
-                  next.delete('claim');
-                  setParams(next, { replace: true });
-                }}
-              >
-                <div className="notification-destination-loading" role="status">
-                  <RefreshCw size={26} className="notification-spin" />
-                  <strong>Opening skill review…</strong>
-                  <p>Checking the current claim and your available actions.</p>
-                </div>
-              </FormDialog>
-            )}
-          </details>
+          {!(denied && !data) &&
+            (includeCombined ? (
+              <CapabilitySubmissions review onUpdated={refreshReviews} renderQueue={renderQueue} />
+            ) : (
+              renderQueue()
+            ))}
+          {!(denied && !data) && queueContent}
           {claim && (
             <SkillClaimDialog
               claim={claim}

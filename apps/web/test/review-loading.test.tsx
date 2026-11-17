@@ -72,19 +72,61 @@ test('initial queues read in parallel and show combined submissions before slowe
   await waitFor(() => reads.size === 3);
   const content = () => document.querySelector<HTMLElement>('.review-workspace-content')!;
   assert.equal(content().hidden, false);
-  assert.match(content().textContent ?? '', /Loading review requests/);
+  assert.match(content().textContent ?? '', /Loading combined submissions/);
   assert.equal(document.querySelector('.assigned-review-total'), null);
   await resolve(reads, '/api/capability-submissions', { records: [] });
-  assert.match(content().textContent ?? '', /All caught up/);
+  assert.doesNotMatch(content().textContent ?? '', /No combined or individual skill reviews/);
   await resolve(reads, '/api/skill-reviews', skills);
   assert.equal(content().hidden, false);
   await resolve(reads, '/api/certifications', { records: [], total: 0, pageSize: 10 });
   assert.equal(content().hidden, false);
   assert.equal(document.querySelectorAll('.review-workspace-tabs button').length, 3);
-  assert.match(content().textContent ?? '', /All caught up/);
+  assert.match(content().textContent ?? '', /No combined or individual skill reviews/);
   assert.equal(document.querySelector('.assigned-review-total'), null);
-  assert.equal(document.querySelector<HTMLDetailsElement>('.review-legacy-history')!.open, true);
+  assert.ok(document.querySelector('[aria-label="Assigned reviews"]'));
   assert.equal(reads.size, 3);
+  await view.unmount();
+});
+test('combined requests and standalone claims share one table without duplicating bundled claims', async () => {
+  const reads = fixture();
+  await initializeAuth();
+  const view = await render(
+    <MemoryRouter>
+      <ReviewWorkspace />
+    </MemoryRouter>,
+  );
+  await waitFor(() => reads.size === 2);
+  const id = '2b5a1c9e-1111-4a2b-8c3d-000000000001';
+  await resolve(reads, '/api/capability-submissions', {
+    records: [
+      {
+        id,
+        name: 'Aditi',
+        label: 'Azure request',
+        skills: 1,
+        certifications: 1,
+        status: 'SUBMITTED',
+      },
+    ],
+  });
+  await resolve(reads, '/api/skill-reviews', {
+    ...skills,
+    total: 2,
+    claims: [
+      {
+        id: 'claim-1',
+        activeSubmissionId: id,
+        personName: 'Aditi',
+        skillName: 'Bundled skill',
+        status: 'SUBMITTED',
+      },
+      { id: 'claim-2', personName: 'Aditi', skillName: 'Standalone skill', status: 'SUBMITTED' },
+    ],
+  });
+  const rows = document.querySelectorAll('.review-workbench table tbody tr');
+  assert.equal(rows.length, 2);
+  assert.match(rows[0].textContent ?? '', /Azure request.*Combined submission/);
+  assert.match(rows[1].textContent ?? '', /Standalone skill.*Individual skill/);
   await view.unmount();
 });
 test('failed combined queue shows its error while other queues stay visible', async () => {
@@ -114,7 +156,7 @@ test('failed combined queue shows its error while other queues stay visible', as
     content.querySelector('[role="alert"]')!.textContent ?? '',
     /Combined queue unavailable/,
   );
-  assert.doesNotMatch(content.textContent ?? '', /All caught up/);
+  assert.doesNotMatch(content.textContent ?? '', /No combined or individual skill reviews/);
   assert.equal(document.querySelectorAll('.review-workspace-tabs button').length, 1);
   await view.unmount();
 });
@@ -226,7 +268,7 @@ test('transient legacy review outage keeps the combined workspace usable', async
   );
   const content = document.querySelector<HTMLElement>('.review-workspace-content')!;
   assert.equal(content.hidden, false);
-  assert.match(content.textContent ?? '', /All caught up/);
+  assert.doesNotMatch(content.textContent ?? '', /No combined or individual skill reviews/);
   assert.match(document.body.textContent ?? '', /Review database is waking up.*Retry/);
   await view.unmount();
 });

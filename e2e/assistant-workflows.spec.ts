@@ -1,8 +1,8 @@
 import { test, expect, fixture, ids } from './browser-fixture';
 import { workflowChatShortcut } from '../apps/api/src/modules/ai/workflow-chat-policy';
 import type { Page } from '@playwright/test';
-async function assistant(page: Page) {
-  await fixture(page, { role: 'employee', realistic: true });
+async function assistant(page: Page, role: 'employee' | 'admin' = 'employee') {
+  await fixture(page, { role, realistic: true });
   await page.route('**/api/assistant/navigation', r =>
     r.fulfill({
       json: {
@@ -16,6 +16,95 @@ async function assistant(page: Page) {
     }),
   );
 }
+test('assistant mascot loads its artwork and respects reduced motion', async ({
+  page,
+}, testInfo) => {
+  await assistant(page);
+  await page.goto('/requests');
+  const launcher = page.getByRole('button', { name: 'Open AI assistant' });
+  const hand = launcher.locator('.assistant-mascot-hand');
+  const head = launcher.locator('.assistant-mascot-head');
+  const body = launcher.locator('.assistant-mascot-body');
+  const greeting = launcher.getByText('May I help you?');
+  await expect(greeting).toBeVisible();
+  await expect(body).toHaveCSS('width', '104px');
+  await expect(greeting).toHaveCSS('animation-name', 'assistant-type-greeting');
+  await expect(launcher.locator('img')).toHaveCount(4);
+  const brand = launcher.locator('.assistant-mascot-brand');
+  await expect(brand).toHaveAttribute('src', '/brand/sopra-steria-mark.svg');
+  await expect(brand).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect
+    .poll(() =>
+      launcher
+        .locator('img')
+        .evaluateAll(images => images.every(image => (image as HTMLImageElement).naturalWidth > 0)),
+    )
+    .toBe(true);
+  await expect(hand).toHaveCSS('animation-name', 'assistant-wave');
+  await expect(head).toHaveCSS('animation-name', 'assistant-head-tilt');
+  await expect(body).toHaveCSS('animation-name', 'none');
+  await expect(hand).toHaveCSS('animation-iteration-count', 'infinite');
+  await expect(head).toHaveCSS('animation-iteration-count', 'infinite');
+  await expect(greeting).toHaveCSS('animation-iteration-count', 'infinite');
+  const timing = await launcher.evaluate(button => {
+    const animations = button.getAnimations({ subtree: true });
+    for (const animation of animations) animation.pause();
+    function frame(time: number) {
+      for (const animation of animations) animation.currentTime = time;
+      return {
+        text: getComputedStyle(button.querySelector('.assistant-greeting-text')!).clipPath,
+        hand: getComputedStyle(button.querySelector('.assistant-mascot-hand')!).transform,
+        head: getComputedStyle(button.querySelector('.assistant-mascot-head')!).transform,
+        body: getComputedStyle(button.querySelector('.assistant-mascot-body')!).transform,
+      };
+    }
+    return { early: frame(600), settled: frame(2500), next: frame(8600) };
+  });
+  expect(timing.next).toEqual(timing.early);
+  expect(timing.early.text).not.toBe(timing.settled.text);
+  expect(timing.early.hand).not.toBe(timing.settled.hand);
+  expect(timing.early.head).not.toBe(timing.settled.head);
+  expect(timing.early.body).toBe(timing.settled.body);
+  const viewport = page.viewportSize()!;
+  const clip = { x: viewport.width - 305, y: viewport.height - 170, width: 305, height: 170 };
+  await page.screenshot({ path: testInfo.outputPath('mascot-moving.png'), clip });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(greeting).toHaveCSS('animation-name', 'none');
+  await expect(hand).toHaveCSS('animation-name', 'none');
+  await expect(head).toHaveCSS('animation-name', 'none');
+  const bodyBounds = await body.boundingBox();
+  expect(bodyBounds!.y + bodyBounds!.height).toBeCloseTo(viewport.height);
+  await page.screenshot({
+    path: testInfo.outputPath('mascot.png'),
+    clip,
+  });
+  await launcher.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog', { name: 'AI assistant' })).toBeVisible();
+});
+test('blue mascot stays transparent in both admin themes', async ({ page }, info) => {
+  await assistant(page, 'admin');
+  await page.goto('/access?view=assignments');
+  const launcher = page.getByRole('button', { name: 'Open AI assistant' });
+  await expect(launcher).toBeVisible();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const viewport = page.viewportSize()!;
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(theme => (document.documentElement.dataset.theme = theme), theme);
+    await expect(launcher).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    for (const image of await launcher.locator('img').all()) {
+      await expect(image).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      await expect(image).toHaveCSS('padding', '0px');
+    }
+    await expect(launcher.locator('.assistant-mascot-body')).toHaveCSS('filter', 'none');
+    await expect(launcher.locator('.assistant-mascot-brand')).toHaveCSS('filter', 'none');
+    await page.screenshot({
+      path: info.outputPath('mascot-' + theme + '.png'),
+      clip: { x: viewport.width - 305, y: viewport.height - 170, width: 305, height: 170 },
+    });
+  }
+});
+
 test('assistant: workflow scope, local coding refusal and configured deployment are displayed without code blocks', async ({
   page,
 }) => {

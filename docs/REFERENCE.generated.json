@@ -1,6 +1,6 @@
 {
   "version": "2026-11-16",
-  "revision": "bd0103ee26547975",
+  "revision": "03f4c2a5018789d9",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -99,7 +99,15 @@
       "094_read_only_notification_projections.sql",
       "095_paginate_expiry_reminders.sql",
       "096_analytics_credential_coverage.sql",
-      "097_direct_report_expiry_reminder_link.sql"
+      "097_direct_report_expiry_reminder_link.sql",
+      "098_excel_bulk_data.sql",
+      "099_restrict_excel_exports.sql",
+      "100_automatic_catalogue_excel_upsert.sql",
+      "101_direct_report_certification_analytics.sql",
+      "102_scoped_announcements.sql",
+      "103_announcement_publisher_template.sql",
+      "104_announcement_publishing_in_access_templates.sql",
+      "105_announcement_scope_hierarchy.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -6615,6 +6623,251 @@
           }
         ],
         "domain": "Skills & claims"
+      },
+      "AnnouncementPublisher": {
+        "source": "102_scoped_announcements.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "responsibility_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "responsibility_id uniqueidentifier NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "scope_kind": {
+            "type": "varchar(20)",
+            "nullable": false,
+            "declaration": "scope_kind varchar(20) NOT NULL CHECK(scope_kind IN('DELIVERY_UNIT','PORTFOLIO','DEPARTMENT','PROJECT'))",
+            "source": "102_scoped_announcements.sql"
+          },
+          "scope_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "scope_id uniqueidentifier NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "responsibility_id"
+        ],
+        "unique": [],
+        "fks": [],
+        "constraints": [
+          {
+            "sql": "CONSTRAINT PK_AnnouncementPublisher PRIMARY KEY(account_id,responsibility_id)",
+            "source": "102_scoped_announcements.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Announcements"
+      },
+      "Announcement": {
+        "source": "102_scoped_announcements.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "id uniqueidentifier NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "owner_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "owner_id uniqueidentifier NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "responsibility_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "responsibility_id uniqueidentifier NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "revision int NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "definition": {
+            "type": "nvarchar(max)",
+            "nullable": false,
+            "declaration": "definition nvarchar(max) NOT NULL CHECK(ISJSON(definition)=1)",
+            "source": "102_scoped_announcements.sql"
+          },
+          "state": {
+            "type": "varchar(10)",
+            "nullable": false,
+            "declaration": "state varchar(10) NOT NULL CHECK(state IN('DRAFT','PUBLISHED','CLOSED'))",
+            "source": "102_scoped_announcements.sql"
+          },
+          "starts_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "starts_at datetime2 NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "ends_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "ends_at datetime2 NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "owner_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "102_scoped_announcements.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "CONSTRAINT PK_Announcement PRIMARY KEY(account_id,id)",
+            "source": "102_scoped_announcements.sql"
+          },
+          {
+            "sql": "CONSTRAINT FK_Announcement_Owner FOREIGN KEY(account_id,owner_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "102_scoped_announcements.sql"
+          },
+          {
+            "sql": "CONSTRAINT CK_Announcement_Dates CHECK(starts_at<ends_at)",
+            "source": "102_scoped_announcements.sql"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "IX_Announcement_Window",
+            "unique": false,
+            "columns": [
+              "account_id",
+              "state",
+              "ends_at",
+              "starts_at"
+            ],
+            "filter": "",
+            "source": "102_scoped_announcements.sql"
+          }
+        ],
+        "domain": "Announcements"
+      },
+      "AnnouncementResponse": {
+        "source": "102_scoped_announcements.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "announcement_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "announcement_id uniqueidentifier NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "person_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "person_id uniqueidentifier NOT NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "email": {
+            "type": "nvarchar(254)",
+            "nullable": true,
+            "declaration": "email nvarchar(254) NULL",
+            "source": "102_scoped_announcements.sql"
+          },
+          "answers": {
+            "type": "nvarchar(max)",
+            "nullable": false,
+            "declaration": "answers nvarchar(max) NOT NULL CHECK(ISJSON(answers)=1)",
+            "source": "102_scoped_announcements.sql"
+          },
+          "submitted_at": {
+            "type": "datetime2",
+            "nullable": false,
+            "declaration": "submitted_at datetime2 NOT NULL DEFAULT SYSUTCDATETIME()",
+            "source": "102_scoped_announcements.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "announcement_id",
+          "person_id"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "announcement_id"
+            ],
+            "target": "Announcement",
+            "targetColumns": [
+              "account_id",
+              "id"
+            ],
+            "source": "102_scoped_announcements.sql"
+          },
+          {
+            "columns": [
+              "account_id",
+              "person_id"
+            ],
+            "target": "AccessPerson",
+            "targetColumns": [
+              "account_id",
+              "person_id"
+            ],
+            "source": "102_scoped_announcements.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "CONSTRAINT PK_AnnouncementResponse PRIMARY KEY(account_id,announcement_id,person_id)",
+            "source": "102_scoped_announcements.sql"
+          },
+          {
+            "sql": "CONSTRAINT FK_AnnouncementResponse_Announcement FOREIGN KEY(account_id,announcement_id) REFERENCES dbo.Announcement(account_id,id)",
+            "source": "102_scoped_announcements.sql"
+          },
+          {
+            "sql": "CONSTRAINT FK_AnnouncementResponse_Person FOREIGN KEY(account_id,person_id) REFERENCES dbo.AccessPerson(account_id,person_id)",
+            "source": "102_scoped_announcements.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Announcements"
       }
     },
     "views": {
@@ -6753,6 +7006,66 @@
       "path": "/api/assistant",
       "module": "ai",
       "source": "apps/api/src/modules/ai/routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/announcements/feed",
+      "module": "announcements",
+      "source": "apps/api/src/modules/announcements/announcement-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/announcements/manage",
+      "module": "announcements",
+      "source": "apps/api/src/modules/announcements/announcement-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/announcements/:id/draft",
+      "module": "announcements",
+      "source": "apps/api/src/modules/announcements/announcement-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/announcements/:id/image",
+      "module": "announcements",
+      "source": "apps/api/src/modules/announcements/announcement-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/announcements/draft",
+      "module": "announcements",
+      "source": "apps/api/src/modules/announcements/announcement-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/announcements/design",
+      "module": "announcements",
+      "source": "apps/api/src/modules/announcements/announcement-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/announcements/:id/respond",
+      "module": "announcements",
+      "source": "apps/api/src/modules/announcements/announcement-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/announcements/:id/close",
+      "module": "announcements",
+      "source": "apps/api/src/modules/announcements/announcement-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/announcements/:id/responses",
+      "module": "announcements",
+      "source": "apps/api/src/modules/announcements/announcement-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/announcements/:id/export",
+      "module": "announcements",
+      "source": "apps/api/src/modules/announcements/announcement-routes.ts"
     },
     {
       "method": "GET",
@@ -7218,6 +7531,24 @@
     },
     {
       "method": "GET",
+      "path": "/api/excel/:kind/access",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/excel-bulk-routes.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/excel/:kind/:file",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/excel-bulk-routes.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/excel/:kind/:action",
+      "module": "skills",
+      "source": "apps/api/src/modules/skills/excel-bulk-routes.ts"
+    },
+    {
+      "method": "GET",
       "path": "/api/skills",
       "module": "skills",
       "source": "apps/api/src/modules/skills/routes.ts"
@@ -7438,7 +7769,7 @@
       "name": "ReadDirectReportCapability",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@query nvarchar(100)=N'',@page int=1,@person_id uniqueidentifier=NULL",
-      "source": "database/migrations/074_four_level_proficiency.sql"
+      "source": "database/migrations/101_direct_report_certification_analytics.sql"
     },
     {
       "name": "ReadSkillReviewWorkbench",
@@ -7829,6 +8160,48 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
       "source": "database/migrations/094_read_only_notification_projections.sql"
+    },
+    {
+      "name": "ExcelBulkData",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@kind varchar(20),\n @operation varchar(12),@payload nvarchar(max)=N'{}',@revision int=NULL",
+      "source": "database/migrations/098_excel_bulk_data.sql"
+    },
+    {
+      "name": "ResolveExcelCatalogueRow",
+      "kind": "PROCEDURE",
+      "signature": "@account uniqueidentifier,@section varchar(24),@definition nvarchar(max),\n @target uniqueidentifier OUTPUT,@unchanged bit OUTPUT",
+      "source": "database/migrations/100_automatic_catalogue_excel_upsert.sql"
+    },
+    {
+      "name": "AnnouncementGrantUsable",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@grant uniqueidentifier)\nRETURNS bit",
+      "source": "database/migrations/104_announcement_publishing_in_access_templates.sql"
+    },
+    {
+      "name": "AnnouncementScopeCovers",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@kind varchar(20),@scope uniqueidentifier,@targetKind varchar(20),@target uniqueidentifier)\nRETURNS bit",
+      "source": "database/migrations/102_scoped_announcements.sql"
+    },
+    {
+      "name": "AnnouncementAudience",
+      "kind": "FUNCTION",
+      "signature": "(@account uniqueidentifier,@owner uniqueidentifier,@grant uniqueidentifier,@definition nvarchar(max))\nRETURNS TABLE",
+      "source": "database/migrations/102_scoped_announcements.sql"
+    },
+    {
+      "name": "AnnouncementWorkspace",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(16),@id uniqueidentifier=NULL,\n @payload nvarchar(max)=N'{}',@email nvarchar(254)=NULL",
+      "source": "database/migrations/105_announcement_scope_hierarchy.sql"
+    },
+    {
+      "name": "AnnouncementTemplateAccess",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(16),@id uniqueidentifier=NULL,\n @payload nvarchar(max)=N'{}',@email nvarchar(254)=NULL",
+      "source": "database/migrations/103_announcement_publisher_template.sql"
     }
   ],
   "groups": {
@@ -7892,6 +8265,11 @@
     "Requests & incidents": [
       "WorkflowRecord",
       "WorkflowEvent"
+    ],
+    "Announcements": [
+      "AnnouncementPublisher",
+      "Announcement",
+      "AnnouncementResponse"
     ],
     "Business Operations": [
       "BusinessProject",

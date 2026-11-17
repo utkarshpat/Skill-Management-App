@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ExcelBulkActions } from './ExcelBulkActions';
 import { Plus, Search, BookOpen } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { FormDialog } from './FormDialog';
@@ -87,6 +88,7 @@ function CatalogueAmendments({ certifications }: { certifications: boolean }) {
   const [context, setContext] = useState<BusinessContext>();
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const [workbookRevision, setWorkbookRevision] = useState(0);
   useEffect(() => {
     const abort = new AbortController();
     setError('');
@@ -118,7 +120,19 @@ function CatalogueAmendments({ certifications }: { certifications: boolean }) {
   if (!context) return <p role="status">Loading catalogue amendments…</p>;
   return (
     <div className="bo-page">
-      <BusinessWorkflows context={context} view="amendments" catalogueMode={certifications} />
+      {certifications && context.canApprove && (
+        <ExcelBulkActions
+          kind="catalogue"
+          showImport
+          onImported={() => setWorkbookRevision(value => value + 1)}
+        />
+      )}
+      <BusinessWorkflows
+        key={workbookRevision}
+        context={context}
+        view="amendments"
+        catalogueMode={certifications}
+      />
     </div>
   );
 }
@@ -305,6 +319,14 @@ function SkillDefinitions({
   }, [params, state, loading, setParams]);
   const actions = (
     <>
+      {state && certificationAccess?.canApprove && (
+        <ExcelBulkActions
+          kind="catalogue"
+          showImport
+          filter={'?' + new URLSearchParams({ search, status })}
+          onImported={() => setAttempt(value => value + 1)}
+        />
+      )}
       {state?.canManage && (
         <button className="admin-primary" disabled={busy || loading} onClick={create}>
           <Plus size={17} />

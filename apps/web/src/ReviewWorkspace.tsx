@@ -8,7 +8,6 @@ import { toast } from './toast';
 import { ArrowRight, Award, Clock3, RefreshCw, Search, ShieldCheck, X } from 'lucide-react';
 import { CertificationRecommendations } from './certifications/CertificationRecommendations';
 import './capability-workspace.css';
-import { CapabilitySubmissions } from './capabilities/CapabilitySubmissions';
 import './review-workbench.css';
 import './certifications/certifications.css';
 const SkillReviews = lazy(() => import('./SkillReviews').then(m => ({ default: m.SkillReviews })));
@@ -34,12 +33,8 @@ export function ReviewWorkspace({
     >
       <SkillReviews
         unified
-        queueContent={
-          <>
-            <CapabilitySubmissions review showEmpty />
-            {certificationsAllowed && <CertificationReviewPanel view="queue" />}
-          </>
-        }
+        includeCombined
+        queueContent={certificationsAllowed ? <CertificationReviewPanel view="queue" /> : undefined}
         teamContent={
           certificationsAllowed ? <CertificationReviewPanel view="analytics" /> : undefined
         }
@@ -207,7 +202,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
             <div className="assigned-review-summary" aria-label="Certification review summary">
               <article className="assigned-review-total">
                 <span>
-                  <Award size={17} /> Earlier individual credential reviews
+                  <Award size={17} /> Individual certification reviews
                 </span>
                 <strong>{data?.total ?? '—'}</strong>
                 <small>Ready for your review</small>

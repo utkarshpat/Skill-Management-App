@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import type { Claim } from './MySkills';
-import type { TeamPerson, TeamSkill } from './team-analytics';
+import type { TeamCertification, TeamPerson, TeamSkill } from './team-analytics';
 import type { ClaimReviewDecision } from './ClaimReviewAccess';
 import { SkillClaimDialog } from './SkillClaimDialog';
 import { assignedSkillClaim } from './employee-capability';
@@ -34,16 +34,18 @@ const labels: Record<string, string> = {
 export function EmployeeCapability({
   person,
   skills,
+  certifications,
   onReviews,
   onSaved,
 }: {
   person: TeamPerson;
   skills: TeamSkill[];
+  certifications?: TeamCertification[];
   onReviews: () => void;
   onSaved: () => void;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
-  const [tab, setTab] = useState<'skills' | 'history'>('skills'),
+  const [tab, setTab] = useState<'skills' | 'certifications' | 'history'>('skills'),
     [filter, setFilter] = useState('ALL'),
     [search, setSearch] = useState('');
   const [layout, setLayout] = useState<'cards' | 'list'>('cards');
@@ -233,6 +235,12 @@ export function EmployeeCapability({
               Skills
             </button>
             <button
+              aria-pressed={tab === 'certifications'}
+              onClick={() => setTab('certifications')}
+            >
+              Certifications
+            </button>
+            <button
               aria-pressed={tab === 'history'}
               onClick={() => {
                 setTab('history');
@@ -250,234 +258,276 @@ export function EmployeeCapability({
             </button>
           )}
         </header>
-        <div className="employee-skill-filters">
-          <label>
-            <Search size={18} />
-            <input
-              aria-label="Search employee skills"
-              placeholder="Search skill or category"
-              value={search}
-              maxLength={100}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </label>
-          <select
-            aria-label="Employee skill status"
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-          >
-            <option value="ALL">All statuses</option>
-            <option value="APPROVED">Manager reviewed</option>
-            <option value="SUBMITTED">Awaiting review</option>
-            {tab === 'history' && (
-              <>
-                <option value="CHANGES_REQUESTED">Changes requested</option>
-                <option value="REJECTED">Not approved</option>
-              </>
-            )}
-          </select>
-          {(filter !== 'ALL' || search) && (
-            <button
-              className="secondary-button"
-              onClick={() => {
-                setFilter('ALL');
-                setSearch('');
-              }}
-            >
-              Clear
-            </button>
-          )}
-        </div>
-        {error && (
-          <div className="review-error" role="alert">
-            <span>{error}</span>
-            <button
-              className="secondary-button"
-              onClick={() => {
-                setPage(1);
-                setAttempt(n => n + 1);
-              }}
-            >
-              Retry details
-            </button>
-          </div>
-        )}
-        {loading && (
-          <p role="status" className="employee-details-loading">
-            Loading assigned review records…
-          </p>
-        )}
-        {tab === 'skills' && (
-          <div className="employee-view-toolbar">
-            <p>
-              <strong>{visibleSkills.length}</strong> visible skills · open a review or inspect
-              evidence below
-            </p>
-            <div className="employee-view-switch" aria-label="Skill display">
-              <button
-                aria-label="Skill cards"
-                aria-pressed={layout === 'cards'}
-                onClick={() => setLayout('cards')}
-              >
-                <LayoutGrid size={17} />
-                Cards
-              </button>
-              <button
-                aria-label="Skill list"
-                aria-pressed={layout === 'list'}
-                onClick={() => setLayout('list')}
-              >
-                <List size={17} />
-                List
-              </button>
-            </div>
-          </div>
-        )}
-        {(tab === 'skills' ? visibleSkills.length : visibleHistory.length) > 0 ? (
-          tab === 'skills' && layout === 'cards' ? (
-            <EmployeeSkillCards
-              skills={visibleSkills}
-              assigned={assigned}
-              personId={person.id}
-              canRead={canRead}
-              loading={loading}
-              opening={opening}
-              hasCombinedPending={combined.length > 0}
-              onOpen={id => void open(id)}
-            />
-          ) : (
+        {tab === 'certifications' ? (
+          certifications?.length ? (
             <div className="my-skills-table-wrap">
-              <table className="my-skills-table employee-capability-table">
+              <table
+                className="my-skills-table employee-capability-table"
+                aria-label="Employee certifications"
+              >
                 <thead>
                   <tr>
-                    <th>Skill / category</th>
-                    <th>{tab === 'skills' ? 'Proficiency' : 'Recorded proficiency'}</th>
-                    <th>Status</th>
-                    <th>Last update</th>
-                    <th>Action</th>
+                    <th>Certification</th>
+                    <th>Issuer</th>
+                    <th>Review status</th>
+                    <th>Issued</th>
+                    <th>Expires</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tab === 'skills'
-                    ? visibleSkills.map((s, i) => {
-                        const record = assignedSkillClaim(s, assigned, person.id);
-                        return (
-                          <tr key={`${s.skillName}-${i}`}>
-                            <td>
-                              <strong>{s.skillName}</strong>
-                              <span className="review-subtext">{s.category}</span>
-                            </td>
-                            <td>
-                              <span className="employee-level">L{s.rank}</span>
-                              <span className="review-subtext">
-                                {s.levelName}
-                                {s.status === 'SUBMITTED' ? ' · Claimed' : ''}
-                              </span>
-                            </td>
-                            <td>
-                              <span className={'review-status ' + s.status.toLowerCase()}>
-                                {labels[s.status]}
-                              </span>
-                            </td>
-                            <td>
-                              {record ? new Date(record.updatedAt).toLocaleDateString() : '—'}
-                            </td>
-                            <td>
-                              {record && canRead ? (
-                                <button
-                                  className="secondary-button"
-                                  disabled={opening}
-                                  onClick={() => void open(record.id)}
-                                >
-                                  {s.status === 'SUBMITTED'
-                                    ? 'Open review'
-                                    : 'View evidence & history'}
-                                  <ArrowRight size={15} />
-                                </button>
-                              ) : (
-                                <span className="employee-summary-only">
-                                  {loading
-                                    ? 'Loading details…'
-                                    : s.status === 'SUBMITTED' && combined.length > 0
-                                      ? 'Open combined request below'
-                                      : 'Reviewed summary'}
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    : visibleHistory.map(c => (
-                        <tr key={c.id}>
-                          <td>
-                            <strong>{c.skillName}</strong>
-                            <span className="review-subtext">{c.category}</span>
-                          </td>
-                          <td>
-                            <span className="employee-level">L{c.rank}</span>
-                            <span className="review-subtext">{c.levelName}</span>
-                          </td>
-                          <td>
-                            <span className={'review-status ' + c.status.toLowerCase()}>
-                              {labels[c.status] ?? c.status}
-                            </span>
-                          </td>
-                          <td>{new Date(c.updatedAt).toLocaleDateString()}</td>
-                          <td>
-                            {canRead && (
-                              <button
-                                className="secondary-button"
-                                disabled={opening}
-                                onClick={() => void open(c.id)}
-                              >
-                                {c.status === 'SUBMITTED'
-                                  ? 'Open review'
-                                  : 'View evidence & history'}
-                                <ArrowRight size={15} />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                  {certifications.map(certificate => (
+                    <tr key={certificate.id}>
+                      <td>{certificate.name}</td>
+                      <td>{certificate.issuer}</td>
+                      <td>{labels[certificate.status]}</td>
+                      <td>{certificate.issueDate}</td>
+                      <td>{certificate.expiryDate ?? 'No expiry'}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
-          )
-        ) : (
-          !loading && (
+          ) : (
             <div className="employee-capability-empty">
-              <ClipboardCheck size={30} />
-              <h3>
-                {search || filter !== 'ALL'
-                  ? 'No matching skills'
-                  : tab === 'history'
-                    ? 'No assigned review records'
-                    : 'No reviewed or assigned pending skills yet'}
-              </h3>
               <p>
-                {search || filter !== 'ALL'
-                  ? 'Try another skill, category or status.'
-                  : 'Submitted claims assigned to you will appear here for review.'}
+                {certifications
+                  ? 'No certifications visible for this employee.'
+                  : 'Certification data is unavailable.'}
               </p>
             </div>
           )
+        ) : (
+          <>
+            <div className="employee-skill-filters">
+              <label>
+                <Search size={18} />
+                <input
+                  aria-label="Search employee skills"
+                  placeholder="Search skill or category"
+                  value={search}
+                  maxLength={100}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </label>
+              <select
+                aria-label="Employee skill status"
+                value={filter}
+                onChange={e => setFilter(e.target.value)}
+              >
+                <option value="ALL">All statuses</option>
+                <option value="APPROVED">Manager reviewed</option>
+                <option value="SUBMITTED">Awaiting review</option>
+                {tab === 'history' && (
+                  <>
+                    <option value="CHANGES_REQUESTED">Changes requested</option>
+                    <option value="REJECTED">Not approved</option>
+                  </>
+                )}
+              </select>
+              {(filter !== 'ALL' || search) && (
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    setFilter('ALL');
+                    setSearch('');
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            {error && (
+              <div className="review-error" role="alert">
+                <span>{error}</span>
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    setPage(1);
+                    setAttempt(n => n + 1);
+                  }}
+                >
+                  Retry details
+                </button>
+              </div>
+            )}
+            {loading && (
+              <p role="status" className="employee-details-loading">
+                Loading assigned review records…
+              </p>
+            )}
+            {tab === 'skills' && (
+              <div className="employee-view-toolbar">
+                <p>
+                  <strong>{visibleSkills.length}</strong> visible skills · open a review or inspect
+                  evidence below
+                </p>
+                <div className="employee-view-switch" aria-label="Skill display">
+                  <button
+                    aria-label="Skill cards"
+                    aria-pressed={layout === 'cards'}
+                    onClick={() => setLayout('cards')}
+                  >
+                    <LayoutGrid size={17} />
+                    Cards
+                  </button>
+                  <button
+                    aria-label="Skill list"
+                    aria-pressed={layout === 'list'}
+                    onClick={() => setLayout('list')}
+                  >
+                    <List size={17} />
+                    List
+                  </button>
+                </div>
+              </div>
+            )}
+            {(tab === 'skills' ? visibleSkills.length : visibleHistory.length) > 0 ? (
+              tab === 'skills' && layout === 'cards' ? (
+                <EmployeeSkillCards
+                  skills={visibleSkills}
+                  assigned={assigned}
+                  personId={person.id}
+                  canRead={canRead}
+                  loading={loading}
+                  opening={opening}
+                  hasCombinedPending={combined.length > 0}
+                  onOpen={id => void open(id)}
+                />
+              ) : (
+                <div className="my-skills-table-wrap">
+                  <table className="my-skills-table employee-capability-table">
+                    <thead>
+                      <tr>
+                        <th>Skill / category</th>
+                        <th>{tab === 'skills' ? 'Proficiency' : 'Recorded proficiency'}</th>
+                        <th>Status</th>
+                        <th>Last update</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tab === 'skills'
+                        ? visibleSkills.map((s, i) => {
+                            const record = assignedSkillClaim(s, assigned, person.id);
+                            return (
+                              <tr key={`${s.skillName}-${i}`}>
+                                <td>
+                                  <strong>{s.skillName}</strong>
+                                  <span className="review-subtext">{s.category}</span>
+                                </td>
+                                <td>
+                                  <span className="employee-level">L{s.rank}</span>
+                                  <span className="review-subtext">
+                                    {s.levelName}
+                                    {s.status === 'SUBMITTED' ? ' · Claimed' : ''}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className={'review-status ' + s.status.toLowerCase()}>
+                                    {labels[s.status]}
+                                  </span>
+                                </td>
+                                <td>
+                                  {record ? new Date(record.updatedAt).toLocaleDateString() : '—'}
+                                </td>
+                                <td>
+                                  {record && canRead ? (
+                                    <button
+                                      className="secondary-button"
+                                      disabled={opening}
+                                      onClick={() => void open(record.id)}
+                                    >
+                                      {s.status === 'SUBMITTED'
+                                        ? 'Open review'
+                                        : 'View evidence & history'}
+                                      <ArrowRight size={15} />
+                                    </button>
+                                  ) : (
+                                    <span className="employee-summary-only">
+                                      {loading
+                                        ? 'Loading details…'
+                                        : s.status === 'SUBMITTED' && combined.length > 0
+                                          ? 'Open combined request below'
+                                          : 'Reviewed summary'}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        : visibleHistory.map(c => (
+                            <tr key={c.id}>
+                              <td>
+                                <strong>{c.skillName}</strong>
+                                <span className="review-subtext">{c.category}</span>
+                              </td>
+                              <td>
+                                <span className="employee-level">L{c.rank}</span>
+                                <span className="review-subtext">{c.levelName}</span>
+                              </td>
+                              <td>
+                                <span className={'review-status ' + c.status.toLowerCase()}>
+                                  {labels[c.status] ?? c.status}
+                                </span>
+                              </td>
+                              <td>{new Date(c.updatedAt).toLocaleDateString()}</td>
+                              <td>
+                                {canRead && (
+                                  <button
+                                    className="secondary-button"
+                                    disabled={opening}
+                                    onClick={() => void open(c.id)}
+                                  >
+                                    {c.status === 'SUBMITTED'
+                                      ? 'Open review'
+                                      : 'View evidence & history'}
+                                    <ArrowRight size={15} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            ) : (
+              !loading && (
+                <div className="employee-capability-empty">
+                  <ClipboardCheck size={30} />
+                  <h3>
+                    {search || filter !== 'ALL'
+                      ? 'No matching skills'
+                      : tab === 'history'
+                        ? 'No assigned review records'
+                        : 'No reviewed or assigned pending skills yet'}
+                  </h3>
+                  <p>
+                    {search || filter !== 'ALL'
+                      ? 'Try another skill, category or status.'
+                      : 'Submitted claims assigned to you will appear here for review.'}
+                  </p>
+                </div>
+              )
+            )}
+            <footer>
+              <span>
+                {tab === 'skills'
+                  ? `${visibleSkills.length} visible skill ${visibleSkills.length === 1 ? 'claim' : 'claims'}`
+                  : `${assigned.length} of ${total} assigned records loaded`}
+              </span>
+              {assigned.length < total && (
+                <button
+                  className="secondary-button"
+                  disabled={loading || page * pageSize >= total}
+                  onClick={() => setPage(n => n + 1)}
+                >
+                  Load more review records
+                </button>
+              )}
+            </footer>
+          </>
         )}
-        <footer>
-          <span>
-            {tab === 'skills'
-              ? `${visibleSkills.length} visible skill ${visibleSkills.length === 1 ? 'claim' : 'claims'}`
-              : `${assigned.length} of ${total} assigned records loaded`}
-          </span>
-          {assigned.length < total && (
-            <button
-              className="secondary-button"
-              disabled={loading || page * pageSize >= total}
-              onClick={() => setPage(n => n + 1)}
-            >
-              Load more review records
-            </button>
-          )}
-        </footer>
       </section>
       {combinedError && <p role="alert">{combinedError}</p>}
       {combined.length > 0 && (

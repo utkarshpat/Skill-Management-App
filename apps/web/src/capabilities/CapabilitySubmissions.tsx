@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { CapabilityComposer, CapabilityReview } from './DeferredCapabilityDialogs';
@@ -14,18 +14,37 @@ function getInitials(name?: string) {
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return name.slice(0, 2).toUpperCase();
 }
+interface ReviewSubmission {
+  id: string;
+  personId?: string;
+  name: string;
+  label: string;
+  skills: number;
+  certifications: number;
+  status: string;
+  updatedAt?: string;
+}
+
 export function CapabilitySubmissions({
   review = false,
   showEmpty = false,
   onUpdated,
   onInitialLoad,
   active = true,
+  renderQueue,
 }: {
   review?: boolean;
   showEmpty?: boolean;
   onUpdated?: () => void;
   onInitialLoad?: () => void;
   active?: boolean;
+  renderQueue?: (queue: {
+    records: ReviewSubmission[];
+    loading: boolean;
+    error: string;
+    retry: () => void;
+    open: (id: string) => void;
+  }) => ReactNode;
 }) {
   const [params] = useSearchParams();
   const location = useLocation();
@@ -131,6 +150,38 @@ export function CapabilitySubmissions({
       setMutating(false);
     }
   }
+  const dialog =
+    opened &&
+    (review || !records.find(r => r.id === opened)?.canEdit ? (
+      <CapabilityReview
+        id={opened}
+        employeeName={records.find(r => r.id === opened)?.name}
+        submissionLabel={records.find(r => r.id === opened)?.label}
+        readOnly={!review}
+        onClose={() => setOpened(undefined)}
+        onSaved={done}
+      />
+    ) : (
+      <CapabilityComposer
+        submissionId={opened}
+        onClose={() => setOpened(undefined)}
+        onSaved={done}
+      />
+    ));
+  if (renderQueue) {
+    return (
+      <>
+        {renderQueue({
+          records,
+          loading,
+          error,
+          retry: () => setAttempt(n => n + 1),
+          open: setOpened,
+        })}
+        {dialog}
+      </>
+    );
+  }
   const visibleRecords = review ? records : records.filter(r => r.status === 'DRAFT');
   if (!showEmpty && !visibleRecords.length && !error && !removed && !opened) return null;
   return (
@@ -141,7 +192,7 @@ export function CapabilitySubmissions({
       <header className="cap-submissions-header">
         <div className="cap-submissions-title-group">
           <div className="cap-title-with-badge">
-            <h3>{review ? 'Review requests' : 'Drafts'}</h3>
+            <h3>{review ? 'Combined submissions' : 'Drafts'}</h3>
             {visibleRecords.length > 0 && (
               <span className="cap-count-badge">
                 {visibleRecords.length} {visibleRecords.length === 1 ? 'request' : 'requests'}
@@ -161,7 +212,7 @@ export function CapabilitySubmissions({
           <CheckCircle2 size={22} className="cap-empty-check" aria-hidden="true" />
           <div>
             <strong>All caught up!</strong>
-            <p>No new skill submissions are awaiting your review.</p>
+            <p>No combined submissions are awaiting your review.</p>
           </div>
         </div>
       )}
@@ -294,23 +345,7 @@ export function CapabilitySubmissions({
           {expanded ? 'Show fewer' : 'Show all recent submissions'}
         </button>
       )}
-      {opened &&
-        (review || !records.find(r => r.id === opened)?.canEdit ? (
-          <CapabilityReview
-            id={opened}
-            employeeName={records.find(r => r.id === opened)?.name}
-            submissionLabel={records.find(r => r.id === opened)?.label}
-            readOnly={!review}
-            onClose={() => setOpened(undefined)}
-            onSaved={done}
-          />
-        ) : (
-          <CapabilityComposer
-            submissionId={opened}
-            onClose={() => setOpened(undefined)}
-            onSaved={done}
-          />
-        ))}
+      {dialog}
     </section>
   );
 }

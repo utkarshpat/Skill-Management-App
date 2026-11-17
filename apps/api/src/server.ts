@@ -1,5 +1,6 @@
 import { SqlBusinessStore } from './modules/business/index.js';
 import { fileURLToPath } from 'node:url';
+import { SqlAnnouncements } from './modules/announcements/announcement-routes.js';
 import { SqlAiBudget } from './modules/ai/budget.js';
 import { KnowledgeTransferService } from './modules/knowledge-transfer/index.js';
 import { SqlRecommendationStore } from './modules/recommendations/index.js';
@@ -24,6 +25,7 @@ import {
 } from './modules/ai/index.js';
 import { SqlCapabilitySubmissionStore } from './modules/skills/sql-capability-submissions.js';
 import { SqlCatalogueStore } from './modules/skills/sql-store.js';
+import { SqlExcelBulkData } from './modules/skills/excel-bulk-routes.js';
 import { SqlClaimsStore } from './modules/skills/sql-claims-store.js';
 import { SqlCertificationStore } from './modules/skills/sql-certification-store.js';
 import { SqlCertificationRecommendationStore } from './modules/skills/sql-certification-recommendation-store.js';
@@ -182,6 +184,8 @@ const app = createApp(
     assistant,
     knowledgeTransfer,
     catalogue,
+    excelBulk: process.env.ACCESS_ACCOUNT_ID ? new SqlExcelBulkData(process.env.ACCESS_ACCOUNT_ID) : undefined,
+    announcements: process.env.ACCESS_ACCOUNT_ID ? new SqlAnnouncements(process.env.ACCESS_ACCOUNT_ID, provider, aiBudget) : undefined,
     claims,
     certifications,
     capabilitySubmissions,

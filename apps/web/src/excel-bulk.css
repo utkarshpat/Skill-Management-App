@@ -1,0 +1,62 @@
+.form-dialog.excel-bulk-dialog {
+  width: min(640px, calc(100vw - 24px));
+  height: auto;
+}
+
+.excel-bulk-content,
+.excel-bulk-import {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+}
+
+.excel-bulk-import {
+  align-self: stretch;
+  width: 100%;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.excel-bulk-content p,
+.excel-bulk-import h3 {
+  margin: 0;
+}
+
+.excel-bulk-downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.excel-bulk-drop {
+  align-self: stretch;
+  justify-self: stretch;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 20px 12px;
+  text-align: center;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.excel-bulk-drop.is-dragging {
+  border-color: currentColor;
+  outline: 2px solid currentColor;
+  outline-offset: -3px;
+}
+
+.excel-bulk-drop span {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.excel-bulk-error {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  color: var(--danger, #b23c3c);
+  white-space: pre-line;
+}

@@ -74,3 +74,30 @@ The apply run repeats the Graph lookup and checks the receipt against current SQ
 writing. Missing users, disabled directory accounts, duplicate mappings and conflicting bindings
 stop the batch. Keep the roster and preview output private. Connect the normalized roster input to
 the company API once its contract and credentials are available.
+
+## Excel catalogue and certification histories
+
+Install migrations 098–100 after 097 before enabling the matching app. Catalogue workbooks include
+Skills, Certifications and Issuers. Preview automatically counts additions, updates and unchanged
+rows. Keep the exported ID when renaming an entry. Rows without an ID match by name, or name and
+issuer for certifications. A related skill list can contain up to twenty existing published skill IDs.
+
+Employee certification workbooks use Employee Code, Approved status, Issue Date, Expiry Date
+or Does Not Expire, Source and Source ID. Use one stable source identifier per old-system record. Each code must
+match one active employee. The import preserves old approvals and audits their source and local
+operator. It does not create a local reviewer or a skill claim. Imported legacy certificates
+can use the ordinary renewal workflow.
+
+Preview validates the batch in SQL, rolls it back and issues a receipt for the unchanged file and
+workspace revision. Confirm applies the batch in a transaction and rechecks current Admin access.
+Imports support up to 1,000 rows and 2 MB per workbook. Catalogue and personal certification Excel
+exports require their respective bulk administration permissions. Analytics exports use current
+report-export authority and visible scope. Private files stay in the app.
+
+
+## Scoped announcements rollout
+
+1. Install numbered wrappers 102 through 105 in order after ledger entry 101. Deploy the matching app ZIP.
+2. In **People & Access → People → Templates**, assign Business Analytics to an eligible scope or assign Admin using its existing template. Effective assignments include publishing. The announcement editor requires a concrete audience for both templates.
+3. Confirm the publisher sees **Manage announcements**. Preview an audience and publish a short test announcement in an approved test scope. Confirm its form or poll is inaccessible outside that scope and expires on schedule. The banner checks for updates while the page is active, and no WebJob is needed.
+4. For form prefill, sign in through the company OIDC session after the deployment. Work Email is the verified company UPN. Grade and organizational membership use the canonical profile; Capability and Primary Skill currently share the configured primary capability/skill field.

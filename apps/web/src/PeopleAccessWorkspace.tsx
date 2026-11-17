@@ -806,7 +806,7 @@ function PersonEditor({
           {canManageScoped && (
             <>
               <h3>Built-in access templates</h3>
-              <p>Choose a template to review its scope and create an assignment.</p>
+              <p>Business Analytics and Admin include announcement publishing for permitted audiences.</p>
               <div className="people-template-actions">
                 <button
                   type="button"

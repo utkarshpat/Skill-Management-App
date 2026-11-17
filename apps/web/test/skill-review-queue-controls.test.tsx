@@ -136,7 +136,7 @@ async function mount(path = '/skill-reviews', unified = false) {
 const dialog = () => document.querySelector('.claim-review-dialog')!;
 const filters = () => queue.at(-1)!;
 
-test('queue filters reset pagination and retain the legacy review disclosure through empty results', async () => {
+test('queue filters reset pagination and keep the review workbench visible through empty results', async () => {
   await mount('/skill-reviews', true);
   await click('Next reviews page');
   assert.equal(filters().get('page'), '2');
@@ -167,7 +167,7 @@ test('queue filters reset pagination and retain the legacy review disclosure thr
     status: 'APPROVED',
   });
   assert.match(document.body.textContent!, /No matching reviews/);
-  assert.equal(document.querySelector<HTMLDetailsElement>('.review-legacy-history')!.open, true);
+  assert.ok(document.querySelector('.review-workbench'));
   await click('Reset filters');
   assert.deepEqual(Object.fromEntries(filters()), {
     page: '1',

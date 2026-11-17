@@ -1833,6 +1833,24 @@ footer {
   font-size: 14px;
   line-height: 1.6;
 }
+.access-template-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.access-template-summary > div {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.access-template-summary dt {
+  font-weight: 700;
+}
+.access-template-summary dd {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
 .preset-buttons {
   display: flex;
   flex-wrap: wrap;

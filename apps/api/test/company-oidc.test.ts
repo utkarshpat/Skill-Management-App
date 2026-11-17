@@ -133,7 +133,11 @@ test('backend callback binds PKCE and nonce, consumes state once, and authorizes
     const resumed = await start('?mode=silent', savedHint);
     assert.equal(resumed.authorization.searchParams.get('prompt'), 'none');
     assert.equal(resumed.authorization.searchParams.get('login_hint'), loginHint);
-    assert.deepEqual(await (await get('/api/actor', cookie)).json(), { tenantId, objectId });
+    assert.deepEqual(await (await get('/api/actor', cookie)).json(), {
+      tenantId,
+      objectId,
+      workEmail: username.toLowerCase(),
+    });
     assert.equal(
       (await get(first.callback, first.cookie)).headers.get('location'),
       '/?signin=failed',

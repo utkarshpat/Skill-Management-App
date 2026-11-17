@@ -173,7 +173,11 @@ export function registerCompanyCallback(
         !issue(
           req,
           res,
-          { tenantId: config.tenantId, objectId: payload.oid.toLowerCase() },
+          {
+            tenantId: config.tenantId,
+            objectId: payload.oid.toLowerCase(),
+            workEmail: payload.preferred_username.toLowerCase(),
+          },
           payload.exp! * 1000,
           typeof payload.login_hint === 'string' ? payload.login_hint : undefined,
         )

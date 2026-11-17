@@ -13,6 +13,14 @@ export interface TeamSkill {
   levelName: string;
   status: 'APPROVED' | 'SUBMITTED';
 }
+export interface TeamCertification {
+  id: string;
+  name: string;
+  issuer: string;
+  status: 'APPROVED' | 'SUBMITTED';
+  issueDate: string;
+  expiryDate: string | null;
+}
 export function teamAnalytics(people: TeamPerson[], skills: TeamSkill[], minimumRank: number) {
   const reviewed = people.reduce((n, p) => n + p.reviewed, 0),
     pending = people.reduce((n, p) => n + p.pending, 0);

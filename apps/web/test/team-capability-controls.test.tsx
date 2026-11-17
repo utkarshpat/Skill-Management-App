@@ -73,6 +73,20 @@ beforeEach(async () => {
         total: selected ? 1 : 3,
         pageSize: 2,
         analytics,
+        ...(selected
+          ? {
+              certifications: [
+                {
+                  id: 'certificate-azure',
+                  name: 'Azure Fundamentals',
+                  issuer: 'Microsoft',
+                  status: 'APPROVED',
+                  issueDate: '2026-01-02',
+                  expiryDate: null,
+                },
+              ],
+            }
+          : {}),
       });
     }
     if (url.startsWith('/api/skill-reviews/'))
@@ -144,6 +158,13 @@ test('team charts narrow current direct reports, search and paging requery and s
   await click('Clear');
   await click('View capability');
   assert.match(document.body.textContent ?? '', /Employee capability/);
+  await click('Certifications');
+  const table = document.querySelector('table[aria-label="Employee certifications"]');
+  assert.match(
+    table?.textContent ?? '',
+    /Azure Fundamentals.*Microsoft.*Manager reviewed.*2026-01-02.*No expiry/,
+  );
+  assert.equal(document.querySelector('input[aria-label="Search employee skills"]'), null);
   await click('Open pending reviews');
   assert.equal(reviews.at(-1), 'aditi');
   await click('All direct reports');

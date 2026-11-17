@@ -383,16 +383,6 @@ html[data-theme] .org-chain li:before {
   background: var(--color-secondary);
 }
 /* Violet belongs to intelligence, rather than ordinary workspace selections. */
-html[data-theme] .assistant-launcher {
-  background: var(--color-ai);
-  color: #fff;
-  box-shadow: 0 4px 16px rgb(118 87 217 / 20%);
-}
-html[data-theme] .assistant-launcher > span {
-  background: var(--surface);
-  color: var(--ai-ink);
-  border-color: var(--line);
-}
 html[data-theme] .assistant-panel > header {
   border-color: var(--line);
   box-shadow: inset 3px 0 0 var(--color-ai);
@@ -458,8 +448,6 @@ html[data-theme] .admin-sidebar {
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: #526078 #172033;
 }
 .admin-sidebar > * {
   flex-shrink: 0;

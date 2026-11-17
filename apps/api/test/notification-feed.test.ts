@@ -60,3 +60,18 @@ test('expiry reminder pages stay visible alongside a full activity feed', async 
   assert.ok(feed.items.some(entry => entry.id === 'cert-expiry-29'));
   assert.ok(!feed.items.some(entry => entry.id === 'cert-expiry-30'));
 });
+
+test('active announcement links remain accessible alongside full activity and reminder pages', async () => {
+  const activity = Array.from({ length: 35 }, (_, i) => ({
+    ...item('activity-' + i),
+    at: '2099-01-01T00:00:00Z',
+  }));
+  const announcements = Array.from({ length: 20 }, (_, i) => item('announcement-' + i));
+  const feed = await loadNotificationFeed({ personId: 'owner', items: activity }, [
+    { name: 'announcements', load: async () => announcements },
+    { name: 'certifications', load: async () => [item('cert-expiry-1')] },
+  ]);
+  assert.equal(feed.items.filter(i => i.id.startsWith('announcement-')).length, 20);
+  assert.ok(feed.items.some(i => i.id === 'cert-expiry-1'));
+  assert.equal(feed.items.length, 51);
+});

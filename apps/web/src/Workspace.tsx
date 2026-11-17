@@ -1,7 +1,9 @@
+import { Announcements } from './Announcements';
 import { SidebarNavigation } from './SidebarNavigation';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router';
 import {
+  Megaphone,
   BookOpen,
   ChevronRight,
   Compass,
@@ -61,6 +63,7 @@ export interface WorkspaceState {
   upcoming: { id: string; label: string; assigned: boolean; implemented: boolean }[];
 }
 type View =
+  | 'announcements'
   | 'business'
   | 'requests'
   | 'learning'
@@ -71,23 +74,25 @@ type View =
   | 'skills'
   | 'skill-reviews';
 const currentView = (pathname: string): View =>
-  pathname === '/business'
-    ? 'business'
-    : pathname === '/requests'
-      ? 'requests'
-      : pathname === '/learning'
-        ? 'learning'
-        : pathname === '/skill-reviews'
-          ? 'skill-reviews'
-          : pathname === '/profile'
-            ? 'profile'
-            : pathname === '/my-skills'
-              ? 'my-skills'
-              : pathname === '/certifications'
-                ? 'certifications'
-                : pathname === '/skills'
-                  ? 'skills'
-                  : 'overview';
+  pathname === '/announcements'
+    ? 'announcements'
+    : pathname === '/business'
+      ? 'business'
+      : pathname === '/requests'
+        ? 'requests'
+        : pathname === '/learning'
+          ? 'learning'
+          : pathname === '/skill-reviews'
+            ? 'skill-reviews'
+            : pathname === '/profile'
+              ? 'profile'
+              : pathname === '/my-skills'
+                ? 'my-skills'
+                : pathname === '/certifications'
+                  ? 'certifications'
+                  : pathname === '/skills'
+                    ? 'skills'
+                    : 'overview';
 
 export function Workspace({
   embedded = false,
@@ -159,6 +164,13 @@ export function Workspace({
       href: '/workspace',
       icon: LayoutDashboard,
       visible: true,
+    },
+    {
+      id: 'announcements',
+      label: 'Announcements',
+      href: '/announcements',
+      icon: Megaphone,
+      visible: state?.capabilities.ownProfile,
     },
     {
       id: 'profile',
@@ -273,6 +285,7 @@ export function Workspace({
           <>
             <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
               {view === 'business' && <BusinessOperations key={state?.businessPolicyRevision} />}
+              {view === 'announcements' && <Announcements page />}
               {view === 'overview' && <Dashboard />}
               {view === 'profile' && <PersonalProfile workspace={state} />}
               {(view === 'my-skills' || view === 'certifications') && (
@@ -349,6 +362,7 @@ export function Workspace({
             }
           />
         </header>
+        {view !== 'announcements' && <Announcements />}
         <main id="workspace-main" className="access-main" tabIndex={-1}>
           {error && (
             <section className="profile-panel">
@@ -373,6 +387,7 @@ export function Workspace({
             <>
               <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
                 {view === 'business' && <BusinessOperations key={state?.businessPolicyRevision} />}
+                {view === 'announcements' && <Announcements page />}
                 {view === 'overview' && <Dashboard />}
                 {view === 'profile' && <PersonalProfile workspace={state} />}
                 {(view === 'my-skills' || view === 'certifications') && (

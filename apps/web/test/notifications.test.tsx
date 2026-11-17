@@ -63,3 +63,10 @@ test('control characters cannot turn an internal notification into an external r
   ])
     assert.equal(notificationDestination(href), undefined);
 });
+
+test('announcement notifications open the scoped announcement page', () => {
+  const destination = notificationDestination('/announcements?announcement=123');
+  assert.equal(destination?.kind, 'Announcements');
+  assert.equal(destination?.label, 'Open announcement');
+  assert.equal(notificationDestination('/announcements/other'), undefined);
+});

@@ -18,6 +18,9 @@ export interface HttpDependencies {
   ownOrganization?: (actorId: string) => Promise<NonNullable<Profile['organizationDetails']>>;
   resolveAccess?: (identity: Identity) => Promise<string | undefined>;
   access?: AccessStore;
+  announcementNotifications?: (
+    actorId: string,
+  ) => Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
   recommendationNotifications?: (
     actorId: string,
   ) => Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
@@ -214,6 +217,10 @@ export function registerRoutes(
           return;
         }
         const feed = await loadNotificationFeed(notificationsFor(state, person), [
+          {
+            name: 'announcements',
+            load: () => dependencies?.announcementNotifications?.(person.id) ?? Promise.resolve([]),
+          },
           {
             name: 'reviews',
             load: () => dependencies?.skillNotifications?.(person.id) ?? Promise.resolve([]),

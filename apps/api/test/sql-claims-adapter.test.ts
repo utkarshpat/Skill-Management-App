@@ -90,6 +90,30 @@ test('claim SQL adapter scopes every call and reconstructs versions, team aggreg
     assert.equal(team.scope, 'DIRECT_REPORTS');
     assert.deepEqual(team.analytics?.coverage[0].memberIds, [actor, id]);
     assert.equal(team.people[0].id, actor);
+    assert.equal(team.certifications, undefined);
+    const certificate = {
+      id,
+      name: 'Azure Fundamentals',
+      issuer: 'Microsoft',
+      status: 'APPROVED',
+      issueDate: '2026-01-02',
+      expiryDate: null,
+    };
+    f.reply(
+      'dbo.ReadDirectReportCapability',
+      [{ total: 1 }],
+      [{ id }],
+      [],
+      [],
+      [],
+      [],
+      [],
+      [certificate],
+    );
+    assert.deepEqual(
+      (await store.team(actor, { page: 1, search: '', person: id })).certifications,
+      [certificate],
+    );
     f.reply('dbo.ReadDirectReportCapability', [{ total: 0 }], [], []);
     assert.equal(
       (await store.team(actor, { page: 1, search: '', person: id })).analytics,

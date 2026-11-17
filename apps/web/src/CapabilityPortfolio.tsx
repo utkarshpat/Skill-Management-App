@@ -23,10 +23,18 @@ export function CapabilityPortfolio({
       <Suspense fallback={<p role="status">Loading your portfolio…</p>}>
         {!workspace.capabilities.ownSkills ||
         new URLSearchParams(search).get('tab') === 'recommendations' ? (
-          <Certifications actionsContainer={actionsContainer} personalOnly />
+          <Certifications actionsContainer={actionsContainer} personalOnly workspace={workspace} />
         ) : (
           <SkillCertificates enabled={Boolean(workspace.capabilities.certifications)}>
-            <MySkills actionsContainer={actionsContainer} />
+            <MySkills
+              actionsContainer={actionsContainer}
+              canImportCertificates={Boolean(
+                workspace.capabilities.ownProfile &&
+                  workspace.capabilities.administration &&
+                  workspace.capabilities.manageUsers &&
+                  workspace.capabilities.viewAudit,
+              )}
+            />
           </SkillCertificates>
         )}
       </Suspense>

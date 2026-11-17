@@ -1,9 +1,8 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
 
-export interface Identity {
-  tenantId: string;
-  objectId: string;
-}
+import type { RequestIdentity } from '../../shared/request-identity.js';
+
+export type Identity = RequestIdentity;
 export interface IdentityConfig {
   tenantId: string;
   apiClientId: string;

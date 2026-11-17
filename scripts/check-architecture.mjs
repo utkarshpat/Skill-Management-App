@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const moduleNames = new Set([
   'business',
+  'announcements',
   'identity',
   'access',
   'organization',
@@ -17,6 +18,7 @@ const moduleNames = new Set([
 ]);
 const runtimeDependencies = {
   business: ['access'],
+  announcements: ['skills'],
   'knowledge-transfer': ['access'],
   recommendations: ['access', 'learning'],
   dashboard: ['access'],
@@ -30,6 +32,7 @@ const runtimeDependencies = {
 };
 const typeDependencies = {
   business: ['access', 'identity'],
+  announcements: ['ai', 'identity'],
   'knowledge-transfer': ['access', 'identity', 'ai'],
   recommendations: ['access', 'learning', 'identity'],
   dashboard: ['access', 'identity', 'skills', 'learning', 'workflows'],

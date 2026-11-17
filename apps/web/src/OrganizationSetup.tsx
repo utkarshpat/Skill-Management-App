@@ -443,7 +443,7 @@ export function OrganizationSetup({
                 }}
               >
                 <Plus size={17} />
-                Add delivery unit
+                Add organization unit
               </button>
             )}
           </div>,

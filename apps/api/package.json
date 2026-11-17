@@ -53,6 +53,7 @@
     "@azure/identity": "4.14.1",
     "@azure/storage-blob": "12.34.0",
     "compression": "1.8.2",
+    "exceljs": "4.4.0",
     "express": "5.2.1",
     "fast-xml-parser": "5.11.2",
     "fflate": "0.8.3",

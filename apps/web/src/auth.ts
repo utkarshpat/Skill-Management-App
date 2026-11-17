@@ -19,6 +19,29 @@ let automaticSignInStarted = false;
 let companySession = false;
 let sessionExpired = false;
 let openingCompanySession: Promise<void> | undefined;
+let companySessionCheck: Promise<void> | undefined;
+
+function confirmCompanySessionExpiry() {
+  return (companySessionCheck ??= (async () => {
+    try {
+      const response = await fetch('/api/auth/config', {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) return;
+      const state = await response.json();
+      if (!companySession || state.cookieSession !== true || state.sessionActive !== false) return;
+      companySession = false;
+      sessionExpired = true;
+      reads.invalidate();
+      window.dispatchEvent(new Event('company-session-expired'));
+    } catch {
+      // A failed verification cannot determine the current session state.
+    }
+  })().finally(() => {
+    companySessionCheck = undefined;
+  }));
+}
 function configureSignIn() {
   return (configuration ??= (async () => {
     const response = await fetch('/api/auth/config', {
@@ -276,10 +299,7 @@ export async function authenticatedFetch(path: string, init: RequestInit = {}) {
     window.dispatchEvent(new Event('development-session-expired'));
   }
   if (hadCompanySession && companySession && response.status === 401) {
-    companySession = false;
-    sessionExpired = true;
-    reads.invalidate();
-    window.dispatchEvent(new Event('company-session-expired'));
+    await confirmCompanySessionExpiry();
   }
   void notifyResponse(path, (init.method ?? 'GET').toUpperCase(), response);
   return response;

@@ -11,7 +11,12 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { authenticatedFetch } from './auth';
-import { teamAnalytics, type TeamPerson, type TeamSkill } from './team-analytics';
+import {
+  teamAnalytics,
+  type TeamPerson,
+  type TeamSkill,
+  type TeamCertification,
+} from './team-analytics';
 import './team-capability.css';
 import { EmployeeCapability } from './EmployeeCapability';
 import { TeamReports } from './TeamReports';
@@ -21,6 +26,7 @@ interface Team {
   pageSize: number;
   people: TeamPerson[];
   skills: TeamSkill[];
+  certifications?: TeamCertification[];
   analytics?: {
     members: number;
     reviewed: number;
@@ -198,6 +204,7 @@ export function TeamCapability({
           key={selected.id}
           person={selected}
           skills={data.skills}
+          certifications={data.certifications}
           onReviews={() => onReviews(selected.id)}
           onSaved={() => setAttempt(n => n + 1)}
         />

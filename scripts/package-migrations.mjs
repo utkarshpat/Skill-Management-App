@@ -18,6 +18,14 @@ const migrations = [
   [95, '095_paginate_expiry_reminders.sql'],
   [96, '096_analytics_credential_coverage.sql'],
   [97, '097_direct_report_expiry_reminder_link.sql'],
+  [98, '098_excel_bulk_data.sql'],
+  [99, '099_restrict_excel_exports.sql'],
+  [100, '100_automatic_catalogue_excel_upsert.sql'],
+  [101, '101_direct_report_certification_analytics.sql'],
+  [102, '102_scoped_announcements.sql'],
+  [103, '103_announcement_publisher_template.sql'],
+  [104, '104_announcement_publishing_in_access_templates.sql'],
+  [105, '105_announcement_scope_hierarchy.sql'],
 ];
 const literal = value => "N'" + value.replaceAll("'", "''") + "'";
 export function transactionMigration(
@@ -105,8 +113,18 @@ complete, run 04_091_search_people_administration.sql first.
 8. Apply 08_095_paginate_expiry_reminders.sql after 094.
 9. Apply 09_096_analytics_credential_coverage.sql after 095.
 10. Apply 10_097_direct_report_expiry_reminder_link.sql after 096.
-11. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
+11. Apply 11_098_excel_bulk_data.sql after 097.
+12. Apply 12_099_restrict_excel_exports.sql after 098.
+13. Apply 13_100_automatic_catalogue_excel_upsert.sql after 099.
+14. Apply 14_101_direct_report_certification_analytics.sql after 100.
+15. Apply 15_102_scoped_announcements.sql after 101.
+16. Apply 16_103_announcement_publisher_template.sql after 102.
+17. Apply 17_104_announcement_publishing_in_access_templates.sql after 103.
+18. Apply 18_105_announcement_scope_hierarchy.sql after 104.
+19. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
    request topic/recipient discovery, current assigned-manager review and People & Access search.
+
+Publishing follows existing effective Business Analytics or Admin assignments. Select an eligible concrete audience when publishing.
 
 Use the root numbered wrappers for manual SSMS installation. They guard the target, preserve
 the migration ledger, roll back failed versions and skip already recorded versions. The raw

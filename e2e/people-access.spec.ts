@@ -67,6 +67,11 @@ test('People & Access searches on demand and reviews template assignment and rem
       },
     });
   });
+  await page.route('**/api/announcements/feed', route =>
+    route.fulfill({
+      json: { items: [], canPublish: false, person: { name: 'Admin', employeeId: '100' } },
+    }),
+  );
   await page.route('**/api/access**', async route => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -177,6 +182,15 @@ test('People & Access searches on demand and reviews template assignment and rem
       .every(path => path === '/api/access/people/' + employee.id),
   ).toBe(true);
   expect(requests).not.toContain('/api/access/organization');
+
+  await expect(
+    page.getByText(
+      'Business Analytics and Admin include announcement publishing for permitted audiences.',
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Announcements Publisher', exact: true }),
+  ).toHaveCount(0);
 
   const form = page.locator('#bo-access-assignment-form');
   const scope = form.getByRole('combobox', { name: 'Scope', exact: true });
@@ -293,6 +307,6 @@ test('fresh personal route skips /api/access while preserving Organization, Acti
   expect(accessRequests).toEqual(['/api/access?summary=1']);
 
   await tabs.getByRole('button', { name: 'Templates' }).click();
-  await expect(page.getByRole('button', { name: /Delivery Support/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit template Delivery Support', exact: true })).toBeVisible();
   expect(accessRequests).toContain('/api/access');
 });

@@ -6,6 +6,7 @@ export function notify(message: string, kind: ToastKind = 'info') {
     );
 }
 export async function notifyResponse(path: string, method: string, response: Response) {
+  if (path.startsWith('/api/excel/')) return;
   if (!response.ok) {
     const body = await response
       .clone()

@@ -130,6 +130,14 @@ if (command !== 'check' && command !== 'migrate') {
           [95, '095_paginate_expiry_reminders.sql'],
           [96, '096_analytics_credential_coverage.sql'],
           [97, '097_direct_report_expiry_reminder_link.sql'],
+          [98, '098_excel_bulk_data.sql'],
+          [99, '099_restrict_excel_exports.sql'],
+          [100, '100_automatic_catalogue_excel_upsert.sql'],
+          [101, '101_direct_report_certification_analytics.sql'],
+          [102, '102_scoped_announcements.sql'],
+          [103, '103_announcement_publisher_template.sql'],
+          [104, '104_announcement_publishing_in_access_templates.sql'],
+          [105, '105_announcement_scope_hierarchy.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

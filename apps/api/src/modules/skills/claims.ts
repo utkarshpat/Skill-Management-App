@@ -136,6 +136,14 @@ export interface TeamCapability {
     levelName: string;
     status: 'APPROVED' | 'SUBMITTED';
   }[];
+  certifications?: {
+    id: string;
+    name: string;
+    issuer: string;
+    status: 'APPROVED' | 'SUBMITTED';
+    issueDate: string;
+    expiryDate: string | null;
+  }[];
   analytics?: {
     members: number;
     reviewed: number;

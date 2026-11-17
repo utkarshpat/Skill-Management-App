@@ -211,7 +211,9 @@ button:not(:disabled):hover {
   background: var(--primary-button, #11878a);
   color: #ffffff;
   border: 1px solid transparent;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
 }
 .primary-button:hover:not(:disabled) {
   background: var(--primary-hover, #0e7275);
@@ -1045,30 +1047,166 @@ input[type='checkbox'] {
   min-height: 42px;
 }
 .assistant-launcher {
+  --mascot-width: min(104px, 28vw);
+  --greeting-cycle: 8s;
   position: fixed;
-  right: 24px;
-  bottom: 24px;
-  width: 56px;
-  height: 56px;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: env(safe-area-inset-bottom, 0px);
+  width: calc(var(--mascot-width) * 1.195);
+  height: calc(var(--mascot-width) * 1.225);
+  padding: 0;
   border: 0;
-  background: #bd1723;
-  color: white;
-  border-radius: 50%;
-  box-shadow: 0 4px 18px #71101830;
+  color: var(--ai-ink);
+  background: transparent;
+  border-radius: 16px;
   z-index: 30;
-  display: grid;
-  place-items: center;
+  cursor: pointer;
 }
-.assistant-launcher > span {
+.assistant-launcher:focus-visible {
+  outline: 2px solid var(--color-ai);
+  outline-offset: 3px;
+}
+.assistant-launcher-greeting {
   position: absolute;
-  right: -2px;
-  top: -3px;
-  font-size: 9px;
-  background: white;
-  color: #a41520;
-  border: 1px solid #e5ced1;
-  border-radius: 7px;
-  padding: 2px 4px;
+  right: calc(100% + 7px);
+  bottom: calc(var(--mascot-width) * 0.38);
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ai-ink);
+  box-shadow: var(--shadow-sm);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.assistant-greeting-text {
+  display: inline-block;
+  animation: assistant-type-greeting var(--greeting-cycle) steps(15, end) 0.2s infinite both;
+}
+@keyframes assistant-type-greeting {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  20%,
+  100% {
+    clip-path: inset(0);
+  }
+}
+.assistant-mascot {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 6px rgb(23 32 51 / 20%));
+}
+.assistant-mascot img {
+  position: absolute;
+  display: block;
+}
+html[data-theme] .assistant-launcher,
+html[data-theme] .assistant-launcher:hover,
+html[data-theme] .assistant-launcher:active {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+html[data-theme] .assistant-mascot img {
+  background: transparent;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  /* Keep the transparent artwork out of browser automatic dark image adjustment. */
+  color-scheme: only light;
+}
+.assistant-mascot-body,
+.assistant-mascot-head {
+  right: 0;
+  bottom: 0;
+  width: var(--mascot-width);
+}
+/* Two crops of the same sprite overlap slightly beneath the head along the neck. */
+.assistant-mascot-body {
+  clip-path: polygon(
+    0 49%,
+    20% 49%,
+    24% 57%,
+    31% 63%,
+    40% 66%,
+    55% 69%,
+    78% 70%,
+    100% 72%,
+    100% 100%,
+    0 100%
+  );
+}
+.assistant-mascot-head {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 74%,
+    78% 73%,
+    55% 72%,
+    40% 68%,
+    31% 64%,
+    24% 57%,
+    20% 49%,
+    0 49%
+  );
+  transform-origin: 64% 70%;
+  animation: assistant-head-tilt var(--greeting-cycle) ease-in-out 0.2s infinite both;
+}
+.assistant-mascot-brand {
+  right: calc(var(--mascot-width) * 0.5);
+  bottom: calc(var(--mascot-width) * 0.155);
+  width: calc(var(--mascot-width) * 0.22);
+  transform: translate(50%, 50%);
+}
+.assistant-mascot-hand {
+  right: calc(var(--mascot-width) * 0.736);
+  bottom: calc(var(--mascot-width) * 0.486);
+  width: calc(var(--mascot-width) * 0.36);
+  z-index: 1;
+  /* The origin sits where the glove cuff meets the blue wrist joint. */
+  transform-origin: 48% 93%;
+  animation: assistant-wave var(--greeting-cycle) ease-in-out 0.2s infinite both;
+}
+@keyframes assistant-wave {
+  0%,
+  24%,
+  100% {
+    transform: rotate(0);
+  }
+  4%,
+  11% {
+    transform: rotate(-17deg);
+  }
+  8%,
+  15% {
+    transform: rotate(15deg);
+  }
+}
+@keyframes assistant-head-tilt {
+  0%,
+  24%,
+  100% {
+    transform: rotate(0);
+  }
+  8% {
+    transform: rotate(-3deg);
+  }
+  16% {
+    transform: rotate(3deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-greeting-text,
+  .assistant-mascot-head,
+  .assistant-mascot-hand {
+    animation: none;
+  }
 }
 .assistant-launcher[hidden] {
   display: none;
@@ -1283,10 +1421,6 @@ input[type='checkbox'] {
   .visual-tree-scroll {
     padding: 16px;
     max-height: 380px;
-  }
-  .assistant-launcher {
-    right: 18px;
-    bottom: 18px;
   }
   .assistant-panel {
     width: 100%;

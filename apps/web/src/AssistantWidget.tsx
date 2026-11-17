@@ -7,7 +7,7 @@ import { Link, useNavigate, useLocation } from 'react-router';
 import { requestRead, type RequestOptions } from './request-model';
 import type { SkillSaveResult } from './MySkills';
 import { assistantNavigationTargets, type AssistantPage } from './assistant-actions';
-import { Bot, X, Send, RotateCcw, History, Trash2, ChevronRight } from 'lucide-react';
+import { Bot, X, Send, RotateCw, History, Trash2, ChevronRight } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { AssistantOutput, type Artifact } from './AssistantOutput';
 import { AssistantRichText } from './AssistantRichText';
@@ -522,8 +522,15 @@ export function AssistantWidget() {
         aria-controls="assistant-panel"
         onClick={openChat}
       >
-        <Bot size={25} />
-        <span>AI</span>
+        <span className="assistant-launcher-greeting" aria-hidden="true">
+          <span className="assistant-greeting-text">May I help you?</span>
+        </span>
+        <span className="assistant-mascot" aria-hidden="true">
+          <img className="assistant-mascot-body" src="/brand/assistant-robot.webp" alt="" />
+          <img className="assistant-mascot-head" src="/brand/assistant-robot.webp" alt="" />
+          <img className="assistant-mascot-brand" src="/brand/sopra-steria-mark.svg" alt="" />
+          <img className="assistant-mascot-hand" src="/brand/assistant-robot-hand.webp" alt="" />
+        </span>
         {(unread || busy) && (
           <i
             className={'assistant-reply-badge' + (busy ? ' is-pending' : '')}
@@ -571,7 +578,7 @@ export function AssistantWidget() {
               disabled={busy || historyBusy || actionBusy}
               onClick={newChat}
             >
-              <RotateCcw size={17} />
+              <RotateCw size={17} />
             </button>
             <button
               ref={closeButton}

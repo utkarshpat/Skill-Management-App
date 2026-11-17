@@ -207,7 +207,7 @@ test('manager choices exclude self and descendants; malformed placement requires
 
 test('branch creation validates hierarchy and previews a portfolio under the selected DU', async () => {
   await mount();
-  await click('Add delivery unit');
+  await click('Add organization unit');
   await submit('organization-editor');
   assert.equal(writes.length, 0);
   assert.equal(
@@ -408,7 +408,7 @@ test('closing a reporting preview preserves the edit but never commits it', asyn
 
 test('organization reload after a rejected preview reads the current revision before retry', async () => {
   await mount();
-  await click('Add delivery unit');
+  await click('Add organization unit');
   await fill('Delivery unit name', 'India Delivery');
   previewFailure = 503;
   await submit('organization-editor');

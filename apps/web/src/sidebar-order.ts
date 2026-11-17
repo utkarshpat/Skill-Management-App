@@ -6,6 +6,7 @@ export const DEFAULT_SIDEBAR_ORDER = [
   'certifications',
   'skill-reviews',
   'requests',
+  'announcements',
   'skills',
   'organization',
   'people',

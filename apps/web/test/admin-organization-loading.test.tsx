@@ -88,7 +88,7 @@ test('only overview and assignments fetch organization summaries and discard abo
 
 test('personal pages skip /api/access snapshot and full admin tabs wait for non-summary state', async () => {
   const source = await readFile(new URL('../src/AccessAdmin.tsx', import.meta.url), 'utf8');
-  const start = source.indexOf('  useEffect(() => {\n    if (personalTitle) return;');
+  const start = source.replace(/\r\n/g, '\n').indexOf('  useEffect(() => {\n    if (personalTitle) return;');
   assert.notEqual(start, -1, 'Expected /api/access effect to guard personalTitle');
   assert.match(
     source,

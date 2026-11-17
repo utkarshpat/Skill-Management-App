@@ -560,6 +560,33 @@ test('a valid company cookie restores workspace access without loading MSAL or s
   assert.equal(f.calls.initialize, 0);
 });
 
+test('an Excel authorization failure leaves a verified company session signed in', async () => {
+  const f = await fixture();
+  const requests: string[] = [];
+  f.transport(async input => {
+    const path = String(input);
+    requests.push(path);
+    if (path === '/api/auth/config')
+      return Response.json({ ...config, cookieSession: true, sessionActive: true });
+    if (path === '/api/excel/catalogue/preview')
+      return Response.json({ error: { message: 'Sign in to continue.' } }, { status: 401 });
+    return Response.json({ ok: true });
+  });
+  await f.auth.initializeAuth();
+  const response = await f.auth.authenticatedFetch('/api/excel/catalogue/preview', {
+    method: 'POST',
+  });
+  assert.equal(response.status, 401);
+  assert.equal(f.auth.signedIn(), true);
+  assert.equal((await f.auth.authenticatedFetch('/api/workspace')).status, 200);
+  assert.deepEqual(requests, [
+    '/api/auth/config',
+    '/api/excel/catalogue/preview',
+    '/api/auth/config',
+    '/api/workspace',
+  ]);
+});
+
 test('concurrent company initialization exchanges one bearer and expiry never retries a write', async () => {
   const f = await fixture();
   let exchanges = 0;

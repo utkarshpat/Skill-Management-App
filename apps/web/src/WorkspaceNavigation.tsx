@@ -1,28 +1,30 @@
 import { SidebarNavigation } from './SidebarNavigation';
-import { BarChart3, BookOpen, Compass, ShieldCheck, UserRound } from 'lucide-react';
+import { Megaphone, BarChart3, BookOpen, Compass, ShieldCheck, UserRound } from 'lucide-react';
 
 export const administrationShellFor = (pathname: string, administration: boolean) =>
   pathname === '/access' || administration;
 export const personalPageTitle = (pathname: string | undefined) =>
-  pathname === '/business'
-    ? 'Analytics'
-    : pathname === '/requests'
-      ? 'Requests & incidents'
-      : pathname === '/learning'
-        ? 'Learning & development'
-        : pathname === '/skill-reviews'
-          ? 'Reviews'
-          : pathname === '/my-skills'
-            ? 'Skills'
-            : pathname === '/certifications'
+  pathname === '/announcements'
+    ? 'Announcements'
+    : pathname === '/business'
+      ? 'Analytics'
+      : pathname === '/requests'
+        ? 'Requests & incidents'
+        : pathname === '/learning'
+          ? 'Learning & development'
+          : pathname === '/skill-reviews'
+            ? 'Reviews'
+            : pathname === '/my-skills'
               ? 'Skills'
-              : pathname === '/profile'
-                ? 'My profile'
-                : pathname === '/skills'
-                  ? 'Skill catalogue'
-                  : pathname === '/workspace'
-                    ? 'My workspace'
-                    : undefined;
+              : pathname === '/certifications'
+                ? 'Skills'
+                : pathname === '/profile'
+                  ? 'My profile'
+                  : pathname === '/skills'
+                    ? 'Skill catalogue'
+                    : pathname === '/workspace'
+                      ? 'My workspace'
+                      : undefined;
 export const catalogueRouteAllowed = (capabilities: { catalogue?: boolean } | undefined) =>
   capabilities?.catalogue === true;
 export const catalogueNavigationVisible = (
@@ -59,6 +61,7 @@ export const isSupportedWorkspacePath = (pathname: string) =>
     '/learning',
     '/requests',
     '/business',
+    '/announcements',
     '/preview',
     '/knowledgetransfer',
   ].includes(pathname);
@@ -101,6 +104,9 @@ export function personalNavigationItems(
       : []),
     ...(capabilities.requests
       ? [{ id: 'requests', label: 'Requests', href: '/requests', icon: ShieldCheck }]
+      : []),
+    ...(capabilities.ownProfile
+      ? [{ id: 'announcements', label: 'Announcements', href: '/announcements', icon: Megaphone }]
       : []),
     ...(capabilities.ownProfile
       ? [{ id: 'profile', label: 'My profile', href: '/profile', icon: UserRound }]

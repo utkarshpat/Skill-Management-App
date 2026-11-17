@@ -317,7 +317,9 @@ function Welcome({
   const [error, setError] = useState('');
   const [signingIn, setSigningIn] = useState(false);
   const signInResult = new URLSearchParams(window.location.search).get('signin');
-  function startSignIn(chooseAccount = false) {
+  const chooseAccount =
+    signInResult === 'failed' || signInResult === 'company-required' || authError;
+  function startSignIn() {
     setError('');
     setSigningIn(true);
     signIn({ chooseAccount }).catch(() => {
@@ -375,7 +377,7 @@ function Welcome({
             disabled={signingIn || !signInConfigured}
             aria-busy={signingIn}
             aria-describedby="signin-status"
-            onClick={() => startSignIn()}
+            onClick={startSignIn}
           >
             <span className="microsoft-symbol" aria-hidden="true">
               <i />
@@ -385,18 +387,12 @@ function Welcome({
             </span>
             {signingIn ? 'Signing in…' : 'Continue with Microsoft'}
           </button>
-          {(signInResult === 'failed' || signInResult === 'company-required' || authError) &&
-            signInConfigured && (
-              <button type="button" disabled={signingIn} onClick={() => startSignIn(true)}>
-                Choose your Microsoft account
-              </button>
-            )}
           <p id="signin-status" className="signin-status" role="status">
             {error ||
               (signInResult === 'company-required'
                 ? 'Sign in with your @soprasteria.com work account.'
                 : signInResult === 'failed' || authError
-                  ? 'Sign-in could not finish. Try again or choose your work account.'
+                  ? 'Sign-in could not finish. Continue with Microsoft to choose your work account.'
                   : signInConfigured
                     ? 'Use your Microsoft account to access your assigned workspace.'
                     : 'Sign-in is being set up. Access will be available soon.')}

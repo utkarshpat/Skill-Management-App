@@ -38,6 +38,39 @@ for (const role of ['employee', 'manager', 'admin'] as const) {
     ).toBeTruthy();
   });
 }
+test('sidebar uses slim theme scrollbars in light and dark mode', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 450 });
+  await fixture(page, { role: 'admin' });
+  await page.goto('/profile');
+  const sidebar = page.locator('.sidebar-scroll');
+  await expect(sidebar).toBeVisible();
+  const readScrollbar = () =>
+    sidebar.evaluate(element => {
+      const thumb = getComputedStyle(element, '::-webkit-scrollbar-thumb');
+      return {
+        width: getComputedStyle(element, '::-webkit-scrollbar').width,
+        thumb: thumb.backgroundImage,
+        nativeColor: getComputedStyle(element).scrollbarColor,
+        thumbInset: thumb.borderLeftWidth,
+        thumbClip: thumb.backgroundClip,
+      };
+    });
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+  const dark = await readScrollbar();
+  await page.getByRole('button', { name: 'Switch to light theme' }).click();
+  const light = await readScrollbar();
+  expect(light.width).toBe('6px');
+  expect(dark.width).toBe('6px');
+  expect(light.thumb).toContain('linear-gradient');
+  expect(dark.thumb).toContain('linear-gradient');
+  expect(dark.thumb).not.toBe(light.thumb);
+  expect(light.nativeColor).toBe('auto');
+  expect(dark.nativeColor).toBe('auto');
+  expect(light.thumbInset).toBe('2px');
+  expect(dark.thumbInset).toBe('2px');
+  expect(light.thumbClip).toBe('content-box');
+  expect(dark.thumbClip).toBe('content-box');
+});
 test('workspace error stops spinner; retry recovers and sign out ends session', async ({
   page,
 }) => {
@@ -56,6 +89,35 @@ test('workspace error stops spinner; retry recovers and sign out ends session', 
     .click();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Continue with Microsoft' })).toBeVisible();
+});
+test('one Microsoft button retries a failed sign-in with account selection', async ({ page }) => {
+  await page.route('**/api/auth/config', route =>
+    route.fulfill({
+      json: {
+        enabled: true,
+        tenantId: ids.tenant,
+        webClientId: ids.api,
+        apiClientId: ids.api,
+        cookieSession: true,
+        backendSignIn: true,
+        sessionActive: false,
+      },
+    }),
+  );
+  await page.route('**/api/auth/login?*', route =>
+    route.fulfill({ contentType: 'text/html', body: '<title>Microsoft sign-in</title>' }),
+  );
+  await page.goto('/profile?signin=failed');
+  const card = page.getByRole('region', { name: /Welcome back|Skill Management/ });
+  const signIn = card.getByRole('button', { name: 'Continue with Microsoft' });
+  await expect(card.getByRole('button')).toHaveCount(1);
+  const login = page.waitForRequest(
+    request => new URL(request.url()).pathname === '/api/auth/login',
+  );
+  await signIn.click();
+  const params = new URL((await login).url()).searchParams;
+  expect(params.get('mode')).toBe('choose');
+  expect(params.get('returnTo')).toBe('/profile');
 });
 test('unprovisioned identity card: verified IDs, no overflow, retry after activation', async ({
   page,
@@ -142,15 +204,14 @@ test('amendments: approver starts at type selection and can edit Provider', asyn
   await page.getByRole('button', { name: /Next: entry details/ }).click();
   await expect(page.getByText('Update provider: Synthetic issuer')).toBeVisible();
 });
-test('review search and category do not collapse the history disclosure', async ({ page }) => {
+test('review search and category keep the assigned reviews workbench visible', async ({ page }) => {
   await fixture(page, { role: 'manager' });
   await page.goto('/test/e2e/harness.html?fixture=reviews');
-  await expect(page.locator('summary').filter({ hasText: 'Legacy reviews' })).toBeVisible();
-  await expect(page.locator('details.review-legacy-history')).toHaveAttribute('open', '');
+  await expect(page.getByRole('region', { name: 'Assigned skill reviews' })).toBeVisible();
   await page.getByRole('searchbox', { name: 'Search review employee or skill' }).fill('Synthetic');
-  await expect(page.locator('details.review-legacy-history')).toHaveAttribute('open', '');
+  await expect(page.getByRole('region', { name: 'Assigned skill reviews' })).toBeVisible();
   await page.getByLabel('Review category').selectOption('Synthetic');
-  await expect(page.locator('details.review-legacy-history')).toHaveAttribute('open', '');
+  await expect(page.getByRole('region', { name: 'Assigned skill reviews' })).toBeVisible();
 });
 
 test('workforce: employee filters delivered skills and reads review feedback', async ({ page }) => {

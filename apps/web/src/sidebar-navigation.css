@@ -156,8 +156,6 @@ html[data-theme] .admin-sidebar .sidebar-scroll {
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: #526078 #172033;
 }
 html[data-theme] .admin-sidebar nav.sidebar-profile-footer {
   flex: none;

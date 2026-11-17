@@ -108,6 +108,7 @@ globalThis.__probe = {
   files: {},
   overview: {},
   credentialCoverage: {},
+  excel: { ExcelBulkActions: () => null },
   peoplePrompt,
   reportDocument: { businessReportHtml: () => '' },
 };
@@ -137,6 +138,7 @@ const sources = {
   './BusinessRecordFiles': 'files',
   './AnalyticsOverview': 'overview',
   './CredentialCoverage': 'credentialCoverage',
+  '../ExcelBulkActions': 'excel',
   './people-search-prompt': 'peoplePrompt',
 };
 source = source

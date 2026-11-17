@@ -8,6 +8,7 @@ import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { SkillClaimDialog } from './SkillClaimDialog';
 import { FormDialog } from './FormDialog';
+import { ExcelBulkActions } from './ExcelBulkActions';
 import { SkillsProfileView } from './SkillsProfileView';
 import './skills-profile.css';
 import {
@@ -86,8 +87,10 @@ async function body<T>(response: Response): Promise<T> {
 export function MySkills({
   actionsContainer,
   reviewRequest,
+  canImportCertificates = false,
 }: {
   actionsContainer?: HTMLElement | null;
+  canImportCertificates?: boolean;
   reviewRequest?: {
     description: string;
     onClose: () => void;
@@ -495,11 +498,23 @@ export function MySkills({
       setBusy(false);
     }
   }
-  const actions = state?.canClaim && (
-    <button className="admin-primary" disabled={busy || loading} onClick={() => setCombined(true)}>
-      <Plus size={17} />
-      Add skill
-    </button>
+  const showCertificateBulkAction = Boolean(canImportCertificates && certificateContext?.data);
+  const actions = (state?.canClaim || showCertificateBulkAction) && (
+    <>
+      {showCertificateBulkAction && (
+        <ExcelBulkActions kind="certifications" showImport onImported={certificateContext?.retry} />
+      )}
+      {state?.canClaim && (
+        <button
+          className="admin-primary"
+          disabled={busy || loading}
+          onClick={() => setCombined(true)}
+        >
+          <Plus size={17} />
+          Add skill
+        </button>
+      )}
+    </>
   );
   function closeDraft() {
     setDraft(undefined);

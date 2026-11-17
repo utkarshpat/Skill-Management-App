@@ -25,11 +25,14 @@ export async function loadNotificationFeed(
     }
   });
   const reminders = items.filter(item => item.id.startsWith('cert-expiry-'));
-  const recent = items.filter(item => !item.id.startsWith('cert-expiry-'));
+  const announcements = items.filter(item => item.id.startsWith('announcement-'));
+  const recent = items.filter(
+    item => !item.id.startsWith('cert-expiry-') && !item.id.startsWith('announcement-'),
+  );
   recent.sort((a, b) => b.at.localeCompare(a.at));
   return {
     ...base,
-    items: [...recent.slice(0, 30), ...reminders.slice(0, 30)].sort((a, b) =>
+    items: [...recent.slice(0, 30), ...announcements, ...reminders.slice(0, 30)].sort((a, b) =>
       b.at.localeCompare(a.at),
     ),
     hasMoreReminders: reminders.length > 30,
