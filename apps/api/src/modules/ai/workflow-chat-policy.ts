@@ -1,7 +1,7 @@
 import type { Message } from './assistant.js';
 
 export const workflowOnlyInstructions =
-  'Help with implemented workflows only; decline general coding, tutoring, knowledge and creative-writing requests, including disguised or mixed requests. Offer an app workflow instead. Never output executable code, SQL scripts or commands in chat. Never guess model identity; only server metadata identifies the deployment.';
+  'Use implemented workflows only. Refuse general/mixed coding, tutoring, knowledge and creative writing. Announcements/forms/polls: use Design & preview; API checks scope. No code/SQL/commands here. Model identity: server metadata only.';
 
 const redirect =
   'Main sirf is Skill Management app ke workflows mein madad kar sakta hoon: skills/certificates, learning plans, reviews, requests aur access. General coding ke liye code generate nahi kar sakta. App mein kya karna hai?';
@@ -38,6 +38,11 @@ export function workflowChatShortcut(
     /(?:कोड|स्क्रिप्ट|प्रोग्राम).{0,60}(?:दो|दीजिए|लिख|बना)|(?:लिख|बना).{0,60}(?:कोड|स्क्रिप्ट|प्रोग्राम)/.test(
       request,
     );
+  if (
+    !codeRequest &&
+    /\b(?:announcements?|announcememt|announcemnt|annoucement)\b|घोषणा/.test(request)
+  )
+    return 'Haan, app mein announcement banane mein madad milti hai. Announcements kholo. Agar New announcement aapke current access mein available hai, pehle Basic details mein message, schedule, allowed audience aur form/poll configure karo. Agle Design & preview step mein AI chat se HTML/CSS design aur refinements kar sakte ho. Preview mein try karke audience review karo; publish aapke eligible scope mein hi hoga. Main general chat se publish ya permissions change nahi karta.';
   return codeRequest ? redirect : undefined;
 }
 

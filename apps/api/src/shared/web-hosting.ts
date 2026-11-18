@@ -1,6 +1,6 @@
 import express, { type Express } from 'express';
 import compression from 'compression';
-import { accessSync, constants, statSync } from 'node:fs';
+import { accessSync, constants, statSync, existsSync, readFileSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 
 /** Opt-in same-origin hosting. Only the compiled public web directory is served. */
@@ -9,6 +9,12 @@ export function registerWebHosting(app: Express, directory: string) {
   const index = join(root, 'index.html');
   accessSync(index, constants.R_OK);
   if (!statSync(index).isFile()) throw new Error('Built web index is unavailable.');
+  const sandboxPath = join(root, 'announcement-sandbox.html');
+  const sandboxPolicy = existsSync(sandboxPath)
+    ? /<meta http-equiv="Content-Security-Policy" content="([^"]+)">/.exec(
+        readFileSync(sandboxPath, 'utf8'),
+      )?.[1]
+    : undefined;
 
   app.use(
     // Registered after API routes: negotiate compression only for public web
@@ -19,6 +25,11 @@ export function registerWebHosting(app: Express, directory: string) {
       redirect: false,
       dotfiles: 'deny',
       setHeaders(res, file) {
+        if (file === sandboxPath && sandboxPolicy) {
+          res.setHeader('Content-Security-Policy', sandboxPolicy + "; frame-ancestors 'self'");
+          res.setHeader('Cache-Control', 'no-store');
+          return;
+        }
         // Only content-hashed Vite assets can safely outlive a deployment.
         res.setHeader(
           'Cache-Control',

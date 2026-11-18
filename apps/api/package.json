@@ -47,7 +47,8 @@
     "test:skill-documents": "node --env-file-if-exists=.env --import tsx test/skill-documents.integration.ts",
     "test:private-files": "node --env-file-if-exists=.env --import tsx test/private-files.integration.ts",
     "test:coverage": "node --env-file-if-exists=.env --import tsx test/coverage.integration.ts",
-    "test:people-search": "node --env-file-if-exists=.env --import tsx test/people-search.integration.ts"
+    "test:people-search": "node --env-file-if-exists=.env --import tsx test/people-search.integration.ts",
+    "announcements:purge": "node --env-file-if-exists=.env --import tsx src/announcement-retention-cli.ts"
   },
   "dependencies": {
     "@azure/identity": "4.14.1",
@@ -60,7 +61,9 @@
     "helmet": "8.3.0",
     "jose": "6.2.12",
     "mssql": "12.7.2",
+    "parse5": "8.1.1",
     "pdf-lib": "1.17.1",
+    "postcss": "8.5.33",
     "sharp": "0.35.5"
   },
   "devDependencies": {

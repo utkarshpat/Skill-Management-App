@@ -24,10 +24,12 @@ export function FormDialog({
   className = '',
   subtitle,
   stepNavigation = false,
+  compact = false,
 }: {
   className?: string;
   subtitle?: ReactNode;
   stepNavigation?: boolean;
+  compact?: boolean;
   title: string;
   onClose: () => void;
   busy?: boolean;
@@ -140,7 +142,7 @@ export function FormDialog({
   return createPortal(
     <dialog
       ref={dialog}
-      className={'form-dialog ' + className}
+      className={'form-dialog ' + className + (compact ? ' form-dialog-compact' : '')}
       data-readonly={readOnly || undefined}
       aria-label={title}
       onKeyDown={trapFocus}
@@ -151,15 +153,14 @@ export function FormDialog({
       onSubmitCapture={validate}
     >
       <header className="form-dialog-header">
-        <div className="form-dialog-title-group">
-          <h2>{title}</h2>
-          {subtitle && <p className="form-dialog-subtitle">{subtitle}</p>}
-        </div>
+        {!compact && (
+          <div className="form-dialog-title-group">
+            <h2>{title}</h2>
+            {subtitle && <p className="form-dialog-subtitle">{subtitle}</p>}
+          </div>
+        )}
         {pages && pages.length > 1 && stepNavigation && (
-          <nav
-            className="form-page-tabs wizard-steps in-header"
-            aria-label="Form sections"
-          >
+          <nav className="form-page-tabs wizard-steps in-header" aria-label="Form sections">
             {pages.map((item, index) => (
               <button
                 type="button"
@@ -188,10 +189,7 @@ export function FormDialog({
       </header>
       {message && <div className="form-dialog-message">{message}</div>}
       {pages && pages.length > 1 && !stepNavigation && (
-        <nav
-          className="form-page-tabs"
-          aria-label="Form sections"
-        >
+        <nav className="form-page-tabs" aria-label="Form sections">
           {pages.map((item, index) => (
             <button
               type="button"

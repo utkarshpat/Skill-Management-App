@@ -26,6 +26,8 @@ const migrations = [
   [103, '103_announcement_publisher_template.sql'],
   [104, '104_announcement_publishing_in_access_templates.sql'],
   [105, '105_announcement_scope_hierarchy.sql'],
+  [106, '106_announcement_pagination_retention.sql'],
+  [107, '107_announcement_response_updates.sql'],
 ];
 const literal = value => "N'" + value.replaceAll("'", "''") + "'";
 export function transactionMigration(
@@ -121,7 +123,9 @@ complete, run 04_091_search_people_administration.sql first.
 16. Apply 16_103_announcement_publisher_template.sql after 102.
 17. Apply 17_104_announcement_publishing_in_access_templates.sql after 103.
 18. Apply 18_105_announcement_scope_hierarchy.sql after 104.
-19. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
+19. Apply 19_106_announcement_pagination_retention.sql after 105. It adds pagination and the fixed 45-day expiry retention procedure.
+20. Apply 20_107_announcement_response_updates.sql after 106. It adds opt-in edits to existing responses.
+20. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
    request topic/recipient discovery, current assigned-manager review and People & Access search.
 
 Publishing follows existing effective Business Analytics or Admin assignments. Select an eligible concrete audience when publishing.

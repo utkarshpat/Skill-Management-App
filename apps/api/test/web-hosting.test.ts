@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { get } from 'node:http';
@@ -41,6 +41,10 @@ test('same-origin hosting supports deep links without masking API or asset failu
   await writeFile(join(root, 'assets', 'index-Abc12345.js'), javascript);
   await writeFile(join(root, 'brand', 'logo.svg'), '<svg/>');
   await writeFile(join(root, '.env'), 'PRIVATE_SENTINEL');
+  await writeFile(
+    join(root, 'announcement-sandbox.html'),
+    await readFile(new URL('../../web/public/announcement-sandbox.html', import.meta.url)),
+  );
   const server = createApp(undefined, { webRoot: root }).listen(0, '127.0.0.1');
   await once(server, 'listening');
   const address = server.address();
@@ -59,6 +63,14 @@ test('same-origin hosting supports deep links without masking API or asset failu
       assert.doesNotMatch(csp, /script-src[^;]*(?:blob:|unsafe-eval|unsafe-inline)/);
     }
     const asset = await fetch(`${base}/assets/index-Abc12345.js`);
+    const sandbox = await fetch(`${base}/announcement-sandbox.html`);
+    assert.equal(sandbox.status, 200);
+    assert.equal(sandbox.headers.get('cache-control'), 'no-store');
+    const sandboxCsp = sandbox.headers.get('content-security-policy')!;
+    assert.match(sandboxCsp, /script-src 'sha256-/);
+    assert.match(sandboxCsp, /connect-src 'none'/);
+    assert.match(sandboxCsp, /frame-ancestors 'self'/);
+    assert.doesNotMatch(sandboxCsp, /script-src[^;]*(?:unsafe-inline|unsafe-eval)/);
     assert.equal(asset.status, 200);
     assert.match(asset.headers.get('cache-control')!, /immutable/);
     assert.equal(await asset.text(), javascript);
@@ -95,6 +107,17 @@ test('same-origin hosting supports deep links without masking API or asset failu
     assert.equal(brand.headers.get('content-encoding'), null);
     const health = await fetch(`${base}/api/health`);
     assert.equal((await health.json()).status, 'ok');
+    // Multi-turn design history may exceed the generic 128 KB JSON limit.
+    // Parsing must succeed, then normal authentication still rejects anonymous requests.
+    for (const path of ['/api/announcements/design', '/api/announcements/draft']) {
+      const response = await fetch(base + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ history: 'x'.repeat(200_000) }),
+      });
+      assert.equal(response.status, 401);
+      assert.equal((await response.json()).error.code, 'NOT_AUTHORIZED');
+    }
     for (const path of ['/api/me', '/api/missing']) {
       const denied = await fetch(base + path, { headers: { Accept: 'text/html' } });
       assert.equal(denied.status, 401);

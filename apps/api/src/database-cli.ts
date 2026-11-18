@@ -138,6 +138,8 @@ if (command !== 'check' && command !== 'migrate') {
           [103, '103_announcement_publisher_template.sql'],
           [104, '104_announcement_publishing_in_access_templates.sql'],
           [105, '105_announcement_scope_hierarchy.sql'],
+          [106, '106_announcement_pagination_retention.sql'],
+          [107, '107_announcement_response_updates.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

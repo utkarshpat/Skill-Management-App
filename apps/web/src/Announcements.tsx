@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { FormDialog } from './FormDialog';
+import { notify } from './toast';
+import { Megaphone, MessageSquare, RefreshCw } from 'lucide-react';
 import { endpoint, type LiveAnnouncement, type Person } from './announcement-model';
 import {
   announcementStyle,
@@ -18,6 +20,9 @@ const AnnouncementManager = lazy(() =>
 );
 
 interface Feed {
+  page?: number;
+  hasMore?: boolean;
+  total?: number;
   items: LiveAnnouncement[];
   person: Person;
   canPublish: boolean;
@@ -33,10 +38,14 @@ export function Announcements({ page = false }: { page?: boolean }) {
   const [loadedLink, setLoadedLink] = useState<string>();
   const handledLink = useRef('');
   const [feed, setFeed] = useState<Feed>();
-  const [selection, setSelection] = useState('');
-  const [dialog, setDialog] = useState<{ item: string; form: boolean }>();
-  const [managing, setManaging] = useState(false);
+  const [dialog, setDialog] = useState<{ item: string; form: boolean; editing?: boolean }>();
+  const [view, setView] = useState<'announcements' | 'responses'>('announcements');
+  const [feedError, setFeedError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const [feedPage, setFeedPage] = useState(1);
+  const [feedLoading, setFeedLoading] = useState(false);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [hiddenBanners, setHiddenBanners] = useState<Set<string>>(new Set());
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -48,17 +57,32 @@ export function Announcements({ page = false }: { page?: boolean }) {
       request?.abort();
       request = new AbortController();
       const signal = request.signal;
-      authenticatedFetch(endpoint + '/feed', { signal })
+      setFeedLoading(true);
+      const query = new URLSearchParams();
+      if (feedPage > 1 && !requestedId) query.set('page', String(feedPage));
+      if (requestedId) query.set('announcement', requestedId);
+      else query.set('pending', '1');
+      authenticatedFetch(endpoint + '/feed' + (query.size ? '?' + query : ''), { signal })
         .then(response => readApiResponse<Feed>(response, 'Announcements are unavailable.'))
         .then(value => {
           if (!signal.aborted) {
             setFeed(value);
+            setFeedError('');
             setLoadedLink(requestedId);
             setNow(Date.now());
           }
         })
-        .catch(() => {
-          if (!signal.aborted) setFeed(undefined);
+        .catch(error => {
+          if (!signal.aborted) {
+            setFeedError(error.message);
+            if (error.status === 401 || error.status === 403) {
+              setFeed(undefined);
+              setDialog(undefined);
+            }
+          }
+        })
+        .finally(() => {
+          if (!signal.aborted) setFeedLoading(false);
         });
     };
     const timer = window.setTimeout(refresh, 0);
@@ -74,10 +98,19 @@ export function Announcements({ page = false }: { page?: boolean }) {
       window.removeEventListener(notificationEvent, refresh);
       window.removeEventListener('focus', refresh);
     };
-  }, [requestedId]);
+  }, [requestedId, attempt, feedPage]);
   const items = feed?.items.filter(item => Date.parse(item.endsAt) > now) ?? [];
   const person = feed?.person;
-  const item = items.find(entry => entry.id === selection) ?? items[0];
+  const bannerKey = (entry: LiveAnnouncement) =>
+    'announcement-banner:' + person?.employeeId + ':' + entry.id;
+  const item = items.find(entry => {
+    if (entry.answered || hiddenBanners.has(bannerKey(entry))) return false;
+    try {
+      return localStorage.getItem(bannerKey(entry)) !== 'hidden';
+    } catch {
+      return true;
+    }
+  });
   const open = items.find(entry => entry.id === dialog?.item);
   useEffect(() => {
     if (!requestedId) {
@@ -106,9 +139,9 @@ export function Announcements({ page = false }: { page?: boolean }) {
         return true;
       }
     });
-    if (!page && !dialog && !managing && next && !document.querySelector('dialog[open]'))
+    if (!page && !dialog && next && !document.querySelector('dialog[open]'))
       setDialog({ item: next.id, form: false });
-  }, [feed, now, dialog, dismissed, managing, page]);
+  }, [feed, now, dialog, dismissed, page]);
   useEffect(() => {
     if (dialog && !open) setDialog(undefined);
     const ending = Math.min(...items.map(entry => Date.parse(entry.endsAt)));
@@ -121,10 +154,29 @@ export function Announcements({ page = false }: { page?: boolean }) {
   }, [feed, now, dialog, open]);
   if (!feed || !person)
     return page ? (
-      <section className="profile-panel">
-        <p role="status">No announcements available. Refresh to check again.</p>
+      <section className="announcement-workspace" aria-label="Announcements">
+        <h2>Announcements</h2>
+        {feedError ? (
+          <div className="announcement-feedback" role="alert">
+            <p>{feedError}</p>
+            <button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>
+              <RefreshCw size={16} aria-hidden="true" /> Retry
+            </button>
+          </div>
+        ) : (
+          <p role="status">Loading announcements…</p>
+        )}
       </section>
     ) : null;
+  const hideBanner = (entry: LiveAnnouncement) => {
+    const key = bannerKey(entry);
+    setHiddenBanners(current => new Set(current).add(key));
+    try {
+      localStorage.setItem(key, 'hidden');
+    } catch {
+      // Keep the dismissal for this visit when storage is unavailable.
+    }
+  };
   const dismiss = (entry: LiveAnnouncement) => {
     setDismissed(current => new Set(current).add(entry.id));
     try {
@@ -160,11 +212,20 @@ export function Announcements({ page = false }: { page?: boolean }) {
           current && {
             ...current,
             items: current.items.map(item =>
-              item.id === entry.id ? { ...item, answered: true } : item,
+              item.id === entry.id ? { ...item, answered: true, savedAnswers: answers } : item,
             ),
           },
       );
-      setFeedback(entry.definition.kind === 'POLL' ? 'Vote recorded.' : 'Response submitted.');
+      dismiss(entry);
+      notify(
+        entry.answered
+          ? 'Response updated.'
+          : entry.definition.kind === 'POLL'
+            ? 'Vote recorded.'
+            : 'Response submitted.',
+        'success',
+      );
+      window.dispatchEvent(new Event(notificationEvent));
       window.dispatchEvent(new Event('notifications-updated'));
     } catch (error) {
       setResponseError(true);
@@ -194,16 +255,117 @@ export function Announcements({ page = false }: { page?: boolean }) {
         {entry.definition.cta}
       </button>
     );
+  const pendingItems = items.filter(entry => !entry.answered);
+  const cards = (
+    <>
+      {pendingItems.length > 0 ? (
+        <div className="announcement-page-cards">
+          {pendingItems.map(entry => (
+            <AnnouncementCard
+              key={entry.id}
+              definition={entry.definition}
+              person={person}
+              busy={busy}
+              answered={entry.answered}
+              onSubmit={answers => void respond(entry, answers)}
+              onVote={vote => void respond(entry, { vote })}
+              onOpen={() => setDialog({ item: entry.id, form: true })}
+              image={entry.hasImage ? endpoint + '/' + entry.id + '/image' : undefined}
+              action={action(entry)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="announcement-empty">
+          <Megaphone size={28} strokeWidth={1.5} aria-hidden="true" />
+          <h3>No active announcements</h3>
+          <p>Events, training and polls for you will appear here.</p>
+        </div>
+      )}
+      {(feedPage > 1 || feed.hasMore) && !requestedId && (
+        <div
+          role="group"
+          aria-label="Active announcement pages"
+          className="announcement-editor-actions"
+        >
+          <button
+            className="secondary-button"
+            disabled={feedLoading || feedPage === 1}
+            onClick={() => {
+              setFeed(undefined);
+              setFeedPage(p => p - 1);
+            }}
+          >
+            Previous announcements
+          </button>
+          <span>Page {feed.page ?? feedPage}</span>
+          <button
+            className="secondary-button"
+            disabled={feedLoading || !feed.hasMore}
+            onClick={() => {
+              setFeed(undefined);
+              setFeedPage(p => p + 1);
+            }}
+          >
+            More announcements
+          </button>
+        </div>
+      )}
+      {feedback && <p role={responseError ? 'alert' : 'status'}>{feedback}</p>}
+    </>
+  );
   return (
     <>
       {page && (
-        <section className="profile-panel announcement-page-heading">
-          <h2>Announcements</h2>
-          <p>Events, training, forms and polls for your current scope.</p>
+        <section className="announcement-workspace" aria-label="Announcements">
+          <header className="announcement-page-heading">
+            <h2>Announcements</h2>
+            <p>What's happening, all in one place.</p>
+          </header>
           {feed.canPublish && (
-            <button className="admin-primary" onClick={() => setManaging(true)}>
-              Manage announcements
-            </button>
+            <div className="announcement-tabs" role="tablist" aria-label="Announcements workspace">
+              {(['announcements', 'responses'] as const).map(tab => {
+                const Icon = tab === 'announcements' ? Megaphone : MessageSquare;
+                return (
+                  <button
+                    key={tab}
+                    id={'announcement-tab-' + tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={view === tab}
+                    aria-controls={'announcement-panel-' + tab}
+                    tabIndex={view === tab ? 0 : -1}
+                    onClick={() => setView(tab)}
+                    onKeyDown={event => {
+                      if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                        event.preventDefault();
+                        const next =
+                          event.key === 'Home'
+                            ? 'announcements'
+                            : event.key === 'End'
+                              ? 'responses'
+                              : view === 'announcements'
+                                ? 'responses'
+                                : 'announcements';
+                        setView(next);
+                        document.getElementById('announcement-tab-' + next)?.focus();
+                      }
+                    }}
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                    {tab === 'announcements' ? 'Announcements' : 'Responses'}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {feedError && (
+            <div className="announcement-feedback" role="alert">
+              <p>{feedError}</p>
+              <button className="secondary-button" onClick={() => setAttempt(value => value + 1)}>
+                Retry
+              </button>
+            </div>
           )}
           {requestedId &&
             loadedLink === requestedId &&
@@ -212,7 +374,24 @@ export function Announcements({ page = false }: { page?: boolean }) {
                 This announcement has ended or is no longer available in your scope.
               </p>
             )}
-          {items.length === 0 && <p>No active announcements for your scope.</p>}
+          {feed.canPublish ? (
+            <Suspense fallback={<p role="status">Loading your announcements…</p>}>
+              <AnnouncementManager
+                view={view}
+                onViewChange={setView}
+                onUpdated={refreshAnnouncements}
+              >
+                {(pendingItems.length > 0 || feedPage > 1 || feed.hasMore) && (
+                  <section className="announcement-for-you" aria-label="For you">
+                    <h3>For you</h3>
+                    {cards}
+                  </section>
+                )}
+              </AnnouncementManager>
+            </Suspense>
+          ) : (
+            cards
+          )}
         </section>
       )}
       {!page && item && (
@@ -221,45 +400,25 @@ export function Announcements({ page = false }: { page?: boolean }) {
           aria-label="Announcements"
           style={item ? announcementStyle(item.definition) : undefined}
         >
-          {items.length > 1 && (
-            <select
-              aria-label="Choose announcement"
-              value={item.id}
-              onChange={event => {
-                setSelection(event.target.value);
-                setFeedback('');
-              }}
-            >
-              {items.map(entry => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.definition.title}
-                </option>
-              ))}
-            </select>
-          )}
-          {item && (
-            <AnnouncementBannerContent
-              key={item.id}
-              definition={item.definition}
-              image={item.hasImage ? endpoint + '/' + item.id + '/image' : undefined}
-              action={action(item)}
-            />
-          )}
-          {!open && feedback && <span role={responseError ? 'alert' : 'status'}>{feedback}</span>}
+          <AnnouncementBannerContent
+            key={item.id}
+            definition={item.definition}
+            onDismiss={() => hideBanner(item)}
+            image={item.hasImage ? endpoint + '/' + item.id + '/image' : undefined}
+            action={
+              <button
+                type="button"
+                className="admin-primary"
+                onClick={() => {
+                  setFeedback('');
+                  setDialog({ item: item.id, form: item.definition.kind === 'FORM' });
+                }}
+              >
+                {item.definition.kind === 'POLL' ? 'Open poll' : item.definition.cta}
+              </button>
+            }
+          />
         </section>
-      )}
-      {page && (
-        <div className="announcement-page-cards">
-          {items.map(entry => (
-            <AnnouncementCard
-              key={entry.id}
-              definition={entry.definition}
-              image={entry.hasImage ? endpoint + '/' + entry.id + '/image' : undefined}
-              action={action(entry)}
-            />
-          ))}
-          {feedback && <p role={responseError ? 'alert' : 'status'}>{feedback}</p>}
-        </div>
       )}
       {open && (
         <FormDialog
@@ -267,16 +426,63 @@ export function Announcements({ page = false }: { page?: boolean }) {
           onClose={() => dismiss(open)}
           busy={busy}
           className="announcement-dialog"
+          compact
         >
           <AnnouncementCard
-            definition={open.definition}
+            key={open.id}
+            definition={open.answered ? { ...open.definition, design: undefined } : open.definition}
+            person={person}
+            busy={busy}
+            answered={open.answered}
+            onSubmit={answers => void respond(open, answers)}
+            onVote={vote => void respond(open, { vote })}
+            onOpen={() => setDialog({ item: open.id, form: true })}
             image={open.hasImage ? endpoint + '/' + open.id + '/image' : undefined}
             action={
-              dialog?.form && !open.answered ? (
+              open.answered && !dialog?.editing ? (
+                <div className="announcement-saved-response">
+                  <strong>Response recorded</strong>
+                  {open.savedAnswers && (
+                    <dl>
+                      {(open.definition.kind === 'POLL'
+                        ? [{ id: 'vote', label: 'Your vote' }]
+                        : open.definition.fields
+                      ).map(field => {
+                        const value = open.savedAnswers?.[field.id];
+                        return (
+                          <div key={field.id}>
+                            <dt>{field.label}</dt>
+                            <dd>
+                              {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value || '—'}
+                            </dd>
+                          </div>
+                        );
+                      })}
+                    </dl>
+                  )}
+                  {open.definition.allowResponseUpdates && (
+                    <button
+                      type="button"
+                      className="admin-primary"
+                      onClick={() => setDialog({ item: open.id, form: true, editing: true })}
+                    >
+                      Edit response
+                    </button>
+                  )}
+                </div>
+              ) : open.answered && open.definition.kind === 'POLL' ? (
+                <PollOptions
+                  options={open.definition.options}
+                  disabled={busy}
+                  selectedVote={open.savedAnswers?.vote}
+                  onVote={vote => void respond(open, { vote })}
+                />
+              ) : dialog?.form ? (
                 <AnnouncementForm
                   definition={open.definition}
                   person={person}
                   busy={busy}
+                  initialAnswers={open.answered ? (open.savedAnswers ?? {}) : undefined}
                   onSubmit={answers => void respond(open, answers)}
                 />
               ) : (
@@ -286,16 +492,6 @@ export function Announcements({ page = false }: { page?: boolean }) {
           />
           {feedback && <p role={responseError ? 'alert' : 'status'}>{feedback}</p>}
         </FormDialog>
-      )}
-      {managing && !open && (
-        <Suspense fallback={<p role="status">Loading announcement editor…</p>}>
-          <AnnouncementManager
-            onClose={() => {
-              setManaging(false);
-              refreshAnnouncements();
-            }}
-          />
-        </Suspense>
       )}
     </>
   );

@@ -9,7 +9,7 @@ test('audience hierarchy, local draft recovery and banner/popup preview remain c
   const pf = '88888888-8888-4888-8888-000000000002';
   const client = '88888888-8888-4888-8888-000000000003';
   const project = '88888888-8888-4888-8888-000000000004';
-  await page.route('**/api/announcements/feed', route =>
+  await page.route('**/api/announcements/feed*', route =>
     route.fulfill({
       json: {
         canPublish: true,
@@ -65,12 +65,14 @@ test('audience hierarchy, local draft recovery and banner/popup preview remain c
     }),
   );
   let designContext;
+  let designTurn = 0;
   await page.route('**/api/announcements/design', route => {
     designContext = route.request().postDataJSON();
     return route.fulfill({
       json: {
-        id: project,
-        feedback: 'Keep the image on the right',
+        id: ++designTurn === 1 ? project : client,
+        feedback: route.request().postDataJSON().prompt,
+        reply: 'I kept the image on the right and used compact form controls.',
         design: {
           html: '<section><div data-slot="title"></div><div data-slot="message"></div><div data-slot="image"></div><div data-slot="action"></div></section>',
           css: 'section { --form-layout: two-column; --button-width: full; }',
@@ -86,9 +88,8 @@ test('audience hierarchy, local draft recovery and banner/popup preview remain c
     });
   });
   await page.goto('/announcements');
-  await page.getByRole('button', { name: 'Manage announcements' }).click();
-  const editor = page.getByRole('dialog', { name: 'Announcements' });
-  await editor.getByRole('button', { name: 'New announcement' }).click();
+  await page.getByRole('button', { name: 'New announcement' }).click();
+  const editor = page.locator('dialog.announcement-manager');
   for (const label of ['UK Delivery Unit', 'NHS Portfolio', 'NHS Account', 'NHS Project']) {
     await expect(editor.getByRole('checkbox', { name: new RegExp(label) })).toBeChecked();
   }
@@ -99,23 +100,27 @@ test('audience hierarchy, local draft recovery and banner/popup preview remain c
   await expect(editor.getByRole('checkbox', { name: /NHS Project/ })).toBeChecked();
   await editor.getByLabel('Title', { exact: true }).fill('Azure training');
   await editor.getByLabel('Use case').selectOption('TRAINING');
-  await editor.getByLabel('Design viewport').selectOption('mobile');
-  await editor.getByLabel('Design prompt').fill('Keep the image on the right');
+  await editor.getByRole('button', { name: 'Continue to AI design' }).click();
+  await expect(editor.getByLabel('Step 2 of 2 - Design & preview')).toBeVisible();
+  await editor
+    .getByLabel('Message the design assistant')
+    .fill('Keep the image on the right and optimize for mobile');
   await expect(editor.getByText('Draft saved on this device.')).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: 'Manage announcements' }).click();
-  await editor.getByRole('button', { name: 'Resume local draft' }).click();
-  await expect(editor.getByLabel('Title', { exact: true })).toHaveValue('Azure training');
-  await expect(editor.getByLabel('Design prompt')).toHaveValue('Keep the image on the right');
-  await editor.getByRole('button', { name: 'Generate with AI' }).click();
+  await page.getByRole('button', { name: 'Resume local draft' }).click();
+  await expect(editor.getByLabel('Step 2 of 2 - Design & preview')).toBeVisible();
+  await expect(editor.getByLabel('Message the design assistant')).toHaveValue(
+    'Keep the image on the right and optimize for mobile',
+  );
+  await editor.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(
-    editor.getByText('Design generated. Preview it or continue refining.'),
+    editor.getByText('Design updated. Try it in the preview or continue refining.'),
   ).toBeVisible();
   expect(designContext).toMatchObject({
-    definition: { useCase: 'TRAINING', designViewport: 'mobile' },
+    definition: { useCase: 'TRAINING', designViewport: 'both' },
     viewport: { width: page.viewportSize()!.width, height: page.viewportSize()!.height },
   });
-  await editor.getByRole('button', { name: 'Preview', exact: true }).click();
+  await editor.getByRole('button', { name: 'Review audience', exact: true }).click();
   await editor.getByRole('button', { name: 'Mobile', exact: true }).click();
   await expect(editor.locator('.announcement-preview-stage.is-mobile')).toBeVisible();
   await editor.getByRole('button', { name: 'Popup preview' }).click();

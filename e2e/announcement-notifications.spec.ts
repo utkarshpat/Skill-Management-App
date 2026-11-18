@@ -10,7 +10,7 @@ for (const kind of ['FORM', 'POLL']) {
       let answered = false;
       let submissions = 0;
       const title = kind === 'FORM' ? 'Training registration' : 'Team training poll';
-      await page.route('**/api/announcements/feed', route =>
+      await page.route('**/api/announcements/feed*', route =>
         route.fulfill({
           json: {
             person,
@@ -110,7 +110,7 @@ for (const kind of ['FORM', 'POLL']) {
 
 test('stale or out-of-scope announcement notification cannot open a form', async ({ page }) => {
   await fixture(page, { role: 'employee' });
-  await page.route('**/api/announcements/feed', route =>
+  await page.route('**/api/announcements/feed*', route =>
     route.fulfill({ json: { person, canPublish: false, items: [] } }),
   );
   await page.goto('/announcements?announcement=' + id);

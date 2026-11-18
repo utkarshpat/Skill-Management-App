@@ -6,6 +6,34 @@ import { assistantCapabilities, capabilityGreeting } from '../src/modules/ai/cap
 import { AssistantService } from '../src/modules/ai/assistant.js';
 import { ToolRegistry } from '../src/modules/ai/tool-registry.js';
 
+test('announcement guidance is an app workflow and navigation never grants publishing access', async () => {
+  const store = await LocalAccessStore.open();
+  const state = store.snapshot();
+  const person = state.people[0];
+  store.snapshot = () => structuredClone(state);
+  let modelCalls = 0;
+  const service = new AssistantService(store, undefined, {
+    name: 'fixture',
+    complete: async () => {
+      modelCalls++;
+      return { content: 'Unexpected model call', calls: [] };
+    },
+  });
+  const reply = await service.chat(person.id, {
+    messages: [{ role: 'user', content: 'announcement banane me help kar sakte ho?' }],
+  });
+  assert.match(reply.reply, /Design & preview/);
+  assert.equal(modelCalls, 0);
+  const navigation = await service.navigation(person.id);
+  assert.ok(navigation.pages?.some(page => page.url === '/announcements'));
+  assert.deepEqual(
+    await service.navigation(person.id, { action: 'open_page', destination: '/announcements' }),
+    { destination: '/announcements', label: 'Announcements' },
+  );
+  person.overrides.push({ permission: 'profile.view', scope: 'OWN', effect: 'DENY' });
+  await assert.rejects(service.navigation(person.id), /Assistant access is not assigned/);
+});
+
 test('assistant greeting and navigation use effective grants, not editable role names', async () => {
   const store = await LocalAccessStore.open(),
     state = store.snapshot(),

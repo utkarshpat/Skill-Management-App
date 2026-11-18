@@ -198,7 +198,11 @@ export function createApp(
   });
   // Combined drafts carry bounded details for up to twenty items, including catalogue criteria.
   app.use('/api/capability-submissions', express.json({ limit: '1mb' }));
-  app.use('/api/announcements/draft', express.json({ limit: '1mb' }));
+  // Both draft saves and iterative design requests carry bounded design history.
+  app.use(
+    ['/api/announcements/draft', '/api/announcements/design'],
+    express.json({ limit: '1mb' }),
+  );
   app.use(express.json({ limit: '128kb' }));
   const companySession =
     dependencies && options.identityConfig && options.companySessionOrigin

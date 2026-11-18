@@ -1,5 +1,14 @@
-import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
+import { Pause, Play, X } from 'lucide-react';
 import type { Definition, Person } from './announcement-model';
+import { AnnouncementSandbox } from './AnnouncementSandbox';
 
 const slots = ['title', 'message', 'image', 'action'];
 
@@ -16,6 +25,24 @@ export function announcementStyle({ design }: Definition) {
         '--announcement-gap': design.density === 'compact' ? '8px' : '14px',
         '--announcement-padding': design.density === 'compact' ? '14px' : '24px',
         '--announcement-button-width': design.buttonWidth === 'full' ? '100%' : 'auto',
+        '--announcement-radius':
+          design.cornerStyle === 'rounded'
+            ? '24px'
+            : design.cornerStyle === 'square'
+              ? '4px'
+              : '12px',
+        '--announcement-title-size':
+          design.headingScale === 'hero'
+            ? '1.85rem'
+            : design.headingScale === 'compact'
+              ? '1.15rem'
+              : '1.45rem',
+        '--announcement-button-background':
+          design.buttonStyle === 'outline' ? 'transparent' : design.color,
+        '--announcement-button-color':
+          design.buttonStyle === 'outline' ? design.color : design.background,
+        '--announcement-button-border':
+          design.buttonStyle === 'outline' ? design.color : 'transparent',
       } as CSSProperties)
     : undefined;
 }
@@ -24,14 +51,40 @@ export function AnnouncementBannerContent({
   definition,
   image,
   action,
+  onDismiss,
 }: {
   definition: Definition;
   image?: string;
   action: ReactNode;
+  onDismiss: () => void;
 }) {
   const [paused, setPaused] = useState(false);
+  const [overflow, setOverflow] = useState(0);
+  const viewport = useRef<HTMLDivElement>(null);
+  const copy = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const container = viewport.current;
+    const text = copy.current;
+    if (!container || !text) return;
+    const measure = () =>
+      setOverflow(Math.max(0, Math.ceil(text.offsetWidth - container.clientWidth)));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    observer.observe(text);
+    return () => observer.disconnect();
+  }, []);
+  const scrolls = definition.marquee && overflow > 0;
   return (
     <>
+      <button
+        type="button"
+        className="announcement-strip-icon"
+        aria-label="Dismiss announcement"
+        onClick={onDismiss}
+      >
+        <X size={16} aria-hidden="true" />
+      </button>
       {image && (
         <img
           src={image}
@@ -40,23 +93,35 @@ export function AnnouncementBannerContent({
         />
       )}
       <div
-        className={'announcement-strip-copy' + (definition.marquee && !paused ? ' is-rolling' : '')}
+        ref={viewport}
+        className="announcement-strip-copy"
+        title={[definition.title, definition.message].filter(Boolean).join(' · ')}
       >
-        <span>
+        <span
+          ref={copy}
+          className={scrolls ? 'is-rolling' : undefined}
+          style={
+            {
+              '--announcement-overflow': `-${overflow}px`,
+              animationPlayState: paused ? 'paused' : undefined,
+            } as CSSProperties
+          }
+        >
           <strong>{definition.title}</strong>
           {definition.message && ' · ' + definition.message}
         </span>
       </div>
-      {definition.marquee && (
+      {scrolls && (
         <button
           type="button"
-          className="secondary-button"
+          className="announcement-strip-icon announcement-strip-pause"
+          aria-label={paused ? 'Resume scrolling announcement' : 'Pause scrolling announcement'}
           onClick={() => setPaused(value => !value)}
         >
-          {paused ? 'Resume' : 'Pause'}
+          {paused ? <Play size={15} aria-hidden="true" /> : <Pause size={15} aria-hidden="true" />}
         </button>
       )}
-      {action}
+      <div className="announcement-strip-action">{action}</div>
     </>
   );
 }
@@ -65,14 +130,56 @@ export function AnnouncementCard({
   definition,
   image,
   action,
+  person,
+  busy,
+  answered,
+  onSubmit,
+  onVote,
+  onOpen,
 }: {
   definition: Definition;
   image?: string;
   action: ReactNode;
+  person?: Person;
+  busy?: boolean;
+  answered?: boolean;
+  onSubmit?: (answers: Record<string, string | boolean>) => void;
+  onVote?: (vote: string) => void;
+  onOpen?: () => void;
 }) {
   const design = definition.design;
+  if (design?.format === 'sandbox-v1')
+    return (
+      <AnnouncementSandbox
+        definition={definition}
+        person={person ?? { name: '', employeeId: '' }}
+        image={image}
+        busy={busy}
+        answered={answered}
+        onSubmit={onSubmit}
+        onVote={onVote}
+        onOpen={onOpen}
+      />
+    );
   const content: Record<string, ReactNode> = {
-    title: <h3>{definition.title}</h3>,
+    title: (
+      <>
+        {design?.visualStyle && design.visualStyle !== 'clean' && (
+          <p className="announcement-eyebrow">
+            {
+              {
+                EVENT: 'Event registration',
+                TRAINING: 'Training',
+                SESSION: 'Session',
+                SURVEY: 'Have your say',
+                GENERAL: 'For your team',
+              }[definition.useCase ?? 'GENERAL']
+            }
+          </p>
+        )}
+        <h3>{definition.title}</h3>
+      </>
+    ),
     message: definition.message && <p>{definition.message}</p>,
     image: image && (
       <img
@@ -85,7 +192,11 @@ export function AnnouncementCard({
   };
   return (
     <section
-      className={'announcement-card' + (design?.layout === 'split' ? ' is-split' : '')}
+      className={
+        'announcement-card style-' +
+        (design?.visualStyle ?? 'clean') +
+        (design?.layout === 'split' ? ' is-split' : '')
+      }
       style={announcementStyle(definition)}
     >
       {(design?.order ?? slots).map(
@@ -105,11 +216,13 @@ export function AnnouncementForm({
   person,
   onSubmit,
   busy,
+  initialAnswers,
 }: {
   definition: Definition;
   person: Person;
   onSubmit: (answers: Record<string, string | boolean>) => void;
   busy?: boolean;
+  initialAnswers?: Record<string, string | boolean>;
 }) {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -151,9 +264,18 @@ export function AnnouncementForm({
             {field.label}
             {field.required && ' *'}
             {field.type === 'longText' ? (
-              <textarea name={field.id} maxLength={2000} required={field.required} />
+              <textarea
+                name={field.id}
+                maxLength={2000}
+                required={field.required}
+                defaultValue={String(initialAnswers?.[field.id] ?? '')}
+              />
             ) : field.type === 'choice' || field.type === 'rating' ? (
-              <select name={field.id} required={field.required} defaultValue="">
+              <select
+                name={field.id}
+                required={field.required}
+                defaultValue={String(initialAnswers?.[field.id] ?? '')}
+              >
                 <option value="">Select an option</option>
                 {(field.type === 'choice' ? field.options : ['1', '2', '3', '4', '5']).map(
                   option => (
@@ -167,6 +289,12 @@ export function AnnouncementForm({
                 type={field.type === 'date' || field.type === 'checkbox' ? field.type : 'text'}
                 maxLength={240}
                 required={field.required}
+                defaultChecked={
+                  field.type === 'checkbox' ? initialAnswers?.[field.id] === true : undefined
+                }
+                defaultValue={
+                  field.type === 'checkbox' ? undefined : String(initialAnswers?.[field.id] ?? '')
+                }
               />
             )}
           </label>
@@ -178,7 +306,7 @@ export function AnnouncementForm({
         disabled={busy || !person.email}
         aria-busy={busy}
       >
-        {busy ? 'Submitting…' : definition.cta}
+        {busy ? 'Submitting…' : initialAnswers ? 'Save changes' : definition.cta}
       </button>
     </form>
   );
@@ -188,10 +316,12 @@ export function PollOptions({
   options,
   onVote,
   disabled,
+  selectedVote,
 }: {
   options: string[];
   onVote: (vote: string) => void;
   disabled?: boolean;
+  selectedVote?: string | boolean;
 }) {
   return (
     <div className="announcement-poll" aria-label="Poll options">
@@ -200,6 +330,7 @@ export function PollOptions({
           key={option}
           type="button"
           className="secondary-button"
+          aria-pressed={selectedVote === undefined ? undefined : selectedVote === option}
           disabled={disabled}
           onClick={() => onVote(option)}
         >

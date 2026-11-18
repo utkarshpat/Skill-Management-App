@@ -1,13 +1,15 @@
 import { announcementNotifications } from './announcement-notifications.js';
+import { checkAnnouncementBindings } from './announcement-sandbox.js';
 import {
   announcementDesignContext,
   announcementDesignSystemPrompt,
 } from './announcement-design.js';
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
-import type { Express } from 'express';
+import type { ErrorRequestHandler, Express } from 'express';
 import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
+import { logEvent } from '../../shared/logger.js';
 import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import type { Identity } from '../identity/index.js';
 import type { AiBudget, Provider } from '../ai/index.js';
@@ -65,12 +67,12 @@ export class SqlAnnouncements {
     readonly budget?: AiBudget,
   ) {}
 
-  async notifications(actor: string) {
-    const feed = await this.execute<{ items: Parameters<typeof announcementNotifications>[0] }>(
-      actor,
-      'FEED',
-    );
-    return announcementNotifications(feed.items);
+  async notifications(actor: string, page = 1) {
+    const feed = await this.execute<{
+      items: Parameters<typeof announcementNotifications>[0];
+      hasMore?: boolean;
+    }>(actor, 'FEED', undefined, { page });
+    return { items: announcementNotifications(feed.items), hasMore: !!feed.hasMore };
   }
 
   async execute<T>(
@@ -124,6 +126,13 @@ async function image(value: unknown) {
     throw new AccessError(400, 'Upload a smaller JPEG, PNG or WebP image.');
   }
 }
+export function announcementPage(value: unknown) {
+  if (value === undefined) return 1;
+  if (typeof value !== 'string' || !/^[1-9]\d{0,6}$/.test(value) || Number(value) > 1000000)
+    throw new AccessError(400, 'Invalid announcement page.');
+  return Number(value);
+}
+
 function revision(value: unknown) {
   if (
     typeof value !== 'number' ||
@@ -163,12 +172,25 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
       email && email.length <= 254 && workEmail.test(email) ? email : undefined;
     next();
   });
-  app.get('/api/announcements/feed', async (_req, res) => {
-    res.json(await store.execute(res.locals.actor, 'FEED', undefined, {}, res.locals.workEmail));
+  app.get('/api/announcements/feed', async (req, res) => {
+    res.json(
+      await store.execute(
+        res.locals.actor,
+        'FEED',
+        req.query.announcement === undefined ? undefined : id(req.query.announcement),
+        {
+          page: announcementPage(req.query.page),
+          ...(req.query.pending === '1' ? { pending: true } : {}),
+        },
+        res.locals.workEmail,
+      ),
+    );
   });
-  app.get('/api/announcements/manage', async (_req, res) => {
+  app.get('/api/announcements/manage', async (req, res) => {
     res.json({
-      ...(await store.execute<object>(res.locals.actor, 'MANAGE')),
+      ...(await store.execute<object>(res.locals.actor, 'MANAGE', undefined, {
+        page: announcementPage(req.query.page),
+      })),
       aiAvailable: !!store.provider && !!store.budget,
     });
   });
@@ -197,6 +219,7 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
       ...schedule(input.startsAt, input.endsAt),
       definition: definition(input.definition, await image(input.image)),
     };
+    checkAnnouncementBindings(payload.definition);
     if (input.preview === true) {
       const preview = await store.execute<object>(actor, 'PREVIEW', key, payload);
       const expiry = Date.now() + 15 * 60_000;
@@ -243,22 +266,38 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
         ],
         [],
         AbortSignal.timeout(25000),
-        { maxOutputTokens: 1600 },
+        {
+          maxOutputTokens: 6000,
+          onUsage: usage =>
+            logEvent('info', 'announcements.design.usage', {
+              inputTokens: usage.inputTokens,
+              outputTokens: usage.outputTokens,
+              cachedInputTokens: usage.cachedInputTokens,
+              totalTokens: usage.totalTokens,
+            }),
+        },
       );
       await store.execute(actor, 'DESIGN', key, { grantId });
       if (result.calls.length) throw new AccessError(502, 'AI returned an unsupported design.');
       let validated;
+      let reply: string;
       try {
-        validated = design(
+        const candidate = record(
           JSON.parse(result.content.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')),
         );
+        validated = design(candidate);
+        checkAnnouncementBindings({ ...def, design: validated });
+        reply =
+          candidate.message === undefined
+            ? 'Design updated. Try the preview, or tell me what to refine next.'
+            : text(candidate.message, 600, false);
       } catch {
         throw new AccessError(
           422,
           'AI design did not pass validation. Revise the prompt and try again.',
         );
       }
-      res.json({ id: randomUUID(), feedback: prompt, design: validated });
+      res.json({ id: randomUUID(), feedback: prompt, reply, design: validated });
     } finally {
       await release();
     }
@@ -291,13 +330,29 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
     );
   });
   app.get('/api/announcements/:id/responses', async (req, res) => {
-    const { definition, responses } = await store.execute<{
+    const { definition, responses, page, hasMore } = await store.execute<{
       definition: Definition;
-      responses: { name: string; employeeId: string; answers: Record<string, string | boolean> }[];
-    }>(res.locals.actor, 'RESPONSES', id(req.params.id));
+      responses: {
+        name: string;
+        email?: string;
+        employeeId: string;
+        answers: Record<string, string | boolean>;
+      }[];
+      page?: number;
+      hasMore?: boolean;
+    }>(res.locals.actor, 'RESPONSES', id(req.params.id), {
+      page: announcementPage(req.query.page),
+    });
     res.json({
       definition: { title: definition.title, kind: definition.kind, fields: definition.fields },
-      responses: responses.map(({ name, employeeId, answers }) => ({ name, employeeId, answers })),
+      responses: responses.map(({ name, email, employeeId, answers }) => ({
+        name,
+        email,
+        employeeId,
+        answers,
+      })),
+      page,
+      hasMore,
     });
   });
   app.get('/api/announcements/:id/export', async (req, res) => {
@@ -332,4 +387,11 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
       .attachment('announcement-responses.xlsx')
       .send(await writeExcel([{ name: 'Responses', columns }], { Responses: rows }));
   });
+  const handleAnnouncementError: ErrorRequestHandler = (error, _req, res, next) => {
+    if (!(error instanceof AccessError)) return next(error);
+    res.status(error.status).json({
+      error: { message: error.message, requestId: res.locals.requestId },
+    });
+  };
+  app.use(base, handleAnnouncementError);
 }

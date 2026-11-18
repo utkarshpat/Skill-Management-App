@@ -13,6 +13,7 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
   const pages = [{ label: 'Dashboard', url: '/workspace' }];
   if (capabilities.businessOperations) pages.push({ label: 'Analytics', url: '/business' });
   if (capabilities.ownProfile) pages.push({ label: 'My profile', url: '/profile' });
+  if (capabilities.ownProfile) pages.push({ label: 'Announcements', url: '/announcements' });
   if (capabilities.ownSkills) pages.push({ label: 'My skills', url: '/my-skills' });
   if (capabilities.ownSkills) pages.push({ label: 'My certifications', url: '/certifications' });
   if (capabilities.requests) pages.push({ label: 'Requests', url: '/requests' });

@@ -28,6 +28,8 @@ export interface Scope {
   kind: string;
 }
 export interface Design {
+  format?: 'sandbox-v1';
+  bindings?: { elementId: string; kind: string; key: string }[];
   order: string[];
   color: string;
   background: string;
@@ -36,12 +38,17 @@ export interface Design {
   formLayout?: string;
   density?: string;
   buttonWidth?: string;
+  visualStyle?: string;
+  headingScale?: string;
+  cornerStyle?: string;
+  buttonStyle?: string;
   html: string;
   css: string;
 }
 export interface Version {
   id: string;
   feedback: string;
+  reply?: string;
   design: Design;
 }
 export interface Definition {
@@ -60,6 +67,7 @@ export interface Definition {
   design?: Design;
   popup: boolean;
   marquee: boolean;
+  allowResponseUpdates?: boolean;
   image?: string;
   imageAlt: string;
   imagePosition: 'left' | 'center' | 'right';
@@ -73,6 +81,7 @@ export interface RecordBase {
 export interface LiveAnnouncement extends RecordBase {
   definition: Definition;
   answered: boolean;
+  savedAnswers?: Record<string, string | boolean>;
   hasImage: boolean;
 }
 export interface JournalEntry extends RecordBase {
@@ -84,6 +93,9 @@ export interface Draft extends Omit<JournalEntry, 'title'> {
   definition: Definition;
 }
 export interface Management {
+  page?: number;
+  hasMore?: boolean;
+  total?: number;
   actorId?: string;
   grants: { id: string; kind: string; scopeId?: string }[];
   scopes: (Scope & { label: string; grantId: string; parentId?: string; parentKind?: string })[];

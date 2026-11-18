@@ -10,6 +10,7 @@ export interface LocalAnnouncementDraft {
   end: string;
   image?: string;
   prompt: string;
+  step?: 'details' | 'design';
   savedAt: number;
 }
 export const localAnnouncementKey = (actor: string) => 'announcement-draft:v1:' + actor;

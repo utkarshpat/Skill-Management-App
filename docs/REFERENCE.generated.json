@@ -1,6 +1,6 @@
 {
   "version": "2026-11-16",
-  "revision": "03f4c2a5018789d9",
+  "revision": "cc0c29d114ac0035",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -107,7 +107,8 @@
       "102_scoped_announcements.sql",
       "103_announcement_publisher_template.sql",
       "104_announcement_publishing_in_access_templates.sql",
-      "105_announcement_scope_hierarchy.sql"
+      "105_announcement_scope_hierarchy.sql",
+      "106_announcement_pagination_retention.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -8195,13 +8196,19 @@
       "name": "AnnouncementWorkspace",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(16),@id uniqueidentifier=NULL,\n @payload nvarchar(max)=N'{}',@email nvarchar(254)=NULL",
-      "source": "database/migrations/105_announcement_scope_hierarchy.sql"
+      "source": "database/migrations/106_announcement_pagination_retention.sql"
     },
     {
       "name": "AnnouncementTemplateAccess",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@operation varchar(16),@id uniqueidentifier=NULL,\n @payload nvarchar(max)=N'{}',@email nvarchar(254)=NULL",
       "source": "database/migrations/103_announcement_publisher_template.sql"
+    },
+    {
+      "name": "PurgeExpiredAnnouncements",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@execute bit=0",
+      "source": "database/migrations/106_announcement_pagination_retention.sql"
     }
   ],
   "groups": {

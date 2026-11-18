@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6s0p2Tm4mKvuUQ/oKLpMr6Td9RDRYvvPjMV1xmjAZAg='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
+<title>Announcement design</title><style>html,body{margin:0;padding:0;font-family:system-ui,sans-serif;overflow-x:hidden}*{box-sizing:border-box}#bridge-status{font:13px system-ui;margin:8px;color:inherit}button,input,select,textarea{font:inherit}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}</style><style id="bridge-css"></style></head>
+<body><div id="bridge-canvas"></div><p id="bridge-status" role="status"></p>
+<script id="announcement-bridge">
+(() => {
+  'use strict';
+  const host = window.parent, canvas = document.getElementById('bridge-canvas'), stylesheet = document.getElementById('bridge-css'), status = document.getElementById('bridge-status');
+  let channel, current, signature = '';
+  const element = binding => document.getElementById(binding.elementId);
+  const send = data => { if (channel) host.postMessage({ ...data, channel }, '*'); };
+  const resize = () => send({ type: 'announcement.height', height: Math.max(64, Math.min(1800, Math.ceil(canvas.scrollHeight + status.offsetHeight + 16))) });
+  const locked = () => !current || current.busy || current.answered;
+  function apply(value) {
+    channel = value.channel; current = value;
+    const next = JSON.stringify([value.html, value.css, value.bindings]);
+    const fresh = signature !== next;
+    if (fresh) { signature = next; stylesheet.textContent = value.css; canvas.innerHTML = value.html; }
+    document.body.dataset.surface = value.surface;
+    document.body.dataset.theme = value.theme;
+    for (const binding of value.bindings) {
+      const node = element(binding); if (!node) continue;
+      if (binding.kind === 'content') node.textContent = value.definition[binding.key] || '';
+      if (binding.kind === 'identity') { node.value = value.person[binding.key] || ''; node.readOnly = true; node.disabled = true; }
+      if (binding.kind === 'image') { if (/^data:image\/(png|jpeg|webp);base64,/.test(value.image || '')) node.src = value.image; else node.removeAttribute('src'); }
+      if (binding.kind === 'field') {
+        const field = value.definition.fields.find(f => f.id === binding.key); if (!field) { node.disabled = true; continue; }
+        node.name = field.id; node.required = field.required; node.disabled = locked(); node.readOnly = false;
+        if (node.tagName === 'INPUT') node.type = ['checkbox', 'date'].includes(field.type) ? field.type : 'text';
+        if (node.tagName === 'INPUT' || node.tagName === 'TEXTAREA') node.maxLength = field.type === 'longText' ? 2000 : 240;
+        if (fresh && node.tagName === 'SELECT') {
+          node.replaceChildren(new Option('Select an option', ''));
+          for (const option of field.type === 'rating' ? ['1','2','3','4','5'] : field.options) node.add(new Option(option, option));
+        }
+      }
+      if (binding.kind === 'action' || binding.kind === 'vote') {
+        node.disabled = locked() || (binding.key === 'submit' && !value.person.email); node.type = 'button';
+        if (binding.kind === 'vote') node.textContent = value.definition.options[Number(binding.key)] || '';
+      }
+      if (binding.kind === 'form') { if (value.surface === 'banner') node.style.setProperty('display', 'none', 'important'); else node.style.removeProperty('display'); }
+      if (binding.kind === 'action' && binding.key === 'open-form') { if (value.surface !== 'banner') node.style.setProperty('display','none','important'); else node.style.removeProperty('display'); }
+    }
+    status.textContent = value.answered ? 'Response recorded.' : value.busy ? 'Submitting...' : value.definition.fields.length && !value.person.email ? 'Sign in again to confirm your work email.' : '';
+    requestAnimationFrame(resize);
+  }
+  window.addEventListener('message', event => {
+    if (event.source !== host || event.data?.type !== 'announcement.render' || typeof event.data.channel !== 'string') return;
+    apply(event.data);
+  });
+  document.addEventListener('click', event => {
+    const button = event.target.closest?.('button'); if (!button || !current) return;
+    const binding = current.bindings.find(b => b.elementId === button.id); if (!binding || locked()) { event.preventDefault(); return; }
+    if (binding.kind === 'vote') { event.preventDefault(); send({ type: 'announcement.action', action: 'vote', index: Number(binding.key) }); }
+    if (binding.kind === 'action' && binding.key === 'open-form') { event.preventDefault(); send({ type:'announcement.action', action:'open-form' }); }
+    if (binding.kind === 'action' && binding.key === 'submit') { event.preventDefault(); submit(button.closest('form')); }
+  }, true);
+  function submit(form) {
+    if (locked() || !current.person.email || form?.id !== 'ann-form' || !form.reportValidity()) return;
+    const answers = Object.fromEntries(current.bindings.filter(b => b.kind === 'field').map(binding => {
+      const node = element(binding), field = current.definition.fields.find(f => f.id === binding.key);
+      return [binding.key, field?.type === 'checkbox' ? node.checked : node.value];
+    }));
+    send({ type:'announcement.action', action:'submit', answers });
+  }
+  document.addEventListener('submit', event => {
+    event.preventDefault(); event.stopPropagation(); submit(event.target);
+  }, true);
+  document.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.isComposing && event.target.tagName === 'INPUT') { event.preventDefault(); submit(event.target.closest('form')); } }, true);
+  new ResizeObserver(resize).observe(canvas);
+  host.postMessage({ type:'announcement.ready' }, '*');
+})();
+</script></body></html>

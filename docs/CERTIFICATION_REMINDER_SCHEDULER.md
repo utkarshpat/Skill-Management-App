@@ -10,3 +10,5 @@ The employee and their current direct manager (N+1) get in-app reminders at 14, 
 4. Confirm that the job logs certification.reminders.completed and check both recipients' notification feeds with an eligible certificate. A zero created count can be expected if nothing is due or the job already ran. Check that unrelated managers and former managers cannot see the alert.
 
 The SQL job is idempotent. The feed retains due reminders for up to 90 days, bounded by the existing feed limit. There is no email sender or public HTTP job endpoint.
+
+The matching application release after migration 106 also runs announcement retention in this same scheduled job. It deletes published/closed announcements and linked responses strictly more than 45 days after expiry, in account-bound batches. Drafts remain. Expect a separate `announcements.retention.completed` event with deletion counts. Reminder generation and retention report failures independently; any failed task gives the job a nonzero exit status. Apply migration 106 before deploying this version; no second WebJob or retention environment setting is required.

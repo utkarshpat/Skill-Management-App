@@ -22,6 +22,7 @@ interface Feed {
   items: Item[];
   partial?: boolean;
   hasMoreReminders?: boolean;
+  hasMoreAnnouncements?: boolean;
 }
 const key = (personId: string) => `skill-notifications-read:${personId}`;
 // Reminder pages repeat recent updates and active announcements, then add 30 reminders.
@@ -48,10 +49,14 @@ export function Notifications({ id }: { id: string }) {
   const [open, setOpen] = useState(false);
   const [freshness, setFreshness] = useState<RefreshStatus>();
   const [reminderPage, setReminderPage] = useState(1);
+  const [announcementPage, setAnnouncementPage] = useState(1);
   // The navbar badge reflects the first page, which the drawer reopens to.
   const [firstPage, setFirstPage] = useState<Feed>();
   useEffect(() => {
-    if (!open) setReminderPage(1);
+    if (!open) {
+      setReminderPage(1);
+      setAnnouncementPage(1);
+    }
   }, [open]);
   const unsavedReadIds = useRef(new Map<string, string[]>());
   useEffect(() => {
@@ -78,10 +83,10 @@ export function Notifications({ id }: { id: string }) {
       running = true;
       setLoading(true);
       try {
-        const path =
-          reminderPage === 1
-            ? '/api/notifications'
-            : '/api/notifications?reminderPage=' + reminderPage;
+        const query = new URLSearchParams();
+        if (reminderPage > 1) query.set('reminderPage', String(reminderPage));
+        if (announcementPage > 1) query.set('announcementPage', String(announcementPage));
+        const path = '/api/notifications' + (query.size ? '?' + query : '');
         const response = await authenticatedFetch(path, {
           signal: controller.signal,
         });
@@ -99,7 +104,7 @@ export function Notifications({ id }: { id: string }) {
         );
         if (!controller.signal.aborted) {
           setFeed(body);
-          if (reminderPage === 1) setFirstPage(body);
+          if (reminderPage === 1 && announcementPage === 1) setFirstPage(body);
           setRead(unsavedReadIds.current.get(body.personId) ?? readIds(body.personId));
           setError('');
           if (body.partial) return false;
@@ -144,7 +149,7 @@ export function Notifications({ id }: { id: string }) {
       stop();
       controller.abort();
     };
-  }, [attempt, reminderPage]);
+  }, [attempt, reminderPage, announcementPage]);
   useEffect(() => {
     const changed = (event: StorageEvent) => {
       if (feed && event.key === key(feed.personId) && !unsavedReadIds.current.has(feed.personId))
@@ -176,7 +181,10 @@ export function Notifications({ id }: { id: string }) {
   const unread = feed?.items.filter(item => !read.includes(item.id)).length ?? 0;
   const badgeFeed = firstPage?.personId === feed?.personId ? firstPage : feed;
   const badgeUnread = badgeFeed?.items.filter(item => !read.includes(item.id)).length ?? 0;
-  const paged = reminderPage > 1 || Boolean(feed?.hasMoreReminders);
+  const paged =
+    reminderPage > 1 ||
+    announcementPage > 1 ||
+    Boolean(feed?.hasMoreReminders || feed?.hasMoreAnnouncements);
   const items =
     feed?.items.filter(
       item =>
@@ -486,6 +494,25 @@ export function Notifications({ id }: { id: string }) {
                     onClick={() => setReminderPage(page => page + 1)}
                   >
                     More reminders
+                  </button>
+                </div>
+              )}
+              {(announcementPage > 1 || feed.hasMoreAnnouncements) && (
+                <div role="group" aria-label="Announcement notification pages">
+                  <button
+                    type="button"
+                    disabled={loading || announcementPage === 1}
+                    onClick={() => setAnnouncementPage(page => page - 1)}
+                  >
+                    Previous announcements
+                  </button>
+                  <span>Announcement page {announcementPage}</span>
+                  <button
+                    type="button"
+                    disabled={loading || !feed.hasMoreAnnouncements}
+                    onClick={() => setAnnouncementPage(page => page + 1)}
+                  >
+                    More announcements
                   </button>
                 </div>
               )}

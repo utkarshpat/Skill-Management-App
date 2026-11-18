@@ -1,4 +1,5 @@
 import { AccessError } from '../../shared/errors.js';
+import { sandboxDesign, type DesignBinding } from './announcement-sandbox.js';
 
 export const exportFields = {
   du: 'Delivery Unit',
@@ -60,6 +61,23 @@ export function schedule(start: unknown, end: unknown) {
 
 export function design(value: unknown) {
   const candidate = record(value);
+  if (candidate.format === 'sandbox-v1' || candidate.bindings !== undefined) {
+    return {
+      ...sandboxDesign(candidate),
+      order: [],
+      color: '#126b70',
+      background: '#ffffff',
+      align: 'left',
+      layout: 'stack',
+      formLayout: 'single',
+      density: 'comfortable',
+      buttonWidth: 'full',
+      visualStyle: 'clean',
+      headingScale: 'balanced',
+      cornerStyle: 'soft',
+      buttonStyle: 'solid',
+    };
+  }
   const html = text(candidate.html, 2000);
   const css = text(candidate.css, 1000);
   // Interpret a tiny HTML/CSS grammar. The client renders trusted React slots and tokens.
@@ -80,6 +98,10 @@ export function design(value: unknown) {
     formLayout: 'single',
     density: 'comfortable',
     buttonWidth: 'content',
+    visualStyle: 'clean',
+    headingScale: 'balanced',
+    cornerStyle: 'soft',
+    buttonStyle: 'solid',
   };
   const seen = new Set();
   for (const line of style[1]
@@ -101,9 +123,24 @@ export function design(value: unknown) {
       tokens.density = value;
     } else if (property === '--button-width' && ['content', 'full'].includes(value)) {
       tokens.buttonWidth = value;
+    } else if (property === '--visual-style' && ['clean', 'soft', 'spotlight'].includes(value)) {
+      tokens.visualStyle = value;
+    } else if (property === '--heading-scale' && ['compact', 'balanced', 'hero'].includes(value)) {
+      tokens.headingScale = value;
+    } else if (property === '--corner-style' && ['soft', 'rounded', 'square'].includes(value)) {
+      tokens.cornerStyle = value;
+    } else if (property === '--button-style' && ['solid', 'outline'].includes(value)) {
+      tokens.buttonStyle = value;
     } else throw new AccessError(400, 'Design CSS contains an unsupported declaration.');
   }
-  return { html, css, order, ...tokens };
+  return {
+    html,
+    css,
+    order,
+    ...tokens,
+    format: undefined as 'sandbox-v1' | undefined,
+    bindings: undefined as DesignBinding[] | undefined,
+  };
 }
 
 export function definition(value: unknown, image?: string) {
@@ -161,7 +198,12 @@ export function definition(value: unknown, image?: string) {
   requireValue(versions.length <= 15, 'Keep up to 15 design versions.');
   const history = versions.map(raw => {
     const entry = record(raw);
-    return { id: id(entry.id), feedback: text(entry.feedback, 1000), design: design(entry.design) };
+    return {
+      id: id(entry.id),
+      feedback: text(entry.feedback, 1000),
+      ...(entry.reply === undefined ? {} : { reply: text(entry.reply, 600, false) }),
+      design: design(entry.design),
+    };
   });
   const selected = history.find(version => version.id === input.selectedVersion);
   requireValue(!input.selectedVersion || selected, 'Choose a saved design version.');
@@ -185,6 +227,7 @@ export function definition(value: unknown, image?: string) {
     design: selected?.design,
     popup: input.popup === true,
     marquee: input.marquee === true,
+    allowResponseUpdates: input.allowResponseUpdates === true,
     imageAlt: text(input.imageAlt ?? '', 140, false),
     imagePosition:
       ['left', 'center', 'right'].find(position => position === input.imagePosition) ?? 'center',

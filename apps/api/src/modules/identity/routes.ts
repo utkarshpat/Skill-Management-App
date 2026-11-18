@@ -20,7 +20,11 @@ export interface HttpDependencies {
   access?: AccessStore;
   announcementNotifications?: (
     actorId: string,
-  ) => Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
+    page: number,
+  ) => Promise<{
+    items: { id: string; at: string; title: string; body: string; href: string }[];
+    hasMore?: boolean;
+  }>;
   recommendationNotifications?: (
     actorId: string,
   ) => Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
@@ -216,10 +220,25 @@ export function registerRoutes(
           res.status(400).json({ error: { message: 'Invalid reminder page.' } });
           return;
         }
+        const announcementInput = req.query.announcementPage ?? '1';
+        const announcementPage =
+          typeof announcementInput === 'string' && /^[1-9]\d{0,6}$/.test(announcementInput)
+            ? Number(announcementInput)
+            : 0;
+        if (!announcementPage || announcementPage > 1000000)
+          throw new AccessError(400, 'Invalid announcement page.');
+        let hasMoreAnnouncements = false;
         const feed = await loadNotificationFeed(notificationsFor(state, person), [
           {
             name: 'announcements',
-            load: () => dependencies?.announcementNotifications?.(person.id) ?? Promise.resolve([]),
+            load: async () => {
+              const result = await dependencies?.announcementNotifications?.(
+                person.id,
+                announcementPage,
+              );
+              hasMoreAnnouncements = !!result?.hasMore;
+              return result?.items ?? [];
+            },
           },
           {
             name: 'reviews',
@@ -277,7 +296,7 @@ export function registerRoutes(
           JSON.stringify(effectiveAccessSummary(fresh, current)) !== notificationPolicy
         )
           throw new AccessError(403, 'Notification access changed.');
-        res.json(feed);
+        res.json({ ...feed, hasMoreAnnouncements });
       } catch (error) {
         if (error instanceof AccessError) {
           res
