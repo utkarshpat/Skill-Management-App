@@ -164,6 +164,7 @@ export function AccessAdmin({
       ? linkedPerson.toLowerCase()
       : undefined;
   const [state, setState] = useState<State>();
+  const [canPublishAnnouncements, setCanPublishAnnouncements] = useState(false);
   const [summaryState, setSummaryState] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -475,7 +476,10 @@ export function AccessAdmin({
                 setNotice('');
               },
             })),
-          ...personalNavigationItems(personalCapabilities, personalPath),
+          ...personalNavigationItems(
+            personalCapabilities && { ...personalCapabilities, canPublishAnnouncements },
+            personalPath,
+          ),
         ]}
       />
     </>
@@ -561,7 +565,9 @@ export function AccessAdmin({
             workspaceLink={{ href: '/workspace', label: 'Personal workspace' }}
           />
         </header>
-        {personalPath !== '/announcements' && <Announcements />}
+        {personalPath !== '/announcements' && (
+          <Announcements onPublishAccess={setCanPublishAnnouncements} />
+        )}
         <main id="access-main" className="access-main">
           {!personalTitle && ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
             <>
@@ -635,6 +641,7 @@ export function AccessAdmin({
               embedded
               actionsContainer={pageActions}
               initialWorkspace={workspaceContext}
+              onAnnouncementPublishAccess={setCanPublishAnnouncements}
             />
           )}
           {!personalTitle && !readyState && !error && (

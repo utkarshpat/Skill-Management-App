@@ -58,7 +58,11 @@ export function registerCertificationRecommendationRoutes(
 
   async function handle(req: Request, res: Response) {
     try {
-      const path = req.path.slice('/api/certification-recommendations'.length) || '/';
+      const path =
+        req.path
+          .slice('/api/certification-recommendations'.length)
+          .toLowerCase()
+          .replace(/\/$/, '') || '/';
       const backend = deps?.certificationRecommendations;
       if (!backend) throw new AccessError(503, 'Certification recommendations are unavailable.');
       let state = res.locals.certRecommendationState,
@@ -80,7 +84,7 @@ export function registerCertificationRecommendationRoutes(
         )
           throw new AccessError(400, 'Check the recipient search.');
         value = await backend.people(actor.id, String(req.query.search ?? ''));
-      } else if (req.method === 'GET') {
+      } else if (req.method === 'GET' && path === '/') {
         const view = req.query.view ?? 'received',
           page = Number(req.query.page ?? 1),
           id = req.query.id,
@@ -123,7 +127,7 @@ export function registerCertificationRecommendationRoutes(
             'Only an authorized current direct manager can recommend a credential.',
           );
         value = await backend.send(actor.id, input);
-      } else if (req.method === 'POST') {
+      } else if (req.method === 'POST' && path === '/respond') {
         if (
           !can(state, actor, 'learning.view', true) ||
           !can(state, actor, 'learning.manage', true)
@@ -172,4 +176,7 @@ export function registerCertificationRecommendationRoutes(
   app.get('/api/certification-recommendations/people', handle);
   app.post('/api/certification-recommendations/send', handle);
   app.post('/api/certification-recommendations/respond', handle);
+  app.use('/api/certification-recommendations', (_req, res) => {
+    res.status(404).json({ error: { message: 'Recommendation endpoint unavailable.' } });
+  });
 }

@@ -196,7 +196,8 @@ export function checkAnnouncementBindings(
     for (const binding of supplied.filter(b => b.kind === 'identity' || b.kind === 'field')) {
       const node = nodes.find(n =>
         n.attrs.some(a => a.name === 'id' && a.value === binding.elementId),
-      )!;
+      );
+      if (!node) fail('A design binding points to a missing element.');
       const field = def.fields.find(f => f.id === binding.key);
       const expectedTags =
         binding.kind === 'identity'

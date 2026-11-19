@@ -232,6 +232,7 @@ export function definition(value: unknown, image?: string) {
     popup: input.popup === true,
     marquee: input.marquee === true,
     allowResponseUpdates: input.allowResponseUpdates === true,
+    ...(input.imagePopup === true ? { imagePopup: true } : {}),
     imageAlt: text(input.imageAlt ?? '', 140, false),
     imagePosition:
       ['left', 'center', 'right'].find(position => position === input.imagePosition) ?? 'center',

@@ -21,6 +21,26 @@ import {
   SqlAnnouncements,
   announcementPage,
 } from '../src/modules/announcements/announcement-routes.js';
+import {
+  announcementBindings,
+  checkAnnouncementBindings,
+} from '../src/modules/announcements/announcement-sandbox.js';
+
+function registerWithPreviewKey(
+  app: Parameters<typeof registerAnnouncementRoutes>[0],
+  dependencies: Parameters<typeof registerAnnouncementRoutes>[1],
+  key?: string,
+) {
+  const prior = process.env.ENTRA_WEB_CLIENT_SECRET;
+  if (key === undefined) delete process.env.ENTRA_WEB_CLIENT_SECRET;
+  else process.env.ENTRA_WEB_CLIENT_SECRET = key;
+  try {
+    registerAnnouncementRoutes(app, dependencies);
+  } finally {
+    if (prior === undefined) delete process.env.ENTRA_WEB_CLIENT_SECRET;
+    else process.env.ENTRA_WEB_CLIENT_SECRET = prior;
+  }
+}
 
 const grant = '11111111-1111-4111-8111-111111111111';
 const scope = '22222222-2222-4222-8222-222222222222';
@@ -180,6 +200,71 @@ test('designs compile only trusted slots and style tokens, and answers reject fo
   );
 });
 
+test('forms with a missing bound control fail with a validation error', () => {
+  assert.throws(
+    () =>
+      checkAnnouncementBindings({
+        ...dev,
+        design: {
+          format: 'sandbox-v1',
+          bindings: announcementBindings(dev),
+          html: '<form id="ann-form"></form>',
+        },
+      }),
+    { status: 400, message: 'A design binding points to a missing element.' },
+  );
+});
+
+test('a missing preview signing key blocks preview and publish but allows draft saves', async () => {
+  const app = express();
+  app.use(express.json());
+  const operations: string[] = [];
+  registerWithPreviewKey(app, {
+    verify: async () => ({ tenantId: grant, objectId: actor }),
+    resolveAccess: async () => actor,
+    announcements: {
+      execute: async <T>(_actor: string, operation: string) => {
+        operations.push(operation);
+        return { ok: true } as T;
+      },
+    },
+  });
+  app.use(((error, _req, res, _next) => {
+    res.status(error.status ?? 500).json({ error: error.message });
+  }) satisfies ErrorRequestHandler);
+  const server = app.listen(0, '127.0.0.1');
+  try {
+    await once(server, 'listening');
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    for (const [flags, status] of [
+      [{ preview: true }, 503],
+      [{ publish: true }, 503],
+      [{}, 200],
+    ] as const) {
+      const response: Response = await fetch(
+        `http://127.0.0.1:${address.port}/api/announcements/draft`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            grantId: grant,
+            revision: 0,
+            startsAt: '2026-01-01T00:00:00Z',
+            endsAt: '2099-01-01T00:00:00Z',
+            definition: dev,
+            ...flags,
+          }),
+        },
+      );
+      assert.equal(response.status, status);
+    }
+    assert.deepEqual(operations, ['DESIGN', 'DESIGN', 'DESIGN', 'DRAFT']);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});
+
 test('publish is bound to a scoped preview and AI receives selected design and recent feedback', async () => {
   const app = express();
   app.use(express.json());
@@ -187,39 +272,43 @@ test('publish is bound to a scoped preview and AI receives selected design and r
   let aiInput = '';
   let aiMessage: string | undefined = 'I used a clear layout and a connected registration action.';
   let useSandbox = false;
-  registerAnnouncementRoutes(app, {
-    verify: async () => ({
-      tenantId: grant,
-      objectId: actor,
-      workEmail: 'employee@soprasteria.com',
-    }),
-    resolveAccess: async () => actor,
-    announcements: {
-      execute: async <T>(_actor: string, operation: string, id?: string): Promise<T> => {
-        operations.push(operation);
-        return (operation === 'PREVIEW' ? { audienceCount: 1 } : { id, ok: true }) as T;
-      },
-      provider: {
-        name: 'fixture',
-        complete: async (messages, _tools, _signal, options) => {
-          aiInput = String(messages[1].content);
-          assert.deepEqual(options?.responseSchema, announcementDesignResponse);
-          if (useSandbox)
-            return {
-              content: JSON.stringify({
-                format: 'sandbox-v1',
-                html: '<h2 id="ann-title"></h2><p id="ann-message"></p><button id="ann-open">Register</button><form id="ann-form"><label for="ann-name">Name</label><output id="ann-name"></output><label for="ann-email">Work email</label><output id="ann-email"></output><label for="ann-employee-id">Employee ID</label><output id="ann-employee-id"></output><fieldset id="ann-field-batch"></fieldset><button id="ann-submit">Register</button></form>',
-                css: 'fieldset { border: 1px solid teal; }',
-                message: 'Radio form ready.',
-              }),
-              calls: [],
-            };
-          return { content: JSON.stringify({ html, css, message: aiMessage }), calls: [] };
+  registerWithPreviewKey(
+    app,
+    {
+      verify: async () => ({
+        tenantId: grant,
+        objectId: actor,
+        workEmail: 'employee@soprasteria.com',
+      }),
+      resolveAccess: async () => actor,
+      announcements: {
+        execute: async <T>(_actor: string, operation: string, id?: string): Promise<T> => {
+          operations.push(operation);
+          return (operation === 'PREVIEW' ? { audienceCount: 1 } : { id, ok: true }) as T;
         },
+        provider: {
+          name: 'fixture',
+          complete: async (messages, _tools, _signal, options) => {
+            aiInput = String(messages[1].content);
+            assert.deepEqual(options?.responseSchema, announcementDesignResponse);
+            if (useSandbox)
+              return {
+                content: JSON.stringify({
+                  format: 'sandbox-v1',
+                  html: '<h2 id="ann-title"></h2><p id="ann-message"></p><button id="ann-open">Register</button><form id="ann-form"><label for="ann-name">Name</label><output id="ann-name"></output><label for="ann-email">Work email</label><output id="ann-email"></output><label for="ann-employee-id">Employee ID</label><output id="ann-employee-id"></output><fieldset id="ann-field-batch"></fieldset><button id="ann-submit">Register</button></form>',
+                  css: 'fieldset { border: 1px solid teal; }',
+                  message: 'Radio form ready.',
+                }),
+                calls: [],
+              };
+            return { content: JSON.stringify({ html, css, message: aiMessage }), calls: [] };
+          },
+        },
+        budget: { acquire: async () => async () => {} },
       },
-      budget: { acquire: async () => async () => {} },
     },
-  });
+    'fixture-preview-key',
+  );
   const errors: ErrorRequestHandler = (error, _req, res, _next) => {
     res.status(error.status ?? 500).json({ error: error.message });
   };

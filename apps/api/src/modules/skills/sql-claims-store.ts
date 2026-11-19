@@ -333,7 +333,12 @@ export class SqlClaimsStore implements ClaimsStore {
         href: string;
       }>(`EXEC dbo.ReadSkillClaimNotifications @account_id=@account_id, @actor_id=@actor_id;
           EXEC dbo.ReadCapabilitySubmissionNotifications @account_id=@account_id, @actor_id=@actor_id;`);
-      if (!Array.isArray(recordsets)) throw Error('Expected both claim notification result sets.');
+      if (
+        !Array.isArray(recordsets) ||
+        !Array.isArray(recordsets[0]) ||
+        !Array.isArray(recordsets[1])
+      )
+        throw Error('Expected both claim notification result sets.');
       const [legacy, combined] = recordsets;
       return [...legacy, ...combined].map(
         (row: { id: string; at: Date; title: string; body: string; href: string }) => ({

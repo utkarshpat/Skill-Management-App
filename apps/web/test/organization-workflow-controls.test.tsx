@@ -380,7 +380,15 @@ test('tree zoom clamps to its bounds and resetting restores the original scale',
   );
   await click('Zoom out tree', zoom);
   assert.match(zoom.textContent!, /125%/);
+  await click('Collapse all');
+  const viewport = document.querySelector('[aria-label="Visual tree"]')!;
+  Object.defineProperties(viewport, {
+    clientWidth: { value: 200 },
+    clientHeight: { value: 220 },
+  });
   await click('Fit tree', zoom);
+  assert.match(zoom.textContent!, /80%/);
+  for (let step = 0; step < 3; step++) await click('Zoom out tree', zoom);
   assert.match(zoom.textContent!, /25%/);
   assert.equal(
     zoom.querySelector<HTMLButtonElement>('[aria-label="Zoom out tree"]')!.disabled,

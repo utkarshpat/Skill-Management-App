@@ -69,11 +69,27 @@
     display: none;
   }
 }
-.announcement-strip img {
-  width: 38px;
-  height: 32px;
-  object-fit: cover;
-  border-radius: 6px;
+.announcement-poster {
+  display: grid;
+  gap: 12px;
+  padding: clamp(14px, 3vw, 24px);
+  padding-inline-end: max(44px, 3vw);
+  color: var(--ink);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+.announcement-poster :is(h3, p) {
+  margin: 0;
+}
+.announcement-poster img {
+  display: block;
+  width: 100%;
+  max-height: min(55dvh, 440px);
+  object-fit: contain;
+  border-radius: 8px;
+}
+.announcement-poster > button {
+  justify-self: start;
 }
 .announcement-card {
   display: grid;

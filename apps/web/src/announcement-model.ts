@@ -69,6 +69,7 @@ export interface Definition {
   marquee: boolean;
   allowResponseUpdates?: boolean;
   image?: string;
+  imagePopup?: boolean;
   imageAlt: string;
   imagePosition: 'left' | 'center' | 'right';
 }

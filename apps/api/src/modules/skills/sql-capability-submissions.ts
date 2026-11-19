@@ -122,6 +122,9 @@ export class SqlCapabilitySubmissionStore implements CapabilitySubmissionStore {
         );
         if (!full) return { pending: true };
         source = full;
+        const current = await this.stagedFiles(actor, id, cert);
+        if (!current.canUpload || current.revision !== revision)
+          throw new AccessError(409, 'Draft changed. Reopen it before uploading.');
       }
       const prepared = await prepareCertificateFile(source, mimeType, fileName),
         fileId = randomUUID();

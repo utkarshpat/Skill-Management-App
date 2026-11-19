@@ -23,8 +23,8 @@ export function CertificationReviewDialog({
   const saving = useRef(false);
   async function decide(action: 'APPROVE' | 'REQUEST_CHANGES' | 'REJECT') {
     if (saving.current || !certification.canReview) return;
-    if (!feedback.trim()) {
-      setError('Add a decision note explaining your decision.');
+    if (action !== 'APPROVE' && !feedback.trim()) {
+      setError('Add a decision note for the rejection or change request.');
       return;
     }
     saving.current = true;
@@ -76,7 +76,7 @@ export function CertificationReviewDialog({
             onClick={() => void decide('APPROVE')}
           >
             <CheckCheck size={16} aria-hidden="true" />
-            {busy ? 'Saving…' : 'Approve with note'}
+            {busy ? 'Saving…' : 'Approve'}
           </button>
         </div>
       }
@@ -118,11 +118,8 @@ export function CertificationReviewDialog({
       )}
       {error && <p role="alert">{error}</p>}
       <label className="form-group">
-        Decision note{' '}
-        <span className="cert-required-mark" aria-hidden="true">
-          *
-        </span>
-        <span className="sr-only"> required</span>
+        Decision note
+        <small>Optional for approval. Required for rejection or changes.</small>
         <textarea
           value={feedback}
           maxLength={2000}

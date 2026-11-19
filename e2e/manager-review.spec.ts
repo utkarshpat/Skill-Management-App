@@ -44,32 +44,23 @@ async function review(page: Page, state: { fail?: boolean }, mode = 'capability-
   await page.goto('/test/e2e/harness.html?fixture=' + mode);
   return writes;
 }
-test('manager review: notes required per pending item; mixed decisions preserve exact item revisions', async ({
+test('manager review: change requests require notes and approvals can be saved without them', async ({
   page,
 }) => {
   const writes = await review(page, {}),
     save = page.getByRole('button', { name: 'Save approval decisions (2)', exact: true });
-  await save.click();
-  await expect(page.locator('.form-dialog-message').getByRole('alert')).toContainText(
-    'feedback notes for every pending item',
-  );
-  expect(writes).toHaveLength(0);
   const sql = page
     .locator('article')
     .filter({ has: page.getByRole('radiogroup', { name: 'Decision for SQL' }) });
   await sql.getByRole('radio', { name: 'Request changes', exact: true }).click();
+  await save.click();
+  await expect(page.locator('.form-dialog-message').getByRole('alert')).toContainText(
+    'Add feedback for each rejection or change request.',
+  );
+  expect(writes).toHaveLength(0);
   await sql
     .getByRole('textbox', { name: /Feedback notes/ })
     .fill('Add the execution-plan example and distinguish your contribution.');
-  const credential = page.locator('article').filter({
-    has: page.getByRole('radiogroup', {
-      name: 'Decision for Oracle Database SQL Certified Associate',
-    }),
-  });
-  await credential.getByRole('radio', { name: 'Reject', exact: true }).click();
-  await credential
-    .getByRole('textbox', { name: /Feedback notes/ })
-    .fill('Issuer details do not match the submitted credential.');
   await expect(
     page.getByRole('radiogroup', { name: 'Decision for Power BI', exact: true }),
   ).toHaveCount(0);
@@ -79,8 +70,9 @@ test('manager review: notes required per pending item; mixed decisions preserve 
   expect(writes[0].revision).toBe(5);
   expect(writes[0].decisions.map((d: any) => [d.kind, d.action, d.revision])).toEqual([
     ['SKILL', 'REQUEST_CHANGES', 3],
-    ['CERTIFICATION', 'REJECT', 2],
+    ['CERTIFICATION', 'APPROVE', 2],
   ]);
+  expect(writes[0].decisions[1].feedback).toBe('');
 });
 test('manager review: stale write shows conflict and retains notes without false success', async ({
   page,

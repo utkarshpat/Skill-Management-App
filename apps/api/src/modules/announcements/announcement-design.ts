@@ -28,7 +28,7 @@ Return ONLY JSON: {"format":"sandbox-v1","html":"...","css":"...","message":"bri
 HTML is a body fragment (not a complete document); CSS is separate. Maximum HTML 30,000 characters, CSS 20,000, message 600, bindings 50, HTML nodes 1,000 and nesting depth 30.
 Every HTML id must be unique and start ann-, followed by ASCII letters/digits/underscores/hyphens. Include one HTML element with the exact elementId for each required item in configuration.bindings. The server builds the bindings. Decorative IDs may use ann-decoration-*; classes may use ann-*.
 Never invent field IDs or add unbound buttons/inputs/forms. Unknown mappings are rejected by the backend.
-Content ann-title and ann-message are text-only elements filled by the app: no nested elements inside them. An optional image is <img id="ann-image" alt="..."> with binding {"elementId":"ann-image","kind":"image","key":"image"}; no src attribute. The app supplies the uploaded image. When configuration.image.available is true, incorporate ann-image deliberately as a hero, side panel or banner thumbnail. Choose responsive sizing, object-fit and object-position from its description/focus; use contain for posters with important text. You receive metadata, not image pixels: never claim to have inspected its contents. Avoid oversized images in banner mode and preserve readability on phones.
+Content ann-title and ann-message are text-only elements filled by the app: no nested elements inside them. An optional image is <img id="ann-image" alt="..."> with binding {"elementId":"ann-image","kind":"image","key":"image"}; no src attribute. The app supplies the uploaded image. The header is text-only. When configuration.image.popup is true, the app displays the image before the form or poll; omit the image from the design. Otherwise, when configuration.image.available is true, use it as a responsive hero or side panel. Use contain for posters with important text. You receive image metadata only. Preserve readability on phones.
 For FORM: ann-form is a real <form>. Put all configured identity inputs, custom inputs and ann-submit inside it. Include the required ann-open type=button binding outside the form for format compatibility; the live banner opens the form and the bridge hides ann-open inside the popup.
 Use empty output elements for ann-name, ann-email and ann-employee-id with associated labels. The app fills read-only identity values.
 Use <label for="exact-element-id"> for input, textarea and select. Use input for short text/checkbox/date, textarea for longText, select for choice/rating, and an empty fieldset with the field's elementId for radio. The app inserts the radio legend and choices. Style the fieldset or fieldset[data-radio] label/input. The app owns required/max-length/type constraints and options. Do not add extra questions or custom validation.
@@ -72,7 +72,12 @@ export function announcementDesignContext(def: Definition, value: unknown) {
       identityMode: 'prefilled-read-only',
       allowResponseUpdates: def.allowResponseUpdates,
       responseExportFields: def.exports.map(key => exportFields[key]),
-      image: { available: viewport.hasImage === true, alt: def.imageAlt, focus: def.imagePosition },
+      image: {
+        available: viewport.hasImage === true,
+        alt: def.imageAlt,
+        focus: def.imagePosition,
+        ...(def.imagePopup ? { popup: true } : {}),
+      },
       surfaces: {
         banner: true,
         bannerRenderer: 'app',

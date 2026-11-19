@@ -72,6 +72,7 @@ export const isSupportedWorkspacePath = (pathname: string) =>
 
 export interface PersonalNavigationCapabilities {
   ownProfile: boolean;
+  canPublishAnnouncements?: boolean;
   ownSkills: boolean;
   reviewSkills?: boolean;
   issuerApprovals?: boolean;
@@ -110,7 +111,7 @@ export function personalNavigationItems(
     ...(phaseTwoVisible && capabilities.requests
       ? [{ id: 'requests', label: 'Requests', href: '/requests', icon: ShieldCheck }]
       : []),
-    ...(capabilities.ownProfile
+    ...(capabilities.ownProfile && capabilities.canPublishAnnouncements
       ? [{ id: 'announcements', label: 'Announcements', href: '/announcements', icon: Megaphone }]
       : []),
     ...(capabilities.ownProfile

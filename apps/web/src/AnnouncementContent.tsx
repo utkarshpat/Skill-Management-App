@@ -7,7 +7,8 @@ import {
   type ReactNode,
 } from 'react';
 import { Pause, Play, X } from 'lucide-react';
-import type { Definition, Person } from './announcement-model';
+import { authenticatedFetch } from './auth';
+import { endpoint, type Definition, type Person } from './announcement-model';
 import { AnnouncementSandbox } from './AnnouncementSandbox';
 
 const slots = ['title', 'message', 'image', 'action'];
@@ -49,12 +50,10 @@ export function announcementStyle({ design }: Definition) {
 
 export function AnnouncementBannerContent({
   definition,
-  image,
   action,
   onDismiss,
 }: {
   definition: Definition;
-  image?: string;
   action: ReactNode;
   onDismiss: () => void;
 }) {
@@ -85,13 +84,6 @@ export function AnnouncementBannerContent({
       >
         <X size={16} aria-hidden="true" />
       </button>
-      {image && (
-        <img
-          src={image}
-          alt={definition.imageAlt}
-          style={{ objectPosition: definition.imagePosition }}
-        />
-      )}
       <div
         ref={viewport}
         className="announcement-strip-copy"
@@ -123,6 +115,52 @@ export function AnnouncementBannerContent({
       )}
       <div className="announcement-strip-action">{action}</div>
     </>
+  );
+}
+
+export function AnnouncementPoster({
+  definition,
+  image,
+  onOpen,
+}: {
+  definition: Definition;
+  image: string;
+  onOpen: () => void;
+}) {
+  const [loaded, setLoaded] = useState<{ source: string; url?: string }>();
+  const protectedImage = image.startsWith(endpoint + '/');
+  useEffect(() => {
+    if (!protectedImage) return;
+    const controller = new AbortController();
+    let url: string | undefined;
+    authenticatedFetch(image, { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw Error('Image unavailable');
+        const blob = await response.blob();
+        if (controller.signal.aborted) return;
+        if (blob.type !== 'image/webp') throw Error('Image unavailable');
+        url = URL.createObjectURL(blob);
+        setLoaded({ source: image, url });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setLoaded({ source: image });
+      });
+    return () => {
+      controller.abort();
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [image, protectedImage]);
+  const source = protectedImage ? (loaded?.source === image ? loaded.url : undefined) : image;
+  return (
+    <section className="announcement-poster">
+      <h3>{definition.title}</h3>
+      {source && <img src={source} alt={definition.imageAlt} />}
+      {!source && loaded?.source === image && <p role="status">Image unavailable.</p>}
+      {definition.message && <p>{definition.message}</p>}
+      <button type="button" className="admin-primary" onClick={onOpen}>
+        {definition.kind === 'POLL' ? 'Open poll' : definition.cta}
+      </button>
+    </section>
   );
 }
 

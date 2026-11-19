@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { randomBytes } from 'node:crypto';
 import sharp from 'sharp';
 import { PDFDocument, PDFName } from 'pdf-lib';
 import { zipSync, strToU8 } from 'fflate';
@@ -13,6 +14,20 @@ import {
 } from '../src/modules/skills/evidence.js';
 import { AccessError } from '../src/shared/errors.js';
 import { readFile } from 'node:fs/promises';
+
+test('dense images use the certificate allowance and compress to the skill WebP limit', async () => {
+  const raw = { width: 1920, height: 1920, channels: 3 as const };
+  const source = await sharp(randomBytes(raw.width * raw.height * raw.channels), { raw })
+    .webp({ quality: 95, effort: 1 })
+    .toBuffer();
+  const limit = 1024 * 1024;
+  const certificate = await prepareCertificateFile(source, 'image/webp', 'certificate.webp');
+  assert.ok(certificate.data.length > limit && certificate.data.length <= 5 * limit);
+  assert.equal(certificate.width, 1920);
+  const skill = await prepareSkillEvidence(source, 'image/webp', 'evidence.webp');
+  assert.ok(skill.data.length <= limit);
+  assert.equal(skill.mimeType, 'image/webp');
+});
 test('certificate attachments allow validated PDF, DOCX and text, while images stay compressed', async () => {
   const document = await PDFDocument.create();
   document.addPage();

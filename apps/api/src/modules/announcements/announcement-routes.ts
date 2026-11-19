@@ -5,7 +5,7 @@ import {
   announcementDesignResponse,
   announcementDesignSystemPrompt,
 } from './announcement-design.js';
-import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { ErrorRequestHandler, Express } from 'express';
 import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
@@ -30,20 +30,34 @@ import {
 
 const base = '/api/announcements';
 const designTimeoutMs = 65_000;
-const previewKey = process.env.ENTRA_WEB_CLIENT_SECRET || randomBytes(32);
 
-function seal(actor: string, key: string | undefined, definition: object, expiry: number) {
+function seal(
+  previewKey: string,
+  actor: string,
+  key: string | undefined,
+  definition: object,
+  expiry: number,
+) {
   return createHmac('sha256', previewKey)
     .update(JSON.stringify(['announcement-preview', actor, key, definition, expiry]))
     .digest();
 }
 
-function checkReceipt(receipt: unknown, actor: string, key: string | undefined, payload: object) {
+function checkReceipt(
+  previewKey: string,
+  receipt: unknown,
+  actor: string,
+  key: string | undefined,
+  payload: object,
+) {
   const match = typeof receipt === 'string' && /^(\d{13})\.([a-f0-9]{64})$/.exec(receipt);
   if (
     !match ||
     Number(match[1]) <= Date.now() ||
-    !timingSafeEqual(seal(actor, key, payload, Number(match[1])), Buffer.from(match[2], 'hex'))
+    !timingSafeEqual(
+      seal(previewKey, actor, key, payload, Number(match[1])),
+      Buffer.from(match[2], 'hex'),
+    )
   )
     throw new AccessError(409, 'Preview the current announcement again before publishing.');
 }
@@ -159,6 +173,7 @@ interface OwnerRecord {
 export function registerAnnouncementRoutes(app: Express, dependencies?: Dependencies) {
   const store = dependencies?.announcements;
   if (!store || !dependencies) return;
+  const previewKey = process.env.ENTRA_WEB_CLIENT_SECRET;
   app.use(base, async (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     let identity: Identity;
@@ -216,26 +231,36 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
     const actor = res.locals.actor as string;
     const grantId = id(input.grantId);
     await store.execute(actor, 'DESIGN', draftId, { grantId });
+    const previewRequested = input.preview === true;
+    const publish = input.publish === true;
     const payload = {
       grantId,
       revision: revision(input.revision),
       ...schedule(input.startsAt, input.endsAt),
       definition: definition(input.definition, await image(input.image)),
     };
+    if (payload.definition.imagePopup && !payload.definition.image)
+      throw new AccessError(400, 'Upload an image for the image popup.');
     checkAnnouncementBindings(payload.definition);
-    if (input.preview === true) {
-      const preview = await store.execute<object>(actor, 'PREVIEW', key, payload);
-      const expiry = Date.now() + 15 * 60_000;
-      res.json({
-        ...preview,
-        id: key,
-        image: payload.definition.image,
-        receipt: expiry + '.' + seal(actor, key, payload, expiry).toString('hex'),
-      });
-      return;
+    if (previewRequested || publish) {
+      if (!previewKey)
+        throw new AccessError(
+          503,
+          'Announcement publishing requires company sign-in configuration.',
+        );
+      if (previewRequested) {
+        const preview = await store.execute<object>(actor, 'PREVIEW', key, payload);
+        const expiry = Date.now() + 15 * 60_000;
+        res.json({
+          ...preview,
+          id: key,
+          image: payload.definition.image,
+          receipt: expiry + '.' + seal(previewKey, actor, key, payload, expiry).toString('hex'),
+        });
+        return;
+      }
+      checkReceipt(previewKey, input.receipt, actor, draftId, payload);
     }
-    const publish = input.publish === true;
-    if (publish) checkReceipt(input.receipt, actor, draftId, payload);
     res.json(await store.execute(actor, 'DRAFT', key, { ...payload, publish }));
   });
   app.post('/api/announcements/design', async (req, res) => {

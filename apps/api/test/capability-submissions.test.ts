@@ -90,8 +90,16 @@ test('linked submission parser accepts many-to-many links, rejects duplicate/for
     capabilityDecision({
       id,
       revision: 1,
-      decisions: [{ id: skill, revision: 1, kind: 'SKILL', action: 'APPROVE', feedback: '' }],
+      decisions: [{ id: skill, revision: 1, kind: 'SKILL', action: 'REJECT', feedback: '' }],
     }),
+  );
+  assert.equal(
+    capabilityDecision({
+      id,
+      revision: 1,
+      decisions: [{ id: cert, revision: 1, kind: 'CERTIFICATION', action: 'APPROVE' }],
+    }).decisions[0].feedback,
+    '',
   );
   const item = { id: skill, revision: 1, kind: 'SKILL', action: 'APPROVE', feedback: 'Approved' };
   assert.throws(() => capabilityDecision({ id, revision: 1, decisions: [item, item] }));

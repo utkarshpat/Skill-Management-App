@@ -41,6 +41,7 @@ export async function writeExcel(
         worksheet.getColumn(index + 1).numFmt = '@';
     });
     for (const record of rows[sheet.name] ?? []) {
+      // ExcelJS writes primitive strings as text cells. Formulas require a separate value object.
       worksheet.addRow(
         sheet.columns.map(column => {
           const legacy = sheet.legacyHeadings?.[column];
@@ -92,11 +93,13 @@ export async function readExcel(file: Buffer, sheets: readonly ExcelSheet[]) {
       sheet.legacyLeadingColumn && headers.getCell(1).value === sheet.legacyLeadingColumn ? 1 : 0;
     if (worksheet.rowCount > maxRows + 1 || worksheet.columnCount > sheet.columns.length + offset)
       throw new AccessError(400, `${sheet.name} exceeds the expected rows or columns.`);
-    if (sheet.columns.some((column, index) => {
-      const heading = headers.getCell(index + 1 + offset).value;
-      const legacy = sheet.legacyHeadings?.[column];
-      return heading !== column && (!legacy || heading !== legacy);
-    }))
+    if (
+      sheet.columns.some((column, index) => {
+        const heading = headers.getCell(index + 1 + offset).value;
+        const legacy = sheet.legacyHeadings?.[column];
+        return heading !== column && (!legacy || heading !== legacy);
+      })
+    )
       throw new AccessError(400, `Use the downloaded column headings on ${sheet.name}.`);
     const records: ExcelRow[] = [];
     worksheet.eachRow((row, rowNumber) => {

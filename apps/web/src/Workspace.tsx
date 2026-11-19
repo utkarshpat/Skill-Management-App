@@ -105,13 +105,17 @@ export function Workspace({
   embedded = false,
   actionsContainer,
   initialWorkspace,
+  onAnnouncementPublishAccess,
 }: {
   embedded?: boolean;
   actionsContainer?: HTMLDivElement | null;
   initialWorkspace?: WorkspaceState;
+  onAnnouncementPublishAccess?: (allowed: boolean) => void;
 }) {
   const { pathname, search: routeSearch } = useLocation();
   const [state, setState] = useState<WorkspaceState | undefined>(initialWorkspace);
+  const [canPublishAnnouncements, setCanPublishAnnouncements] = useState(false);
+  const announcementPublishAccess = onAnnouncementPublishAccess ?? setCanPublishAnnouncements;
   useEffect(() => {
     if (state?.person.id) return subscribeWorkspaceUpdates(state.person.id);
   }, [state?.person.id]);
@@ -177,7 +181,7 @@ export function Workspace({
       label: 'Announcements',
       href: '/announcements',
       icon: Megaphone,
-      visible: state?.capabilities.ownProfile,
+      visible: state?.capabilities.ownProfile && canPublishAnnouncements,
     },
     {
       id: 'profile',
@@ -217,6 +221,7 @@ export function Workspace({
   ];
   const permitted =
     view === 'overview' ||
+    (view === 'announcements' && Boolean(state?.capabilities.ownProfile)) ||
     (view === 'certifications'
       ? Boolean(state?.capabilities.certifications)
       : view === 'my-skills'
@@ -324,7 +329,9 @@ export function Workspace({
           <>
             <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
               {analytics}
-              {view === 'announcements' && <Announcements page />}
+              {view === 'announcements' && (
+                <Announcements page onPublishAccess={announcementPublishAccess} />
+              )}
               {view === 'overview' && <Dashboard />}
               {view === 'profile' && <PersonalProfile workspace={state} />}
               {(view === 'my-skills' || view === 'certifications') && (
@@ -406,7 +413,7 @@ export function Workspace({
             }
           />
         </header>
-        {view !== 'announcements' && <Announcements />}
+        {view !== 'announcements' && <Announcements onPublishAccess={announcementPublishAccess} />}
         <main id="workspace-main" className="access-main" tabIndex={-1}>
           {error && (
             <section className="profile-panel">
@@ -431,7 +438,9 @@ export function Workspace({
             <>
               <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
                 {analytics}
-                {view === 'announcements' && <Announcements page />}
+                {view === 'announcements' && (
+                  <Announcements page onPublishAccess={announcementPublishAccess} />
+                )}
                 {view === 'overview' && <Dashboard />}
                 {view === 'profile' && <PersonalProfile workspace={state} />}
                 {(view === 'my-skills' || view === 'certifications') && (

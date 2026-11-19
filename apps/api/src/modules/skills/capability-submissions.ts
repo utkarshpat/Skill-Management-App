@@ -249,20 +249,22 @@ export function capabilityDecision(input: unknown) {
   const decisions = body.decisions.map((input: unknown) => {
     const item = object(input);
     only(item, ['id', 'kind', 'revision', 'action', 'feedback']);
+    const feedback = item.feedback === undefined ? '' : item.feedback;
     if (
       !['SKILL', 'CERTIFICATION'].includes(item.kind) ||
       !['APPROVE', 'REQUEST_CHANGES', 'REJECT'].includes(item.action) ||
-      typeof item.feedback !== 'string' ||
-      !item.feedback.trim() ||
-      item.feedback.length > 2000
+      typeof feedback !== 'string' ||
+      feedback.length > 2000
     )
-      throw new AccessError(400, 'Choose a decision and feedback for every pending item.');
+      throw new AccessError(400, 'Choose a valid decision for every pending item.');
+    if (item.action !== 'APPROVE' && !feedback.trim())
+      throw new AccessError(400, 'Add feedback for each rejection or change request.');
     return {
       id: certificationId(item.id),
       kind: item.kind,
       revision: revision(item.revision),
       action: item.action,
-      feedback: item.feedback.trim(),
+      feedback: feedback.trim(),
     };
   });
   if (new Set(decisions.map(d => d.kind + d.id)).size !== decisions.length)

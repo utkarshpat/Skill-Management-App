@@ -63,6 +63,13 @@ test('notification feed exposes only own addressed events without workspace audi
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.equal((await response.json()).personId, person.id);
+    const invalidPage = await fetch(url + '&announcementPage=0', {
+      headers: { Authorization: 'Bearer trusted' },
+    });
+    assert.equal(invalidPage.status, 400);
+    assert.deepEqual(await invalidPage.json(), {
+      error: { message: 'Invalid announcement page.' },
+    });
     state.people[0].overrides.push({ permission: 'profile.view', scope: 'OWN', effect: 'DENY' });
     assert.equal((await fetch(url, { headers: { Authorization: 'Bearer trusted' } })).status, 403);
   } finally {

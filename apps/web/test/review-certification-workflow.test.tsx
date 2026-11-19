@@ -169,10 +169,10 @@ test('legacy certification queue pages and debounced search retain current revie
   await click('Open certification approval');
   await fill('Decision note', 'Verified supplied issuer details.');
   writeFailure = 409;
-  await click('Approve with note');
+  await click('Approve');
   assert.match(document.body.textContent!, /Certification assignment changed/);
   writeFailure = 0;
-  await click('Approve with note');
+  await click('Approve');
   assert.deepEqual(writes[0], writes[1]);
   assert.deepEqual(writes[1], {
     id: record.id,

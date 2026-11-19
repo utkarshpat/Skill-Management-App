@@ -30,12 +30,30 @@ const people = [
 ];
 
 test('Excel exports preserve text identifiers and reject formula cells on upload', async () => {
+  const textValues = ['=1+1', '+005', '-001', '@example'];
   const data = {
-    'Employee Certifications': [{ 'Employee Code': '007012', Certification: '=1+1' }],
+    'Employee Certifications': textValues.map(Certification => ({
+      'Employee Code': '007012',
+      Certification,
+    })),
   };
-  const parsed = await readExcel(await writeExcel(people, data), people);
+  const output = await writeExcel(people, data);
+  const parsed = await readExcel(output, people);
+  assert.deepEqual(
+    parsed['Employee Certifications'].map(row => row.values.Certification),
+    textValues,
+  );
   assert.equal(parsed['Employee Certifications'][0].values['Employee Code'], '007012');
-  assert.equal(parsed['Employee Certifications'][0].values.Certification, '=1+1');
+  const exported = new ExcelJS.Workbook();
+  await exported.xlsx.load(output as unknown as ExcelJS.Buffer);
+  for (const [index, value] of textValues.entries()) {
+    const cell = exported
+      .getWorksheet(people[0].name)!
+      .getRow(index + 2)
+      .getCell(2);
+    assert.equal(cell.type, ExcelJS.ValueType.String);
+    assert.equal(cell.value, value);
+  }
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(people[0].name);
   sheet.addRow(people[0].columns);

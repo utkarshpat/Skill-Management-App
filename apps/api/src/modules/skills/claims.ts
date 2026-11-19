@@ -286,7 +286,7 @@ export function claimTransition(input: unknown) {
   )
     throw new AccessError(400, 'Check the claim and current version.');
   const feedback = claimText(body.feedback, 2000);
-  if (body.action !== 'SUBMIT' && !feedback)
+  if ((body.action === 'REJECT' || body.action === 'REQUEST_CHANGES') && !feedback)
     throw new AccessError(400, 'Provide feedback for this review.');
   return {
     id: body.id.toLowerCase(),

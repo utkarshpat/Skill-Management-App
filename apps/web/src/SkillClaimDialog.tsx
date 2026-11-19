@@ -47,8 +47,9 @@ export function SkillClaimDialog({
   };
   const allowed = Boolean(claim.reviewAccess?.allowed),
     review = mode === 'review';
+  const feedbackRequired = review && decision !== 'APPROVE';
   async function apply() {
-    if (working || (review && !allowed)) return;
+    if (working || (review && !allowed) || (feedbackRequired && !feedback.trim())) return;
     setBusy(true);
     setError('');
     try {
@@ -96,7 +97,7 @@ export function SkillClaimDialog({
           {mode !== 'view' && (
             <button
               className="admin-primary"
-              disabled={working || (review && (!feedback.trim() || !allowed))}
+              disabled={working || (review && !allowed) || (feedbackRequired && !feedback.trim())}
               onClick={() => void apply()}
             >
               {busy
@@ -157,7 +158,9 @@ export function SkillClaimDialog({
                   ))}
                 </div>
               </div>
-              <span className="claim-fact-level-name">{displayProficiencyName(claim.rank, claim.levelName)}</span>
+              <span className="claim-fact-level-name">
+                {displayProficiencyName(claim.rank, claim.levelName)}
+              </span>
               {claim.levelDescription && (
                 <p className="claim-fact-desc">{claim.levelDescription}</p>
               )}
@@ -255,14 +258,19 @@ export function SkillClaimDialog({
             </div>
             <label className="claim-feedback">
               Feedback{' '}
-              <span className="skill-required" aria-hidden="true">
-                *
-              </span>
+              {feedbackRequired ? (
+                <span className="skill-required" aria-hidden="true">
+                  *
+                </span>
+              ) : (
+                '(optional)'
+              )}
               <textarea
                 aria-label="Approval feedback"
                 rows={4}
                 maxLength={2000}
                 disabled={working || !allowed}
+                required={feedbackRequired}
                 value={feedback}
                 onChange={e => setFeedback(e.target.value)}
                 placeholder="What supports your decision, or what should change?"

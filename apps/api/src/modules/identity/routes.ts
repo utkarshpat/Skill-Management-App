@@ -225,8 +225,10 @@ export function registerRoutes(
           typeof announcementInput === 'string' && /^[1-9]\d{0,6}$/.test(announcementInput)
             ? Number(announcementInput)
             : 0;
-        if (!announcementPage || announcementPage > 1000000)
-          throw new AccessError(400, 'Invalid announcement page.');
+        if (!announcementPage || announcementPage > 1000000) {
+          res.status(400).json({ error: { message: 'Invalid announcement page.' } });
+          return;
+        }
         let hasMoreAnnouncements = false;
         const feed = await loadNotificationFeed(notificationsFor(state, person), [
           {

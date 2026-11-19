@@ -907,18 +907,31 @@ input[type='checkbox'] {
   scroll-margin-top: 24px;
 }
 .visual-tree-scroll {
+  position: relative;
   width: 100%;
-  overflow: auto;
-  max-height: 460px;
-  min-height: 220px;
+  overflow: clip;
+  height: 460px;
   background: #fafbfc;
   border: 1px solid #e3e6eb;
   border-radius: 8px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.visual-tree-scroll.is-empty {
+  height: 220px;
   padding: 24px;
-  overscroll-behavior: contain;
+  cursor: default;
+  touch-action: auto;
+}
+.visual-tree-scroll.is-dragging,
+.visual-tree-scroll.is-dragging button {
+  cursor: grabbing;
 }
 .visual-tree-canvas {
-  position: relative;
+  position: absolute;
+  inset: 0 auto auto 0;
+  transform-origin: top left;
 }
 .visual-tree-canvas > svg {
   position: absolute;
@@ -1444,8 +1457,7 @@ html[data-theme] .assistant-mascot img {
     grid-template-columns: 1fr;
   }
   .visual-tree-scroll {
-    padding: 16px;
-    max-height: 380px;
+    height: 380px;
   }
   .assistant-panel {
     width: 100%;

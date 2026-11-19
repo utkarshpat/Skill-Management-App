@@ -197,7 +197,12 @@ export function certificationChange(input: unknown, now = new Date()): Certifica
     Object.keys(v).some(k => !['action', 'id', 'revision', 'feedback'].includes(k))
   )
     fail('Invalid certification action.');
-  const feedback = text(v.feedback ?? '', 2000, 'review feedback', v.action !== 'SUBMIT');
+  const feedback = text(
+    v.feedback ?? '',
+    2000,
+    'review feedback',
+    v.action === 'REJECT' || v.action === 'REQUEST_CHANGES',
+  );
   if (v.action === 'SUBMIT' && feedback) fail('Submission cannot include reviewer feedback.');
   return {
     action: v.action as 'SUBMIT' | 'APPROVE' | 'REQUEST_CHANGES' | 'REJECT',

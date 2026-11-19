@@ -29,6 +29,7 @@ test('workspace timestamps contain only confirmed checks and reset across sign-o
 test('defaults prioritize daily work across permission combinations and put profile last', () => {
   const personal = personalNavigationItems({
     ownProfile: true,
+    canPublishAnnouncements: true,
     ownSkills: true,
     learning: true,
     requests: true,
@@ -67,7 +68,7 @@ test('defaults prioritize daily work across permission combinations and put prof
       learning: false,
       requests: true,
     }).map(i => i.id),
-    ['requests', 'announcements', 'profile'],
+    ['requests', 'profile'],
   );
 });
 test('portfolio navigation combines both destinations without restoring denied tabs or reviews', () => {

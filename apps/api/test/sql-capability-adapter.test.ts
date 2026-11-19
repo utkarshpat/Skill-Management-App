@@ -133,6 +133,19 @@ test('managed intake upload rechecks draft revision and recovers an ambiguous co
       { pending: true },
     );
     assemble.mock.mockImplementation(async () => source);
+    for (const current of [
+      { canUpload: false, revision: 2 },
+      { canUpload: true, revision: 3 },
+    ]) {
+      reply({ canUpload: true, revision: 2 });
+      reply(current);
+      await assert.rejects(
+        store.stage(actor, id, cert, 2, source, 'text/plain', 'credential.txt', {} as never),
+        { status: 409 },
+      );
+    }
+    assert.equal(writes.length, 0);
+    reply({ canUpload: true, revision: 2 });
     reply({ canUpload: true, revision: 2 });
     reply({ revision: 3, items: [item] });
     await store.stage(actor, id, cert, 2, source, 'text/plain', 'credential.txt', {} as never);

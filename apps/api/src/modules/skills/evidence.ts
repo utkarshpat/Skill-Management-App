@@ -44,24 +44,44 @@ export interface EvidenceStore {
   ): Promise<EvidenceState | { pending: true }>;
   remove?(actor: string, claim: string, revision: number): Promise<EvidenceState>;
 }
-export async function compressEvidence(data: Buffer) {
-  if (!data.length || data.length > 1048576)
-    throw new AccessError(413, 'Compressed image must be under 1 MB.');
+const skillWebpLimit = 1024 * 1024;
+
+async function prepareImage(source: Buffer, maxBytes: number, expectedFormat?: string) {
+  let result;
   try {
-    const image = sharp(data, { limitInputPixels: 16000000, animated: false, failOn: 'warning' }),
+    const image = sharp(source, { limitInputPixels: 16000000, animated: false, failOn: 'warning' }),
       metadata = await image.metadata();
-    if (!['jpeg', 'png', 'webp'].includes(metadata.format ?? '') || (metadata.pages ?? 1) > 1)
+    if (
+      !['jpeg', 'png', 'webp'].includes(metadata.format ?? '') ||
+      (expectedFormat && metadata.format !== expectedFormat) ||
+      (metadata.pages ?? 1) > 1
+    )
       throw Error();
-    const result = await image
-      .rotate()
-      .resize({ width: 1920, height: 1920, fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 80, effort: 4 })
-      .toBuffer({ resolveWithObject: true });
-    if (result.data.length > 1048576) throw Error();
-    return { data: result.data, width: result.info.width, height: result.info.height };
+    const encode = (size: number, quality: number, alphaQuality = 100) =>
+      image
+        .clone()
+        .rotate()
+        .resize({ width: size, height: size, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality, alphaQuality, effort: 4 })
+        .toBuffer({ resolveWithObject: true });
+    result = await encode(1920, 80);
+    if (result.data.length > maxBytes) result = await encode(1920, 65, 85);
+    if (result.data.length > maxBytes) result = await encode(1440, 65, 85);
   } catch {
     throw new AccessError(400, 'Choose a valid, single-frame JPEG, PNG or WebP image.');
   }
+  if (result.data.length > maxBytes)
+    throw new AccessError(
+      413,
+      `The compressed image exceeds ${maxBytes / 1024 / 1024} MB. Choose a smaller image.`,
+    );
+  return { data: result.data, width: result.info.width, height: result.info.height };
+}
+
+export async function compressEvidence(data: Buffer) {
+  if (!data.length || data.length > skillWebpLimit)
+    throw new AccessError(413, 'Compressed image must be under 1 MB.');
+  return prepareImage(data, skillWebpLimit);
 }
 
 const certificateTypes: Record<string, { extension: string; image: boolean }> = {
@@ -87,7 +107,13 @@ function safeCertificateName(value: string, extension: string) {
   return `${stem}.${extension}`;
 }
 
-async function prepareFile(source: Buffer, mimeType: string, fileName: string, maxBytes: number) {
+async function prepareFile(
+  source: Buffer,
+  mimeType: string,
+  fileName: string,
+  maxBytes: number,
+  maxImageBytes = maxBytes,
+) {
   const kind = certificateTypes[mimeType];
   if (!kind || !source.length || source.length > maxBytes)
     throw new AccessError(400, `Choose a supported file up to ${maxBytes / 1024 / 1024} MB.`);
@@ -97,32 +123,9 @@ async function prepareFile(source: Buffer, mimeType: string, fileName: string, m
     width: number | null = null,
     height: number | null = null;
   if (kind.image) {
-    try {
-      const image = sharp(source, {
-          limitInputPixels: 16000000,
-          animated: false,
-          failOn: 'warning',
-        }),
-        metadata = await image.metadata();
-      if (
-        metadata.format !== (mimeType === 'image/jpeg' ? 'jpeg' : mimeType.slice(6)) ||
-        (metadata.pages ?? 1) > 1
-      )
-        throw Error();
-      const result = await image
-        .rotate()
-        .resize({ width: 1920, height: 1920, fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 80, effort: 4 })
-        .toBuffer({ resolveWithObject: true });
-      if (result.data.length > 1048576) throw Error();
-      data = result.data;
-      storedType = 'image/webp';
-      storedName = safeCertificateName(fileName, 'webp');
-      width = result.info.width;
-      height = result.info.height;
-    } catch {
-      throw new AccessError(400, 'Choose a valid, single-frame JPEG, PNG or WebP image.');
-    }
+    ({ data, width, height } = await prepareImage(source, maxImageBytes, mimeType.slice(6)));
+    storedType = 'image/webp';
+    storedName = safeCertificateName(fileName, 'webp');
   } else if (mimeType === 'application/pdf') {
     try {
       await validateCertificateDocument(source, mimeType);
@@ -150,7 +153,8 @@ export const prepareCertificateFile = (source: Buffer, mimeType: string, fileNam
 export async function prepareSkillEvidence(source: Buffer, mimeType: string, fileName: string) {
   if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(mimeType))
     throw new AccessError(400, 'Choose PDF, JPEG, PNG or WebP evidence up to 10 MB.');
-  return prepareFile(source, mimeType, fileName, 10 * 1024 * 1024);
+  // SkillEvidence enforces a separate 1 MB limit for stored WebP images.
+  return prepareFile(source, mimeType, fileName, 10 * 1024 * 1024, skillWebpLimit);
 }
 export class SqlBlobEvidenceStore implements EvidenceStore {
   private container;

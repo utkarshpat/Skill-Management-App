@@ -58,9 +58,14 @@ test('certification input rejects forged owners, approval status, unsafe URLs an
     { evidenceUrl: 'https://forged.example' },
   ])
     assert.throws(() => certificationChange({ ...change, fields: { ...fields, ...patch } }));
-  assert.throws(() =>
-    certificationChange({ action: 'APPROVE', id: change.id, revision: 1, feedback: '' }),
-  );
+  assert.deepEqual(certificationChange({ action: 'APPROVE', id: change.id, revision: 1 }), {
+    action: 'APPROVE',
+    id: change.id,
+    revision: 1,
+    feedback: '',
+  });
+  for (const action of ['REJECT', 'REQUEST_CHANGES'])
+    assert.throws(() => certificationChange({ action, id: change.id, revision: 1, feedback: '' }));
   assert.throws(() =>
     certificationChange({
       action: 'SUBMIT',

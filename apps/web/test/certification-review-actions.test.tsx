@@ -42,11 +42,11 @@ afterEach(async () => {
 after(closeBrowser);
 
 for (const [label, action] of [
-  ['Approve with note', 'APPROVE'],
+  ['Approve', 'APPROVE'],
   ['Request changes', 'REQUEST_CHANGES'],
   ['Do not approve', 'REJECT'],
 ] as const) {
-  test(`certification ${action} requires a note and submits the reviewed revision once`, async () => {
+  test(`certification ${action} applies the note rule and submits the reviewed revision once`, async () => {
     const pending = deferred<void>();
     const decisions: unknown[][] = [];
     let closed = 0;
@@ -62,11 +62,17 @@ for (const [label, action] of [
     );
     await settle();
     await click(label);
-    assert.match(document.body.textContent!, /Add a decision note/);
-    assert.equal(decisions.length, 0);
-    await fill('Decision note', '  Credential details checked with the issuer.  ');
-    await click(label);
-    assert.deepEqual(decisions, [[record, action, 'Credential details checked with the issuer.']]);
+    if (action === 'APPROVE') {
+      assert.deepEqual(decisions, [[record, action, '']]);
+    } else {
+      assert.match(document.body.textContent!, /Add a decision note/);
+      assert.equal(decisions.length, 0);
+      await fill('Decision note', '  Credential details checked with the issuer.  ');
+      await click(label);
+      assert.deepEqual(decisions, [
+        [record, action, 'Credential details checked with the issuer.'],
+      ]);
+    }
     assert.equal(closed, 0);
     assert.ok(
       [...document.querySelectorAll('.form-dialog button')].every(
@@ -92,14 +98,14 @@ test('failed certification decision preserves the note for retry and reports a r
     />,
   );
   await fill('Decision note', 'Issuer details match the supplied certificate.');
-  await click('Approve with note');
+  await click('Approve');
   assert.match(document.body.textContent!, /current manager changed/);
   assert.equal(
     document.querySelector('textarea')!.value,
     'Issuer details match the supplied certificate.',
   );
   assert.equal(closed, 0);
-  await click('Approve with note');
+  await click('Approve');
   assert.equal(attempts, 2);
   assert.equal(closed, 1);
   await view.update(
@@ -116,7 +122,7 @@ test('failed certification decision preserves the note for retry and reports a r
     />,
   );
   assert.match(document.body.textContent!, /NOT_CURRENT_MANAGER/);
-  for (const label of ['Approve with note', 'Request changes', 'Do not approve']) {
+  for (const label of ['Approve', 'Request changes', 'Do not approve']) {
     const button = [...document.querySelectorAll('button')].find(b =>
       b.textContent?.includes(label),
     );

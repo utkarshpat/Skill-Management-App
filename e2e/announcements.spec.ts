@@ -1,4 +1,5 @@
 import { test, expect, fixture } from './browser-fixture';
+import { fileURLToPath } from 'node:url';
 
 const grant = '11111111-1111-4111-8111-111111111111';
 const scope = '22222222-2222-4222-8222-222222222222';
@@ -6,9 +7,7 @@ const announcement = '33333333-3333-4333-8333-333333333333';
 const person = { name: 'Test Employee', email: 'employee@soprasteria.com', employeeId: '710904' };
 const interval = { startsAt: '2000-01-01T00:00:00Z', endsAt: '2099-01-01T00:00:00Z' };
 
-test('publisher configures a poll in the UI and publishes only the previewed version', async ({
-  page,
-}) => {
+test('publisher uploads a poster and publishes the previewed poll', async ({ page }) => {
   await fixture(page, { role: 'admin' });
   await page.route('**/api/announcements/feed*', route =>
     route.fulfill({ json: { items: [], person, canPublish: true } }),
@@ -50,11 +49,23 @@ test('publisher configures a poll in the UI and publishes only the previewed ver
   await dialog.getByLabel('Option 2').fill('SQL');
   await dialog.getByText('Export columns (optional)', { exact: true }).click();
   await dialog.getByLabel('Grade').check();
-  await dialog.getByRole('button', { name: 'Continue to AI design', exact: true }).click();
+  await dialog.getByText('Announcement image (optional)', { exact: true }).click();
+  await dialog
+    .getByLabel('Upload image')
+    .setInputFiles(
+      fileURLToPath(new URL('../apps/web/public/brand/assistant-robot.webp', import.meta.url)),
+    );
+  await dialog.getByLabel('Image description').fill('Training poster');
+  await expect(dialog.getByLabel('Show image before the form or poll')).toBeChecked();
+  await dialog.getByRole('button', { name: 'Continue to preview', exact: true }).click();
   await expect(dialog.getByText('12 eligible employees in the selected audience.')).toBeVisible();
+  await expect(dialog.getByRole('img', { name: 'Training poster' })).toBeVisible();
+  await expect(dialog.locator('.announcement-poster button')).toHaveCount(1);
   await dialog.getByRole('button', { name: 'Mobile' }).click();
   await dialog.getByRole('button', { name: 'Banner preview' }).click();
+  await expect(dialog.locator('.announcement-strip img')).toHaveCount(0);
   await dialog.locator('.announcement-strip').getByRole('button', { name: 'Open poll' }).click();
+  await dialog.locator('.announcement-poster').getByRole('button', { name: 'Open poll' }).click();
   await dialog.getByRole('button', { name: 'Azure' }).click();
   await expect(dialog.getByText('Preview vote accepted. Nothing was submitted.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Publish announcement' }).click();
@@ -67,6 +78,8 @@ test('publisher configures a poll in the UI and publishes only the previewed ver
     publish: true,
     definition: {
       kind: 'POLL',
+      imagePopup: true,
+      popup: true,
       options: ['Azure', 'SQL'],
       exports: ['grade'],
       audience: [{ id: scope, kind: 'PROJECT' }],

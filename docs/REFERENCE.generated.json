@@ -1,6 +1,6 @@
 {
   "version": "2026-11-16",
-  "revision": "f8a33627c7848f81",
+  "revision": "2eba04aecd8e3260",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -116,7 +116,8 @@
       "111_business_analytics_approvals.sql",
       "112_business_issuer_coverage.sql",
       "113_shared_company_auth.sql",
-      "114_approval_queue_exports_response_versions.sql"
+      "114_approval_queue_exports_response_versions.sql",
+      "115_optional_approval_feedback.sql"
     ],
     "tables": {
       "SchemaMigration": {

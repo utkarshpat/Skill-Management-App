@@ -11,6 +11,7 @@ import {
   AnnouncementBannerContent,
   AnnouncementCard,
   AnnouncementForm,
+  AnnouncementPoster,
   PollOptions,
 } from './AnnouncementContent';
 import './announcements.css';
@@ -32,7 +33,13 @@ export function refreshAnnouncements() {
   window.dispatchEvent(new Event(notificationEvent));
 }
 
-export function Announcements({ page = false }: { page?: boolean }) {
+export function Announcements({
+  page = false,
+  onPublishAccess,
+}: {
+  page?: boolean;
+  onPublishAccess?: (allowed: boolean) => void;
+}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedId = page ? (searchParams.get('announcement') ?? '') : '';
   const [loadedLink, setLoadedLink] = useState<string>();
@@ -78,6 +85,7 @@ export function Announcements({ page = false }: { page?: boolean }) {
         .then(value => {
           if (!signal.aborted) {
             setFeed(value);
+            onPublishAccess?.(value.canPublish === true);
             setFeedError('');
             setLoadedLink(requestedId);
             setNow(Date.now());
@@ -86,6 +94,7 @@ export function Announcements({ page = false }: { page?: boolean }) {
         .catch(error => {
           if (!signal.aborted) {
             setFeedError(error.message);
+            onPublishAccess?.(false);
             if (error.status === 401 || error.status === 403) {
               setFeed(undefined);
               setDialog(undefined);
@@ -102,14 +111,20 @@ export function Announcements({ page = false }: { page?: boolean }) {
     }, 30000);
     window.addEventListener(notificationEvent, refresh);
     window.addEventListener('focus', refresh);
+    const refreshAccess = () => {
+      onPublishAccess?.(false);
+      refresh();
+    };
+    window.addEventListener('workspace-access-updated', refreshAccess);
     return () => {
       clearTimeout(timer);
       clearInterval(interval);
       request?.abort();
       window.removeEventListener(notificationEvent, refresh);
       window.removeEventListener('focus', refresh);
+      window.removeEventListener('workspace-access-updated', refreshAccess);
     };
-  }, [requestedId, attempt, feedPage]);
+  }, [requestedId, attempt, feedPage, onPublishAccess]);
   const items = feed?.items.filter(item => Date.parse(item.endsAt) > now) ?? [];
   const person = feed?.person;
   const bannerKey = (entry: LiveAnnouncement) =>
@@ -123,6 +138,8 @@ export function Announcements({ page = false }: { page?: boolean }) {
     }
   });
   const open = items.find(entry => entry.id === dialog?.item);
+  const showPoster =
+    open?.definition.imagePopup && open.hasImage && !dialog?.form && !open.answered;
   useEffect(() => {
     if (!requestedId) {
       handledLink.current = '';
@@ -135,7 +152,13 @@ export function Announcements({ page = false }: { page?: boolean }) {
     setResponseError(false);
     setDialog(
       target
-        ? { item: target.id, form: target.definition.kind === 'FORM' && !target.answered }
+        ? {
+            item: target.id,
+            form:
+              target.definition.kind === 'FORM' &&
+              !target.answered &&
+              !target.definition.imagePopup,
+          }
         : undefined,
     );
   }, [requestedId, loadedLink, feed, now]);
@@ -260,10 +283,10 @@ export function Announcements({ page = false }: { page?: boolean }) {
       setBusy(false);
     }
   };
-  const action = (entry: LiveAnnouncement) =>
+  const action = (entry: LiveAnnouncement, startWithPoster = false) =>
     entry.answered ? (
       <span>Response recorded</span>
-    ) : entry.definition.kind === 'POLL' ? (
+    ) : entry.definition.kind === 'POLL' && !startWithPoster ? (
       <PollOptions
         options={entry.definition.options}
         disabled={busy}
@@ -274,10 +297,10 @@ export function Announcements({ page = false }: { page?: boolean }) {
         className="admin-primary"
         onClick={() => {
           setFeedback('');
-          setDialog({ item: entry.id, form: true });
+          setDialog({ item: entry.id, form: !startWithPoster });
         }}
       >
-        {entry.definition.cta}
+        {entry.definition.kind === 'POLL' ? 'Open poll' : entry.definition.cta}
       </button>
     );
   const pendingItems = items.filter(entry => !entry.answered);
@@ -288,15 +311,23 @@ export function Announcements({ page = false }: { page?: boolean }) {
           {pendingItems.map(entry => (
             <AnnouncementCard
               key={entry.id}
-              definition={entry.definition}
+              definition={
+                entry.definition.imagePopup
+                  ? { ...entry.definition, design: undefined }
+                  : entry.definition
+              }
               person={person}
               busy={busy}
               answered={entry.answered}
               onSubmit={answers => void respond(entry, answers)}
               onVote={vote => void respond(entry, { vote })}
               onOpen={() => setDialog({ item: entry.id, form: true })}
-              image={entry.hasImage ? endpoint + '/' + entry.id + '/image' : undefined}
-              action={action(entry)}
+              image={
+                entry.hasImage && !entry.definition.imagePopup
+                  ? endpoint + '/' + entry.id + '/image'
+                  : undefined
+              }
+              action={action(entry, entry.hasImage && entry.definition.imagePopup === true)}
             />
           ))}
         </div>
@@ -429,14 +460,16 @@ export function Announcements({ page = false }: { page?: boolean }) {
             key={item.id}
             definition={item.definition}
             onDismiss={() => hideBanner(item)}
-            image={item.hasImage ? endpoint + '/' + item.id + '/image' : undefined}
             action={
               <button
                 type="button"
                 className="admin-primary"
                 onClick={() => {
                   setFeedback('');
-                  setDialog({ item: item.id, form: item.definition.kind === 'FORM' });
+                  setDialog({
+                    item: item.id,
+                    form: item.definition.kind === 'FORM' && !item.definition.imagePopup,
+                  });
                 }}
               >
                 {item.definition.kind === 'POLL' ? 'Open poll' : item.definition.cta}
@@ -453,76 +486,90 @@ export function Announcements({ page = false }: { page?: boolean }) {
           className="announcement-dialog"
           compact
         >
-          <AnnouncementCard
-            key={open.id}
-            definition={open.answered ? { ...open.definition, design: undefined } : open.definition}
-            person={person}
-            busy={busy}
-            answered={open.answered}
-            onSubmit={answers => void respond(open, answers)}
-            onVote={vote => void respond(open, { vote })}
-            onOpen={() => setDialog({ item: open.id, form: true })}
-            image={open.hasImage ? endpoint + '/' + open.id + '/image' : undefined}
-            action={
-              open.answered && !dialog?.editing ? (
-                <div className="announcement-saved-response">
-                  <strong>Response recorded</strong>
-                  {open.savedAnswers && (
-                    <dl>
-                      {(open.definition.kind === 'POLL'
-                        ? [{ id: 'vote', label: 'Your vote' }]
-                        : open.definition.fields
-                      ).map(field => {
-                        const value = open.savedAnswers?.[field.id];
-                        return (
-                          <div key={field.id}>
-                            <dt>{field.label}</dt>
-                            <dd>
-                              {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value || '—'}
-                            </dd>
-                          </div>
-                        );
-                      })}
-                    </dl>
-                  )}
-                  {open.definition.allowResponseUpdates && (
-                    <button
-                      type="button"
-                      className="admin-primary"
-                      disabled={feedLoading}
-                      onClick={() =>
-                        setDialog({
-                          item: open.id,
-                          form: true,
-                          editing: true,
-                          responseRevision: open.responseRevision,
-                        })
-                      }
-                    >
-                      Edit response
-                    </button>
-                  )}
-                </div>
-              ) : open.answered && open.definition.kind === 'POLL' ? (
-                <PollOptions
-                  options={open.definition.options}
-                  disabled={busy}
-                  selectedVote={open.savedAnswers?.vote}
-                  onVote={vote => void respond(open, { vote })}
-                />
-              ) : dialog?.form ? (
-                <AnnouncementForm
-                  definition={open.definition}
-                  person={person}
-                  busy={busy}
-                  initialAnswers={open.answered ? (open.savedAnswers ?? {}) : undefined}
-                  onSubmit={answers => void respond(open, answers)}
-                />
-              ) : (
-                action(open)
-              )
-            }
-          />
+          {showPoster ? (
+            <AnnouncementPoster
+              definition={open.definition}
+              image={endpoint + '/' + open.id + '/image'}
+              onOpen={() => setDialog({ item: open.id, form: true })}
+            />
+          ) : (
+            <AnnouncementCard
+              key={open.id}
+              definition={
+                open.answered ? { ...open.definition, design: undefined } : open.definition
+              }
+              person={person}
+              busy={busy}
+              answered={open.answered}
+              onSubmit={answers => void respond(open, answers)}
+              onVote={vote => void respond(open, { vote })}
+              onOpen={() => setDialog({ item: open.id, form: true })}
+              image={
+                open.hasImage && !open.definition.imagePopup
+                  ? endpoint + '/' + open.id + '/image'
+                  : undefined
+              }
+              action={
+                open.answered && !dialog?.editing ? (
+                  <div className="announcement-saved-response">
+                    <strong>Response recorded</strong>
+                    {open.savedAnswers && (
+                      <dl>
+                        {(open.definition.kind === 'POLL'
+                          ? [{ id: 'vote', label: 'Your vote' }]
+                          : open.definition.fields
+                        ).map(field => {
+                          const value = open.savedAnswers?.[field.id];
+                          return (
+                            <div key={field.id}>
+                              <dt>{field.label}</dt>
+                              <dd>
+                                {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : value || '—'}
+                              </dd>
+                            </div>
+                          );
+                        })}
+                      </dl>
+                    )}
+                    {open.definition.allowResponseUpdates && (
+                      <button
+                        type="button"
+                        className="admin-primary"
+                        disabled={feedLoading}
+                        onClick={() =>
+                          setDialog({
+                            item: open.id,
+                            form: true,
+                            editing: true,
+                            responseRevision: open.responseRevision,
+                          })
+                        }
+                      >
+                        Edit response
+                      </button>
+                    )}
+                  </div>
+                ) : open.definition.kind === 'POLL' ? (
+                  <PollOptions
+                    options={open.definition.options}
+                    disabled={busy}
+                    selectedVote={open.savedAnswers?.vote}
+                    onVote={vote => void respond(open, { vote })}
+                  />
+                ) : dialog?.form ? (
+                  <AnnouncementForm
+                    definition={open.definition}
+                    person={person}
+                    busy={busy}
+                    initialAnswers={open.answered ? (open.savedAnswers ?? {}) : undefined}
+                    onSubmit={answers => void respond(open, answers)}
+                  />
+                ) : (
+                  action(open)
+                )
+              }
+            />
+          )}
           {feedback && <p role={responseError ? 'alert' : 'status'}>{feedback}</p>}
         </FormDialog>
       )}

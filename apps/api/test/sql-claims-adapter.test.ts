@@ -178,6 +178,13 @@ test('claim SQL adapter scopes every call and reconstructs versions, team aggreg
       [{ id: skill, at, title: 'Capability review', body: 'Approved', href: '/my-skills' }],
     );
     assert.equal((await store.notifications(actor)).length, 2);
+    f.reply(batch, []);
+    await assert.rejects(
+      store.notifications(actor),
+      /Expected both claim notification result sets/,
+    );
+    f.reply(batch, [], []);
+    assert.deepEqual(await store.notifications(actor), []);
     f.reject(batch, { number: 51003 });
     await assert.rejects(store.notifications(actor), { status: 403 });
     for (const call of f.calls) {

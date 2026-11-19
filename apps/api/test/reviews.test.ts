@@ -21,11 +21,13 @@ test('review actions reject forged routing, invalid state selectors and missing 
     { status: 'APPROVED' },
     { revision: 0 },
     { action: 'DELETE' },
-    { feedback: ' ' },
+    { action: 'REJECT', feedback: ' ' },
+    { action: 'REQUEST_CHANGES', feedback: undefined },
     { feedback: 'x'.repeat(2001) },
   ])
     assert.throws(() => claimTransition({ ...change, ...invalid }));
   assert.equal(claimTransition({ ...change, action: 'SUBMIT', feedback: undefined }).feedback, '');
+  assert.equal(claimTransition({ ...change, feedback: undefined }).feedback, '');
   assert.equal(
     claimChange({
       id: randomUUID(),

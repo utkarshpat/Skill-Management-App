@@ -18,6 +18,7 @@ const full: LocalAccessState = {
         { permission: 'profile.view', scope: 'OWN', effect: 'ALLOW' },
         { permission: 'skill.view', scope: 'ORGANIZATION', effect: 'ALLOW' },
         { permission: 'learning.view', scope: 'OWN', effect: 'ALLOW' },
+        { permission: 'learning.manage', scope: 'OWN', effect: 'ALLOW' },
       ],
     },
   ],
@@ -36,6 +37,7 @@ const projected = { ...full, people: [full.people[0]], reporting: undefined };
 
 test('HTTP sends resolve recipients beyond the compact actor projection', async () => {
   let sends = 0;
+  let responses = 0;
   const backend = {
     send: async () => {
       sends++;
@@ -43,7 +45,7 @@ test('HTTP sends resolve recipients beyond the compact actor projection', async 
     },
     read: async () => ({}),
     people: async () => ({ people: [{ id: report }] }),
-    respond: async () => ({}),
+    respond: async () => ({ responses: ++responses }),
     analytics: async () => ({}),
     notifications: async () => [],
   };
@@ -89,6 +91,21 @@ test('HTTP sends resolve recipients beyond the compact actor projection', async 
       assert.equal(r.status, 200, path);
     }
     assert.equal(sends, 2);
+    for (const [path, status] of [
+      ['/unknown', 404],
+      ['/RESPOND/', 200],
+    ] as const) {
+      const response = await fetch(
+        `http://127.0.0.1:${address.port}/api/certification-recommendations${path}`,
+        {
+          method: 'POST',
+          headers: { Authorization: 'Bearer fixture', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, revision: 1, action: 'ACCEPT' }),
+        },
+      );
+      assert.equal(response.status, status, path);
+    }
+    assert.equal(responses, 1);
     for (const mutation of ['unrelated', 'inactive', 'denied'] as const) {
       if (mutation === 'unrelated') full.reporting = [];
       if (mutation === 'inactive') {

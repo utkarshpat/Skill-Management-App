@@ -95,8 +95,13 @@ export function CapabilityReview({
   async function save() {
     if (!data || readOnly || data.status !== 'SUBMITTED' || lock.current) return;
     const pending = rows.filter(r => r.needsReview);
-    if (pending.some(r => !decisions[r.kind + r.id]?.feedback?.trim())) {
-      setError('Please add feedback notes for every pending item before saving.');
+    if (
+      pending.some(r => {
+        const decision = decisions[r.kind + r.id];
+        return decision && decision.action !== 'APPROVE' && !decision.feedback.trim();
+      })
+    ) {
+      setError('Add feedback for each rejection or change request.');
       return;
     }
     lock.current = true;
@@ -480,12 +485,18 @@ export function CapabilityReview({
                   </div>
                   <div className="cap-feedback-input-row">
                     <label htmlFor={`fb-${key}`}>
-                      Feedback notes <span className="cert-required-mark">*</span>
+                      Feedback notes{' '}
+                      {decision.action === 'APPROVE' ? (
+                        '(optional)'
+                      ) : (
+                        <span className="cert-required-mark">*</span>
+                      )}
                     </label>
                     <textarea
                       id={`fb-${key}`}
                       rows={2}
                       disabled={busy}
+                      required={decision.action !== 'APPROVE'}
                       maxLength={2000}
                       value={decision.feedback}
                       placeholder={

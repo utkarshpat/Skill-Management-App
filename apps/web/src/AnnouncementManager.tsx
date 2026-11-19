@@ -28,6 +28,7 @@ import {
   announcementStyle,
   AnnouncementBannerContent,
   AnnouncementCard,
+  AnnouncementPoster,
   AnnouncementForm,
   PollOptions,
 } from './AnnouncementContent';
@@ -125,6 +126,7 @@ export function AnnouncementManager({
   const [note, setNote] = useState('');
   const [audienceCount, setAudienceCount] = useState<number>();
   const [previewImage, setPreviewImage] = useState<string>();
+  const previewAsset = previewImage ?? image?.url;
   const [receipt, setReceipt] = useState<{ id: string; token: string }>();
   const [previewForm, setPreviewForm] = useState(false);
   const [previewView, setPreviewView] = useState<'banner' | 'popup' | 'form'>('banner');
@@ -420,7 +422,7 @@ export function AnnouncementManager({
         setPreviewImage(value.image ? 'data:image/webp;base64,' + value.image : undefined);
         setReceipt({ id: value.id, token: value.receipt });
         setPreviewForm(false);
-        setPreviewView('form');
+        setPreviewView(definition.imagePopup ? 'popup' : 'form');
         setPage('preview');
         return;
       }
@@ -509,9 +511,9 @@ export function AnnouncementManager({
       setPreviewImage(value.image ? 'data:image/webp;base64,' + value.image : undefined);
       setReceipt({ id: value.id, token: value.receipt });
       setPreviewForm(false);
-      setPreviewView('form');
+      setPreviewView(definition.imagePopup ? 'popup' : 'form');
       setPage('preview');
-      if (data?.aiAvailable && !definition.design)
+      if (data?.aiAvailable && !definition.design && !definition.imagePopup)
         await generateDesign(prompt.trim() || initialPrompt);
     });
   const exportResponses = (entry: Pick<JournalEntry, 'id'>) =>
@@ -550,6 +552,7 @@ export function AnnouncementManager({
         reader.readAsDataURL(file);
       });
       setImage({ url, base64: url.split(',')[1] });
+      if (!image) update({ imagePopup: true, popup: true });
     });
   };
   const field = (key: string, changes: Partial<AnswerField>) =>
@@ -962,7 +965,7 @@ export function AnnouncementManager({
                     disabled={busy}
                     onClick={() => void continueToDesign()}
                   >
-                    Continue to AI design
+                    {definition.imagePopup ? 'Continue to preview' : 'Continue to AI design'}
                   </button>
                 ) : (
                   <>
@@ -1329,11 +1332,11 @@ export function AnnouncementManager({
                 </fieldset>
               </details>
               <details className="announcement-optional">
-                <summary>Banner image (optional)</summary>
+                <summary>Announcement image (optional)</summary>
                 <fieldset disabled={busy}>
-                  <legend className="sr-only">Banner image</legend>
+                  <legend className="sr-only">Announcement image</legend>
                   <label>
-                    Banner image
+                    Upload image
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
@@ -1347,6 +1350,19 @@ export function AnnouncementManager({
                         src={image.url}
                         alt={definition.imageAlt}
                       />
+                      <label className="announcement-check">
+                        <input
+                          type="checkbox"
+                          checked={definition.imagePopup === true}
+                          onChange={event =>
+                            update({
+                              imagePopup: event.target.checked,
+                              ...(event.target.checked ? { popup: true } : {}),
+                            })
+                          }
+                        />{' '}
+                        Show image before the form or poll
+                      </label>
                       <label>
                         Image description
                         <input
@@ -1356,26 +1372,31 @@ export function AnnouncementManager({
                           onChange={event => update({ imageAlt: event.target.value })}
                         />
                       </label>
-                      <small className="announcement-note">
-                        AI uses your description for placement. It does not inspect the image
-                        contents.
-                      </small>
-                      <label>
-                        Image crop focus
-                        <select
-                          value={definition.imagePosition}
-                          onChange={event =>
-                            update({
-                              imagePosition: event.target.value as Definition['imagePosition'],
-                            })
-                          }
-                        >
-                          <option value="left">Left</option>
-                          <option value="center">Centre</option>
-                          <option value="right">Right</option>
-                        </select>
-                      </label>
-                      <button className="secondary-button" onClick={() => setImage(undefined)}>
+                      {!definition.imagePopup && (
+                        <label>
+                          Image crop focus
+                          <select
+                            value={definition.imagePosition}
+                            onChange={event =>
+                              update({
+                                imagePosition: event.target.value as Definition['imagePosition'],
+                              })
+                            }
+                          >
+                            <option value="left">Left</option>
+                            <option value="center">Centre</option>
+                            <option value="right">Right</option>
+                          </select>
+                        </label>
+                      )}
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => {
+                          setImage(undefined);
+                          update({ imagePopup: false });
+                        }}
+                      >
                         Remove image
                       </button>
                     </>
@@ -1469,11 +1490,12 @@ export function AnnouncementManager({
                           <AnnouncementBannerContent
                             definition={definition}
                             onDismiss={() => setPreviewBannerDismissed(true)}
-                            image={previewImage ?? image?.url}
                             action={
                               <button
                                 className="admin-primary"
-                                onClick={() => setPreviewView('form')}
+                                onClick={() =>
+                                  setPreviewView(definition.imagePopup ? 'popup' : 'form')
+                                }
                               >
                                 {definition.kind === 'POLL' ? 'Open poll' : definition.cta}
                               </button>
@@ -1503,41 +1525,49 @@ export function AnnouncementManager({
                       }
                     >
                       <div className="announcement-preview-window">
-                        <AnnouncementCard
-                          definition={definition}
-                          person={sample}
-                          onSubmit={() =>
-                            setNote('Preview response accepted. Nothing was submitted.')
-                          }
-                          onVote={() => setNote('Preview vote accepted. Nothing was submitted.')}
-                          onOpen={() => setPreviewForm(true)}
-                          image={previewImage ?? image?.url}
-                          action={
-                            definition.kind === 'POLL' ? (
-                              <PollOptions
-                                options={definition.options}
-                                onVote={() =>
-                                  setNote('Preview vote accepted. Nothing was submitted.')
-                                }
-                              />
-                            ) : previewView === 'form' || previewForm ? (
-                              <AnnouncementForm
-                                definition={definition}
-                                person={sample}
-                                onSubmit={() =>
-                                  setNote('Preview response accepted. Nothing was submitted.')
-                                }
-                              />
-                            ) : (
-                              <button
-                                className="admin-primary"
-                                onClick={() => setPreviewForm(true)}
-                              >
-                                {definition.cta}
-                              </button>
-                            )
-                          }
-                        />
+                        {previewView === 'popup' && definition.imagePopup && previewAsset ? (
+                          <AnnouncementPoster
+                            definition={definition}
+                            image={previewAsset}
+                            onOpen={() => setPreviewView('form')}
+                          />
+                        ) : (
+                          <AnnouncementCard
+                            definition={definition}
+                            person={sample}
+                            onSubmit={() =>
+                              setNote('Preview response accepted. Nothing was submitted.')
+                            }
+                            onVote={() => setNote('Preview vote accepted. Nothing was submitted.')}
+                            onOpen={() => setPreviewForm(true)}
+                            image={definition.imagePopup ? undefined : previewAsset}
+                            action={
+                              definition.kind === 'POLL' ? (
+                                <PollOptions
+                                  options={definition.options}
+                                  onVote={() =>
+                                    setNote('Preview vote accepted. Nothing was submitted.')
+                                  }
+                                />
+                              ) : previewView === 'form' || previewForm ? (
+                                <AnnouncementForm
+                                  definition={definition}
+                                  person={sample}
+                                  onSubmit={() =>
+                                    setNote('Preview response accepted. Nothing was submitted.')
+                                  }
+                                />
+                              ) : (
+                                <button
+                                  className="admin-primary"
+                                  onClick={() => setPreviewForm(true)}
+                                >
+                                  {definition.cta}
+                                </button>
+                              )
+                            }
+                          />
+                        )}
                       </div>
                     </div>
                   )}
