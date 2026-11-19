@@ -528,8 +528,13 @@ export function AssistantWidget() {
         </span>
         <span className="assistant-mascot" aria-hidden="true">
           <img className="assistant-mascot-body" src="/brand/assistant-robot.webp" alt="" />
-          <img className="assistant-mascot-head" src="/brand/assistant-robot.webp" alt="" />
-          <img className="assistant-mascot-brand" src="/brand/skill-genie-logo.png" alt="" />
+          <span className="assistant-mascot-head">
+            <img className="assistant-mascot-shell" src="/brand/assistant-robot.webp" alt="" />
+            <img className="assistant-mascot-face" src="/brand/assistant-robot.webp" alt="" />
+          </span>
+          <span className="assistant-mascot-brand">
+            <img src="/brand/skill-genie-logo.png" alt="" />
+          </span>
           <img className="assistant-mascot-hand" src="/brand/assistant-robot-hand.webp" alt="" />
         </span>
         {(unread || busy) && (

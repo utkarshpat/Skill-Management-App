@@ -1127,6 +1127,10 @@ html[data-theme] .assistant-mascot img {
   bottom: 0;
   width: var(--mascot-width);
 }
+.assistant-mascot-body,
+.assistant-mascot-shell {
+  filter: hue-rotate(145deg);
+}
 /* Two crops of the same sprite overlap slightly beneath the head along the neck. */
 .assistant-mascot-body {
   clip-path: polygon(
@@ -1143,6 +1147,8 @@ html[data-theme] .assistant-mascot img {
   );
 }
 .assistant-mascot-head {
+  position: absolute;
+  aspect-ratio: 208 / 245;
   clip-path: polygon(
     0 0,
     100% 0,
@@ -1158,19 +1164,37 @@ html[data-theme] .assistant-mascot img {
   transform-origin: 64% 70%;
   animation: assistant-head-tilt var(--greeting-cycle) ease-in-out 0.2s infinite both;
 }
+.assistant-mascot-head img {
+  inset: 0;
+  width: 100%;
+}
+.assistant-mascot-face {
+  /* Keep the original eyes and smile inside the recolored helmet. */
+  mask-image: radial-gradient(ellipse 26% 20% at 58% 47%, black 77%, transparent 100%);
+}
 .assistant-mascot-brand {
+  position: absolute;
   right: calc(var(--mascot-width) * 0.5);
   bottom: calc(var(--mascot-width) * 0.155);
-  width: calc(var(--mascot-width) * 0.28);
+  width: calc(var(--mascot-width) * 0.385);
+  aspect-ratio: 1.68;
+  overflow: hidden;
   mix-blend-mode: multiply;
   transform: translate(50%, 50%);
+}
+.assistant-mascot-brand img {
+  /* Frame the emblem at badge scale, above the wordmark and tagline. */
+  width: 122%;
+  max-width: none;
+  left: -11%;
+  top: -6%;
 }
 .assistant-mascot-hand {
   right: calc(var(--mascot-width) * 0.736);
   bottom: calc(var(--mascot-width) * 0.486);
   width: calc(var(--mascot-width) * 0.36);
   z-index: 1;
-  /* The origin sits where the glove cuff meets the blue wrist joint. */
+  /* The origin sits where the glove cuff meets the wrist joint. */
   transform-origin: 48% 93%;
   animation: assistant-wave var(--greeting-cycle) ease-in-out 0.2s infinite both;
 }

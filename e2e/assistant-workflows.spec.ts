@@ -3,6 +3,16 @@ import { workflowChatShortcut } from '../apps/api/src/modules/ai/workflow-chat-p
 import type { Page } from '@playwright/test';
 async function assistant(page: Page, role: 'employee' | 'admin' = 'employee') {
   await fixture(page, { role, realistic: true });
+  await page.route('**/api/announcements/feed*', route =>
+    route.fulfill({
+      json: { items: [], canPublish: false, person: { name: 'Test Employee', employeeId: '100' } },
+    }),
+  );
+  if (role === 'admin') {
+    await page.route('**/api/access/organization', route =>
+      route.fulfill({ json: { nodes: [], assignments: [] } }),
+    );
+  }
   await page.route('**/api/assistant/navigation', r =>
     r.fulfill({
       json: {
@@ -70,9 +80,10 @@ test('assistant mascot loads its artwork and respects reduced motion', async ({
   await expect(greeting).toBeVisible();
   await expect(body).toHaveCSS('width', '104px');
   await expect(greeting).toHaveCSS('animation-name', 'assistant-type-greeting');
-  await expect(launcher.locator('img')).toHaveCount(4);
+  await expect(launcher.locator('img')).toHaveCount(5);
   const brand = launcher.locator('.assistant-mascot-brand');
-  await expect(brand).toHaveAttribute('src', '/brand/skill-genie-logo.png');
+  await expect(brand.locator('img')).toHaveAttribute('src', '/brand/skill-genie-logo.png');
+  await expect(brand).toHaveCSS('overflow', 'hidden');
   await expect(brand).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await expect
     .poll(() =>
@@ -130,7 +141,7 @@ test('assistant mascot loads its artwork and respects reduced motion', async ({
     'Hello, I’m Skill Genie. How can I help you?',
   );
 });
-test('blue mascot stays transparent in both admin themes', async ({ page }, info) => {
+test('red mascot stays transparent in both admin themes', async ({ page }, info) => {
   await assistant(page, 'admin');
   await page.goto('/access?view=assignments');
   const launcher = page.getByRole('button', { name: 'Open AI assistant' });
@@ -144,8 +155,14 @@ test('blue mascot stays transparent in both admin themes', async ({ page }, info
       await expect(image).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
       await expect(image).toHaveCSS('padding', '0px');
     }
-    await expect(launcher.locator('.assistant-mascot-body')).toHaveCSS('filter', 'none');
-    await expect(launcher.locator('.assistant-mascot-brand')).toHaveCSS('filter', 'none');
+    for (const layer of ['body', 'shell']) {
+      await expect(launcher.locator('.assistant-mascot-' + layer)).toHaveCSS(
+        'filter',
+        'hue-rotate(145deg)',
+      );
+    }
+    await expect(launcher.locator('.assistant-mascot-face')).toHaveCSS('filter', 'none');
+    await expect(launcher.locator('.assistant-mascot-brand img')).toHaveCSS('filter', 'none');
     await page.screenshot({
       path: info.outputPath('mascot-' + theme + '.png'),
       clip: { x: viewport.width - 305, y: viewport.height - 170, width: 305, height: 170 },
