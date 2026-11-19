@@ -60,6 +60,12 @@ steps:
   - script: npm run coverage:check -- --report-only
     displayName: Report coverage against the 90% target
 
+  - script: >-
+      python scripts/normalize-node-junit.py artifacts/test-results/architecture.xml
+      artifacts/coverage/current/api/junit.xml artifacts/coverage/current/web/junit.xml
+    displayName: Normalize Node JUnit reports for Azure DevOps
+    condition: succeededOrFailed()
+
   - task: PublishTestResults@2
     displayName: Publish architecture, API, web and Playwright test results
     condition: succeededOrFailed()
@@ -69,6 +75,8 @@ steps:
         artifacts/test-results/architecture.xml
         artifacts/coverage/current/*/junit.xml
         artifacts/e2e/junit.xml
+      mergeTestResults: true
+      testRunTitle: Skill Genie regression tests
       failTaskOnFailedTests: true
       failTaskOnFailureToPublishResults: true
       failTaskOnMissingResultsFile: true
