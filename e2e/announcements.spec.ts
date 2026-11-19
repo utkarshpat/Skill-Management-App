@@ -155,7 +155,11 @@ test('employee opens a scoped form from the banner and submits only custom field
   await dialog.getByRole('button', { name: 'Register' }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByText('Response submitted.', { exact: true })).toBeVisible();
-  expect(response).toEqual({ revision: 1, answers: { batch: 'Afternoon', confirm: true } });
+  expect(response).toEqual({
+    revision: 1,
+    responseRevision: 0,
+    answers: { batch: 'Afternoon', confirm: true },
+  });
 });
 
 test('publisher refreshes collected responses and downloads the authorized export', async ({

@@ -207,8 +207,8 @@ test('live sandbox buttons use authenticated app submission and retain values th
   await form.getByRole('button', { name: 'Register now' }).click();
   await expect(dialog).toBeHidden();
   expect(sent).toEqual([
-    { revision: 2, answers: { batch: 'Evening', confirm: true } },
-    { revision: 2, answers: { batch: 'Evening', confirm: true } },
+    { revision: 2, responseRevision: 0, answers: { batch: 'Evening', confirm: true } },
+    { revision: 2, responseRevision: 0, answers: { batch: 'Evening', confirm: true } },
   ]);
 });
 
@@ -263,5 +263,5 @@ test('sandbox poll IDs map only to configured options and recorded votes become 
   const frame = dialog.frameLocator('iframe.announcement-sandbox');
   await frame.getByRole('button', { name: 'SQL', exact: true }).click();
   await expect(dialog).toBeHidden();
-  expect(sent).toEqual([{ revision: 1, answers: { vote: 'SQL' } }]);
+  expect(sent).toEqual([{ revision: 1, responseRevision: 0, answers: { vote: 'SQL' } }]);
 });

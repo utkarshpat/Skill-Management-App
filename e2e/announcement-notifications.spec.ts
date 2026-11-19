@@ -66,6 +66,7 @@ for (const kind of ['FORM', 'POLL']) {
         submissions++;
         expect(route.request().postDataJSON()).toEqual({
           revision: 1,
+          responseRevision: 0,
           answers: kind === 'FORM' ? { batch: 'Afternoon' } : { vote: 'Afternoon' },
         });
         answered = true;
