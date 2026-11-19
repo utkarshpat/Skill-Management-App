@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { readFileSync, readdirSync } from 'node:fs';
-import { normalize, join, resolve } from 'node:path';
+import { dirname, normalize, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const { mergeScriptCovs } = require('@bcoe/v8-coverage');
@@ -61,6 +61,13 @@ export async function remapV8Coverage(reports, files) {
     await converter.load();
     converter.applyCoverage(mergeScriptCovs(scripts).functions);
     for (const [source, coverage] of Object.entries(converter.toIstanbul())) {
+      // esbuild gives the injected import.meta shim its own virtual source on Linux.
+      const importMetaShim = '<define:import.meta>';
+      if (
+        cached?.data.sources.includes(importMetaShim) &&
+        normalize(source) === resolve(dirname(path), cached.data.sourceRoot ?? '', importMetaShim)
+      )
+        continue;
       if (!inventory.has(normalize(source)))
         throw Error('Source map escaped production inventory: ' + source);
       map.merge({ [source]: coverage });

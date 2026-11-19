@@ -81,3 +81,45 @@ test('different generated formats remap independently before merging, regardless
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('esbuild import.meta shim does not become a production coverage entry', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'coverage-remap-'));
+  try {
+    const file = join(dir, 'source.ts');
+    const source = 'export const flag = import.meta.env.TEST;\n';
+    writeFileSync(file, source);
+    const { code, map } = transformSync(source, {
+      loader: 'ts',
+      format: 'cjs',
+      sourcefile: 'source.ts',
+      sourcemap: 'external',
+      define: { 'import.meta': '{}' },
+    });
+    const url = pathToFileURL(file).href;
+    const data = JSON.parse(map);
+    assert.ok(data.sources.includes('<define:import.meta>'));
+    const report = {
+      result: [
+        {
+          scriptId: '1',
+          url,
+          functions: [
+            {
+              functionName: '',
+              ranges: [{ startOffset: 0, endOffset: code.length, count: 1 }],
+              isBlockCoverage: true,
+            },
+          ],
+        },
+      ],
+      'source-map-cache': {
+        [url]: { data, lineLengths: code.split('\n').map(line => line.length) },
+      },
+    };
+    const coverage = await remapV8Coverage([report], [file]);
+    assert.deepEqual(coverage.files(), [file]);
+    assert.equal(coverage.fileCoverageFor(file).toSummary().lines.pct, 100);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
