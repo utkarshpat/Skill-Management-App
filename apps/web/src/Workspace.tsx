@@ -266,7 +266,7 @@ export function Workspace({
       <Link className="admin-brand" to="/workspace">
         <img src="/brand/sopra-steria.svg" alt="Sopra Steria" />
       </Link>
-      <p className="nav-caption">SKILL GENIE</p>
+      <p className="nav-caption">SKILL MANAGEMENT APP</p>
       <SidebarNavigation
         actorId={state?.person.id}
         label="Personal workspace sections"

@@ -439,7 +439,7 @@ export function AccessAdmin({
       <Link className="admin-brand" to="/access">
         <img src="/brand/sopra-steria.svg" alt="Sopra Steria" />
       </Link>
-      <p className="nav-caption">SKILL GENIE</p>
+      <p className="nav-caption">SKILL MANAGEMENT APP</p>
       <SidebarNavigation
         actorId={workspaceContext?.person.id ?? state?.currentPerson?.id}
         label="Administration sections"

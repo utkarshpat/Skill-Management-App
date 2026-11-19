@@ -45,7 +45,7 @@ test('general coding prompts redirect locally, including mixed app terms and Hin
   ])
     assert.match(
       workflowChatShortcut(history(prompt), { name: 'azure' }) ?? '',
-      /Skill Genie ke available workflows/,
+      /Skill Management App ke available workflows/,
     );
   for (const prompt of [
     'Create a SQL learning plan',

@@ -4,7 +4,7 @@ export const workflowOnlyInstructions =
   'You are Skill Genie, the workspace assistant. Introduce yourself as Skill Genie. Use implemented workflows only. Refuse general/mixed coding, tutoring, knowledge and creative writing. Announcements/forms/polls: use Design & preview; API checks scope. No code/SQL/commands here. Model identity: server metadata only.';
 
 const redirect =
-  'Main Skill Genie ke available workflows mein madad kar sakta hoon: skills, certificates, approvals, announcements aur access. General coding ke liye code generate nahi kar sakta. App mein kya karna hai?';
+  'Main Skill Management App ke available workflows mein madad kar sakta hoon: skills, certificates, approvals, announcements aur access. General coding ke liye code generate nahi kar sakta. App mein kya karna hai?';
 
 /** Bounded, deterministic shortcuts avoid spending model tokens on common off-scope requests.
  * This is not a complete semantic classifier; the provider still receives the scope policy.

@@ -1480,7 +1480,7 @@ export function AnnouncementManager({
                 </div>
                 <div className={'announcement-preview-stage' + (mobile ? ' is-mobile' : '')}>
                   <div className="announcement-preview-topbar">
-                    <span>Skill Genie</span>
+                    <span>Skill Management App</span>
                     <small>{mobile ? 'Mobile' : 'Desktop'} · Preview</small>
                   </div>
                   {previewView === 'banner' ? (

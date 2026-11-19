@@ -350,7 +350,7 @@ export function KnowledgeTransfer() {
               <em>Own the next step.</em>
             </h1>
             <p>
-              The architecture, decisions and workflows behind Skill Genie—connected to the code
+              The architecture, decisions and workflows behind the Skill Management App, linked to the code
               that actually runs.
             </p>
             <div className="kt-hero-links">

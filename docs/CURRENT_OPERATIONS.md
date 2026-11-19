@@ -1,28 +1,27 @@
-# Current company operations — 16 November 2026
+# Current company operations — 20 November 2026
 
 This is the current operational entry point. It supersedes old demo/deferred-SSO instructions for this company environment. Historical reports retain their original dates and evidence. Documentation is not enterprise go-live certification.
 
-## Recorded status
+## Release status
 
-Final integration follow-up: [final merge audit](FINAL_MERGE_AUDIT_2026-11-05.md) records the user-authorized main integration, person-first access/review/request corrections and required schema versions 088–090. The user explicitly deferred the 90% coverage target until after this release; CI reports the existing target without blocking this integration. The older checkpoint below retains its original test counts. Company migration installation/backfill and hosted verification remain operator steps; no company SQL changes or live deployment were performed during this audit. Code-first remains on its separate branch.
+| Area | Evidence as of 19 November 2026 |
+| --- | --- |
+| Hosted development | Release `13508c2` is live on Azure Linux App Service `SSSkillmgmtAppWebAppDev` in UK South. The public landing page returns HTTP 200, the frontend bundle matches the release build, and `/api/health` returns `ok`. |
+| SQL | The operator reported applying migration `115` to `SS-SkillMgmtApp-SQL-Dev`. Fresh install, repeat run and recovery from partial application passed against local SQL Express. |
+| Code and delivery | Azure Repos and GitHub carried the same release on `production`. Pipeline configuration commit `d8928a4` reached both `main` branches. App Service currently deploys from Azure Repos `production`. The compiled ZIP deployment job in Azure Pipelines awaits a service connection and App Service cutover. |
+| Verification | The application regression run passed 1,197 automated tests, including 504 API and 683 web tests plus 10 tooling checks. A focused 26-case browser run covered announcements and approvals. A subsequent 6-case desktop/mobile run covered organization canvas and People & Access. Hosted role-based acceptance is pending. |
+| Identity and AI | The operator reported company sign-in, SSO, sign-out and Azure AI working. Confirm current access with representative employee, manager, Business Analytics and Admin profiles before broad rollout. |
+| Files and handover | Private files use SQL storage in the company development configuration. Blob support remains available. The authenticated knowledge-transfer workspace remains enabled. |
 
-Local follow-up (not hosted acceptance): hierarchy e37df62 is merged. Portfolio Business Analytics scope/filter increment 089 is implemented and passed rollback SQL checks on a newly created local SQL Express audit database; company SQL remains at the last recorded version until an operator verifies otherwise. The full current unit run passes **864 checks** (8 tooling, 444 API, 412 web), with typechecks/build/docs verification passing. Recovery/practice malformed-response fixes and strict current-source coverage provenance checks are included locally. The separate 90% coverage release gate remains incomplete; older percentages below are historical, not approval to deploy. See [Portfolio scopes](PORTFOLIO_SCOPES_2026-11-05.md) and [coverage status](TEST_COVERAGE_2026-11-05.md).
+The 90% coverage target remains report-only in the Azure DevOps pipeline. See the [operating workflow](SKILL_MANAGEMENT_WORKFLOW.md), [deployment runbook](AZURE_DEVOPS.md), [hosted development app](https://ssskillmgmtappwebappdev-dugxhfchcbhsc3gv.uksouth-01.azurewebsites.net/) and [release commit](https://dev.azure.com/soprasteria/Skill%20Management%20App/_git/Skill%20Management%20App/commit/13508c207e2ab79cbc707baf1d2b590e74bf8519).
 
-| Area         | Status / evidence                                                                                                                                                                                              |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hosting      | Azure Linux App Service `SSSkillmgmtAppWebAppDev`; company sign-in and verified-identity screen observed in a user screenshot. Exact running source hash not independently measured.                           |
-| SQL          | `ssskillmgmtappsqlsrvdev.database.windows.net` / `SS-SkillMgmtApp-SQL-Dev`, restricted managed-identity runtime. Supplied inventory confirmed migration 087; 065 is absent.                                    |
-| Cutover      | Screenshot confirmed `COMMITTED`, revision 76, 20 inactive real profiles, two projects and 19 manager links. Reviewed demo/test runtime data retired; historical audit/grants archived. Do not replay cleanup. |
-| Provisioning | All 20 roster emails exactly matched unique Entra export UPNs/object IDs. User reports completing bulk binding; final result/revision and individual employee access are not independently verified.           |
-| SSO          | Backend OIDC authorization-code + PKCE, verified ID token, `@soprasteria.com` restriction, opaque HttpOnly app session, silent SSO attempt and interactive fallback are implemented. Operator reports hosted login, automatic SSO and logout working in normal Edge. Exact deployed source hash and each employee's effective access remain unverified independently. |
-| AI           | Azure `gpt-6-luna`, Responses API, managed identity, low reasoning. User reports hosted AI/associated workflows working. Gemini runtime/configuration removed.                                                 |
-| Files        | `STORAGE_IS_SQL=true`, per-file registry with retained Blob adapter. Four reviewed SQL test files included in cutover. Ongoing retention and recovery drills remain separate.                                  |
-| KT           | Keep `KNOWLEDGE_TRANSFER_ENABLED=true` by explicit user instruction. Authenticated, source-generated guide; no employee record reads or business execution tools.                                              |
-| Verification | Latest runtime: 630 checks (7 architecture/packaging, 365 API, 258 web), typecheck and builds passed. Operational SQL passed Microsoft T-SQL 160 syntax checks; no agent company SQL execution is claimed.     |
+## Historical cutover checkpoint
+
+The earlier company inventory confirmed migration `087`. The original cutover reported 20 restored roster profiles, two projects and 19 reporting links at revision 76, with archived historical audit records and grants. The operator reported completing the reviewed identity binding. Use these figures as historical setup evidence. Current active roster and adoption reporting require a fresh measurement.
 
 ## Identity and access
 
-Latest test/release follow-up: see [complete-inventory coverage](TEST_COVERAGE_2026-11-05.md). UI review commits are integrated; 22 local synthetic Chromium desktop/mobile E2E cases and 8 nonmutating hosted HTTP checks passed. Full-source frontend line coverage increased from 20.57% to 33.07%. Existing isolated SQL connectivity failed, leaving 39 SQL-backed suites blocked. This does not supersede the real-company identity/access acceptance boundary above. KT stays enabled.
+Historical coverage follow-up: see [complete-inventory coverage](TEST_COVERAGE_2026-11-05.md). UI review commits are integrated; 22 local synthetic Chromium desktop/mobile E2E cases and 8 nonmutating hosted HTTP checks passed. Full-source frontend line coverage increased from 20.57% to 33.07%. Existing isolated SQL connectivity failed, leaving 39 SQL-backed suites blocked. This does not supersede the real-company identity/access acceptance boundary above. KT stays enabled.
 
 By explicit user choice, the existing **GatePass India** registration is temporarily shared in tenant `8b87af7d-8647-4dc7-8df4-5f69a2011bb5`; the Web and API client ID settings both currently use `431d86d8-4a51-4dda-a821-8d0d66a83eb7`. Current Skill Management hosted authentication is backend OIDC, not MSAL SPA or SAML. It uses Web redirects `/api/auth/callback` and `/api/auth/signed-out`, `ENTRA_WEB_CLIENT_SECRET` server-side, `PUBLIC_APP_ORIGIN`, and `SERVE_WEB=true`. Preserve other GatePass URLs and permissions; do not remove its existing SPA redirect or alter shared settings without the registration owner's review.
 
@@ -39,7 +38,7 @@ The explicit initial Admin has no manager; the designated Manager reports to the
 - `HOSTED_DEMO_LOGIN=false`, `DEV_DIRECT_LOGIN=false`; remove old demo access-code/session-secret settings. The server rejects Entra combined with temporary demo login.
 - Keep existing account, restricted managed-identity SQL/AI, SQL storage and same-origin hosting settings. Merge partial settings files; do not overwrite unrelated settings.
 - Keep `KNOWLEDGE_TRANSFER_ENABLED=true`; retiring KT requires a later instruction.
-- Deploy API/web together using the allowlisted source ZIP and remote build. A package hash is not independent evidence of deployed runtime identity.
+- Deploy the API and frontend together through the current Azure Repos production source. Use the [deployment runbook](AZURE_DEVOPS.md) for the planned switch to Azure Pipelines.
 
 ## Application logs
 

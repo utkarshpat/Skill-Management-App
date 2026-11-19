@@ -1,6 +1,6 @@
-# Cognitive Intelligence Lab — Project Handover
+# Skill Management App handover
 
-Version: 2026-11-16. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
+Version: 2026-11-20. This is the maintained project handover. The interactive reader is `/knowledgetransfer`. Repository code and reviewed SQL migrations define implemented behavior; the approved Access Management baseline remains the policy authority. Schema and API inventories are generated from repository sources, not live database introspection. Never infer production readiness from documentation, a successful build, a role label or a schema name.
 
 ## Organization naming - 5 November 2026
 
@@ -12,13 +12,13 @@ The reporting guide is India Head -> DU Head -> Portfolio Manager/Delivery Manag
 
 **Rollout pending:** local code and an explicit preview/revision/hash-bound mapping template are supplied, not applied. Stop serving the application during migration/backfill: installing 088 before mapping intentionally invalidates old direct DU-to-client paths. Complete reviewed mapping and SQL acceptance before releasing the matching application. No live database, person-manager links or deployment were changed for this increment. See the [approved structural contract](ACCESS_MODEL_REDESIGN.md#mandatory-portfoliodivision---approved-structural-follow-up-5-november-2026) and [maintenance procedure](../database/operations/README.md#mandatory-portfoliodivision-rollout). Earlier dated rollout statements below remain historical.
 
-## Current company operations — 16 November 2026
+## Current company operations
 
-[Current operations](CURRENT_OPERATIONS.md) and [SSO/provisioning](REAL_USER_SSO.md) supersede dated demo/deferred instructions below. Company App Service and restricted managed-identity SQL are configured; supplied inventory confirmed migration 087. The user screenshot confirmed the dummy-data cutover at revision 76: 20 real profiles, two projects, 19 reporting links and archived historical audit/grants. Microsoft login's verified-identity screen was observed. Twenty unique exact roster-email / directory-UPN mappings were prepared; the user reports bulk binding complete, with final commit output/revision and individual access acceptance still unverified independently.
+Release `13508c2` is live on the company development App Service. The frontend bundle matched the release build and the public health check returned `ok`. The operator reported applying migration `115`. The full application regression run passed 1,197 tests. Hosted checks with representative employee, manager, Business Analytics and Admin accounts remain part of the next acceptance pass.
 
-Azure GPT-6 Luna Responses/managed identity is user-reported working. Demo login is disabled, obsolete demo secrets are retired and KT remains enabled by explicit instruction. Current company authentication is backend OIDC authorization-code + PKCE: validated ID token, `@soprasteria.com` restriction, opaque HttpOnly app session, and silent SSO with interactive fallback. Sign-out revokes the local session and starts Microsoft OIDC logout; this is not SAML SLO, and no Entra front-channel logout handler exists. The operator reports login, automatic SSO and logout working in normal Edge. The server-only `ENTRA_WEB_CLIENT_SECRET` was configured with a 24-month expiry; track its actual expiry and rotate ahead of it. Browser registration IDs/mode come from `/api/auth/config`; no VITE Entra settings are consumed. The shared GatePass India registration is an explicit temporary choice. No automatic email linking, live directory sync or in-app binding approval is implemented. The two-project view/export-only capability-lead grant remains pending.
+The active delivery path deploys Azure Repos `production` through App Service Deployment Center. The Azure Pipelines runtime ZIP and deploy job are prepared on `main`. The service connection and deployment source cutover are pending. See [current operations](CURRENT_OPERATIONS.md) and the [Azure DevOps runbook](AZURE_DEVOPS.md).
 
-Latest runtime checks: 630 (7 architecture/packaging, 365 API, 258 web), typecheck and builds passed. Operational SQL passed T-SQL 160 parsing; company SQL mutations were performed by the operator, not the agent. Setup audit tables are operations-only and are absent from the migration-generated schema explorer. Historical reports below preserve their original evidence; personal/demo deployment URLs and deferred statements there do not describe current company status.
+Company sign-in uses backend Microsoft OIDC, verified tenant/object identity, an active employee binding and an opaque HttpOnly session. Managed identities provide Azure SQL and AI runtime access. The operator reported completing SSO, sign-out and roster binding. The earlier cutover figures are historical setup evidence. See [SSO and provisioning](REAL_USER_SSO.md) and the [operating workflow](SKILL_MANAGEMENT_WORKFLOW.md).
 
 ## Catalogue forms and common criteria - 19 October 2026 (historical)
 
@@ -211,12 +211,12 @@ A detected SQL monthly-quota pause produces a safe 503 response where propagated
 
 ## Product & Business Requirements
 
-Cognitive Intelligence Lab is a workforce capability and personal learning platform. Its purpose is to connect an employee's recorded skills, current manager's review, learning goals and requests for help without conflating self-assessment, practice results and verified proficiency.
+The Skill Management App connects employee skills and certification records to governed approvals and authorized analytics. Skill Genie is the in-app assistant. The requirements below include Learn & Grow and Requests & Incidents, which the current release reserves for phase two.
 
 | Requirement                 | Implemented behavior                                                                                                     | Acceptance rule                                                                            |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | BR-01 Personal capability   | Published-skill selection, proficiency criteria, experience, projects, evidence references and private compressed images | Own drafts stay private; submitted claims follow current assigned-manager checks           |
-| BR-02 Review governance     | Review queue, decision feedback, direct-report capability profiles and analytics                                         | No self-review; current active manager and exact reviewer assignment required              |
+| BR-02 Review governance     | Review queue, decision feedback, direct-report capability profiles and analytics                                         | Current assigned manager or eligible scoped reviewer; no self-approval              |
 | BR-03 Personal development  | Plans, daily tasks, study sessions, practice, logs, backlog and recovery                                                 | Opening a task, saving study notes or passing practice never completes or verifies a skill |
 | BR-04 Recommendations       | Scoped manager recommendations and employee Accept / Decline / Discuss                                                   | Acceptance creates a reviewed personal learning plan; does not create an approved skill    |
 | BR-05 Help workflows        | Requests/incidents, named recipient search, comments, start, resolve, reassign and cancel                                | Actor must have current permission and be an authorized participant for that action        |

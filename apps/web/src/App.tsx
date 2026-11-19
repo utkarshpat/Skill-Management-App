@@ -409,10 +409,10 @@ function Welcome({
         <img src="/brand/sopra-steria.svg" alt="Sopra Steria" />
       </header>
       <main id="welcome-main" className="welcome-main" tabIndex={-1}>
-        <section className="login-introduction" aria-label="About Skill Genie">
+        <section className="login-introduction" aria-label="About Skill Management App">
           <p className="login-eyebrow">WORKFORCE INTELLIGENCE</p>
           <h2>
-            Skill Genie<span className="login-title-dot">.</span>
+            Skill Management App<span className="login-title-dot">.</span>
           </h2>
           <p className="login-tagline">
             Understand capability.
@@ -438,7 +438,7 @@ function Welcome({
         <section className="signin-card" aria-labelledby="signin-title">
           <h1 id="signin-title">
             <span className="desktop-welcome">Welcome back</span>
-            <span className="mobile-welcome">Skill Genie</span>
+            <span className="mobile-welcome">Skill Management App</span>
           </h1>
           <p className="signin-intro">Sign in to your workspace.</p>
           {sessionNotice && <p role="status">{sessionNotice}</p>}

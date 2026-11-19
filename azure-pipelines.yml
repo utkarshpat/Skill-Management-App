@@ -16,7 +16,7 @@ pool:
 
 jobs:
   - job: Build
-    displayName: Test and build Skill Genie
+    displayName: Test and build Skill Management App
     steps:
       - checkout: self
 
@@ -87,7 +87,7 @@ jobs:
             artifacts/coverage/current/*/junit.xml
             artifacts/e2e/junit.xml
           mergeTestResults: true
-          testRunTitle: Skill Genie regression tests
+          testRunTitle: Skill Management App regression tests
           failTaskOnFailedTests: true
           failTaskOnFailureToPublishResults: true
           failTaskOnMissingResultsFile: true
@@ -121,7 +121,7 @@ jobs:
         condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
         inputs:
           targetPath: '$(Build.ArtifactStagingDirectory)'
-          artifact: skill-genie-release
+          artifact: skill-management-release
 
       - ${{ if ne(parameters.appServiceConnection, 'disabled') }}:
           - bash: |
@@ -146,24 +146,24 @@ jobs:
               rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/runtime'
               includeRootFolder: false
               archiveType: zip
-              archiveFile: '$(Build.ArtifactStagingDirectory)/skill-genie-runtime.zip'
+              archiveFile: '$(Build.ArtifactStagingDirectory)/skill-management-runtime.zip'
 
           - task: PublishPipelineArtifact@1
             displayName: Publish the runtime for deployment
             condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/production'))
             inputs:
-              targetPath: '$(Build.ArtifactStagingDirectory)/skill-genie-runtime.zip'
-              artifact: skill-genie-runtime
+              targetPath: '$(Build.ArtifactStagingDirectory)/skill-management-runtime.zip'
+              artifact: skill-management-runtime
 
   - ${{ if ne(parameters.appServiceConnection, 'disabled') }}:
       - job: Deploy
-        displayName: Deploy the tested production build to Skill Genie Dev
+        displayName: Deploy the tested production build to Skill Management App Dev
         dependsOn: Build
         condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/production'), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI', 'Manual'))
         steps:
           - checkout: none
           - download: current
-            artifact: skill-genie-runtime
+            artifact: skill-management-runtime
 
           - task: AzureCLI@2
             displayName: Verify the App Service deployment source and build settings
@@ -187,17 +187,17 @@ jobs:
                 fi
 
           - task: AzureWebApp@1
-            displayName: ZIP deploy to Skill Genie Dev
+            displayName: ZIP deploy to Skill Management App Dev
             inputs:
               azureSubscription: ${{ parameters.appServiceConnection }}
               appType: webAppLinux
               appName: SSSkillmgmtAppWebAppDev
-              package: '$(Pipeline.Workspace)/skill-genie-runtime/skill-genie-runtime.zip'
+              package: '$(Pipeline.Workspace)/skill-management-runtime/skill-management-runtime.zip'
 
           - bash: |
               set -euo pipefail
               url=https://ssskillmgmtappwebappdev-dugxhfchcbhsc3gv.uksouth-01.azurewebsites.net
-              archive="$(Pipeline.Workspace)/skill-genie-runtime/skill-genie-runtime.zip"
+              archive="$(Pipeline.Workspace)/skill-management-runtime/skill-management-runtime.zip"
               expected=$(unzip -p "$archive" apps/web/dist/index.html | grep -oE '/assets/index-[^"[:space:]]+\.js')
               for attempt in {1..18}; do
                 if landing=$(curl --fail --silent --show-error --max-time 10 "$url/?release=$BUILD_SOURCEVERSION") &&

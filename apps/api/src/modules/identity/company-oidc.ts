@@ -103,8 +103,8 @@ export function registerCompanyCallback(
       .type('text/plain')
       .send(
         req.query.signin
-          ? 'Sign-in could not finish. Return to Skill Genie and try again.'
-          : 'Return to your original Skill Genie tab and select Resume workspace.',
+          ? 'Sign-in could not finish. Return to the Skill Management App and try again.'
+          : 'Return to your original Skill Management App tab and select Resume workspace.',
       );
   });
 

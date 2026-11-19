@@ -898,7 +898,7 @@ export function businessReportHtml(
 
   <!-- Footer -->
   <footer class="report-footer">
-    <p>Skill Genie · Workforce Capability &amp; Access Governance Platform</p>
+    <p>Skill Management App</p>
     <p style="margin-top:4px;">Confidential · Self-Contained Offline Export · Generated strictly from execution-time authorized database aggregates</p>
   </footer>
 

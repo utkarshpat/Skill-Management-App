@@ -1,18 +1,16 @@
-# Cognitive Intelligence Lab
+# Skill Management App
 
-Permission-driven workforce capability and learning platform. React/TypeScript + Vite frontend, modular Express API and restricted Azure SQL procedures. Node 24; dependencies pinned in `package-lock.json`.
+Workforce skills, certifications and approvals on React, TypeScript, Express and Azure SQL. **Skill Genie** is the AI assistant within the application. Node 24 and the lockfile define the development runtime.
 
-## Current company setup — 5 November 2026
+## Current company release
 
-Read [current operations](docs/CURRENT_OPERATIONS.md) first. Company Azure hosting uses restricted managed-identity SQL and Azure GPT-6 Luna. The dummy-data cutover was confirmed committed: 20 real profiles, two projects and 19 manager links. Microsoft sign-in/verified identity was observed; the user reports completing reviewed bulk identity binding. Final bulk outcome and Admin/Manager/employee workspace acceptance remain unverified independently. Keep both demo-login flags false and Knowledge Transfer enabled. The capability-lead restricted view/export grant remains pending.
-
-Latest runtime validation: 630 checks (7 architecture/packaging, 365 API, 258 web), typecheck and builds passed. [SSO/bulk provisioning](docs/REAL_USER_SSO.md) replaces individual SQL onboarding for the 20-user roster. No automatic runtime email linking or HR synchronization is implemented.
+Release `13508c2` was verified on the company development App Service on 19 November 2026. The operator reported applying SQL migration `115`. The deployment path currently uses Azure Repos `production` and App Service Deployment Center. Azure Pipelines direct deployment awaits an authorized Azure service connection and cutover. See [current operations](docs/CURRENT_OPERATIONS.md), the [deployment runbook](docs/AZURE_DEVOPS.md) and the [leadership and pilot workflow](docs/SKILL_MANAGEMENT_WORKFLOW.md).
 
 ## Historical release acceptance — 15 October 2026
 
 Runtime `e0fa9a3` is deployed on the temporary hosted demo. Local verification: 549 tests, typecheck and API/web build passed. Production acceptance: 73 lifecycle checks, four live AI turns and four demo-account access checks, plus employee/manager browser acceptance. See the [exact E2E coverage and limitations](docs/PRODUCTION_E2E_2026-10-15.md); this is not enterprise go-live sign-off.
 
-Skills and certificates use one intake/review flow. Renewal replaces the visible current credential only after approval while retaining history. Analytics and conversational Find people use canonical server-enforced scope; catalogue amendments and People & Access administration are separate workspaces. Skill evidence supports PDF/images up to 10 MB; certificates retain a 5 MB limit. Retention is dry-run only. For current company hosting/SSO status see Current company setup above; directory synchronization, scheduler activation and recovery drills remain outstanding.
+Skills and certificates use one intake/review flow. Renewal replaces the visible current credential only after approval while retaining history. Analytics and conversational Find people use canonical server-enforced scope; catalogue amendments and People & Access administration are separate workspaces. Skill evidence supports PDF/images up to 10 MB; certificates retain a 5 MB limit. Retention is dry-run only. For current company hosting/SSO status see Current company release above; directory synchronization, scheduler activation and recovery drills remain outstanding.
 
 The [documentation index](docs/README.md) identifies current references versus dated audit records. `/knowledgetransfer` is generated from the maintained handover, approved access baseline and runbooks; regenerate it with `npm run docs:generate` after edits.
 

@@ -4,7 +4,7 @@ Current rollout note — 16 November 2026: [company operations](CURRENT_OPERATIO
 
 Status: user-approved Access Management baseline as of 4 October 2026. Development activation on 10 October 2026: migrations 059–064 are installed on `skill-management-dev`, the default Personal Workspace baseline is enabled, and verified existing administrator Utkarsh Patel has an explicit organization-bound System Admin responsibility. Other environments and hosted acceptance remain separate release steps. Future UI, backend, dashboard and AI access work must follow this contract. Approval of the design does not mean every scope or evaluator is implemented, and does not migrate production grants or replace currently enforced SQL checks. Named people and departments in the supplied specification are illustrative; actual relationships must come from current stored records.
 
-## Skill Genie release availability and Capability Lead approvals
+## Skill Management App release availability and Capability Lead approvals
 
 The current release hides Learn & Grow and Requests & Incidents. Navigation, workspace discovery, dashboard reads, notifications, assistant actions, and application routes respect this release setting. Data and permission assignments remain stored. To exercise phase two in an isolated environment, set `PHASE_TWO_ENABLED=true` for the API process and `VITE_PHASE_TWO_ENABLED=true` for the web build.
 

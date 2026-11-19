@@ -1,16 +1,12 @@
 # Documentation index
 
-Latest integration: [final merge audit and deployment boundary](FINAL_MERGE_AUDIT_2026-11-05.md). Code-first stays separate; the user deferred the 90% coverage task until after the audited main merge. Required company schema rollout is 088 → reviewed Portfolio mapping → 089 → 090.
-
-Updated: 16 November 2026. Read [current company operations](CURRENT_OPERATIONS.md), [current OIDC SSO/provisioning](REAL_USER_SSO.md) and the maintained handover before older dated reports. Documentation describes repository behavior and dated/operator-reported acceptance, not continuous production health or enterprise certification.
-
-Current local work: [portfolio commit audit and integration](PORTFOLIO_COMMIT_AUDIT_2026-11-05.md) and [workflow/edge-case acceptance matrix](TEST_ACCEPTANCE_MATRIX.md). The 90% coverage gate remains incomplete; hierarchy integration is not a company schema installation or release acceptance.
-
-[Portfolio/Division analytics scopes and hierarchy filters](PORTFOLIO_SCOPES_2026-11-05.md) records the subsequent user-approved 089 increment, isolated SQL evidence and maintenance rollout boundary.
+Updated 20 November 2026. Start with [current company operations](CURRENT_OPERATIONS.md), the [Skill Management App workflow and pilot brief](SKILL_MANAGEMENT_WORKFLOW.md), and the [Azure DevOps deployment runbook](AZURE_DEVOPS.md). Dated audit files retain the evidence and scope from their original review.
 
 | Reference                                                                                     | Purpose                                                                                                          |
 | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | [Current company operations](CURRENT_OPERATIONS.md)                                           | Current evidence, environment, SSO/bulk provisioning, KT enabled, remaining acceptance                           |
+| [Skill Management App workflow and pilot brief](SKILL_MANAGEMENT_WORKFLOW.md)                           | Employee-to-analytics workflow, responsibilities, demo and proposed pilot measures |
+| [Azure DevOps deployment runbook](AZURE_DEVOPS.md)                                           | Current source deployment and gated pipeline cutover |
 | [Real-user SSO and provisioning](REAL_USER_SSO.md)                                            | Runtime configuration, shared registration, reviewed bulk mapping and binding audits                             |
 | [Real-user cutover](REAL_USER_CUTOVER.md)                                                     | Completed cutover evidence, source/audit retention and historical preparation                                    |
 | [Azure AI Foundry integration](AZURE_AI_FOUNDRY.md)                                           | Responses API, company model deployment, Entra/managed identity, extraction parity and rollout checks            |

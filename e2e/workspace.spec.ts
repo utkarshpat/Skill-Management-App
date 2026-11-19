@@ -108,7 +108,7 @@ test('one Microsoft button retries a failed sign-in with account selection', asy
     route.fulfill({ contentType: 'text/html', body: '<title>Microsoft sign-in</title>' }),
   );
   await page.goto('/profile?signin=failed');
-  const card = page.getByRole('region', { name: /^(Welcome back|Skill Genie)$/ });
+  const card = page.getByRole('region', { name: /^(Welcome back|Skill Management App)$/ });
   const signIn = card.getByRole('button', { name: 'Continue with Microsoft' });
   await expect(card.getByRole('button')).toHaveCount(1);
   const login = page.waitForRequest(

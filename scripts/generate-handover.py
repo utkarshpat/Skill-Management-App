@@ -152,7 +152,7 @@ document = (ROOT / 'docs/HANDOVER.md').read_text(encoding='utf-8')
 slug = lambda value: re.sub(r'[^a-z0-9]+', '-', value.lower()).strip('-')
 sections = []
 for filename, section_id, title in [
-    ('CURRENT_OPERATIONS.md', 'current-company-operations', 'Current company operations — 5 November 2026'),
+    ('CURRENT_OPERATIONS.md', 'current-company-operations', 'Current company operations'),
     ('REAL_USER_SSO.md', 'real-user-sso', 'Company SSO and bulk identity provisioning'),
     ('AZURE_AI_FOUNDRY.md', 'azure-ai-foundry', 'Azure AI Foundry integration'),
 ]:
@@ -207,7 +207,7 @@ groups={
 assert set(sum(groups.values(), []))==set(tables), 'Update schema domain groups for new tables'
 for name,t in tables.items():
     t['domain']=next(group for group,names in groups.items() if name in names)
-data={'title':'Skill Genie','version':re.search(r'^Version: (\d{4}-\d{2}-\d{2})',document,re.M)[1],'basis':'Repository source and migrations; not live introspection',
+data={'title':'Skill Management App','version':re.search(r'^Version: (\d{4}-\d{2}-\d{2})',document,re.M)[1],'basis':'Repository source and migrations; not live introspection',
  'revision':hashlib.sha256((document+baseline+migration+onboarding+storage+json.dumps(sections,sort_keys=True)+json.dumps(tables,sort_keys=True)+json.dumps(routes)+json.dumps(procedures,sort_keys=True)).encode()).hexdigest()[:16],
  'sections':sections,'schema':{'migrations':inputs,'tables':tables,'views':views,'removedTables':removed},
  'routes':routes,'procedures':list(procedures.values()),'groups':groups}
