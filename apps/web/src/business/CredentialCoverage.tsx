@@ -27,8 +27,8 @@ export function CredentialCoverage({
         <div>
           <h2>Certification headcount</h2>
           <p className="bo-note">
-            Distinct employees per credential. Current means manager reviewed and valid today. One
-            employee can hold several credentials; counts cannot be added as workforce headcount.
+            Distinct employees per credential. Current means approved and valid today. One employee
+            can hold several credentials; counts cannot be added as workforce headcount.
           </p>
         </div>
         <div className="bo-export">
@@ -52,7 +52,7 @@ export function CredentialCoverage({
               <tr>
                 <th>Credential / issuer</th>
                 <th>Current holders</th>
-                <th>Reviewed holders</th>
+                <th>Approved holders</th>
                 <th>Expired holders</th>
               </tr>
             </thead>

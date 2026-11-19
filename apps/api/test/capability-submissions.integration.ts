@@ -292,7 +292,7 @@ await withDatabase(async pool => {
       assert.equal(reopened.skills[0].levels.length, 4);
       assert.deepEqual(
         reopened.skills[0].levels.map((v: any) => v.name),
-        ['Foundation', 'Autonomous', 'Experienced', 'Expert'],
+        ['Beginner', 'Autonomous', 'Experienced', 'Expert'],
       );
       assert.ok(reopened.skills[0].levels.every((v: any) => v.description.length > 0));
       if (scenario === 'legacy-returned') {
@@ -450,7 +450,7 @@ await withDatabase(async pool => {
                 kind: 'SKILL',
                 revision: s.revision,
                 action: 'APPROVE',
-                feedback: 'Reviewed skill experience',
+                feedback: 'Approved skill experience',
               })),
               ...submitted.certifications.map((c: any) => ({
                 id: c.id,

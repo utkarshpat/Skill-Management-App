@@ -289,9 +289,9 @@ test('linked submission waits for certificate upload and submits the new file re
     await fill('Issue date', '2025-01-31');
     await click('1 year');
     await click('Continue');
-    await click('Review', document.querySelector('.form-dialog-footer')!);
+    await click('Preview', document.querySelector('.form-dialog-footer')!);
     assert.deepEqual(steps, []);
-    await click('Submit for review');
+    await click('Submit for approval');
     assert.deepEqual(steps, ['draft', 'upload', 'submit']);
     assert.equal(confirmed, 1);
   } finally {

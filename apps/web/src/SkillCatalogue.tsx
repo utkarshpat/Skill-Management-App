@@ -10,7 +10,7 @@ import {
   type CatalogueCertification,
 } from './CatalogueCertificationPicker';
 import './catalogue.css';
-import { commonLevels } from './proficiency';
+import { commonLevels, displayProficiencyName } from './proficiency';
 import { useSearchParams } from 'react-router';
 import { readApiResponse } from './api-response';
 import { BusinessWorkflows } from './business/BusinessWorkflows';
@@ -431,7 +431,6 @@ function SkillDefinitions({
                   <tr>
                     <th scope="col">Skill</th>
                     <th scope="col">Category</th>
-                    <th scope="col">Levels</th>
                     {state.canManage && <th scope="col">Status</th>}
                   </tr>
                 </thead>
@@ -452,7 +451,6 @@ function SkillDefinitions({
                         )}
                       </th>
                       <td>{skill.category}</td>
-                      <td>{skill.levels.length}</td>
                       {state.canManage && (
                         <td>
                           <span className={'skill-status ' + skill.status.toLowerCase()}>
@@ -644,7 +642,7 @@ function SkillDefinitions({
                       label: 'Level ' + level.rank,
                       content: (
                         <>
-                          <h3>{level.name}</h3>
+                          <h3>{displayProficiencyName(level.rank, level.name)}</h3>
                           <p>{level.description}</p>
                         </>
                       ),

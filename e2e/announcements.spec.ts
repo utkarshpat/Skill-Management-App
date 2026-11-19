@@ -54,7 +54,8 @@ test('publisher configures a poll in the UI and publishes only the previewed ver
   await expect(dialog.getByText('12 eligible employees in the selected audience.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Mobile' }).click();
   await dialog.getByRole('button', { name: 'Banner preview' }).click();
-  await dialog.locator('.announcement-strip').getByRole('button', { name: 'Azure' }).click();
+  await dialog.locator('.announcement-strip').getByRole('button', { name: 'Open poll' }).click();
+  await dialog.getByRole('button', { name: 'Azure' }).click();
   await expect(dialog.getByText('Preview vote accepted. Nothing was submitted.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Publish announcement' }).click();
   await expect(dialog).toHaveCount(0);
@@ -98,9 +99,16 @@ test('employee opens a scoped form from the banner and submits only custom field
                 {
                   id: 'batch',
                   label: 'Preferred batch',
-                  type: 'choice',
+                  type: 'radio',
                   required: true,
                   options: ['Morning', 'Afternoon'],
+                },
+                {
+                  id: 'confirm',
+                  label: 'I can attend',
+                  type: 'checkbox',
+                  required: true,
+                  options: [],
                 },
               ],
             },
@@ -128,19 +136,26 @@ test('employee opens a scoped form from the banner and submits only custom field
     .getByRole('button', { name: 'Register' })
     .click();
   const dialog = page.getByRole('dialog', { name: 'Training registration' });
-  await expect(dialog.getByLabel('Name', { exact: true })).toHaveValue(person.name);
-  await expect(dialog.getByLabel('Work email')).toHaveValue(person.email);
-  await expect(dialog.getByLabel('Employee ID')).toHaveValue(person.employeeId);
-  await expect(dialog.getByLabel('Work email')).not.toBeEditable();
-  await dialog.getByLabel('Preferred batch').selectOption('Afternoon');
+  await expect(dialog.locator('.announcement-identity dd')).toHaveText([
+    person.name,
+    person.email,
+    person.employeeId,
+  ]);
+  await expect(dialog.locator('.announcement-identity input')).toHaveCount(0);
+  await dialog.getByRole('radio', { name: 'Morning' }).check();
+  await dialog.getByRole('radio', { name: 'Afternoon' }).check();
+  await expect(dialog.getByRole('radio', { name: 'Morning' })).not.toBeChecked();
+  await dialog.getByRole('checkbox', { name: 'I can attend' }).check();
   await dialog.getByRole('button', { name: 'Register' }).click();
   await expect(
     dialog.getByRole('region', { name: 'Training registration content' }).getByRole('alert'),
   ).toHaveText('Please retry your response.');
-  await expect(dialog.getByLabel('Preferred batch')).toHaveValue('Afternoon');
+  await expect(dialog.getByRole('radio', { name: 'Afternoon' })).toBeChecked();
+  await expect(dialog.getByRole('checkbox', { name: 'I can attend' })).toBeChecked();
   await dialog.getByRole('button', { name: 'Register' }).click();
-  await expect(dialog.getByText('Response submitted.')).toBeVisible();
-  expect(response).toEqual({ revision: 1, answers: { batch: 'Afternoon' } });
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Response submitted.', { exact: true })).toBeVisible();
+  expect(response).toEqual({ revision: 1, answers: { batch: 'Afternoon', confirm: true } });
 });
 
 test('publisher refreshes collected responses and downloads the authorized export', async ({

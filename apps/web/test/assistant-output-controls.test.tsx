@@ -39,7 +39,7 @@ test('assistant draft editing hands off only the reviewed text and creates no re
     'Reviewed SQL reporting evidence',
   );
   await click('Preview draft');
-  await click('Review skill draft');
+  await click('Preview skill draft');
   assert.deepEqual(reviews, ['Reviewed SQL reporting evidence']);
   await click('Open draft document');
   assert.match(documents[0], /^# Client reporting workflow/);
@@ -58,7 +58,7 @@ test('request and incident handoffs preserve distinct kinds and never imply subm
     view = await render(
       <AssistantOutput artifact={draft(kind)} onReviewRequest={value => reviews.push(value)} />,
     );
-    await click(kind === 'request_draft' ? 'Review request draft' : 'Review incident draft');
+    await click(kind === 'request_draft' ? 'Preview request draft' : 'Preview incident draft');
     assert.deepEqual(reviews.at(-1), {
       kind: expected,
       title: 'Client reporting workflow',
@@ -76,7 +76,7 @@ test('business handoffs retain draft family and edits, while task planning uses 
     view = await render(
       <AssistantOutput artifact={draft(kind)} onReviewBusiness={value => business.push(value)} />,
     );
-    await click('Review business draft');
+    await click('Preview business draft');
     assert.equal(business.at(-1).kind, kind);
     assert.equal(business.at(-1).summary, 'Review the reporting request');
   }
@@ -88,7 +88,7 @@ test('business handoffs retain draft family and edits, while task planning uses 
     />,
   );
   assert.equal(plans.length, 0);
-  await click('Review plan & add to calendar');
+  await click('Preview plan & add to calendar');
   assert.deepEqual(plans[0], {
     title: 'Client reporting workflow',
     goal: 'Review the reporting request',
@@ -145,7 +145,7 @@ test('practice quiz requires every answer, reports no verified skill, and retry 
         prompt: 'Who reviews your skill?',
         options: ['Any colleague', 'Assigned current manager'],
         correctIndex: 1,
-        explanation: 'The current assigned reviewer is required.',
+        explanation: 'The current assigned approver is required.',
       },
     ],
   };
@@ -168,7 +168,7 @@ test('practice quiz requires every answer, reports no verified skill, and retry 
   assert.match(document.body.textContent!, /does not verify a skill/);
   assert.ok([...document.querySelectorAll<HTMLInputElement>('input')].every(i => i.disabled));
   await click('Previous');
-  assert.match(document.querySelector('.quiz-explanation')!.textContent!, /Review this question/);
+  assert.match(document.querySelector('.quiz-explanation')!.textContent!, /Check this question/);
   await click('Next');
   assert.match(document.querySelector('.quiz-explanation')!.textContent!, /Correct/);
   await click('Try again');

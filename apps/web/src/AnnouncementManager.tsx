@@ -61,6 +61,13 @@ const empty: Definition = {
   imageAlt: '',
   imagePosition: 'center',
 };
+
+function withCanonicalExportFields(value: Definition): Definition {
+  return {
+    ...value,
+    exports: [...new Set(value.exports.map(key => (key === 'primarySkill' ? 'capability' : key)))],
+  };
+}
 const scopeLabels: Record<string, string> = {
   DELIVERY_UNIT: 'Delivery Unit',
   PORTFOLIO: 'Portfolio',
@@ -107,6 +114,7 @@ export function AnnouncementManager({
   const [page, setPage] = useState<'list' | 'edit' | 'preview'>('list');
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 700px)').matches);
   const [designing, setDesigning] = useState(false);
+  const [designError, setDesignError] = useState('');
   const previewPane = useRef<HTMLDivElement>(null);
   const conversation = useRef<HTMLDivElement>(null);
   const detailsPane = useRef<HTMLDivElement>(null);
@@ -231,7 +239,7 @@ export function AnnouncementManager({
           : undefined,
       );
       setGrantId(localDraft.grantId);
-      setDefinition(localDraft.definition);
+      setDefinition(withCanonicalExportFields(localDraft.definition));
       setStart(localDraft.start);
       setEnd(localDraft.end);
       setPrompt(localDraft.prompt);
@@ -267,7 +275,7 @@ export function AnnouncementManager({
   }, [image?.base64]);
   useEffect(() => {
     if (conversation.current) conversation.current.scrollTop = conversation.current.scrollHeight;
-  }, [definition.versions.length, designing, page]);
+  }, [definition.versions.length, designing, designError, page]);
   const responseEntries = data?.items.filter(entry => entry.state !== 'DRAFT') ?? [];
   const selectedResponse =
     responseEntries.find(entry => entry.id === responseId)?.id ?? responseEntries[0]?.id ?? '';
@@ -347,6 +355,7 @@ export function AnnouncementManager({
   );
   const configure = (entry?: Draft, copy = false) => {
     setError('');
+    setDesignError('');
     setNote('');
     setConfirmClose(undefined);
     const grant = entry?.grantId ?? data?.grants[0]?.id ?? '';
@@ -357,7 +366,9 @@ export function AnnouncementManager({
       scope => scope.grantId === grant && scope.id === own?.scopeId && scope.kind === own.kind,
     );
     setDefinition(
-      entry?.definition ?? { ...empty, audience: root ? [{ kind: root.kind, id: root.id }] : [] },
+      entry
+        ? withCanonicalExportFields(entry.definition)
+        : { ...empty, audience: root ? [{ kind: root.kind, id: root.id }] : [] },
     );
     setStart(entry && !copy ? localDate(new Date(entry.startsAt)) : localDate(new Date()));
     setEnd(
@@ -432,6 +443,7 @@ export function AnnouncementManager({
     ' for this announcement using the configured details. Use our branding, clear labels and a prominent primary action. Explain the design briefly.';
   const generateDesign = async (request: string) => {
     setPrompt(request);
+    setDesignError('');
     setDesigning(true);
     try {
       const version = await api<Version>('/design', {
@@ -455,6 +467,9 @@ export function AnnouncementManager({
       });
       setPrompt('');
       setNote('Design updated. Try it in the preview or continue refining.');
+    } catch (error) {
+      if ([401, 403].includes((error as { status?: number }).status ?? 0)) throw error;
+      setDesignError((error as Error).message);
     } finally {
       setDesigning(false);
     }
@@ -918,7 +933,7 @@ export function AnnouncementManager({
                     <span role="status">
                       {receipt
                         ? `${audienceCount ?? 0} eligible employees in the selected audience.`
-                        : 'Review the current design before publishing.'}
+                        : 'Check the current design before publishing.'}
                     </span>
                   </>
                 ) : (
@@ -951,7 +966,7 @@ export function AnnouncementManager({
                       disabled={busy}
                       onClick={() => void save('preview')}
                     >
-                      Review audience
+                      Check audience
                     </button>
                     <button
                       type="button"
@@ -1152,7 +1167,8 @@ export function AnnouncementManager({
                       />
                     </label>
                     <p className="announcement-note">
-                      Name, Work Email and Employee ID are prefilled from the signed-in profile.
+                      Name, work email and employee ID are shown from the signed-in profile and are
+                      read-only.
                     </p>
                     {definition.fields.map((entry, index) => (
                       <div className="announcement-editor-grid announcement-field" key={entry.id}>
@@ -1180,7 +1196,7 @@ export function AnnouncementManager({
                             ))}
                           </select>
                         </label>
-                        {entry.type === 'choice' && (
+                        {(entry.type === 'choice' || entry.type === 'radio') && (
                           <label>
                             Options (one per line)
                             <textarea
@@ -1437,7 +1453,7 @@ export function AnnouncementManager({
                 </div>
                 <div className={'announcement-preview-stage' + (mobile ? ' is-mobile' : '')}>
                   <div className="announcement-preview-topbar">
-                    <span>Cognitive Intelligence Lab</span>
+                    <span>Skill Genie</span>
                     <small>{mobile ? 'Mobile' : 'Desktop'} · Preview</small>
                   </div>
                   {previewView === 'banner' ? (
@@ -1577,10 +1593,15 @@ export function AnnouncementManager({
                   ))}
                   {designing && (
                     <div className="announcement-chat-message is-assistant" role="status">
-                      Designing your announcement...
+                      Designing your announcement. Detailed designs can take about a minute.
                     </div>
                   )}
                 </div>
+                {designError && (
+                  <div className="announcement-chat-message is-assistant" role="alert">
+                    {designError} You can keep using the current preview.
+                  </div>
+                )}
                 {data?.aiAvailable && (
                   <>
                     <div
@@ -1647,7 +1668,7 @@ export function AnnouncementManager({
                           className="admin-primary"
                           disabled={busy || !prompt.trim()}
                         >
-                          {designing ? 'Designing...' : 'Send'}
+                          {designing ? 'Designing...' : designError ? 'Retry design' : 'Send'}
                         </button>
                       </div>
                     </form>

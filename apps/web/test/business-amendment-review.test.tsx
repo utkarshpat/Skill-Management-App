@@ -113,7 +113,7 @@ for (const targetChanged of [false, true]) {
     );
     try {
       await settle();
-      await click('Review & approve');
+      await click('Open approval');
       await settle();
       const previewButton = [...dialog().querySelectorAll('button')].find(b =>
         b.textContent?.includes('Preview decision'),
@@ -121,7 +121,7 @@ for (const targetChanged of [false, true]) {
       assert.equal(previewButton?.disabled, targetChanged);
       if (targetChanged) {
         assert.equal(previews.length, 0);
-        await click('Close Review master decision');
+        await click('Close Open catalogue decision');
         await click('Reject');
       }
       await previewDecision();
@@ -135,7 +135,7 @@ for (const targetChanged of [false, true]) {
         assert.equal(document.querySelector('.form-dialog'), null);
       } else {
         assert.match(dialog().textContent ?? '', /Catalogue changed after preview/);
-        assert.match(document.body.textContent ?? '', /Awaiting admin review/);
+        assert.match(document.body.textContent ?? '', /Pending admin approval/);
         await click('Refresh records', document);
         assert.equal(saves.length, 1);
         assert.equal(document.querySelector('.form-dialog'), null);
@@ -254,14 +254,14 @@ test('demand matching keeps ineligible candidates out and shortlists a paged can
     )!;
     const shortlistButton = () =>
       [...panel.querySelectorAll('button')].find(b =>
-        /^(Review shortlist|Shortlisted)$/.test(b.textContent?.trim() ?? ''),
+        /^(Open shortlist|Shortlisted)$/.test(b.textContent?.trim() ?? ''),
       );
     assert.equal(shortlistButton()?.disabled, true);
     assert.match(panel.textContent ?? '', /Some requirements not established/);
     await click('Next', panel);
     assert.deepEqual(matchReads, [1, 2]);
     assert.equal(shortlistButton()?.disabled, false);
-    await click('Review shortlist', panel);
+    await click('Open shortlist', panel);
     await previewDecision();
     assert.deepEqual(previews, [
       {

@@ -25,6 +25,36 @@ const account: AccountInfo = {
 const require = createRequire(import.meta.url);
 const { businessDraftHandoff } =
   require('../src/business/business-draft-handoff.ts') as typeof import('../src/business/business-draft-handoff');
+
+test('company re-sign-in resumes only the original account after an expired session', async () => {
+  const { auth, transport } = await fixture();
+  let active = true;
+  let subject = 'original-account';
+  transport(async input =>
+    String(input) === '/api/auth/config'
+      ? Response.json({
+          ...config,
+          cookieSession: true,
+          backendSignIn: true,
+          sessionActive: active,
+          sessionSubject: subject,
+        })
+      : new Response(null, { status: 401 }),
+  );
+  await auth.initializeAuth();
+  active = false;
+  assert.equal((await auth.authenticatedFetch('/api/workspace')).status, 401);
+  assert.equal(auth.signedIn(), false);
+  assert.match(auth.companyResumePath() ?? '', /returnTo=%2Fapi%2Fauth%2Fresume-complete/);
+  await assert.rejects(auth.resumeCompanySession(), /Complete Microsoft sign-in/);
+  active = true;
+  subject = 'different-account';
+  assert.equal(await auth.resumeCompanySession(), false);
+  assert.equal(auth.signedIn(), false);
+  subject = 'original-account';
+  assert.equal(await auth.resumeCompanySession(), true);
+  assert.equal(auth.signedIn(), true);
+});
 async function fixture() {
   const channels: {
     onmessage: ((event: { data: unknown }) => void) | null;
@@ -585,6 +615,32 @@ test('an Excel authorization failure leaves a verified company session signed in
     '/api/auth/config',
     '/api/workspace',
   ]);
+});
+
+test('a changed account pauses a stale tab without replaying a pending write', async () => {
+  const { auth, transport } = await fixture();
+  let writes = 0;
+  transport(async (input, init) => {
+    if (input === '/api/auth/config')
+      return Response.json({
+        ...config,
+        cookieSession: true,
+        backendSignIn: true,
+        sessionActive: true,
+        sessionSubject: 'tab-account',
+      });
+    assert.equal(new Headers(init?.headers).get('X-Company-Session-Subject'), 'tab-account');
+    writes++;
+    return new Response(null, { status: 409, headers: { 'X-Company-Session-Changed': 'true' } });
+  });
+  await auth.initializeAuth();
+  assert.equal((await auth.authenticatedFetch('/api/workflows', { method: 'POST' })).status, 409);
+  assert.equal(auth.signedIn(), false);
+  await assert.rejects(
+    auth.authenticatedFetch('/api/workflows', { method: 'POST' }),
+    /sign in again/i,
+  );
+  assert.equal(writes, 1);
 });
 
 test('concurrent company initialization exchanges one bearer and expiry never retries a write', async () => {

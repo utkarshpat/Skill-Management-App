@@ -222,7 +222,7 @@ export function AssistantPeopleResults({ query }: { query: PeopleQuery }) {
             </>
           )}
           <p className="people-search-note">
-            Matching uses reviewed skills and current approved certificates. Missing evidence is not
+            Matching uses approved skills and current approved certificates. Missing evidence is not
             established; staffing availability is not assessed. Refine your requirements in chat.
           </p>
         </>

@@ -449,7 +449,7 @@ test('capability totals come from the full summary contract; revoked cards never
   await assert.rejects(loadDashboardCard('capability', actor, state, person, s));
   assert.equal(reads, 1);
 });
-test('top skills come from the actor-bound complete reviewed summary, not the recent claim page', async () => {
+test('top skills come from the actor-bound complete approval summary, not the recent claim page', async () => {
   const { state, person } = fixture([own('profile.view'), own('skill.view')]);
   const s: DashboardSources = {
     ...sources,
@@ -776,7 +776,7 @@ test('attention provides full-scope counts, exact destinations and honest urgenc
     '/requests?inbox=true&kind=REQUEST&status=IN_PROGRESS',
   );
   assert.equal(attentionItems[0].urgency, 'High priority');
-  assert.equal(attentionItems.find(i => i.id === 'review')?.urgency, 'Awaiting review');
+  assert.equal(attentionItems.find(i => i.id === 'review')?.urgency, 'Pending approval');
   assert.equal(attentionItems.find(i => i.id === 'IN_PROGRESS')?.urgency, 'In progress');
 });
 test('dashboard HTTP binds identity, rejects scope injection and discards data after permission changes', async () => {

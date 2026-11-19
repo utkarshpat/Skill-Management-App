@@ -38,7 +38,7 @@ export function EmploymentFields({
       </div>
       <p className="access-help" id="employment-help">
         Optional work information maintained by people administrators. Neither field assigns access
-        or review authority. Leave blank to clear a stored value.
+        or approval authority. Leave blank to clear a stored value.
       </p>
     </>
   );

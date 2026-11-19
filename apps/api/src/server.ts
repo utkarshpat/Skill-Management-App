@@ -6,6 +6,7 @@ import { KnowledgeTransferService } from './modules/knowledge-transfer/index.js'
 import { SqlRecommendationStore } from './modules/recommendations/index.js';
 import { SqlOrganizationStore } from './modules/organization/sql-store.js';
 import { createApp } from './create-app.js';
+import { SqlCapabilityLeads } from './modules/skills/capability-lead-routes.js';
 import { SqlWorkflowStore } from './modules/workflows/index.js';
 import { identityConfig } from './modules/identity/index.js';
 import { applicationDependencies } from './application-dependencies.js';
@@ -88,15 +89,19 @@ const certificationRecommendations = process.env.ACCESS_ACCOUNT_ID
 const catalogue = process.env.ACCESS_ACCOUNT_ID
   ? new SqlCatalogueStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
-const learning = process.env.ACCESS_ACCOUNT_ID
-  ? new SqlLearningStore(process.env.ACCESS_ACCOUNT_ID)
-  : undefined;
-const recommendations = process.env.ACCESS_ACCOUNT_ID
-  ? new SqlRecommendationStore(process.env.ACCESS_ACCOUNT_ID)
-  : undefined;
-const workflows = process.env.ACCESS_ACCOUNT_ID
-  ? new SqlWorkflowStore(process.env.ACCESS_ACCOUNT_ID)
-  : undefined;
+process.env.PHASE_TWO_ENABLED = process.env.PHASE_TWO_ENABLED === 'true' ? 'true' : 'false';
+const learning =
+  process.env.PHASE_TWO_ENABLED === 'true' && process.env.ACCESS_ACCOUNT_ID
+    ? new SqlLearningStore(process.env.ACCESS_ACCOUNT_ID)
+    : undefined;
+const recommendations =
+  process.env.PHASE_TWO_ENABLED === 'true' && process.env.ACCESS_ACCOUNT_ID
+    ? new SqlRecommendationStore(process.env.ACCESS_ACCOUNT_ID)
+    : undefined;
+const workflows =
+  process.env.PHASE_TWO_ENABLED === 'true' && process.env.ACCESS_ACCOUNT_ID
+    ? new SqlWorkflowStore(process.env.ACCESS_ACCOUNT_ID)
+    : undefined;
 const business = process.env.ACCESS_ACCOUNT_ID
   ? new SqlBusinessStore(process.env.ACCESS_ACCOUNT_ID, fileStorage)
   : undefined;
@@ -184,11 +189,18 @@ const app = createApp(
     assistant,
     knowledgeTransfer,
     catalogue,
-    excelBulk: process.env.ACCESS_ACCOUNT_ID ? new SqlExcelBulkData(process.env.ACCESS_ACCOUNT_ID) : undefined,
-    announcements: process.env.ACCESS_ACCOUNT_ID ? new SqlAnnouncements(process.env.ACCESS_ACCOUNT_ID, provider, aiBudget) : undefined,
+    excelBulk: process.env.ACCESS_ACCOUNT_ID
+      ? new SqlExcelBulkData(process.env.ACCESS_ACCOUNT_ID)
+      : undefined,
+    announcements: process.env.ACCESS_ACCOUNT_ID
+      ? new SqlAnnouncements(process.env.ACCESS_ACCOUNT_ID, provider, aiBudget)
+      : undefined,
     claims,
     certifications,
     capabilitySubmissions,
+    capabilityLeads: process.env.ACCESS_ACCOUNT_ID
+      ? new SqlCapabilityLeads(process.env.ACCESS_ACCOUNT_ID)
+      : undefined,
     certificateAutofill: certificateAutofill?.extract.bind(certificateAutofill),
     certificationRecommendations,
     evidenceStore,
@@ -210,6 +222,7 @@ const app = createApp(
     hostedDemo,
     identityConfig: config,
     companyOidcSecret: process.env.ENTRA_WEB_CLIENT_SECRET,
+    sharedCompanyAuth: Boolean(process.env.ENTRA_WEB_CLIENT_SECRET),
     ...(config && process.env.SERVE_WEB === 'true' && process.env.PUBLIC_APP_ORIGIN
       ? { companySessionOrigin: process.env.PUBLIC_APP_ORIGIN }
       : {}),

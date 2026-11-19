@@ -150,30 +150,30 @@ test('employee summary filters and layout keep the same scoped skills while clea
     'no match',
   );
   assert.match(result().textContent!, /No matching skills/);
-  await metric('Manager reviewed');
+  await metric('Approved');
   assert.match(result().textContent!, /SQL reporting/);
   assert.doesNotMatch(result().textContent!, /Azure operations/);
-  await metric('Assigned pending reviews');
+  await metric('Assigned pending approvals');
   assert.match(result().textContent!, /Azure operations/);
   await metric('Visible skill claims');
   await click('Skill list');
   assert.match(result().textContent!, /SQL reporting.*Azure operations/s);
   await click('Skill cards');
-  await click('Open pending reviews');
+  await click('Open pending approvals');
   assert.equal(reviews, 1);
 });
 
 test('employee history loads the next assigned page and current permission denial keeps the claim read-only', async () => {
   denied = true;
   await mount();
-  await click('Review records');
+  await click('Approval records');
   assert.match(result().textContent!, /1 of 2 assigned records loaded/);
-  await click('Load more review records');
+  await click('Load more approval records');
   assert.deepEqual(pages, ['1', '2']);
   assert.match(result().textContent!, /2 of 2 assigned records loaded/);
-  await click('Open review', result());
+  await click('Open approval', result());
   assert.ok(dialog());
-  assert.equal(dialog().querySelector('[aria-label="Review feedback"]'), null);
+  assert.equal(dialog().querySelector('[aria-label="Approval feedback"]'), null);
   await click('Close Azure operations', dialog());
   assert.equal(dialog(), null);
   assert.deepEqual(writes, []);
@@ -186,7 +186,7 @@ test('detail retry hides foreign claims and clears assigned links after list acc
   assert.doesNotMatch(result().textContent!, /Evidence & history/);
   listFailure = 0;
   await click('Retry details');
-  await click('Review records');
+  await click('Approval records');
   foreign = true;
   await click('View evidence & history', result());
   assert.match(result().textContent!, /unavailable in this employee profile/);
@@ -198,14 +198,14 @@ test('detail retry hides foreign claims and clears assigned links after list acc
   assert.equal(dialog(), null);
 });
 
-test('successful assigned review forwards the exact claim revision and refreshes the employee parent', async () => {
+test('successful assigned approval forwards the exact claim revision and refreshes the employee parent', async () => {
   await mount();
-  await click('Review records');
-  await click('Load more review records');
-  await click('Open review', result());
+  await click('Approval records');
+  await click('Load more approval records');
+  await click('Open approval', result());
   await click('Verify', dialog());
   await change(
-    dialog().querySelector<HTMLTextAreaElement>('[aria-label="Review feedback"]')!,
+    dialog().querySelector<HTMLTextAreaElement>('[aria-label="Approval feedback"]')!,
     'Reviewed cloud deployment evidence.',
   );
   await click('Confirm verification', dialog());

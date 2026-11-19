@@ -238,20 +238,20 @@ export function AnnouncementForm({
   };
   return (
     <form className="announcement-form" onSubmit={submit}>
-      <div className="announcement-identity">
-        <label>
-          Name
-          <input readOnly value={person.name} />
-        </label>
-        <label>
-          Work email
-          <input readOnly value={person.email ?? ''} />
-        </label>
-        <label>
-          Employee ID
-          <input readOnly value={person.employeeId} />
-        </label>
-      </div>
+      <dl className="announcement-identity">
+        <div>
+          <dt>Name</dt>
+          <dd>{person.name}</dd>
+        </div>
+        <div>
+          <dt>Work email</dt>
+          <dd>{person.email || 'Unavailable'}</dd>
+        </div>
+        <div>
+          <dt>Employee ID</dt>
+          <dd>{person.employeeId}</dd>
+        </div>
+      </dl>
       {!person.email && (
         <p role="status">
           Sign in again with your work account to confirm your email before submitting.
@@ -259,46 +259,67 @@ export function AnnouncementForm({
       )}
       <fieldset className="announcement-form-fields" disabled={busy}>
         <legend className="sr-only">Your response</legend>
-        {definition.fields.map(field => (
-          <label key={field.id}>
-            {field.label}
-            {field.required && ' *'}
-            {field.type === 'longText' ? (
-              <textarea
-                name={field.id}
-                maxLength={2000}
-                required={field.required}
-                defaultValue={String(initialAnswers?.[field.id] ?? '')}
-              />
-            ) : field.type === 'choice' || field.type === 'rating' ? (
-              <select
-                name={field.id}
-                required={field.required}
-                defaultValue={String(initialAnswers?.[field.id] ?? '')}
-              >
-                <option value="">Select an option</option>
-                {(field.type === 'choice' ? field.options : ['1', '2', '3', '4', '5']).map(
-                  option => (
-                    <option key={option}>{option}</option>
-                  ),
-                )}
-              </select>
-            ) : (
-              <input
-                name={field.id}
-                type={field.type === 'date' || field.type === 'checkbox' ? field.type : 'text'}
-                maxLength={240}
-                required={field.required}
-                defaultChecked={
-                  field.type === 'checkbox' ? initialAnswers?.[field.id] === true : undefined
-                }
-                defaultValue={
-                  field.type === 'checkbox' ? undefined : String(initialAnswers?.[field.id] ?? '')
-                }
-              />
-            )}
-          </label>
-        ))}
+        {definition.fields.map(field =>
+          field.type === 'radio' ? (
+            <fieldset className="announcement-radio-group" key={field.id}>
+              <legend>
+                {field.label}
+                {field.required && ' *'}
+              </legend>
+              {field.options.map(option => (
+                <label key={option}>
+                  <input
+                    type="radio"
+                    name={field.id}
+                    value={option}
+                    required={field.required}
+                    defaultChecked={initialAnswers?.[field.id] === option}
+                  />
+                  {option}
+                </label>
+              ))}
+            </fieldset>
+          ) : (
+            <label key={field.id}>
+              {field.label}
+              {field.required && ' *'}
+              {field.type === 'longText' ? (
+                <textarea
+                  name={field.id}
+                  maxLength={2000}
+                  required={field.required}
+                  defaultValue={String(initialAnswers?.[field.id] ?? '')}
+                />
+              ) : field.type === 'choice' || field.type === 'rating' ? (
+                <select
+                  name={field.id}
+                  required={field.required}
+                  defaultValue={String(initialAnswers?.[field.id] ?? '')}
+                >
+                  <option value="">Select an option</option>
+                  {(field.type === 'choice' ? field.options : ['1', '2', '3', '4', '5']).map(
+                    option => (
+                      <option key={option}>{option}</option>
+                    ),
+                  )}
+                </select>
+              ) : (
+                <input
+                  name={field.id}
+                  type={field.type === 'date' || field.type === 'checkbox' ? field.type : 'text'}
+                  maxLength={240}
+                  required={field.required}
+                  defaultChecked={
+                    field.type === 'checkbox' ? initialAnswers?.[field.id] === true : undefined
+                  }
+                  defaultValue={
+                    field.type === 'checkbox' ? undefined : String(initialAnswers?.[field.id] ?? '')
+                  }
+                />
+              )}
+            </label>
+          ),
+        )}
       </fieldset>
       <button
         type="submit"

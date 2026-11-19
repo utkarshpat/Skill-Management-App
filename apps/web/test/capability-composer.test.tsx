@@ -95,12 +95,12 @@ test('review proficiency comes from the saved version and never relabels histori
   assert.equal(submissionLevelName({ rank: 2 }), '');
 });
 
-test('historical review states distinguish decisions from immutable needs-review flags', () => {
-  assert.equal(submissionReviewState('APPROVED', true, false), 'Manager reviewed');
+test('historical approval states distinguish decisions from immutable needs-review flags', () => {
+  assert.equal(submissionReviewState('APPROVED', true, false), 'Approved');
   assert.equal(submissionReviewState('CHANGES_REQUESTED', true, false), 'Changes requested');
   assert.equal(submissionReviewState('REJECTED', true, false), 'Not approved');
   assert.equal(submissionReviewState('SUBMITTED', true, true), 'Needs decision');
-  assert.equal(submissionReviewState('SUBMITTED', true, false), 'Awaiting review');
+  assert.equal(submissionReviewState('SUBMITTED', true, false), 'Pending approval');
 });
 test('one credential can support several canonical skills without duplicating a file or credential', () => {
   const skills = ['azure', 'api'].map(id => ({

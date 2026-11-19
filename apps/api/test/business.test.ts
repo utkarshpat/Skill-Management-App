@@ -793,7 +793,7 @@ test('business AI produces only human-review drafts and never invokes writes', a
               arguments: JSON.stringify({
                 kind,
                 title: 'Cloud delivery',
-                summary: 'Proposal for review',
+                summary: 'Proposal for approval',
                 body: 'Reviewed capability requirements',
                 steps: [],
                 questions: [],

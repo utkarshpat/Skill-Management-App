@@ -1,4 +1,4 @@
-export const proficiencyNames = ['Foundation', 'Autonomous', 'Experienced', 'Expert'] as const;
+export const proficiencyNames = ['Beginner', 'Autonomous', 'Experienced', 'Expert'] as const;
 export const proficiencyCriteria = [
   'Understands fundamentals and completes routine work with guidance.',
   'Handles standard tasks independently and explains decisions.',

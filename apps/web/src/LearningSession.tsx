@@ -123,7 +123,7 @@ export function LearningSession({
     const next = await post('quiz', { count });
     if (next) {
       setQuizPage(0);
-      setNotice('AI practice ready. Review the topic and start when you are ready.');
+      setNotice('AI practice ready. Check the topic and start when you are ready.');
     }
   }
   async function loadReview(id: string, quizId: string) {

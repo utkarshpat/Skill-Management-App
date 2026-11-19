@@ -61,9 +61,9 @@ window.fetch = async (input, init) => {
         {
           id: 'qa-review',
           at: fixtureAt,
-          title: 'Skill review completed',
+          title: 'Skill decision recorded',
           actorName: 'QA Manager',
-          actionLabel: 'Review completed',
+          actionLabel: 'Decision recorded',
           subject: 'QA Cloud skill · QA Cloud certification',
           body: '1 skill, 1 certificate · 1 approved; 1 changes requested',
           href: '/my-skills?submission=' + oldId,

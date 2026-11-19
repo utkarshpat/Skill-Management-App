@@ -121,7 +121,7 @@ async function mount(sentOnly = false, entry = '/learning') {
 test('received recommendations require discussion details and retain exact revisions through a failed response retry', async () => {
   await mount();
   assert.match(document.body.textContent!, /From Rohan Mehta/);
-  await click('Review recommendation');
+  await click('Open recommendation');
   await click('Ask for discussion');
   await click('Send discussion request');
   assert.match(document.body.textContent!, /Tell your manager what/);
@@ -147,7 +147,7 @@ test('received recommendations require discussion details and retain exact revis
 });
 test('acceptance requires a reviewed personal plan and does not directly update the skill profile', async () => {
   await mount();
-  await click('Review recommendation');
+  await click('Open recommendation');
   await click('Accept & build plan');
   assert.match(document.body.textContent!, /learning/i);
   await click('Write plan manually');

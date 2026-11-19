@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { authenticatedFetch } from './auth';
@@ -9,6 +10,7 @@ import { CapabilitySubmissions } from './capabilities/CapabilitySubmissions';
 import { TeamCapability } from './TeamCapability';
 import type { ClaimReviewDecision } from './ClaimReviewAccess';
 import { toast } from './toast';
+import { phaseTwoVisible } from './release-features';
 import {
   ArrowRight,
   CheckCheck,
@@ -53,11 +55,11 @@ interface ReviewQueue {
   summary?: { pending: number; approved: number; changes: number; rejected: number };
 }
 const reviewLabels: Record<string, string> = {
-  SUBMITTED: 'Pending review',
-  APPROVED: 'Manager reviewed',
+  SUBMITTED: 'Pending approval',
+  APPROVED: 'Approved',
   CHANGES_REQUESTED: 'Changes requested',
   REJECTED: 'Not approved',
-  ALL: 'All review states',
+  ALL: 'All approval states',
 };
 export function SkillReviews({
   unified = false,
@@ -76,6 +78,7 @@ export function SkillReviews({
     [view, setView] = useState<'queue' | 'team' | 'recommendations'>('queue');
   const [data, setData] = useState<ReviewQueue>(),
     [page, setPage] = useState(1),
+    [combinedPage, setCombinedPage] = useState(1),
     [attempt, setAttempt] = useState(0),
     [loading, setLoading] = useState(true),
     [opening, setOpening] = useState(false),
@@ -95,6 +98,7 @@ export function SkillReviews({
     [category, setCategory] = useState(''),
     [status, setStatus] = useState('SUBMITTED'),
     [person, setPerson] = useState<string>();
+  useEffect(() => setCombinedPage(1), [query, person]);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
@@ -160,7 +164,7 @@ export function SkillReviews({
       }
     } catch (e) {
       setClaim(undefined);
-      setError(e instanceof Error ? e.message : 'Review unavailable.');
+      setError(e instanceof Error ? e.message : 'Approval unavailable.');
     } finally {
       setOpening(false);
     }
@@ -177,7 +181,7 @@ export function SkillReviews({
   const metrics = [
     {
       key: 'SUBMITTED',
-      label: 'Awaiting review',
+      label: 'Pending approval',
       hint: 'Ready for your decision',
       value: data?.summary?.pending,
       icon: Clock3,
@@ -185,7 +189,7 @@ export function SkillReviews({
     },
     {
       key: 'APPROVED',
-      label: 'Manager reviewed',
+      label: 'Approved',
       hint: 'Approved proficiency claims',
       value: data?.summary?.approved,
       icon: FileCheck2,
@@ -224,7 +228,7 @@ export function SkillReviews({
   const navigation = (
     <nav
       className="review-workspace-tabs"
-      aria-label={unified ? 'Review workspace' : 'Skill review workspace'}
+      aria-label={unified ? 'Approvals workspace' : 'Skill approvals workspace'}
     >
       <button
         aria-pressed={view === 'queue'}
@@ -234,7 +238,7 @@ export function SkillReviews({
         }}
       >
         <ClipboardCheck size={18} />
-        Review queue
+        Approval queue
       </button>
       {data?.canViewTeam && (
         <button aria-pressed={view === 'team'} onClick={() => changeView('team')}>
@@ -242,7 +246,7 @@ export function SkillReviews({
           Team analytics
         </button>
       )}
-      {data?.canRecommend && (
+      {data?.canRecommend && (phaseTwoVisible || recommendationContent) && (
         <button
           aria-pressed={view === 'recommendations'}
           onClick={() => changeView('recommendations')}
@@ -262,16 +266,8 @@ export function SkillReviews({
       NonNullable<ComponentProps<typeof CapabilitySubmissions>['renderQueue']>
     >[0],
   ) {
-    const matchingSubmissions = (combined?.records ?? []).filter(
-      item =>
-        (!person || item.personId?.toLowerCase() === person.toLowerCase()) &&
-        (!query ||
-          [item.name, item.label].some(value =>
-            value?.toLowerCase().includes(query.toLowerCase()),
-          )),
-    );
     const showCombined = status === 'ALL' || status === 'SUBMITTED';
-    const submissions = showCombined && page === 1 ? matchingSubmissions : [];
+    const submissions = showCombined && !combined?.loading ? (combined?.records ?? []) : [];
     const combinedIds = new Set(submissions.map(item => item.id.toLowerCase()));
     const claims = (data?.claims ?? []).filter(
       item =>
@@ -314,16 +310,16 @@ export function SkillReviews({
         )}
         <section
           className="review-workbench"
-          aria-label={includeCombined ? 'Assigned reviews' : 'Assigned skill reviews'}
+          aria-label={includeCombined ? 'Assigned approvals' : 'Assigned skill approvals'}
           aria-busy={loading}
         >
           <header>
             <div>
               <h3>
                 {includeCombined
-                  ? 'Assigned reviews'
+                  ? 'Assigned approvals'
                   : status === 'ALL'
-                    ? 'All assigned reviews'
+                    ? 'All assigned approvals'
                     : reviewLabels[status]}
               </h3>
               {!includeCombined && (
@@ -332,7 +328,7 @@ export function SkillReviews({
                     ? 'Checking current assignments…'
                     : data
                       ? `${data.total} ${data.total === 1 ? 'claim' : 'claims'}${filtered ? ' matching your filters' : ' assigned to you'}`
-                      : 'Assigned review data is unavailable.'}
+                      : 'Assigned approval data is unavailable.'}
                 </p>
               )}
             </div>
@@ -349,7 +345,7 @@ export function SkillReviews({
               <Search size={18} />
               <input
                 type="search"
-                aria-label="Search review employee or skill"
+                aria-label="Search approvals by employee or skill"
                 placeholder="Search employee, code, skill or request…"
                 maxLength={100}
                 value={search}
@@ -360,7 +356,7 @@ export function SkillReviews({
               </button>
             </div>
             <select
-              aria-label="Review category"
+              aria-label="Approval category"
               value={category}
               onChange={e => {
                 setCategory(e.target.value);
@@ -375,7 +371,7 @@ export function SkillReviews({
               ))}
             </select>
             <select
-              aria-label="Review status"
+              aria-label="Approval status"
               value={status}
               onChange={e => {
                 setStatus(e.target.value);
@@ -399,7 +395,7 @@ export function SkillReviews({
           </form>
           {person && (
             <div className="review-filter-note">
-              Showing one team member’s assigned reviews.
+              Showing one team member’s assigned approvals.
               <button
                 onClick={() => {
                   setPerson(undefined);
@@ -420,9 +416,6 @@ export function SkillReviews({
               Skill category filters apply to individual skill claims.
             </p>
           )}
-          {showCombined && page > 1 && matchingSubmissions.length > 0 && (
-            <p className="review-filter-note">Combined submissions appear on page 1.</p>
-          )}
           {combined?.error && (
             <div className="review-error" role="alert">
               <span>{combined.error}</span>
@@ -441,7 +434,7 @@ export function SkillReviews({
               <span className="review-loading-icon">
                 <RefreshCw size={22} className="review-spin" />
               </span>
-              <strong>Loading your review queue</strong>
+              <strong>Loading your approval queue</strong>
               <p>Checking current assignments and claim status.</p>
             </div>
           )}
@@ -457,14 +450,14 @@ export function SkillReviews({
                 </span>
                 <h3>
                   {filtered
-                    ? 'No matching reviews'
+                    ? 'No matching approval records'
                     : includeCombined
-                      ? 'No combined or individual skill reviews on this page'
+                      ? 'No combined or individual skill approvals on this page'
                       : 'You’re all caught up'}
                 </h3>
                 <p>
                   {filtered
-                    ? 'Try another employee, category or review status.'
+                    ? 'Try another employee, category or approval status.'
                     : 'New requests assigned to you will appear here.'}
                 </p>
                 <div className="review-empty-actions">
@@ -481,7 +474,7 @@ export function SkillReviews({
                           setPage(1);
                         }}
                       >
-                        View all review states
+                        View all approval states
                         <ArrowRight size={16} />
                       </button>
                       {data.canViewTeam && (
@@ -524,14 +517,14 @@ export function SkillReviews({
                         {item.certifications === 1 ? 'certificate' : 'certificates'}
                       </td>
                       <td>
-                        <span className="review-status submitted">Pending review</span>
+                        <span className="review-status submitted">Pending approval</span>
                       </td>
                       <td>
                         {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : '—'}
                       </td>
                       <td>
                         <button className="admin-primary" onClick={() => combined?.open(item.id)}>
-                          Review request <ArrowRight size={15} />
+                          Approval request <ArrowRight size={15} />
                         </button>
                       </td>
                     </tr>
@@ -561,7 +554,9 @@ export function SkillReviews({
                         </td>
                         <td>
                           <span className="review-level">L{item.rank}</span>
-                          <span className="review-subtext">{item.levelName}</span>
+                          <span className="review-subtext">
+                            {displayProficiencyName(item.rank, item.levelName)}
+                          </span>
                         </td>
                         <td>
                           <span className={'review-status ' + item.status.toLowerCase()}>
@@ -577,7 +572,7 @@ export function SkillReviews({
                             disabled={opening}
                             onClick={() => void openClaim(item.id)}
                           >
-                            {item.status === 'SUBMITTED' ? 'Review claim' : 'View history'}
+                            {item.status === 'SUBMITTED' ? 'Open claim approval' : 'View history'}
                             <ArrowRight size={15} />
                           </button>
                         </td>
@@ -595,7 +590,7 @@ export function SkillReviews({
               </span>
               <div className="review-pagination">
                 <button
-                  aria-label="Previous reviews page"
+                  aria-label="Previous approvals page"
                   className="secondary-button"
                   disabled={page === 1}
                   onClick={() => setPage(n => n - 1)}
@@ -604,7 +599,7 @@ export function SkillReviews({
                 </button>
                 <span>Page {page}</span>
                 <button
-                  aria-label="Next reviews page"
+                  aria-label="Next approvals page"
                   className="secondary-button"
                   disabled={page * data.pageSize >= data.total}
                   onClick={() => setPage(n => n + 1)}
@@ -614,14 +609,46 @@ export function SkillReviews({
               </div>
             </footer>
           )}
+          {showCombined &&
+            combined &&
+            !combined.error &&
+            (combined.total > 50 || combinedPage > 1) && (
+              <footer>
+                <span>
+                  Combined approvals
+                  {!combined.loading && combined.total ? ` (${combined.total})` : ''}
+                </span>
+                <div className="review-pagination">
+                  <button
+                    type="button"
+                    aria-label="Previous combined approvals page"
+                    className="secondary-button"
+                    disabled={combinedPage <= 1 || combined.loading}
+                    onClick={() => setCombinedPage(n => n - 1)}
+                  >
+                    <ChevronLeft size={17} />
+                  </button>
+                  <span>Page {combinedPage}</span>
+                  <button
+                    type="button"
+                    aria-label="Next combined approvals page"
+                    className="secondary-button"
+                    disabled={combinedPage * 50 >= combined.total || combined.loading}
+                    onClick={() => setCombinedPage(n => n + 1)}
+                  >
+                    <ChevronRight size={17} />
+                  </button>
+                </div>
+              </footer>
+            )}
         </section>
         <p className="review-policy-note">
           <ShieldCheck size={15} />
-          Only requests assigned to you from current direct reports appear here.
+          Approvals follow your current direct-report assignments and Business Analytics access.
         </p>
         {!initialLoading && !claim && !error && (opening || Boolean(params.get('claim'))) && (
           <FormDialog
-            title="Skill review"
+            title="Skill approval"
             busy={opening}
             onClose={() => {
               const next = new URLSearchParams(params);
@@ -631,7 +658,7 @@ export function SkillReviews({
           >
             <div className="notification-destination-loading" role="status">
               <RefreshCw size={26} className="notification-spin" />
-              <strong>Opening skill review…</strong>
+              <strong>Opening skill approval…</strong>
               <p>Checking the current claim and your available actions.</p>
             </div>
           </FormDialog>
@@ -647,7 +674,7 @@ export function SkillReviews({
       {navigation}
       {view === 'recommendations' && data?.canRecommend ? (
         <>
-          <Recommendations sentOnly />
+          {phaseTwoVisible && <Recommendations sentOnly />}
           {recommendationContent}
         </>
       ) : view === 'team' && data?.canViewTeam ? (
@@ -691,7 +718,14 @@ export function SkillReviews({
           )}
           {!(denied && !data) &&
             (includeCombined ? (
-              <CapabilitySubmissions review onUpdated={refreshReviews} renderQueue={renderQueue} />
+              <CapabilitySubmissions
+                review
+                onUpdated={refreshReviews}
+                renderQueue={renderQueue}
+                queuePage={combinedPage}
+                queueSearch={query}
+                queuePerson={person}
+              />
             ) : (
               renderQueue()
             ))}
@@ -704,7 +738,7 @@ export function SkillReviews({
               onClose={() => setClaim(undefined)}
               onSaved={() => {
                 setClaim(undefined);
-                toast.success('Review saved. The employee has been notified.');
+                toast.success('Decision saved. The employee has been notified.');
                 setAttempt(n => n + 1);
                 window.dispatchEvent(new Event('notifications-updated'));
               }}
@@ -722,8 +756,8 @@ export function SkillReviews({
             <RefreshCw size={24} />
           </div>
           <div>
-            <strong>Loading review workspace…</strong>
-            <p>Checking your permissions and assigned review queues.</p>
+            <strong>Loading approvals workspace…</strong>
+            <p>Checking your permissions and assigned approval queues.</p>
           </div>
         </section>
       )}

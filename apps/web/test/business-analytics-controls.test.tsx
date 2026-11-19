@@ -243,7 +243,7 @@ test('analytics filters preserve explicit scope and hierarchy while resetting pa
   assert.equal(current().has('minRank'), false);
   await fill('Credential category', 'Databases');
   await fill('Issuer / Provider', 'Oracle');
-  await fill('Record review status', 'APPROVED');
+  await fill('Record approval status', 'APPROVED');
   await fill('Validity window', 'CURRENT');
   assert.equal(current().get('category'), 'Databases');
   assert.equal(current().get('issuer'), 'Oracle');
@@ -253,7 +253,7 @@ test('analytics filters preserve explicit scope and hierarchy while resetting pa
   for (const k of ['category', 'issuer', 'skillId', 'minRank', 'status', 'validity'])
     assert.equal(current().has(k), false, k);
   await fill('Sort', 'expiry_asc');
-  await fill('Review status', 'CHANGES_REQUESTED');
+  await fill('Approval status', 'CHANGES_REQUESTED');
   await fill('Validity', 'NO_EXPIRY', document.querySelector('.bo-record-filters')!);
   assert.equal(current().get('sort'), 'expiry_asc');
   assert.equal(current().get('status'), 'CHANGES_REQUESTED');
@@ -371,7 +371,7 @@ test('analytics drill-through, pagination and assistant handoff preserve narrowi
     assert.match(prompts[0].prompt, /Financial Services/);
     assert.match(prompts[1].prompt, /authorized analytics/);
     await click('Skill coverage', document.querySelector('[aria-label="Analytics views"]')!);
-    await click('SQL, level 3: 1 reviewed holders; drill-through level 3');
+    await click('SQL, level 3: 1 approved holders; drill-through level 3');
     assert.equal(current().get('dataset'), 'skills');
     assert.equal(current().get('minRank'), '3');
     assert.equal(current().get('maxRank'), '3');
@@ -419,7 +419,7 @@ test('analytics chart filters and KPI shortcuts produce exact record queries wit
   for (const [label, dataset, status] of [
     ['Authorized employees', 'people', null],
     ['Currently certified', 'certifications', 'APPROVED'],
-    ['Reviewed skill holders', 'skills', 'APPROVED'],
+    ['Approved skill holders', 'skills', 'APPROVED'],
     ['Pending records', 'submissions', 'SUBMITTED'],
   ] as const) {
     await click(label);
@@ -476,7 +476,7 @@ test('overview cards, issuer donut and renewal windows drill into matching recor
   assert.equal(current().has('issuer'), false);
   assert.equal(current().has('category'), false);
   await click('Overview', document.querySelector('[aria-label="Analytics views"]')!);
-  await click('SQL, level 2: 1 reviewed holders');
+  await click('SQL, level 2: 1 approved holders');
   assert.equal(current().get('minRank'), '2');
   assert.equal(current().get('maxRank'), '2');
   await click('Overview', document.querySelector('[aria-label="Analytics views"]')!);

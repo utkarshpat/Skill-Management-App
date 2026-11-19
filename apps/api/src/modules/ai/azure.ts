@@ -124,6 +124,9 @@ export function azureResponsesProvider(
             include: ['reasoning.encrypted_content'],
             reasoning: { effort },
             max_output_tokens: options?.maxOutputTokens ?? 2400,
+            ...(options?.responseSchema && {
+              text: { format: { type: 'json_schema', strict: true, ...options.responseSchema } },
+            }),
             // Preserve optional fields in existing schemas. Validators in the
             // tool registry remain authoritative; no new tools are enabled.
             tools: tools.map(({ function: tool }) => ({

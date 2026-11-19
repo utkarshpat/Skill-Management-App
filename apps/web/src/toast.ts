@@ -6,7 +6,7 @@ export function notify(message: string, kind: ToastKind = 'info') {
     );
 }
 export async function notifyResponse(path: string, method: string, response: Response) {
-  if (path.startsWith('/api/excel/')) return;
+  if (path.startsWith('/api/excel/') || path === '/api/announcements/design') return;
   if (!response.ok) {
     const body = await response
       .clone()
@@ -34,9 +34,9 @@ export async function notifyResponse(path: string, method: string, response: Res
   )
     notify(
       path.includes('/submit')
-        ? 'Submitted for review.'
+        ? 'Submitted for approval.'
         : path.includes('/decision')
-          ? 'Review saved.'
+          ? 'Decision saved.'
           : path.includes('/evidence')
             ? 'Evidence uploaded.'
             : 'Changes saved.',

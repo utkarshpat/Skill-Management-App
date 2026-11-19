@@ -17,8 +17,8 @@ export function EvidenceVisibility({
   if (['DRAFT', 'CHANGES_REQUESTED', 'REJECTED'].includes(status))
     return (
       <p className="claim-evidence-text">
-        New files stay private until you submit this claim for review. Previously submitted files
-        remain visible to your current assigned reviewer.
+        New files stay private until you submit this claim for approval. Previously submitted files
+        remain visible to your current assigned approver.
       </p>
     );
   return null;

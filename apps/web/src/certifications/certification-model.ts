@@ -1,8 +1,8 @@
 import type { CertificationFields, CertificationRecord, CertificationStatus } from './types';
 export const certificationStatusLabels: Record<CertificationStatus, string> = {
   DRAFT: 'Draft',
-  SUBMITTED: 'Awaiting manager review',
-  APPROVED: 'Manager reviewed',
+  SUBMITTED: 'Pending approval',
+  APPROVED: 'Approved',
   CHANGES_REQUESTED: 'Changes requested',
   REJECTED: 'Not approved',
 };
@@ -47,7 +47,7 @@ export function certificationFieldError(fields: CertificationFields, today: stri
     fields.expiryDate !== null &&
     (!validDay(fields.expiryDate) || fields.expiryDate < fields.certificationDate)
   )
-    return 'Expiry date must be on or after the issue date.';
+    return 'Valid till must be on or after the issue date.';
   if (fields.credentialUrl) {
     try {
       const url = new URL(fields.credentialUrl);

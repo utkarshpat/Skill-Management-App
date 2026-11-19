@@ -100,8 +100,8 @@ test('free HTML/CSS runs only inside the sandbox and preview actions never submi
   await expect(iframe).toHaveAttribute('sandbox', 'allow-scripts');
   const frame = editor.frameLocator('iframe.announcement-sandbox');
   await expect(frame.getByRole('heading', { name: 'Designer training' })).toBeVisible();
-  await expect(frame.getByLabel('Name', { exact: true })).toHaveValue('Preview Employee');
-  await expect(frame.getByLabel('Name', { exact: true })).toBeDisabled();
+  await expect(frame.locator('output#ann-name')).toHaveText('Preview Employee');
+  await expect(frame.locator('input#ann-name')).toHaveCount(0);
   await expect(frame.getByLabel('Preferred batch').locator('option')).toHaveText([
     'Select an option',
     'Morning',
@@ -140,6 +140,29 @@ test('live sandbox buttons use authenticated app submission and retain values th
   page,
 }) => {
   await fixture(page, { role: 'employee' });
+  const formDefinition = definition();
+  formDefinition.fields[0].type = 'radio';
+  formDefinition.fields.push({
+    id: 'confirm',
+    label: 'I can attend',
+    type: 'checkbox',
+    required: true,
+    options: [],
+  });
+  formDefinition.design.html = formDefinition.design.html
+    .replace(
+      '<select id="ann-field-batch"><option>Untrusted extra option</option></select>',
+      '<fieldset id="ann-field-batch"></fieldset>',
+    )
+    .replace(
+      '</form>',
+      '<label for="ann-field-confirm">I can attend</label><input id="ann-field-confirm"></form>',
+    );
+  formDefinition.design.bindings.push({
+    elementId: 'ann-field-confirm',
+    kind: 'field',
+    key: 'confirm',
+  });
   await page.route('**/api/announcements/feed*', r =>
     r.fulfill({
       json: {
@@ -149,7 +172,7 @@ test('live sandbox buttons use authenticated app submission and retain values th
             revision: 2,
             startsAt: '2000-01-01T00:00:00Z',
             endsAt: '2099-01-01T00:00:00Z',
-            definition: definition(),
+            definition: formDefinition,
             answered: false,
             hasImage: false,
           },
@@ -169,24 +192,24 @@ test('live sandbox buttons use authenticated app submission and retain values th
     );
   });
   await page.goto('/profile');
-  const banner = page.frameLocator('iframe.announcement-sandbox');
-  await banner.getByRole('button', { name: 'Open registration' }).click();
+  await page.locator('.announcement-strip').getByRole('button', { name: 'Register' }).click();
   const dialog = page.getByRole('dialog', { name: 'Training registration' });
   const form = dialog.frameLocator('iframe.announcement-sandbox');
-  await expect(form.getByLabel('Work email')).toHaveValue(person.email);
-  await form.getByLabel('Preferred batch').selectOption('Evening');
+  await expect(form.locator('output#ann-email')).toHaveText(person.email);
+  await form.getByRole('radio', { name: 'Evening' }).check();
+  await form.getByRole('checkbox', { name: 'I can attend' }).check();
   await form.getByRole('button', { name: 'Register now' }).click();
   await expect(
     dialog.getByRole('region', { name: 'Training registration content' }).getByRole('alert'),
   ).toHaveText('Try your response again.');
-  await expect(form.getByLabel('Preferred batch')).toHaveValue('Evening');
+  await expect(form.getByRole('radio', { name: 'Evening' })).toBeChecked();
+  await expect(form.getByRole('checkbox', { name: 'I can attend' })).toBeChecked();
   await form.getByRole('button', { name: 'Register now' }).click();
-  await expect(dialog.getByText('Response submitted.')).toBeVisible();
+  await expect(dialog).toBeHidden();
   expect(sent).toEqual([
-    { revision: 2, answers: { batch: 'Evening' } },
-    { revision: 2, answers: { batch: 'Evening' } },
+    { revision: 2, answers: { batch: 'Evening', confirm: true } },
+    { revision: 2, answers: { batch: 'Evening', confirm: true } },
   ]);
-  await expect(form.getByRole('button', { name: 'Register now' })).toBeDisabled();
 });
 
 test('sandbox poll IDs map only to configured options and recorded votes become read only', async ({
@@ -235,8 +258,10 @@ test('sandbox poll IDs map only to configured options and recorded votes become 
     return r.fulfill({ json: { saved: true } });
   });
   await page.goto('/profile');
-  const frame = page.frameLocator('iframe.announcement-sandbox');
+  await page.locator('.announcement-strip').getByRole('button', { name: 'Open poll' }).click();
+  const dialog = page.locator('.announcement-dialog');
+  const frame = dialog.frameLocator('iframe.announcement-sandbox');
   await frame.getByRole('button', { name: 'SQL', exact: true }).click();
-  await expect(frame.getByRole('button', { name: 'SQL', exact: true })).toBeDisabled();
+  await expect(dialog).toBeHidden();
   expect(sent).toEqual([{ revision: 1, answers: { vote: 'SQL' } }]);
 });

@@ -1,7 +1,8 @@
 import { publishWorkspaceFreshness } from './workspace-freshness';
 import type { WorkspaceState } from './Workspace';
 import { administrationShellFor, isSupportedWorkspacePath } from './WorkspaceNavigation';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { FormDialog } from './FormDialog';
 import { Link, useLocation } from 'react-router';
 
 import { ThemeSwitcher } from './Theme';
@@ -15,6 +16,8 @@ import {
   signInConfigured,
   refreshDevelopmentLogin,
   signOut,
+  companyResumePath,
+  resumeCompanySession,
 } from './auth';
 import { DevelopmentLogin } from './DevelopmentLogin';
 import { IdentityPending } from './IdentityPending';
@@ -40,9 +43,9 @@ const modules = [
     description: 'Understand capability. Verify with confidence.',
   },
   {
-    title: 'Credentials & Development',
+    title: 'Credentials',
     icon: BookOpen,
-    description: 'Turn learning goals into daily progress.',
+    description: 'Track credentials and their validity.',
   },
   {
     title: 'Projects & Demand',
@@ -68,6 +71,10 @@ export function App() {
     'loading',
   );
   const [sessionNotice, setSessionNotice] = useState('');
+  const [resumePath, setResumePath] = useState<string>();
+  const [resumeError, setResumeError] = useState('');
+  const [resuming, setResuming] = useState(false);
+  const paused = useRef(false);
   const [bindingPending, setBindingPending] = useState(false);
   const [leavingWorkspace, setLeavingWorkspace] = useState(false);
   const [signOutError, setSignOutError] = useState('');
@@ -87,7 +94,7 @@ export function App() {
     [workspaceAttempt, setWorkspaceAttempt] = useState(0);
   useEffect(() => {
     setWorkspaceError('');
-    if (isKnowledgeTransfer) return;
+    if (isKnowledgeTransfer || resumePath) return;
     if (session !== 'signed-in') {
       publishWorkspaceFreshness();
       setWorkspace(undefined);
@@ -105,7 +112,7 @@ export function App() {
               Error(body?.error?.message ?? 'Workspace navigation could not be refreshed.'),
               { status: response.status, code: body?.error?.code },
             );
-          if (!controller.signal.aborted && request === generation) {
+          if (!controller.signal.aborted && request === generation && !paused.current) {
             setWorkspace(body);
             setBindingPending(false);
             setWorkspaceError('');
@@ -115,7 +122,7 @@ export function App() {
           }
         })
         .catch(error => {
-          if (!controller.signal.aborted && request === generation) {
+          if (!controller.signal.aborted && request === generation && !paused.current) {
             if ([401, 403].includes(error.status)) setWorkspace(undefined);
             setBindingPending(error.status === 403 && error.code === 'ACCESS_NOT_PROVISIONED');
             setWorkspaceError(error.message);
@@ -135,7 +142,7 @@ export function App() {
       stop();
       controller.abort();
     };
-  }, [session, workspaceAttempt, isKnowledgeTransfer]);
+  }, [session, workspaceAttempt, isKnowledgeTransfer, resumePath]);
   useEffect(() => {
     let active = true;
     const expired = () => {
@@ -153,6 +160,12 @@ export function App() {
         });
     };
     const companyExpired = () => {
+      const path = companyResumePath();
+      if (path && (workspace || isKnowledgeTransfer)) {
+        paused.current = true;
+        setResumePath(path);
+        return;
+      }
       setSessionNotice('Your company session expired. Sign in again to continue.');
       setSession('anonymous');
     };
@@ -163,7 +176,7 @@ export function App() {
       window.removeEventListener('company-session-expired', companyExpired);
       window.removeEventListener('development-session-expired', expired);
     };
-  }, []);
+  }, [workspace, isKnowledgeTransfer]);
   const [entryPath] = useState(pathname);
   useEffect(() => {
     let active = true;
@@ -178,6 +191,62 @@ export function App() {
       active = false;
     };
   }, [entryPath]);
+  async function resumeWorkspace() {
+    if (resuming) return;
+    setResuming(true);
+    setResumeError('');
+    try {
+      if (!(await resumeCompanySession())) {
+        window.location.reload();
+        return;
+      }
+      const response = await authenticatedFetch('/api/workspace');
+      if (response.status === 401 || response.status === 403) {
+        window.location.reload();
+        return;
+      }
+      if (!response.ok) throw Error('Workspace could not be refreshed. Try again.');
+      setWorkspace(await response.json());
+      paused.current = false;
+      setResumePath(undefined);
+      window.dispatchEvent(new Event('workspace-access-updated'));
+    } catch (error) {
+      setResumeError(error instanceof Error ? error.message : 'Sign-in could not be resumed.');
+    } finally {
+      setResuming(false);
+    }
+  }
+  const recovery = resumePath && (
+    <FormDialog
+      title="Sign in to resume your work"
+      className="company-session-recovery"
+      busy
+      onClose={() => {}}
+      footer={
+        <>
+          <a
+            href={resumePath}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="secondary-button"
+          >
+            Sign in with Microsoft
+          </a>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => void resumeWorkspace()}
+            disabled={resuming}
+          >
+            {resuming ? 'Checking sign-in…' : 'Resume workspace'}
+          </button>
+        </>
+      }
+    >
+      <p>Sign in with the same work account in the new tab, then return here to continue.</p>
+      {resumeError && <p role="alert">{resumeError}</p>}
+    </FormDialog>
+  );
   if (pathname === '/preview') return <Overview />;
   if (session === 'loading')
     return (
@@ -205,6 +274,7 @@ export function App() {
         }
       >
         <KnowledgeTransfer />
+        {recovery}
       </Suspense>
     );
   if (session === 'signed-in' && !workspace)
@@ -275,6 +345,7 @@ export function App() {
             <AssistantWidget />
           </Suspense>
         </Suspense>
+        {recovery}
       </>
     );
   return session === 'signed-in' ? (
@@ -292,6 +363,7 @@ export function App() {
           <AssistantWidget />
         </Suspense>
       </Suspense>
+      {recovery}
     </>
   ) : (
     <Welcome
@@ -337,12 +409,10 @@ function Welcome({
         <img src="/brand/sopra-steria.svg" alt="Sopra Steria" />
       </header>
       <main id="welcome-main" className="welcome-main" tabIndex={-1}>
-        <section className="login-introduction" aria-label="About Cognitive Intelligence Lab">
+        <section className="login-introduction" aria-label="About Skill Genie">
           <p className="login-eyebrow">WORKFORCE INTELLIGENCE</p>
           <h2>
-            Cognitive
-            <br />
-            Intelligence Lab<span className="login-title-dot">.</span>
+            Skill Genie<span className="login-title-dot">.</span>
           </h2>
           <p className="login-tagline">
             Understand capability.
@@ -368,7 +438,7 @@ function Welcome({
         <section className="signin-card" aria-labelledby="signin-title">
           <h1 id="signin-title">
             <span className="desktop-welcome">Welcome back</span>
-            <span className="mobile-welcome">Skill Management</span>
+            <span className="mobile-welcome">Skill Genie</span>
           </h1>
           <p className="signin-intro">Sign in to your workspace.</p>
           {sessionNotice && <p role="status">{sessionNotice}</p>}

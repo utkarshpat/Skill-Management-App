@@ -168,7 +168,7 @@ async function mount(path = '/access?view=roles') {
   await settle();
 }
 const editor = () => document.querySelector('.form-dialog')!;
-const review = () => document.querySelector('[aria-label="Review access change"]')!;
+const review = () => document.querySelector('[aria-label="Preview access change"]')!;
 
 test('new access template previews its permission set and returns to the same draft before receipt save', async () => {
   await mount();
@@ -206,7 +206,7 @@ test('failed access recheck preserves the edited template and requires a new pre
   await click('Preview change');
   saveFailure = 409;
   await click('Confirm & save', review());
-  assert.equal(document.querySelector('[aria-label="Review access change"]'), null);
+  assert.equal(document.querySelector('[aria-label="Preview access change"]'), null);
   assert.match(document.body.textContent!, /Access revision changed/);
   assert.equal(
     document.querySelector<HTMLInputElement>('#role-editor input')!.value,
@@ -253,7 +253,7 @@ test('bulk template assignment rechecks each revision and retries only the remai
   }
   await click('Save assignments');
   const assignmentsReview = () =>
-    document.querySelector('[aria-label="Review template assignments"]')!;
+    document.querySelector('[aria-label="Preview template assignments"]')!;
   assert.match(assignmentsReview().textContent!, /Aditi Menon.*Rohan Mehta/);
   assert.equal(previews.length, 0);
   await click('Back to edit', assignmentsReview());
@@ -277,7 +277,7 @@ test('bulk template assignment rechecks each revision and retries only the remai
     saves.map(({ previewReceipt, ...body }) => [previewReceipt, body]),
     previews.map(body => ['reviewed-access-change', body]),
   );
-  assert.match(document.body.textContent!, /1 people saved. Review remaining selections/);
+  assert.match(document.body.textContent!, /1 people saved. Check remaining selections/);
   failPerson = '';
   await click('Save assignments');
   assert.doesNotMatch(assignmentsReview().textContent!, /Aditi Menon/);

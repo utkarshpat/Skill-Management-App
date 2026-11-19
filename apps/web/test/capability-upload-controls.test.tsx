@@ -47,6 +47,7 @@ const fields = {
 };
 let view: Awaited<ReturnType<typeof render>> | undefined;
 let personal: any,
+  catalogueFound = true,
   aiAvailable = true,
   uploadFailure = 0,
   saved = 0,
@@ -67,6 +68,7 @@ beforeEach(async () => {
     ],
   };
   aiAvailable = true;
+  catalogueFound = true;
   uploadFailure = 0;
   saved = 0;
   closed = 0;
@@ -88,11 +90,13 @@ beforeEach(async () => {
         return Response.json({
           fields: { ...fields, notes: 'AI extracted certificate facts' },
           suggestions: [{ skill: choice, reason: 'Related to the supplied certificate' }],
-          catalogueSuggestion: {
-            name: 'Azure Fundamentals',
-            provider: 'Microsoft',
-            category: 'Cloud',
-          },
+          catalogueMatch: catalogueFound
+            ? {
+                status: 'matched',
+                confidence: 96,
+                credential: personal.definitions[0],
+              }
+            : { status: 'not_found' },
           warning: 'Review extracted facts before saving.',
         });
       if (url.endsWith('/evidence') || url.endsWith('/image'))
@@ -161,7 +165,7 @@ test('skill evidence validation, removal and upload use the saved revision befor
     skill(),
   );
   await fill('Projects', 'Customer reporting release', skill());
-  await fill('Evidence references', 'Reviewed delivery notes and report tests', skill());
+  await fill('Supporting references', 'Reviewed delivery notes and report tests', skill());
   const upload = skill().querySelector<HTMLInputElement>('input[type="file"]')!;
   await file(upload, new File(['bad'], 'script.exe', { type: 'application/octet-stream' }));
   assert.match(skill().textContent!, /Choose PDF, JPEG, PNG or WebP/);
@@ -174,8 +178,8 @@ test('skill evidence validation, removal and upload use the saved revision befor
   assert.equal(skill().querySelector('.cap-pending-evidence'), null);
   await file(upload, new File(['%PDF-evidence'], 'report-tests.pdf', { type: 'application/pdf' }));
   await click('Done', skill());
-  await click('Review', base());
-  await click('Submit for review', base());
+  await click('Preview', base());
+  await click('Submit for approval', base());
   assert.equal(saved, 1);
   assert.deepEqual(
     calls.map(c => c.url),
@@ -213,14 +217,13 @@ test('evidence promotion enforces the certificate limit and retains the supporti
   );
 });
 
-test('AI certificate autofill is advisory and certificate upload precedes exact-revision submit', async () => {
+test('AI autofill selects the approved credential and certificate upload precedes exact-revision submit', async () => {
   await mount({
     initialCertificate: true,
     initialEvidenceFile: new File(['Certificate details'], 'azure-certificate.txt', {
       type: 'text/plain',
     }),
   });
-  await fill('Choose an approved credential definition', 'azure-definition', base());
   await fill('Issue date', '2026-01-12', base());
   await click('1 year', base());
   await fill('Credential ID', 'AZ-2042', base());
@@ -230,10 +233,16 @@ test('AI certificate autofill is advisory and certificate upload precedes exact-
   assert.equal(calls[0].url, root + '/autofill');
   assert.equal(calls[0].headers.get('X-File-Name'), 'azure-certificate.txt');
   assert.equal(saved, 0);
+  assert.match(base().textContent!, /Catalogue credential selected \(96% match\)/);
+  assert.equal(
+    [...base().querySelectorAll('select')].find(select =>
+      select.parentElement?.textContent?.includes('Choose an approved credential definition'),
+    )?.value,
+    'azure-definition',
+  );
   await click('Continue', base());
-  await click('Use these catalogue details', base());
-  await click('Review', base());
-  await click('Submit for review', base());
+  await click('Preview', base());
+  await click('Submit for approval', base());
   const posts = calls.filter(c => c.url !== root + '/autofill');
   assert.equal(posts[0].url, root);
   assert.equal(posts[1].headers.get('X-Certification-Revision'), '9');
@@ -242,15 +251,31 @@ test('AI certificate autofill is advisory and certificate upload precedes exact-
   assert.equal(saved, 1);
 });
 
+test('unmatched certificate autofill preserves manual identity and points to N+1', async () => {
+  catalogueFound = false;
+  await mount({
+    initialCertificate: true,
+    initialEvidenceFile: new File(['Unlisted certificate'], 'unlisted.txt', { type: 'text/plain' }),
+  });
+  await fill('Certification name', 'My manual credential', base());
+  await click('Autofill with AI', base());
+  assert.match(base().textContent!, /Not available in the catalogue.*ask your N\+1/);
+  const input = [...base().querySelectorAll('label')]
+    .find(label => label.textContent?.trim().startsWith('Certification name'))
+    ?.querySelector('input');
+  assert.equal(input?.value, 'My manual credential');
+  assert.equal(saved, 0);
+});
+
 test('adding an already-submitted skill is blocked without saving another review', async () => {
   personal.claims = [{ skillId: choice.id, status: 'SUBMITTED' }];
   await mount({ initialSkillDraft: undefined });
   await settle();
-  assert.match(base().textContent!, /already awaiting review/);
+  assert.match(base().textContent!, /already pending approval/);
   assert.equal(calls.length, 0);
 });
 
-test('reviewed skills and credentials can be linked without new proficiency or review writes', async () => {
+test('approved skills and credentials can be linked without new proficiency or review writes', async () => {
   personal.claims = [
     {
       ...draft,
@@ -266,9 +291,7 @@ test('reviewed skills and credentials can be linked without new proficiency or r
     { ...fields, id: 'reviewed-certificate', revision: 4, status: 'APPROVED', hasImage: true },
   ];
   await mount({ initialCertificate: true });
-  await click('Remove certificate from this draft', base());
-  await fill('Link an existing certification', 'reviewed-certificate', base());
-  await click('Continue', base());
+  await click('Continue without certificate', base());
   await click('Remove SQL reporting', base());
   await settle();
   await debounce();
@@ -276,10 +299,10 @@ test('reviewed skills and credentials can be linked without new proficiency or r
   await click('SQL reporting', result);
   assert.match(skill().textContent!, /linked without changing its proficiency/);
   const supporting = skill().querySelector<HTMLInputElement>('input[type="checkbox"]')!;
-  if (supporting.checked) await act(async () => supporting.click());
+  assert.equal(supporting.checked, false);
   await act(async () => supporting.click());
   await click('Done', skill());
-  await click('Review', base());
+  await click('Preview', base());
   assert.match(base().querySelector('footer')!.textContent!, /Save links/, base().textContent!);
   await click('Save links', base());
   assert.equal(saved, 1);
@@ -290,6 +313,35 @@ test('reviewed skills and credentials can be linked without new proficiency or r
   assert.deepEqual(calls[0].body.certifications[0].skillIds, [choice.id]);
 });
 
+test('skill details show approved certificate choices above projects and references, and allow unlinking', async () => {
+  personal.certifications = [
+    { ...fields, id: 'approved-certificate', revision: 4, status: 'APPROVED', hasImage: true },
+    {
+      ...fields,
+      id: 'pending-certificate',
+      certificationName: 'Pending exam',
+      revision: 2,
+      status: 'SUBMITTED',
+    },
+  ];
+  await mount();
+  await click(choice.name, base());
+  assert.match(skill().textContent!, /Supporting certificates.*Projects.*Supporting references/s);
+  assert.doesNotMatch(skill().textContent!, /Pending exam/);
+  const supporting = skill().querySelector<HTMLInputElement>('.cap-skill-certificates input')!;
+  assert.match(supporting.closest('label')!.textContent!, /Azure Fundamentals.*Approved/);
+  await act(async () => supporting.click());
+  await click('Done', skill());
+  await click(choice.name, base());
+  const linked = skill().querySelector<HTMLInputElement>('.cap-skill-certificates input')!;
+  assert.equal(linked.checked, true);
+  await act(async () => linked.click());
+  await click('Done', skill());
+  await click('Preview', base());
+  await click('Submit for approval', base());
+  assert.deepEqual(calls.find(call => call.url === root)?.body.certifications, []);
+});
+
 test('failed evidence upload never advances to submission or reports a successful save', async () => {
   await mount();
   await click(choice.name, base());
@@ -298,9 +350,9 @@ test('failed evidence upload never advances to submission or reports a successfu
     new File(['%PDF-evidence'], 'client-delivery.pdf', { type: 'application/pdf' }),
   );
   await click('Done', skill());
-  await click('Review', base());
+  await click('Preview', base());
   uploadFailure = 503;
-  await click('Submit for review', base());
+  await click('Submit for approval', base());
   assert.equal(saved, 0);
   assert.deepEqual(
     calls.map(c => c.url),

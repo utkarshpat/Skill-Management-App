@@ -7,10 +7,10 @@ import { EvidenceVisibility } from '../src/EvidenceVisibility';
 test('Editable evidence explains private new uploads and previously submitted visibility', () => {
   for (const status of ['DRAFT', 'CHANGES_REQUESTED', 'REJECTED'] as const) {
     const html = renderToStaticMarkup(<EvidenceVisibility status={status} />);
-    assert.match(html, /New files stay private until you submit this claim for review/);
+    assert.match(html, /New files stay private until you submit this claim for approval/);
     assert.match(
       html,
-      /Previously submitted files remain visible to your current assigned reviewer/,
+      /Previously submitted files remain visible to your current assigned approver/,
     );
     assert.doesNotMatch(html, /Only files included in the latest submission/);
   }

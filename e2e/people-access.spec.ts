@@ -164,7 +164,7 @@ test('People & Access searches on demand and reviews template assignment and rem
     .toBe(true);
   await page.getByRole('button', { name: 'Templates (0)' }).click();
   await page.getByLabel('Template to assign').selectOption(template.id);
-  await page.getByRole('button', { name: 'Review template assignment' }).click();
+  await page.getByRole('button', { name: 'Preview template assignment' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText(/Assign Delivery Support to Aditi Menon/)).toBeVisible();
   expect(saves).toEqual([]);

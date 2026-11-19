@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { phaseTwoVisible } from './release-features';
 export interface ProfileCompletenessDetails {
   filled: number;
   total: number;
@@ -43,7 +44,7 @@ export function ProfileCompleteness({
               ? ' Some fields are unavailable; this is not a confirmed completeness score.'
               : details.status === 'COMPLETE'
                 ? ' Your required work information is complete.'
-                : ' Review the missing fields below.'}
+                : ' Check the missing fields below.'}
           </p>
           <dl className="profile-checklist">
             {details.items.map(item => (
@@ -72,7 +73,7 @@ export function ProfileCompleteness({
               administrators maintain your account/client and reporting assignments.
             </p>
           )}
-          {details.status !== 'COMPLETE' && canRequest && (
+          {details.status !== 'COMPLETE' && phaseTwoVisible && canRequest && (
             <Link className="secondary-button" to="/requests?action=create">
               Request a profile correction
             </Link>

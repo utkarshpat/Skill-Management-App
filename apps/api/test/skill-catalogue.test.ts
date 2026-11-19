@@ -56,7 +56,7 @@ test('catalogue validates publication criteria, sequential unique levels, bounde
       catalogueChange({
         ...input(),
         levels: input().levels.map(level =>
-          level.rank === 2 ? { ...level, name: 'FOUNDATION' } : level,
+          level.rank === 2 ? { ...level, name: 'BEGINNER' } : level,
         ),
       }),
     /unique/,
@@ -77,7 +77,7 @@ test('catalogue validates publication criteria, sequential unique levels, bounde
   for (const levels of [
     input().levels.slice(0, 3),
     [...input().levels, { rank: 6, name: 'Master', description: 'Criteria' }],
-    input().levels.map(level => (level.rank === 2 ? { ...level, name: 'Beginner' } : level)),
+    input().levels.map(level => (level.rank === 2 ? { ...level, name: 'Foundation' } : level)),
     input().levels.map(level => (level.rank === 3 ? { ...level, name: 'Intermediate' } : level)),
     input().levels.map(level => ({ ...level, name: level.name.toLowerCase() })),
   ]) {

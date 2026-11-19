@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { Link } from 'react-router';
 import {
   ArrowUpRight,
@@ -31,8 +32,8 @@ export interface DashboardCapabilityData {
   topSkills?: TopReviewedSkill[];
 }
 const labels = {
-  APPROVED: 'Manager reviewed',
-  SUBMITTED: 'Pending review',
+  APPROVED: 'Approved',
+  SUBMITTED: 'Pending approval',
   DRAFT: 'Self-assessed draft',
   CHANGES_REQUESTED: 'Changes requested',
   REJECTED: 'Not approved',
@@ -42,14 +43,14 @@ export function DashboardCapability({ data }: { data: DashboardCapabilityData })
     {
       value: data.verified,
       status: 'APPROVED',
-      label: 'Manager reviewed',
+      label: 'Approved',
       tone: 'teal',
       Icon: ShieldCheck,
     },
     {
       value: data.pending,
       status: 'SUBMITTED',
-      label: 'Pending review',
+      label: 'Pending approval',
       tone: 'amber',
       Icon: Clock3,
     },
@@ -92,7 +93,7 @@ export function DashboardCapability({ data }: { data: DashboardCapabilityData })
         <SkillRadar skills={data.topSkills} reviewed={data.verified} />
       ) : (
         <p className="dashboard-footnote">
-          Top-skill snapshot is unavailable. Your complete reviewed skills are available in My
+          Top-skill snapshot is unavailable. Your complete approved skills are available in My
           skills.
         </p>
       )}
@@ -121,8 +122,8 @@ export function DashboardCapability({ data }: { data: DashboardCapabilityData })
             <strong>Build your capability profile</strong>
             <p>
               {data.canClaim
-                ? 'Choose a published skill, describe your experience and prepare a claim for review.'
-                : 'Your skill claims and their review status will appear here.'}
+                ? 'Choose a published skill, describe your experience and prepare a claim for approval.'
+                : 'Your skill claims and their approval status will appear here.'}
             </p>
             {data.canClaim && (
               <Link to="/my-skills?action=add">
@@ -148,7 +149,7 @@ export function DashboardCapability({ data }: { data: DashboardCapabilityData })
                       <ArrowUpRight size={14} />
                     </Link>
                     <p>
-                      {c.category} · Level {c.rank} — {c.levelName}
+                      {c.category} · Level {c.rank} — {displayProficiencyName(c.rank, c.levelName)}
                     </p>
                     <time dateTime={c.updatedAt}>
                       Updated{' '}
@@ -170,7 +171,7 @@ export function DashboardCapability({ data }: { data: DashboardCapabilityData })
         )
       )}
       <p className="dashboard-footnote">
-        Reviewed proficiency and self-assessed claims are kept separate. Learning completion does
+        Approved proficiency and self-assessed claims are kept separate. Learning completion does
         not verify a skill.
       </p>
     </div>

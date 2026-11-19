@@ -220,7 +220,7 @@ export class ToolRegistry {
               view === 'mine' ? 'my_capability_submissions' : 'assigned_capability_submissions',
               view === 'mine'
                 ? 'Read recent own linked skill/certificate submissions and their review progress. No uploaded file contents.'
-                : 'Read combined pending review requests assigned to the current direct manager. These requests are excluded from standalone skill/certificate queues; include this tool when answering pending review questions. No uploaded file contents.',
+                : 'Read combined pending approval requests assigned to the current direct manager. These requests are excluded from standalone skill/certificate queues; include this tool when answering pending approval questions. No uploaded file contents.',
             ),
             permission: (s, p) =>
               can(s, p, 'profile.view', true) &&
@@ -240,7 +240,7 @@ export class ToolRegistry {
                 records: (value.records ?? []).slice(0, 20),
                 hasMore: (value.records ?? []).length > 20,
                 policy:
-                  'One request may contain multiple skill and credential items. A linked certificate does not automatically establish proficiency; review decisions remain independent.',
+                  'One request may contain multiple skill and credential items. A linked certificate does not automatically establish proficiency; approval decisions remain independent.',
               };
             },
           },
@@ -367,7 +367,7 @@ export class ToolRegistry {
                         : 'Current',
               })),
               policy:
-                'Total includes retained renewal history. Superseded records are not current holdings or renewal attention. Manager reviewed is an internal decision, not issuer verification or proof of current validity. Expiry is independent. Expires soon means within 90 days, including today. Page results are not aggregate validity counts. Reminder milestones are evaluated on notification reads; do not promise background email or scheduled delivery.',
+                'Total includes retained renewal history. Superseded records are not current holdings or renewal attention. Approved is an internal decision, not issuer verification or proof of current validity. Expiry is independent. Expires soon means within 90 days, including today. Page results are not aggregate validity counts. Reminder milestones are evaluated on notification reads; do not promise background email or scheduled delivery.',
             };
           },
         });
@@ -377,7 +377,7 @@ export class ToolRegistry {
       for (const [name, description, dataset] of [
         [
           'business_insights',
-          'Read current authorized Analytics counts, reviewed skill coverage, credential distribution and submission/review trends. Coverage is an as-of snapshot; activity dates apply only to event trends. Private drafts, notes and files are excluded.',
+          'Read current authorized Analytics counts, approved skill coverage, credential distribution and submission/review trends. Coverage is an as-of snapshot; activity dates apply only to event trends. Private drafts, notes and files are excluded.',
           'people',
         ],
         [
@@ -387,7 +387,7 @@ export class ToolRegistry {
         ],
         [
           'business_certifications',
-          'Read a bounded page of submitted credential records in your authorized Analytics scope, including credential name, issuer, employee, review status and dates. Use for follow-ups asking which certificate or whose credential, including records behind an expiry count. Set status APPROVED for manager-reviewed holdings; use validity EXPIRED for expired credentials. This does not read private notes or files or grant review authority.',
+          'Read a bounded page of submitted credential records in your authorized Analytics scope, including credential name, issuer, employee, approval status and dates. Use for follow-ups asking which certificate or whose credential, including records behind an expiry count. Set status APPROVED for approved holdings; use validity EXPIRED for expired credentials. This does not read private notes or files or grant approval authority.',
           'certifications',
         ],
         [
@@ -520,8 +520,8 @@ export class ToolRegistry {
                   ? 'Skill coverage includes the full filtered published four-level catalogue, including zero-holder skills. Credential counts are distinct people per credential and overlap across credentials; current holders exclude expired/superseded records. Uncatalogued or retired credentials are reported separately. Issuer/category charts show at most 15 groups. Legacy skill frameworks do not establish equivalent proficiency.'
                   : 'Coverage charts show at most 10 skills; full catalogue/credential headcount is unavailable. Issuer/category charts show at most 15 groups. Legacy skill frameworks do not establish equivalent proficiency.',
                 'No private drafts or certificate downloads',
-                'Coverage denominator includes authorized people without reviewed claims',
-                'Business access never grants manager-review authority',
+                'Coverage denominator includes authorized people without approved claims',
+                'Business access never grants manager-approval authority',
               ],
             };
           },
@@ -610,7 +610,7 @@ export class ToolRegistry {
               ...(name === 'business_matching_options'
                 ? {
                     proficiencyLevels: [
-                      { rank: 1, name: 'Foundation' },
+                      { rank: 1, name: 'Beginner' },
                       { rank: 2, name: 'Autonomous' },
                       { rank: 3, name: 'Experienced' },
                       { rank: 4, name: 'Expert' },
@@ -638,7 +638,7 @@ export class ToolRegistry {
           function: {
             name: 'business_demand_matches',
             description:
-              'Read explainable current matches for a known authorized demand ID. Approved skill proficiency and current manager-reviewed exact-name/provider credentials only. Missing evidence means not established; matching does not assess availability or make a staffing decision.',
+              'Read explainable current matches for a known authorized demand ID. Approved skill proficiency and current approved exact-name/provider credentials only. Missing evidence means not established; matching does not assess availability or make a staffing decision.',
             parameters: {
               type: 'object',
               additionalProperties: false,
@@ -1151,7 +1151,7 @@ export class ToolRegistry {
       this.entries.set('my_skills', {
         definition: definition(
           'my_skills',
-          'Read your own skill claim totals and a bounded first-page preview. Manager-reviewed, pending, draft, changes-requested and rejected states are distinct. No other person can be selected.',
+          'Read your own skill claim totals and a bounded first-page preview. Approved, pending, draft, changes-requested and rejected states are distinct. No other person can be selected.',
         ),
         permission: (state, person) => can(state, person, 'skill.view', true),
         source: { label: 'My skill claims', url: '/my-skills' },
@@ -1187,11 +1187,11 @@ export class ToolRegistry {
       this.entries.set('assigned_skill_reviews', {
         definition: definition(
           'assigned_skill_reviews',
-          'Read a compact summary of your pending assigned skill reviews, limited to your current direct reports. Cannot choose another reviewer or approve anything.',
+          'Read a compact summary of your pending assigned skill approvals, limited to your current direct reports. Cannot choose another approver or approve anything.',
         ),
 
         permission: (state, person) => canReviewAssigned(state, person),
-        source: { label: 'Assigned skill reviews', url: '/skill-reviews' },
+        source: { label: 'Assigned skill approvals', url: '/skill-reviews' },
 
         read: async ({ person }) => {
           const queue = await claims.reviews!(person.id, 1);
@@ -1205,7 +1205,7 @@ export class ToolRegistry {
               proficiency: claim.levelName,
               status: claim.status,
             })),
-            source: 'Assigned skill reviews',
+            source: 'Assigned skill approvals',
           };
         },
       });
@@ -1217,7 +1217,7 @@ export class ToolRegistry {
           function: {
             name: 'team_skill_gaps',
             description:
-              'Analyse your current active direct reports’ manager-reviewed skill coverage. Pass the manager’s stated demand as requirements (skill name, minimum level 1-4, headcount) to get who qualifies, shortfall and people one level below. Without requirements, returns team skill strengths, level mix and thinnest coverage. Requirements are not saved. Cannot choose another manager, person or workspace.',
+              'Analyse your current active direct reports’ approved skill coverage. Pass the manager’s stated demand as requirements (skill name, minimum level 1-4, headcount) to get who qualifies, shortfall and people one level below. Without requirements, returns team skill strengths, level mix and thinnest coverage. Requirements are not saved. Cannot choose another manager, person or workspace.',
             parameters: {
               type: 'object',
               additionalProperties: false,

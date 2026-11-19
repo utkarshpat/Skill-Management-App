@@ -1,4 +1,5 @@
 import { publishWorkspaceFreshness } from './workspace-freshness';
+import { isPhaseTwoPage, phaseTwoVisible } from './release-features';
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router';
 import {
@@ -86,8 +87,9 @@ async function read<T>(r: Response): Promise<T> {
 }
 export function openDashboardAssistant(card: Card['id']) {
   const prompts = {
-    attention:
-      'Help me prioritize my currently assigned requests, skill reviews and overdue learning tasks. Retrieve current authorized facts before advising.',
+    attention: phaseTwoVisible
+      ? 'Help me prioritize my assigned requests, approvals and overdue learning tasks. Retrieve current authorized facts before advising.'
+      : 'Help me prioritize my pending approvals. Retrieve current authorized facts before advising.',
     learning:
       'Help me choose the next task in my own learning plans. Check my current progress and backlog first.',
     capability:
@@ -170,8 +172,9 @@ export function Dashboard() {
       onAccessChanged={() => setAttempt(n => n + 1)}
     />
   );
-  const leftCards =
-    manifest?.cards.filter(card => card.id === 'learning' || card.id === 'requests') ?? [];
+  const leftCards = phaseTwoVisible
+    ? (manifest?.cards.filter(card => card.id === 'learning' || card.id === 'requests') ?? [])
+    : [];
   const rightCards = manifest?.cards.filter(card => card.id === 'capability') ?? [];
   return (
     <div className="dashboard-workspace">
@@ -209,7 +212,9 @@ export function Dashboard() {
               <div className="dashboard-column">
                 {rightCards.map(renderCard)}
                 <DashboardQuickActions
-                  actions={manifest.actions}
+                  actions={manifest.actions.filter(
+                    action => phaseTwoVisible || !isPhaseTwoPage(action.href.split('?')[0]),
+                  )}
                   onAssist={prompt =>
                     window.dispatchEvent(
                       new CustomEvent('assistant-context-request', { detail: { prompt } }),

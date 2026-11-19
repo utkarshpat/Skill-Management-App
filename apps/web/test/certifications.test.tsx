@@ -30,7 +30,7 @@ test('credential expiry remains independent of approval and includes the complet
   assert.equal(credentialValidity('2026-10-09', '2026-10-09'), 'Expires soon');
   assert.equal(credentialValidity('2027-10-09', '2026-10-09'), 'Current');
   assert.equal(credentialValidity(null, '2026-10-09'), 'No expiry');
-  assert.equal(certificationStatusLabels.APPROVED, 'Manager reviewed');
+  assert.equal(certificationStatusLabels.APPROVED, 'Approved');
 });
 test('expiry quick-fill clamps month ends and leap years without rolling into another month', () => {
   assert.equal(addCredentialMonths('2026-01-31', 1), '2026-02-28');
@@ -50,7 +50,7 @@ test('credential form validates dates, required issuer fields and safe links bef
     { credentialUrl: 'https://user:password@issuer.example/' },
   ])
     assert.ok(certificationFieldError({ ...fields, ...patch }, '2026-10-09'));
-  assert.equal(notificationDestination('/certifications?tab=queue')?.kind, 'Skills & reviews');
+  assert.equal(notificationDestination('/certifications?tab=queue')?.kind, 'Skills & approvals');
   assert.equal(
     notificationDestination('/certifications?renew=credential-id')?.label,
     'Update renewed certificate',
@@ -212,19 +212,19 @@ test('skills-style certification profile keeps review and expiry separate and ob
     />,
   );
   assert.match(html, /Total certifications: 2/);
-  assert.match(html, /Manager reviewed: 1/);
-  assert.match(html, /Filter certification review status/);
+  assert.match(html, /Approved: 1/);
+  assert.match(html, /Filter certification approval status/);
   assert.match(html, /Filter credential validity/);
   assert.match(html, /Expired/);
   assert.match(
     html,
-    /Manager reviewed<\/span><span class="cert-review-validity cert-expired">Expired<\/span>/,
+    /Approved<\/span><span class="cert-review-validity cert-expired">Expired<\/span>/,
   );
   assert.match(html, /Certification profile overview/);
   assert.doesNotMatch(html, /Edit Azure Fundamentals draft/);
-  assert.doesNotMatch(html, /Submit Azure Fundamentals for review/);
+  assert.doesNotMatch(html, /Submit Azure Fundamentals for approval/);
   assert.match(html, /Edit Draft credential draft/);
-  assert.match(html, /Submit Draft credential for review/);
+  assert.match(html, /Submit Draft credential for approval/);
   assert.match(html, /Record renewal for Azure Fundamentals/);
 });
 

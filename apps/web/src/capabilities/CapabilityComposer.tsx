@@ -1,3 +1,4 @@
+import { displayProficiencyName } from '../proficiency';
 import { uploadPrivateFile } from '../private-file-upload';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -19,7 +20,7 @@ import { FormDialog } from '../FormDialog';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { toast } from '../toast';
-import type { CertificationFields } from '../certifications/types';
+import type { CertificationFields, CertificationRecord } from '../certifications/types';
 import type { SkillChoice } from '../SkillClaimWizard';
 import {
   CertificateFilePreview,
@@ -55,6 +56,52 @@ import {
   mergeCertificateAutofillFields,
 } from './certificate-intake';
 const root = '/api/capability-submissions';
+type CredentialMatch =
+  | {
+      status: 'matched';
+      credential: { id: string; name: string; provider: string; category: string };
+      confidence: number;
+    }
+  | { status: 'not_found' | 'ambiguous' | 'unreadable' | 'unavailable' };
+
+const catalogueMessages = {
+  not_found:
+    'Not available in the catalogue. If this credential is missing, ask your N+1 to request a catalogue amendment.',
+  ambiguous:
+    'Several catalogue credentials are too close to choose automatically. Select the exact credential, or ask your N+1 for a catalogue amendment if it is missing.',
+  unreadable:
+    'The certificate name or issuer could not be read. Check the file or select a catalogue credential yourself.',
+  unavailable:
+    'The catalogue could not be checked. Try autofill again or select the credential yourself.',
+  renewal_mismatch:
+    'The catalogue match is for a different credential. This renewal still uses the original credential.',
+};
+
+type CertificateAutofillMatch = CredentialMatch | { status: 'renewal_mismatch' };
+
+function existingCertificate(record: CertificationRecord): SelectedCertificate {
+  return {
+    id: record.id,
+    revision: record.revision,
+    reuse: record.status === 'APPROVED',
+    fields: certificationFields(record),
+    skillIds: [],
+    uploaded: Boolean(record.hasImage),
+    ...(record.renewedFromId ? { renewedFromId: record.renewedFromId } : {}),
+  };
+}
+
+function unlinkCertificateSkill(certificate: SelectedCertificate, skillId: string) {
+  if (!certificate.skillIds.includes(skillId)) return [certificate];
+  const skillIds = certificate.skillIds.filter(id => id !== skillId);
+  return certificate.reuse && !skillIds.length ? [] : [{ ...certificate, skillIds }];
+}
+
+function catalogueAutofillMessage(match: CertificateAutofillMatch) {
+  return match.status === 'matched'
+    ? `Catalogue credential selected (${match.confidence}% match). Check the extracted dates and details.`
+    : catalogueMessages[match.status];
+}
 async function json<T>(path: string, body?: object, signal?: AbortSignal) {
   return readApiResponse<T>(
     await authenticatedFetch(path, {
@@ -228,12 +275,13 @@ export function CapabilityComposer({
     [options, setOptions] = useState<SkillChoice[]>([]),
     [searching, setSearching] = useState(false),
     [ownClaims, setOwnClaims] = useState<any[]>([]),
-    [ownCertificates, setOwnCertificates] = useState<any[]>([]),
+    [ownCertificates, setOwnCertificates] = useState<CertificationRecord[]>([]),
     [aiAvailable, setAiAvailable] = useState(false),
     [fileAvailable, setFileAvailable] = useState(false),
     [suggestions, setSuggestions] = useState<CertificateSkillSuggestion[]>([]),
-    [suggestionCertificate, setSuggestionCertificate] = useState<string>(),
-    [credentialSuggestion, setCredentialSuggestion] = useState<any>(),
+    [catalogueAutofill, setCatalogueAutofill] = useState<Record<string, CertificateAutofillMatch>>(
+      {},
+    ),
     [catalogueError, setCatalogueError] = useState('');
   const dirty = useRef(Boolean(initialSkillDraft || initialEvidenceFile)),
     request = useRef<AbortController | undefined>(undefined);
@@ -264,13 +312,72 @@ export function CapabilityComposer({
       'file' in patch ||
       (patch.fields &&
         (patch.fields.certificationName !== current?.fields.certificationName ||
-          patch.fields.provider !== current?.fields.provider))
-    )
+          patch.fields.provider !== current?.fields.provider ||
+          patch.fields.category !== current?.fields.category))
+    ) {
       setSuggestions(previous =>
         previous.filter(suggestion => suggestion.certificateId !== certId),
       );
+      setCatalogueAutofill(previous => {
+        const next = { ...previous };
+        delete next[certId];
+        return next;
+      });
+    }
     setCerts(old => old.map(c => (c.id === certId ? { ...c, ...patch } : c)));
   };
+  const replaceCertificates = (next: SelectedCertificate[]) => {
+    dirty.current = true;
+    setCerts(next);
+    if (certs.length && !next.length) setHasCertificate(false);
+  };
+  const certificateChoices = [
+    ...certs,
+    ...ownCertificates
+      .filter(
+        certificate =>
+          certificate.status === 'APPROVED' && !certs.some(c => c.id === certificate.id),
+      )
+      .map(existingCertificate),
+  ];
+  const skillCertificates = (skillId: string) => (
+    <fieldset disabled={working} className="cap-related cap-skill-certificates cap-wide">
+      <legend>Supporting certificates</legend>
+      {!certificateChoices.length && <p>No approved certificates or uploads to link.</p>}
+      {certs.length >= 10 && <p>You can include up to 10 certificates in a submission.</p>}
+      {certificateChoices.map((certificate, index) => {
+        const selected = certs.find(c => c.id === certificate.id);
+        return (
+          <label key={certificate.id}>
+            <input
+              type="checkbox"
+              checked={certificate.skillIds.includes(skillId)}
+              disabled={!selected && certs.length >= 10}
+              onChange={event => {
+                if (!event.target.checked) {
+                  replaceCertificates(
+                    certs.flatMap(c =>
+                      c.id === certificate.id ? unlinkCertificateSkill(c, skillId) : [c],
+                    ),
+                  );
+                } else if (selected) {
+                  patchCertificate(selected.id, {
+                    skillIds: [...new Set([...selected.skillIds, skillId])],
+                  });
+                } else {
+                  setHasCertificate(true);
+                  replaceCertificates([...certs, { ...certificate, skillIds: [skillId] }]);
+                }
+              }}
+            />
+            {certificate.fields.certificationName || `Certificate ${index + 1}`}
+            {certificate.fields.provider && ` · ${certificate.fields.provider}`}
+            {certificate.reuse && ' · Approved'}
+          </label>
+        );
+      })}
+    </fieldset>
+  );
   const patchSkill = (skillId: string, patch: Partial<SelectedSkill>) => {
     dirty.current = true;
     setSkills(old => old.map(s => (s.id === skillId ? { ...s, ...patch } : s)));
@@ -283,7 +390,7 @@ export function CapabilityComposer({
     if (own?.status === 'SUBMITTED') {
       setEditingSkill(undefined);
       setError(
-        'This skill is already awaiting review. Finish that review before including it here.',
+        'This skill is already pending approval. Wait for that decision before including it here.',
       );
       return;
     }
@@ -353,7 +460,7 @@ export function CapabilityComposer({
     setEditingSkill(undefined);
     setPage(0);
     toast.info(
-      'Review the certificate details, or use AI autofill. The supporting skill is already linked.',
+      'Check the certificate details, or use AI autofill. The supporting skill is already linked.',
     );
   }
   function sync(value: Submission, restore = false) {
@@ -485,7 +592,7 @@ export function CapabilityComposer({
                 'This skill is no longer available in the published catalogue. Choose another skill.',
               );
             else if (own?.status === 'SUBMITTED')
-              setError('This skill is already awaiting review.');
+              setError('This skill is already pending approval.');
             else {
               dirty.current = true;
               setSkills([
@@ -511,7 +618,7 @@ export function CapabilityComposer({
           if (!abort.signal.aborted) {
             if (saved.status !== 'DRAFT')
               throw Error(
-                'This submission is already locked. Open the review to see its progress.',
+                'This submission is already locked. Open the approval request to see its progress.',
               );
             sync(saved, true);
           }
@@ -598,7 +705,11 @@ export function CapabilityComposer({
     request.current = abort;
     try {
       const file = await certificateForAutofill(cert, id.current, authenticatedFetch, abort.signal);
-      const data = await readApiResponse<any>(
+      const data = await readApiResponse<{
+        fields: Partial<SelectedCertificate['fields']>;
+        suggestions?: Omit<CertificateSkillSuggestion, 'certificateId'>[];
+        catalogueMatch: CredentialMatch;
+      }>(
         await uploadPrivateFile(root + '/autofill', {
           method: 'POST',
           headers: {
@@ -611,9 +722,44 @@ export function CapabilityComposer({
         'AI could not read this file. Continue manually.',
       );
       if (!mounted.current) return;
-      const fields = mergeCertificateAutofillFields(cert, data.fields);
+      const match = data.catalogueMatch;
+      const credential = match.status === 'matched' ? match.credential : undefined;
+      const identity = (value: string) =>
+        value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+      const renewalMismatch = Boolean(
+        cert.renewedFromId &&
+        credential &&
+        (identity(credential.name) !== identity(cert.fields.certificationName) ||
+          identity(credential.provider) !== identity(cert.fields.provider)),
+      );
+      if (renewalMismatch) {
+        setCatalogueAutofill(old => ({ ...old, [cert.id]: { status: 'renewal_mismatch' } }));
+        return;
+      }
+      const fields = mergeCertificateAutofillFields(cert, {
+        ...data.fields,
+        certificationName: credential?.name,
+        provider: credential?.provider,
+        category: credential?.category,
+      });
       patchCertificate(cert.id, { fields });
-      const mapped = credentialSkillDefaults(definitions, fields);
+      setCatalogueAutofill(old => ({
+        ...old,
+        [cert.id]: match,
+      }));
+      const currentDefinitions =
+        credential &&
+        !definitions.some(
+          item =>
+            item.id === credential.id &&
+            item.name === credential.name &&
+            item.provider === credential.provider &&
+            item.category === credential.category,
+        )
+          ? [...definitions.filter(item => item.id !== credential.id), credential]
+          : definitions;
+      if (currentDefinitions !== definitions) setDefinitions(currentDefinitions);
+      const mapped = credential ? credentialSkillDefaults(currentDefinitions, fields) : [];
       const combined = [
         ...new Map(
           [...(data.suggestions ?? []), ...mapped].map(suggestion => [
@@ -623,9 +769,6 @@ export function CapabilityComposer({
         ).values(),
       ];
       setSuggestions(old => mergeCertificateSuggestions(old, cert.id, combined));
-      setSuggestionCertificate(cert.id);
-      setCredentialSuggestion(data.catalogueSuggestion);
-      toast.info(data.warning);
     } catch (e) {
       if (mounted.current) setError((e as Error).message);
     } finally {
@@ -770,7 +913,7 @@ export function CapabilityComposer({
           patchCertificate(certificate.id, { revision: uploaded.revision, uploaded: true });
       }
       if (submit) {
-        setPhase('Submitting one review request…');
+        setPhase('Submitting one approval request…');
         await json<Submission>(
           root +
             (skills.every(s => s.reuse) && certs.every(c => c.reuse)
@@ -790,8 +933,8 @@ export function CapabilityComposer({
       toast.success(
         submit
           ? skills.every(s => s.reuse) && certs.every(c => c.reuse)
-            ? 'Links saved. Previously reviewed skills and certificates stay unchanged.'
-            : 'Skills and certificates submitted in one review request.'
+            ? 'Links saved. Previously approved skills and certificates stay unchanged.'
+            : 'Skills and certificates submitted in one approval request.'
           : 'Linked capability drafts saved.',
       );
       window.dispatchEvent(new Event('own-skills-updated'));
@@ -897,13 +1040,13 @@ export function CapabilityComposer({
       setPendingEvidence({});
       setRecovery(false);
       setError(
-        'Saved draft loaded. Review your details and reselect any file whose upload was not completed.',
+        'Saved draft loaded. Check your details and reselect any file whose upload was not completed.',
       );
     } catch (e) {
       if (!mounted.current || abort.signal.aborted) return;
       if ((e as { status?: number })?.status === 404 && version.current === 0 && !submissionId) {
         setRecovery(false);
-        setError('No submission was saved. Review your entries and try saving again.');
+        setError('No submission was saved. Check your entries and try saving again.');
       } else {
         setRecovery(true);
         setError(
@@ -922,7 +1065,14 @@ export function CapabilityComposer({
         Choose an approved credential definition
         <select
           disabled={working || c.reuse || Boolean(c.renewedFromId)}
-          value=""
+          value={
+            definitions.find(
+              d =>
+                d.name === c.fields.certificationName &&
+                d.provider === c.fields.provider &&
+                d.category === c.fields.category,
+            )?.id ?? ''
+          }
           onChange={e => {
             const definition = definitions.find(d => d.id === e.target.value);
             if (definition) {
@@ -945,7 +1095,6 @@ export function CapabilityComposer({
                   })),
                 ),
               );
-              setSuggestionCertificate(c.id);
             }
           }}
         >
@@ -962,7 +1111,7 @@ export function CapabilityComposer({
         ['provider', 'Issuer', 120],
         ['category', 'Category', 80],
         ['certificationDate', 'Issue date', 10],
-        ['expiryDate', 'Expiry date', 10],
+        ['expiryDate', 'Valid till', 10],
       ].map(([key, label, max]) => (
         <label key={String(key)} className={key === 'certificationName' ? 'cap-wide' : undefined}>
           <span>
@@ -1003,6 +1152,7 @@ export function CapabilityComposer({
           {[
             [6, '6 months'],
             [12, '1 year'],
+            [18, '18 months'],
             [24, '2 years'],
           ].map(([months, label]) => {
             const expiry = addCredentialMonths(c.fields.certificationDate, Number(months));
@@ -1033,7 +1183,7 @@ export function CapabilityComposer({
               })
             }
           />
-          Does not expire
+          Lifetime valid
         </label>
       </div>
       {(
@@ -1148,7 +1298,7 @@ export function CapabilityComposer({
                               {c.fields.certificationName || `Certificate ${index + 1}`}
                             </strong>
                           </span>
-                          <span className="cap-pill">{c.reuse ? 'Reviewed' : 'Draft'}</span>
+                          <span className="cap-pill">{c.reuse ? 'Approved' : 'Draft'}</span>
                         </summary>
                         <section
                           className="cap-upload-card"
@@ -1203,7 +1353,7 @@ export function CapabilityComposer({
                                 </button>
                               )}
                             </div>
-                            {c.reuse && <p>Already reviewed</p>}
+                            {c.reuse && <p>Already approved</p>}
                             {!aiAvailable && !initializing && !c.reuse && (
                               <p className="cap-help">
                                 AI unavailable. You can fill the details yourself.
@@ -1214,6 +1364,11 @@ export function CapabilityComposer({
                             ) && (
                               <p className="cap-upload-result" role="status">
                                 Details and skill suggestions ready.
+                              </p>
+                            )}
+                            {catalogueAutofill[c.id] && (
+                              <p className="cap-upload-result" role="status">
+                                {catalogueAutofillMessage(catalogueAutofill[c.id])}
                               </p>
                             )}
                             {certificateFieldsUI(c)}
@@ -1247,18 +1402,7 @@ export function CapabilityComposer({
                             dirty.current = true;
                             setHasCertificate(true);
                             setExpandedCertificate(own.id);
-                            setCerts(old => [
-                              ...old,
-                              {
-                                id: own.id,
-                                revision: own.revision,
-                                reuse: own.status === 'APPROVED',
-                                fields: certificationFields(own),
-                                skillIds: [],
-                                uploaded: Boolean(own.hasImage),
-                                ...(own.renewedFromId ? { renewedFromId: own.renewedFromId } : {}),
-                              },
-                            ]);
+                            setCerts(old => [...old, existingCertificate(own)]);
                           }}
                         >
                           <option value="">Choose from my credentials…</option>
@@ -1339,11 +1483,8 @@ export function CapabilityComposer({
                                 delete next[s.id];
                                 return next;
                               });
-                              setCerts(old =>
-                                old.map(c => ({
-                                  ...c,
-                                  skillIds: c.skillIds.filter(v => v !== s.choice.id),
-                                })),
+                              replaceCertificates(
+                                certs.flatMap(c => unlinkCertificateSkill(c, s.choice.id)),
                               );
                             }}
                           >
@@ -1477,42 +1618,15 @@ export function CapabilityComposer({
                       {searching && <span role="status">Searching catalogue…</span>}
                     </div>
                   </div>
-                  {credentialSuggestion && (
-                    <section className="cap-ai-suggestions">
-                      <h4>Suggested catalogue credential</h4>
-                      <p>
-                        {credentialSuggestion.name} - {credentialSuggestion.provider}
-                      </p>
-                      <button
-                        type="button"
-                        disabled={working}
-                        onClick={() => {
-                          const cert = certs.find(c => c.id === suggestionCertificate);
-                          if (cert)
-                            patchCertificate(cert.id, {
-                              fields: {
-                                ...cert.fields,
-                                certificationName: credentialSuggestion.name,
-                                provider: credentialSuggestion.provider,
-                                category: credentialSuggestion.category,
-                              },
-                            });
-                          setCredentialSuggestion(undefined);
-                        }}
-                      >
-                        Use these catalogue details
-                      </button>
-                    </section>
-                  )}
                 </section>
               </div>
             ),
           },
           {
-            label: 'Review',
+            label: 'Preview',
             content: (
               <section className="cap-final">
-                <h3>Review your linked capabilities</h3>
+                <h3>Preview your linked capabilities</h3>
                 <p>
                   {skills.length} distinct skills · {certs.length} distinct certifications.
                   Certificate support does not automatically verify proficiency.
@@ -1525,7 +1639,7 @@ export function CapabilityComposer({
                         <strong>{s.choice.name}</strong>
                         <span>
                           {s.reuse
-                            ? 'Existing reviewed skill'
+                            ? 'Existing approved skill'
                             : `L${s.rank} · ${s.experienceMonths} months`}
                         </span>
                         <p>{s.description}</p>
@@ -1545,8 +1659,8 @@ export function CapabilityComposer({
                         <span>
                           {c.fields.provider} ·{' '}
                           {c.fields.expiryDate
-                            ? `Expires ${c.fields.expiryDate}`
-                            : 'Does not expire'}
+                            ? `Valid till ${c.fields.expiryDate}`
+                            : 'Lifetime valid'}
                         </span>
                         <p>
                           Issued {c.fields.certificationDate}
@@ -1572,8 +1686,9 @@ export function CapabilityComposer({
                   </section>
                 </div>
                 <p className="cap-callout">
-                  One request goes to your assigned current manager. Each new skill and certificate
-                  gets its own decision. Previously reviewed skills and certificates stay unchanged.
+                  Your current manager and eligible Business Analytics assignees can review this
+                  request. The first saved decision is final. Each pending skill and certificate
+                  gets its own decision.
                 </p>
               </section>
             ),
@@ -1643,7 +1758,7 @@ export function CapabilityComposer({
                   }}
                 >
                   {page === 1
-                    ? 'Review'
+                    ? 'Preview'
                     : hasUploadedCertificate || isRenewal
                       ? 'Continue'
                       : 'Continue without certificate'}
@@ -1669,7 +1784,7 @@ export function CapabilityComposer({
                   <Send size={16} />{' '}
                   {skills.every(s => s.reuse) && certs.every(c => c.reuse)
                     ? 'Save links'
-                    : 'Submit for review'}
+                    : 'Submit for approval'}
                 </button>
               </>
             )}
@@ -1717,10 +1832,13 @@ export function CapabilityComposer({
               }
             >
               {s.reuse ? (
-                <p className="cap-help">
-                  This reviewed skill is linked without changing its proficiency or starting another
-                  skill review.
-                </p>
+                <>
+                  <p className="cap-help">
+                    This approved skill is linked without changing its proficiency or starting
+                    another skill approval.
+                  </p>
+                  {skillCertificates(s.choice.id)}
+                </>
               ) : (
                 <div className="cap-skill-fields">
                   <section className="cap-proficiency cap-wide">
@@ -1746,7 +1864,7 @@ export function CapabilityComposer({
                             onChange={() => patchSkill(s.id, { rank: level.rank })}
                           />
                           <span>L{level.rank}</span>
-                          <strong>{level.name}</strong>
+                          <strong>{displayProficiencyName(level.rank, level.name)}</strong>
                         </label>
                       ))}
                     </fieldset>
@@ -1761,7 +1879,7 @@ export function CapabilityComposer({
                           <Info size={20} aria-hidden="true" />
                           <div>
                             <strong>
-                              Level {level.rank} · {level.name}
+                              Level {level.rank} · {displayProficiencyName(level.rank, level.name)}
                             </strong>
                             <p>{level.description}</p>
                           </div>
@@ -1800,6 +1918,7 @@ export function CapabilityComposer({
                       onChange={e => patchSkill(s.id, { description: e.target.value })}
                     />
                   </label>
+                  {skillCertificates(s.choice.id)}
                   <details className="cap-extra-field cap-wide">
                     <summary>
                       <Plus size={15} /> Projects
@@ -1816,10 +1935,10 @@ export function CapabilityComposer({
                   </details>
                   <details className="cap-extra-field cap-wide">
                     <summary>
-                      <Plus size={15} /> Evidence
+                      <Plus size={15} /> Supporting references
                     </summary>
                     <label>
-                      Evidence references
+                      Supporting references
                       <textarea
                         maxLength={2000}
                         value={s.evidence}
@@ -1900,28 +2019,6 @@ export function CapabilityComposer({
                     ))}
                   </details>
                 </div>
-              )}
-              {certs.length > 0 && (
-                <fieldset disabled={working} className="cap-related cap-skill-certificates">
-                  <legend>Supporting certificates</legend>
-                  <p>Choose which certificates support this skill.</p>
-                  {certs.map((certificate, index) => (
-                    <label key={certificate.id}>
-                      <input
-                        type="checkbox"
-                        checked={certificate.skillIds.includes(s.choice.id)}
-                        onChange={event =>
-                          patchCertificate(certificate.id, {
-                            skillIds: event.target.checked
-                              ? [...new Set([...certificate.skillIds, s.choice.id])]
-                              : certificate.skillIds.filter(skillId => skillId !== s.choice.id),
-                          })
-                        }
-                      />
-                      {certificate.fields.certificationName || `Certificate ${index + 1}`}
-                    </label>
-                  ))}
-                </fieldset>
               )}
             </FormDialog>
           ))}

@@ -82,7 +82,7 @@ const registry = [
   {
     id: 'capability' as const,
     title: 'My capability',
-    description: 'Reviewed skills and claims, kept distinct',
+    description: 'Approved skills and claims, kept distinct',
     priority: 80,
     size: 'medium',
   },
@@ -389,10 +389,10 @@ export async function loadDashboardCard(
           items: [
             ...combined.records.slice(0, 3).map((r: any) => ({
               id: r.id,
-              title: r.label || 'Skill review request',
+              title: r.label || 'Skill approval request',
               description: `${r.personName ?? r.name ?? 'Assigned employee'} · ${r.skills ?? 0} skills · ${r.certifications ?? 0} certificates`,
               href: '/skill-reviews?submission=' + r.id,
-              label: 'Review',
+              label: 'Open approval',
               priority: 90,
             })),
             ...data.claims.slice(0, 3).map(c => ({
@@ -400,7 +400,7 @@ export async function loadDashboardCard(
               title: c.skillName,
               description: (c.personName ?? 'Assigned claim') + ' · ' + c.levelName,
               href: '/skill-reviews?claim=' + c.id,
-              label: 'Review',
+              label: 'Open approval',
               priority: 90,
             })),
             ...credentials.records.slice(0, 3).map(c => ({
@@ -408,7 +408,7 @@ export async function loadDashboardCard(
               title: c.certificationName,
               description: c.name,
               href: '/skill-reviews?certification=' + c.id,
-              label: 'Review',
+              label: 'Open approval',
               priority: 90,
             })),
           ].slice(0, 3),
@@ -478,7 +478,7 @@ export async function loadDashboardCard(
       id: key,
       count: r.status === 'fulfilled' ? r.value.count : null,
       title: isReview
-        ? 'Pending reviews'
+        ? 'Pending approvals'
         : isLearning
           ? 'Overdue learning'
           : (incident ? 'Incidents' : 'Requests') + (started ? ' in progress' : ' to start'),
@@ -496,7 +496,7 @@ export async function loadDashboardCard(
             '&status=' +
             (started ? 'IN_PROGRESS' : 'SUBMITTED'),
       label: isReview
-        ? 'Open review queue'
+        ? 'Open approval queue'
         : isLearning
           ? 'Open backlog'
           : started
@@ -514,7 +514,7 @@ export async function loadDashboardCard(
           urgency: isLearning
             ? 'Overdue'
             : isReview
-              ? 'Awaiting review'
+              ? 'Pending approval'
               : item.priority === 110
                 ? 'High priority'
                 : started

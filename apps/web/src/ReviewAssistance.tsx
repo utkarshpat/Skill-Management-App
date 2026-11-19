@@ -99,8 +99,8 @@ export function ReviewAssistance({
     else parts.push(paragraph);
   }
   return (
-    <section className="review-ai" aria-label="AI review assistance">
-      <h3>AI review assistance</h3>
+    <section className="review-ai" aria-label="AI approval assistance">
+      <h3>AI approval assistance</h3>
       {error && <p role="alert">{error}</p>}
       {configured === undefined && !error ? (
         <p role="status">Checking AI availability…</p>

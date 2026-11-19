@@ -204,17 +204,17 @@ test('amendments: approver starts at type selection and can edit Provider', asyn
   await page.getByRole('button', { name: /Next: entry details/ }).click();
   await expect(page.getByText('Update provider: Synthetic issuer')).toBeVisible();
 });
-test('review search and category keep the assigned reviews workbench visible', async ({ page }) => {
+test('review search and category keep the assigned approvals workbench visible', async ({ page }) => {
   await fixture(page, { role: 'manager' });
   await page.goto('/test/e2e/harness.html?fixture=reviews');
-  await expect(page.getByRole('region', { name: 'Assigned skill reviews' })).toBeVisible();
-  await page.getByRole('searchbox', { name: 'Search review employee or skill' }).fill('Synthetic');
-  await expect(page.getByRole('region', { name: 'Assigned skill reviews' })).toBeVisible();
-  await page.getByLabel('Review category').selectOption('Synthetic');
-  await expect(page.getByRole('region', { name: 'Assigned skill reviews' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Assigned skill approvals' })).toBeVisible();
+  await page.getByRole('searchbox', { name: 'Search approvals by employee or skill' }).fill('Synthetic');
+  await expect(page.getByRole('region', { name: 'Assigned skill approvals' })).toBeVisible();
+  await page.getByLabel('Approval category').selectOption('Synthetic');
+  await expect(page.getByRole('region', { name: 'Assigned skill approvals' })).toBeVisible();
 });
 
-test('workforce: employee filters delivered skills and reads review feedback', async ({ page }) => {
+test('workforce: employee filters delivered skills and reads approval feedback', async ({ page }) => {
   await fixture(page, { role: 'employee', realistic: true });
   await page.goto('/my-skills');
   await expect(page.getByRole('button', { name: 'View SQL claim' })).toBeVisible();

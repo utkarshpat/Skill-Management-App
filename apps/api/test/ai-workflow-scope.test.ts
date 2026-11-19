@@ -10,6 +10,27 @@ import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
 import type { AiBudget } from '../src/modules/ai/budget.js';
 const history = (content: string) => [{ role: 'user' as const, content }];
 
+test('assistant introduces itself as Skill Genie when asked for its name', () => {
+  for (const prompt of [
+    "What's your name?",
+    'Who are you?',
+    'aapka naam kya hai?',
+    'आपका नाम क्या है?',
+  ]) {
+    assert.equal(
+      workflowChatShortcut(history(prompt), { name: 'azure' }),
+      'I’m Skill Genie, your workspace assistant.',
+    );
+  }
+  assert.match(
+    workflowChatShortcut(history('What model do you use?'), {
+      name: 'azure',
+      deployment: 'test-model',
+    })!,
+    /test-model/,
+  );
+});
+
 test('general coding prompts redirect locally, including mixed app terms and Hindi requests', () => {
   for (const prompt of [
     'tum mujhe factorial ka js code do',
@@ -24,7 +45,7 @@ test('general coding prompts redirect locally, including mixed app terms and Hin
   ])
     assert.match(
       workflowChatShortcut(history(prompt), { name: 'azure' }) ?? '',
-      /sirf is Skill Management app/,
+      /Skill Genie ke available workflows/,
     );
   for (const prompt of [
     'Create a SQL learning plan',

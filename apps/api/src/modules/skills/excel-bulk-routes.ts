@@ -19,13 +19,14 @@ const catalogueSheets = [
   {
     name: 'Skills',
     legacyLeadingColumn: 'Action',
+    legacyHeadings: { Beginner: 'Foundation' },
     columns: [
       'ID',
       'Name',
       'Category',
       'Description',
       'Status',
-      'Foundation',
+      'Beginner',
       'Autonomous',
       'Experienced',
       'Expert',

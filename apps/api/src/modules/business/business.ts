@@ -348,6 +348,18 @@ export function businessChange(value: unknown): BusinessChange {
     const validUntil = suppliedExpiry ? new Date(suppliedExpiry).toISOString() : null;
     if (p.effect === 'DENY' && !validUntil)
       throw new AccessError(400, 'A scoped exception needs an expiry.');
+    let issuerIds: string[] | undefined;
+    if (p.issuerIds !== undefined) {
+      if (
+        p.bundle !== 'BUSINESS_OPERATIONS' ||
+        !Array.isArray(p.issuerIds) ||
+        p.issuerIds.length > 200
+      )
+        throw new AccessError(400, 'Choose up to 200 issuers for Business Analytics.');
+      issuerIds = p.issuerIds.map(identifier).sort();
+      if (new Set(issuerIds).size !== issuerIds.length)
+        throw new AccessError(400, 'Choose distinct issuers.');
+    }
     payload = {
       personId: identifier(p.personId),
       bundle: p.bundle,
@@ -357,6 +369,7 @@ export function businessChange(value: unknown): BusinessChange {
       active: p.active,
       validUntil,
       reason,
+      ...(issuerIds ? { issuerIds } : {}),
     };
   } else {
     if (typeof p.enabled !== 'boolean')
@@ -378,6 +391,15 @@ export function previewBusiness(
   if (current.revision !== change.revision)
     throw new AccessError(409, 'Access changed. Reload before previewing.');
   const rows = (key: string) => (current[key] ?? []) as Record<string, unknown>[];
+  const issuerIds = change.payload.issuerIds as string[] | undefined;
+  if (issuerIds && !Array.isArray(current.issuers))
+    throw new AccessError(503, 'Issuer assignment editing requires migration 112.');
+  if (
+    issuerIds?.length &&
+    change.payload.active === true &&
+    issuerIds.some(id => !rows('issuers').some(issuer => String(issuer.id).toLowerCase() === id))
+  )
+    throw new AccessError(400, 'Choose active issuers from this account.');
   const person = rows('people').find(p => p.id === change.payload.personId);
   if (
     ['MEMBERSHIP', 'RESPONSIBILITY'].includes(change.kind) &&
@@ -441,14 +463,16 @@ export function previewBusiness(
           ) ?? null);
   const actions =
     change.kind === 'RESPONSIBILITY'
-      ? [
-          'Scoped analytics and authorized exports',
-          'Scoped demand and explainable matching',
-          'Master amendment proposals',
-          ...(change.payload.bundle === 'SYSTEM_ADMIN'
-            ? ['Catalogue management', 'People/access administration', 'Audit reading']
-            : []),
-        ]
+      ? issuerIds?.length
+        ? ['Certificate analytics and approvals for the selected issuers']
+        : [
+            'Scoped analytics and authorized exports',
+            'Scoped demand and explainable matching',
+            'Master amendment proposals',
+            ...(change.payload.bundle === 'SYSTEM_ADMIN'
+              ? ['Catalogue management', 'People/access administration', 'Audit reading']
+              : []),
+          ]
       : change.kind === 'PERSONAL_BASELINE'
         ? [
             'Own profile, skills and certification claims',
@@ -470,7 +494,7 @@ export function previewBusiness(
     },
     warnings: [
       'Membership is separate from reporting and never grants authority.',
-      'Private drafts remain excluded. Submitted/approved files support scoped read-only viewing; claim approval still requires the exact assigned current manager.',
+      'Private drafts stay private. Approvals follow current manager or eligible Business Analytics coverage.',
       'Existing unsupported role grants are retained for explicit review.',
     ],
   };

@@ -6,7 +6,7 @@ interface History {
   pageSize: number;
 }
 const labels: Record<string, string> = {
-  'claim.submitted': 'Submitted for review',
+  'claim.submitted': 'Submitted for approval',
   'claim.approved': 'Approved',
   'claim.changes_requested': 'Changes requested',
   'claim.rejected': 'Not approved',

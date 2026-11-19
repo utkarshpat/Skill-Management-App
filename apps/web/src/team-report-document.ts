@@ -31,7 +31,7 @@ function donut(reviewed: number, pending: number) {
   const total = reviewed + pending,
     circumference = 2 * Math.PI * 52,
     share = total ? reviewed / total : 0;
-  return `<svg viewBox="0 0 140 140" role="img" aria-label="${escapeHtml(`${reviewed} manager-reviewed claims and ${pending} assigned pending reviews`)}">
+  return `<svg viewBox="0 0 140 140" role="img" aria-label="${escapeHtml(`${reviewed} approved claims and ${pending} assigned pending approvals`)}">
   <circle cx="70" cy="70" r="52" fill="none" stroke="#e7c58a" stroke-width="18"/>
   ${total ? `<circle cx="70" cy="70" r="52" fill="none" stroke="#008595" stroke-width="18" stroke-dasharray="${(share * circumference).toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 70 70)"/>` : ''}
   <text x="70" y="68" text-anchor="middle" class="donut-value">${total ? Math.round(share * 100) : 0}%</text>
@@ -41,7 +41,7 @@ function donut(reviewed: number, pending: number) {
 function levelColumns(analytics: TeamReportAnalytics) {
   const counts = LEVELS.map(rank => analytics.levels.find(l => l.rank === rank)?.count ?? 0);
   const max = Math.max(1, ...counts);
-  return `<svg viewBox="0 0 300 170" role="img" aria-label="${escapeHtml('Reviewed claims by level: ' + counts.map((c, i) => `L${i + 1} ${c}`).join(', '))}">
+  return `<svg viewBox="0 0 300 170" role="img" aria-label="${escapeHtml('Approved claims by level: ' + counts.map((c, i) => `L${i + 1} ${c}`).join(', '))}">
   ${counts
     .map((count, i) => {
       const h = Math.round((count / max) * 120),
@@ -55,7 +55,7 @@ function levelColumns(analytics: TeamReportAnalytics) {
 function radar(profiles: SkillProfile[]) {
   const skills = profiles.slice(0, 6);
   if (skills.length < 3)
-    return '<p class="empty">At least three reviewed skills are needed for the radar view.</p>';
+    return '<p class="empty">At least three approved skills are needed for the radar view.</p>';
   const point = (i: number, value: number, r = 90) => {
     const a = (i * 2 * Math.PI) / skills.length - Math.PI / 2;
     return [150 + (Math.cos(a) * r * value) / 4, 130 + (Math.sin(a) * r * value) / 4];
@@ -94,7 +94,7 @@ function radar(profiles: SkillProfile[]) {
 
 function levelMix(profiles: SkillProfile[]) {
   const skills = profiles.slice(0, 10);
-  if (!skills.length) return '<p class="empty">No reviewed skills yet.</p>';
+  if (!skills.length) return '<p class="empty">No approved skills yet.</p>';
   return `<div class="mix">${skills.map(s => `<div class="mix-row"><span title="${escapeHtml(s.skill)}">${escapeHtml(s.skill)}</span><div class="mix-track" role="img" aria-label="${escapeHtml(`${s.skill}: ${s.atLevel.map((n, i) => `L${i + 1} ${n}`).join(', ')}`)}">${s.atLevel.map((n, i) => (n ? `<i style="flex:${n};background:${LEVEL_COLORS[i]}" title="L${i + 1}: ${n}"></i>` : '')).join('')}</div><b>${s.holders}</b></div>`).join('')}</div>
   <p class="legend">${LEVELS.map((l, i) => `<span><i style="background:${LEVEL_COLORS[i]}"></i>L${l}$</span>`).join('')}</p>`;
 }
@@ -102,8 +102,8 @@ function levelMix(profiles: SkillProfile[]) {
 function categories(analytics: TeamReportAnalytics) {
   const rows = [...analytics.categories].sort((a, b) => b.count - a.count).slice(0, 8),
     total = rows.reduce((s, c) => s + c.count, 0);
-  if (!total) return '<p class="empty">No reviewed categories yet.</p>';
-  return `<div class="treemap">${rows.map((c, i) => `<div style="flex:${c.count};background:${CATEGORY_COLORS[i % CATEGORY_COLORS.length]}" title="${escapeHtml(`${c.category}: ${c.count} reviewed claims`)}"><strong>${escapeHtml(c.category)}</strong><span>${c.count} · ${Math.round((c.count / total) * 100)}%</span></div>`).join('')}</div>`;
+  if (!total) return '<p class="empty">No categories with approved claims yet.</p>';
+  return `<div class="treemap">${rows.map((c, i) => `<div style="flex:${c.count};background:${CATEGORY_COLORS[i % CATEGORY_COLORS.length]}" title="${escapeHtml(`${c.category}: ${c.count} approved claims`)}"><strong>${escapeHtml(c.category)}</strong><span>${c.count} · ${Math.round((c.count / total) * 100)}%</span></div>`).join('')}</div>`;
 }
 
 export function teamReportHtml(analytics: TeamReportAnalytics, query: string, at: Date) {
@@ -126,15 +126,15 @@ export function teamReportHtml(analytics: TeamReportAnalytics, query: string, at
       analytics.members,
       query ? 'Filtered current direct reports' : 'All current direct reports',
     ],
-    ['Manager-reviewed claims', analytics.reviewed, 'Verified proficiency records'],
-    ['Assigned pending reviews', analytics.pending, 'Not yet counted as proficiency'],
-    ['Reviewed skills', profiles.length, 'Distinct skills with a reviewed record'],
+    ['Approved claims', analytics.reviewed, 'Verified proficiency records'],
+    ['Assigned pending approvals', analytics.pending, 'Not yet counted as proficiency'],
+    ['Approved skills', profiles.length, 'Distinct skills with a approved record'],
     [
-      'Average reviewed level',
+      'Average approved level',
       teamAverageLevel(analytics) ? 'L' + teamAverageLevel(analytics) : '—',
       'Current four-level framework; not equivalence across frameworks',
     ],
-    ['Without reviewed skills', without, 'Members with no reviewed record'],
+    ['Without approved skills', without, 'Members with no approved record'],
   ];
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
@@ -171,18 +171,18 @@ footer{margin-top:24px;color:var(--muted);font-size:.8rem;max-width:75ch}
 <div class="actions"><button type="button" id="print">Print or save as PDF</button></div></header>
 <section class="kpis">${kpis.map(([label, value, note]) => `<div class="kpi"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span><small>${escapeHtml(note)}</small></div>`).join('')}</section>
 <div class="grid">
-<section class="panel span-12"><h2>Coverage and recorded gaps</h2><p class="sub">Members with a manager-reviewed claim at or above the chosen level. Amber is missing recorded coverage, not a proven deficiency.</p>
+<section class="panel span-12"><h2>Coverage and recorded gaps</h2><p class="sub">Members with a approved claim at or above the chosen level. Amber is missing recorded coverage, not a proven deficiency.</p>
 <div class="controls"><label>Minimum level <select id="level">${LEVELS.map(l => `<option value="${l}"${l === 3 ? ' selected' : ''}>L${l} and above</option>`).join('')}</select></label><label>Find skill <input id="search" type="search" placeholder="e.g. Azure"></label><label>Show <select id="show"><option value="all">All skills</option><option value="gaps">Only gaps</option></select></label></div>
 <div class="bars" id="bars"></div>
-<table><thead><tr><th><button data-sort="skill">Skill</button></th><th class="num"><button data-sort="holders">Reviewed holders</button></th><th class="num"><button data-sort="missing">Without coverage</button></th><th class="num"><button data-sort="percent">Coverage</button></th></tr></thead><tbody id="rows"></tbody></table>
+<table><thead><tr><th><button data-sort="skill">Skill</button></th><th class="num"><button data-sort="holders">Approved holders</button></th><th class="num"><button data-sort="missing">Without coverage</button></th><th class="num"><button data-sort="percent">Coverage</button></th></tr></thead><tbody id="rows"></tbody></table>
 <p class="empty" id="none" hidden>No skills match these filters.</p></section>
-<section class="panel span-4"><h2>Claim status</h2><p class="sub">Reviewed claims against your assigned pending reviews.</p><div class="donut-wrap">${donut(analytics.reviewed, analytics.pending)}<p class="legend"><span><i style="background:#008595"></i>Reviewed ${analytics.reviewed}</span><span><i style="background:#e7c58a"></i>Pending ${analytics.pending}</span></p></div></section>
-<section class="panel span-4"><h2>Level distribution</h2><p class="sub">All reviewed claims by proficiency level.</p>${levelColumns(analytics)}</section>
+<section class="panel span-4"><h2>Claim status</h2><p class="sub">Approved claims against your assigned pending approvals.</p><div class="donut-wrap">${donut(analytics.reviewed, analytics.pending)}<p class="legend"><span><i style="background:#008595"></i>Reviewed ${analytics.reviewed}</span><span><i style="background:#e7c58a"></i>Pending ${analytics.pending}</span></p></div></section>
+<section class="panel span-4"><h2>Level distribution</h2><p class="sub">All approved claims by proficiency level.</p>${levelColumns(analytics)}</section>
 <section class="panel span-4"><h2>Skill radar</h2><p class="sub">Holder averages on L1–L4, top skills. Historical frameworks are excluded. Recorded-rank summaries do not establish equivalence across frameworks.</p>${radar(profiles)}</section>
-<section class="panel span-7"><h2>Level mix by skill</h2><p class="sub">How reviewed holders spread across levels. Historical frameworks are excluded.</p>${levelMix(profiles)}</section>
-<section class="panel span-5"><h2>Category share</h2><p class="sub">Reviewed claims by skill category.</p>${categories(analytics)}</section>
+<section class="panel span-7"><h2>Level mix by skill</h2><p class="sub">How approved holders spread across levels. Historical frameworks are excluded.</p>${levelMix(profiles)}</section>
+<section class="panel span-5"><h2>Category share</h2><p class="sub">Approved claims by skill category.</p>${categories(analytics)}</section>
 </div>
-<footer>Based on manager-reviewed claims for current active direct reports. Assigned pending reviews are shown separately and never counted as proficiency; private drafts are excluded. Missing recorded coverage is not proof of a skill deficiency, and no role-based targets are configured. This report contains aggregate counts only, without names or employee IDs. Small filtered groups can still be identifying; share only with authorized recipients.</footer>
+<footer>Based on approved claims for current active direct reports. Assigned pending approvals are shown separately and never counted as proficiency; private drafts are excluded. Missing recorded coverage is not proof of a skill deficiency, and no role-based targets are configured. This report contains aggregate counts only, without names or employee IDs. Small filtered groups can still be identifying; share only with authorized recipients.</footer>
 </main>
 <script type="application/json" id="data">${data}</script>
 <script>(function(){var d=JSON.parse(document.getElementById('data').textContent),level=document.getElementById('level'),search=document.getElementById('search'),show=document.getElementById('show'),bars=document.getElementById('bars'),rows=document.getElementById('rows'),none=document.getElementById('none'),sort='missing',dir=-1;

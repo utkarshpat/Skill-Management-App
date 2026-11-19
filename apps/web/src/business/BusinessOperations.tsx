@@ -411,18 +411,18 @@ function Insights({ context }: { context: BusinessContext }) {
     ],
     [
       'skilled',
-      'Reviewed skill holders',
+      'Approved skill holders',
       BarChart3,
       { dataset: 'skills', status: 'APPROVED', validity: '', issuer: '' },
-      'Employees with at least one manager-reviewed skill. Saved definition versions remain unchanged.',
-      'Manager reviewed',
+      'Employees with at least one approved skill. Saved definition versions remain unchanged.',
+      'Approved',
     ],
     [
       'pending',
       'Pending records',
       Clock3,
       { dataset: 'submissions', status: 'SUBMITTED', validity: '' },
-      'Individual skill and credential records awaiting manager review; a combined request may contain several records.',
+      'Individual skill and credential records pending approval; a combined request may contain several records.',
       'Needs Action',
     ],
     [
@@ -857,17 +857,17 @@ function Insights({ context }: { context: BusinessContext }) {
                   </label>
                 )}
 
-                {/* Review Status */}
+                {/* Approval status */}
                 <label className="bo-field-label">
-                  <span className="bo-field-title">Record review status</span>
+                  <span className="bo-field-title">Record approval status</span>
                   <select
                     value={params.get('status') ?? ''}
                     onChange={e => change({ status: e.target.value })}
                     className="bo-select"
                   >
-                    <option value="">All review statuses</option>
-                    <option value="SUBMITTED">Awaiting review</option>
-                    <option value="APPROVED">Manager reviewed</option>
+                    <option value="">All approval statuses</option>
+                    <option value="SUBMITTED">Pending approval</option>
+                    <option value="APPROVED">Approved</option>
                     <option value="CHANGES_REQUESTED">Changes requested</option>
                     <option value="REJECTED">Not approved</option>
                   </select>
@@ -1095,7 +1095,7 @@ function Insights({ context }: { context: BusinessContext }) {
                   <div>
                     <h2 className="bo-panel-title">
                       Skill coverage
-                      <MetricTooltip text="Reviewed holders by saved proficiency rank. Definitions can differ by version; matching ranks do not establish equivalent proficiency." />
+                      <MetricTooltip text="Approved holders by saved proficiency rank. Definitions can differ by version; matching ranks do not establish equivalent proficiency." />
                     </h2>
                     <p className="bo-note">
                       Holders by proficiency rank, evaluated against {data.summary.employees}{' '}
@@ -1104,7 +1104,7 @@ function Insights({ context }: { context: BusinessContext }) {
                     </p>
                     <p className="bo-note">
                       {data.coverageComplete
-                        ? 'Full published four-level catalogue, including skills with no reviewed holders.'
+                        ? 'Full published four-level catalogue, including skills with no approved holders.'
                         : 'Top reported skills only. Full catalogue reporting requires migration 083.'}
                     </p>
                   </div>
@@ -1190,7 +1190,7 @@ function Insights({ context }: { context: BusinessContext }) {
                                   issuer: '',
                                 })
                               }
-                              aria-label={`${label}, level ${rank}: ${holders} reviewed holders; drill-through level ${rank}`}
+                              aria-label={`${label}, level ${rank}: ${holders} approved holders; drill-through level ${rank}`}
                             >
                               <span className="bo-cell-rank-tag">L{rank}</span>
                               <strong className="bo-cell-val">{holders}</strong>
@@ -1203,7 +1203,7 @@ function Insights({ context }: { context: BusinessContext }) {
                 })}
               </div>
               {!data.coverage.length && (
-                <p className="bo-empty-chart">No reviewed skill claims recorded in this scope.</p>
+                <p className="bo-empty-chart">No approved skill claims recorded in this scope.</p>
               )}
             </section>
           )}
@@ -1220,9 +1220,9 @@ function Insights({ context }: { context: BusinessContext }) {
               <Bars
                 title="Certificates by issuer"
                 items={data.distribution}
-                description="Manager-reviewed credential records by issuing body (e.g., Microsoft, AWS, Cisco)."
+                description="Approved credential records by issuing body (e.g., Microsoft, AWS, Cisco)."
                 icon={ShieldCheck}
-                tooltip="Credential record counts, not distinct employee headcount, grouped by issuer. Expired reviewed records are included unless validity is filtered."
+                tooltip="Credential record counts, not distinct employee headcount, grouped by issuer. Expired approved records are included unless validity is filtered."
                 onFilter={issuer =>
                   change({ dataset: 'certifications', issuer, status: 'APPROVED' })
                 }
@@ -1232,7 +1232,7 @@ function Insights({ context }: { context: BusinessContext }) {
               <Bars
                 title="Certificates by category"
                 items={data.categories ?? []}
-                description="Reviewed credentials categorized by architectural & practice domain."
+                description="Approved credentials categorized by architectural & practice domain."
                 icon={Layers}
                 tooltip="Stored credential categories. These are not an approved Pillar or Practice mapping."
                 onFilter={category =>
@@ -1282,11 +1282,11 @@ function Insights({ context }: { context: BusinessContext }) {
                     </div>
                     <div>
                       <h2 className="bo-panel-title">
-                        Submission and review activity
-                        <MetricTooltip text="Monthly trend comparing employee submissions against manager review decisions." />
+                        Submission and approval activity
+                        <MetricTooltip text="Monthly trend comparing employee submissions against manager approval decisions." />
                       </h2>
                       <p className="bo-note">
-                        Skill and credential submissions and review decisions over the last 12
+                        Skill and credential submissions and approval decisions over the last 12
                         active months. Decisions include approval, changes requested and rejection.
                       </p>
                     </div>
@@ -1398,7 +1398,7 @@ function Insights({ context }: { context: BusinessContext }) {
                             <th>Scope</th>
                             <th>Headcount</th>
                             <th>Currently Certified</th>
-                            <th>Reviewed Skills</th>
+                            <th>Approved skills</th>
                             <th>Drill-through</th>
                           </tr>
                         </thead>
@@ -1553,7 +1553,7 @@ function Insights({ context }: { context: BusinessContext }) {
                 </label>
 
                 <label>
-                  Review status
+                  Approval status
                   <select
                     disabled={filters.get('dataset') === 'people'}
                     value={filters.get('status') ?? ''}
@@ -1561,8 +1561,8 @@ function Insights({ context }: { context: BusinessContext }) {
                     className="bo-select"
                   >
                     <option value="">All submitted states</option>
-                    <option value="SUBMITTED">Awaiting review</option>
-                    <option value="APPROVED">Manager reviewed</option>
+                    <option value="SUBMITTED">Pending approval</option>
+                    <option value="APPROVED">Approved</option>
                     <option value="CHANGES_REQUESTED">Changes requested</option>
                     <option value="REJECTED">Not approved</option>
                   </select>
@@ -1622,11 +1622,11 @@ function Insights({ context }: { context: BusinessContext }) {
                               {k === 'submittedAt'
                                 ? 'Submitted on'
                                 : k === 'reviewedAt'
-                                  ? 'Reviewed on'
+                                  ? 'Decision recorded on'
                                   : k === 'currentCertifications'
                                     ? 'Current Certifications'
                                     : k === 'reviewedSkills'
-                                      ? 'Reviewed Skills'
+                                      ? 'Approved skills'
                                       : k.replace(/([A-Z])/g, ' $1')}
                             </th>
                           ))}

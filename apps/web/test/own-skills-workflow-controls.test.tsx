@@ -157,14 +157,14 @@ test('own skill view searches recorded claims and opens read-only evidence witho
 
 test('submission recovery uses the loaded draft revision and preserves conflict details until retry', async () => {
   await mount('/my-skills?submitClaim=' + original.id);
-  assert.ok(document.querySelector('[aria-label="Submit for review"]'));
+  assert.ok(document.querySelector('[aria-label="Submit for approval"]'));
   assert.equal(writes.length, 0);
   writeFailure = 409;
-  await click('Submit for review', document.querySelector('.form-dialog-footer')!);
+  await click('Submit for approval', document.querySelector('.form-dialog-footer')!);
   assert.match(document.body.textContent!, /Claim revision changed/);
   assert.deepEqual(writes[0], { id: original.id, revision: 5, action: 'SUBMIT', feedback: '' });
   writeFailure = 0;
-  await click('Submit for review', document.querySelector('.form-dialog-footer')!);
+  await click('Submit for approval', document.querySelector('.form-dialog-footer')!);
   assert.deepEqual(writes[0], writes[1]);
   assert.equal(document.querySelector('.form-dialog'), null);
 });
@@ -193,7 +193,7 @@ test('denied skill refresh clears the profile and retry reflects current read-on
   canClaim = false;
   await click('Retry');
   assert.ok(document.querySelector('[aria-label="My skills profile"]'));
-  assert.equal(document.querySelector('[aria-label="Submit SQL reporting for review"]'), null);
+  assert.equal(document.querySelector('[aria-label="Submit SQL reporting for approval"]'), null);
   await view!.unmount();
   view = undefined;
   await mount('/my-skills?submitClaim=' + original.id);
@@ -229,7 +229,7 @@ test('editing a legacy skill draft retains conflict edits and saves before offer
   assert.equal(writes[1].revision, 5);
   assert.equal(writes[1].experienceMonths, 24);
   assert.equal(writes[1].definitionRevision, 3);
-  assert.ok(document.querySelector('[aria-label="Submit for review"]'));
+  assert.ok(document.querySelector('[aria-label="Submit for approval"]'));
   await click('Cancel', document.querySelector('.claim-review-dialog')!);
   assert.equal(writes.length, 2);
 });
@@ -241,7 +241,7 @@ test('save-success submit-failure keeps a recovery link for the saved next revis
   await click('Next', wizard());
   await click('Next', wizard());
   writeFailure = 409;
-  await click('Submit for review', wizard());
+  await click('Submit for approval', wizard());
   assert.equal(writes.length, 2);
   assert.equal(writes[0].revision, 5);
   assert.deepEqual(writes[1], { id: original.id, revision: 6, action: 'SUBMIT', feedback: '' });
@@ -280,13 +280,13 @@ test('submitting an existing draft from the skill list rechecks the loaded revis
   );
   assert.ok(submit);
   await act(async () => submit.click());
-  const dialog = document.querySelector('dialog[aria-label="Submit for review"]');
+  const dialog = document.querySelector('dialog[aria-label="Submit for approval"]');
   assert.ok(dialog);
   await click('Cancel', dialog);
   assert.equal(document.querySelector('dialog'), null);
   assert.equal(writes.length, 0);
   await act(async () => submit.click());
-  await click('Submit for review', document.querySelector('.form-dialog-footer')!);
+  await click('Submit for approval', document.querySelector('.form-dialog-footer')!);
   assert.deepEqual(writes, [{ id: original.id, revision: 5, action: 'SUBMIT', feedback: '' }]);
 });
 
@@ -365,13 +365,13 @@ test('skill profile rank and status filters reset pagination and category insigh
       item => item.textContent === 'Data',
     ),
   );
-  await click('Manager reviewed: 6. Filter skills');
+  await click('Approved: 6. Filter skills');
   assert.ok(
     [...document.querySelectorAll('.skills-status')].every(item =>
       item.classList.contains('approved'),
     ),
   );
-  await click('Review my drafts');
+  await click('Open my drafts');
   assert.ok(
     [...document.querySelectorAll('.skills-status')].every(item =>
       item.classList.contains('draft'),

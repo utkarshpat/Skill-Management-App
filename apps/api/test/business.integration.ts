@@ -571,7 +571,7 @@ await withDatabase(async pool => {
         await execute(
           'BusinessWorkflow',
           ids.admin,
-          { id: providerRequest, revision: 1, accessRevision: rev, note: 'Reviewed' },
+          { id: providerRequest, revision: 1, accessRevision: rev, note: 'Approved' },
           'APPROVE_AMENDMENT',
         );
         assert.ok(
@@ -584,7 +584,7 @@ await withDatabase(async pool => {
         await execute(
           'BusinessWorkflow',
           ids.admin,
-          { id: providerRequest, revision: 1, accessRevision: rev, note: 'Reviewed' },
+          { id: providerRequest, revision: 1, accessRevision: rev, note: 'Approved' },
           'APPROVE_AMENDMENT',
         );
         assert.equal(
@@ -592,7 +592,7 @@ await withDatabase(async pool => {
             await recover(ids.admin, 'APPROVE_AMENDMENT', {
               id: providerRequest,
               revision: 1,
-              note: 'Reviewed',
+              note: 'Approved',
             })
           ).replayed,
           true,
@@ -669,7 +669,7 @@ await withDatabase(async pool => {
         await execute(
           'BusinessWorkflow',
           ids.admin,
-          { id: certificationRequest, revision: 1, accessRevision: rev, note: 'Reviewed' },
+          { id: certificationRequest, revision: 1, accessRevision: rev, note: 'Approved' },
           'APPROVE_AMENDMENT',
         );
         const masterOptions = JSON.parse(
@@ -707,7 +707,7 @@ await withDatabase(async pool => {
               active: true,
               status: 'PUBLISHED',
               levels: (info.version >= 74
-                ? ['Foundation', 'Autonomous', 'Experienced', 'Expert']
+                ? ['Beginner', 'Autonomous', 'Experienced', 'Expert']
                 : ['Awareness', 'Foundation', 'Practitioner', 'Advanced', 'Expert']
               ).map((name, index) => ({
                 rank: index + 1,

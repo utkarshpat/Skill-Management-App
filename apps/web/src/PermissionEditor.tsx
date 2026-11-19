@@ -135,7 +135,7 @@ export function PermissionEditor({
                     {option === 'OWN'
                       ? 'Own records'
                       : selected.permission === 'skill.verify'
-                        ? 'Current direct reports (review policy)'
+                        ? 'Current direct reports (approval policy)'
                         : 'Entire workspace'}
                   </option>
                 ))}
@@ -299,7 +299,7 @@ export function PermissionEditor({
                       <strong>{permission.label}</strong>
                       {permission.code === 'skill.verify' && (
                         <small>
-                          Current direct reports only; current manager and assigned reviewer
+                          Current direct reports only; current manager and assigned approver
                           required.
                         </small>
                       )}

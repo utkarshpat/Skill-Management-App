@@ -189,7 +189,7 @@ test('demand scope and requirement changes are previewed before an exact receipt
   await checkLabel('SQL reporting');
   await change(dialog().querySelector('[aria-label="Minimum level for SQL reporting"]')!, '3');
   await checkLabel('Azure Fundamentals');
-  await click('Review proposal');
+  await click('Preview proposal');
   assert.equal(saves.length, 0);
   assert.equal(previews[0].operation, 'SAVE_DEMAND');
   assert.equal(previews[0].payload.scopeId, 'portfolio-analytics');
@@ -199,7 +199,7 @@ test('demand scope and requirement changes are previewed before an exact receipt
   });
   await click('Back');
   assert.equal(saves.length, 0);
-  await click('Review proposal');
+  await click('Preview proposal');
   await click('Create demand');
   assert.equal(saves.length, 1);
   assert.deepEqual(saves[0], { ...previews[1], previewReceipt: 'reviewed-business-binding' });
@@ -212,17 +212,17 @@ test('failed demand preview preserves the draft and a failed save refresh discar
   await fill('Demand scope', 'portfolio-analytics');
   await checkLabel('SQL reporting');
   previewFailure = 403;
-  await click('Review proposal');
+  await click('Preview proposal');
   assert.match(dialog().textContent!, /current scope changed/);
   assert.equal(saves.length, 0);
   previewFailure = 0;
-  await click('Review proposal');
+  await click('Preview proposal');
   writeFailure = 409;
   await click('Create demand');
   assert.match(dialog().textContent!, /record changed after preview/);
   assert.equal(saves.length, 1);
   await click('Refresh records', document);
-  assert.equal(document.querySelector('[aria-label="Review & confirm"]'), null);
+  assert.equal(document.querySelector('[aria-label="Preview & confirm"]'), null);
   assert.equal(saves.length, 1);
   assert.equal(
     (dialog().querySelector('input[required]') as HTMLInputElement).value,
@@ -247,7 +247,7 @@ test('catalogue certification creates a new issuer only after explicit review an
   await fill('Find approved providers or related skills', 'different search');
   await click('Search');
   assert.match(dialog().textContent!, /Remove SQL reporting/);
-  await click('Review changes');
+  await click('Preview changes');
   assert.equal(saves.length, 0);
   assert.equal(previews[0].operation, 'SAVE_MASTER');
   assert.equal(previews[0].payload.providerName, 'Cloud Skills Institute');
@@ -267,11 +267,11 @@ test('archived skill mappings block preview until explicitly removed', async () 
   await fill('Name', 'Reporting credential');
   await fill('Category', 'Data');
   await fill('Provider', 'microsoft');
-  await click('Review changes');
+  await click('Preview changes');
   assert.equal(previews.length, 0);
   assert.match(dialog().textContent!, /Remove archived skill.*Legacy reporting/);
   await click('Remove Legacy reporting');
-  await click('Review changes');
+  await click('Preview changes');
   assert.equal(previews.length, 1);
   assert.deepEqual(previews[0].payload.relatedSkillIds, []);
 });
@@ -327,7 +327,7 @@ test('catalogue retirement reviews the selected entry and clears suggested skill
   await click('Edit certification');
   await checkLabel('No default skill suggestions');
   await checkLabel('Keep this entry available');
-  await click('Review changes');
+  await click('Preview changes');
   assert.equal(previews.length, 1);
   assert.equal(previews[0].operation, 'SAVE_MASTER');
   assert.equal(previews[0].payload.targetId, 'azure');

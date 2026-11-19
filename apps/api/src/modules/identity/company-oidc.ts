@@ -2,11 +2,18 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { Express, Request, Response } from 'express';
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
 import type { Identity, IdentityConfig } from './auth.js';
+import { memoryCompanyAuthState, type CompanyAuthState } from './company-auth-state.js';
 import { errorType, logEvent } from '../../shared/logger.js';
 
 const flowCookie = '__Host-skill-oidc';
 const loginHintCookie = '__Host-skill-login-hint';
 const browserCookie = { httpOnly: true, secure: true, sameSite: 'lax', path: '/' } as const;
+export type CompanyOidcFlow = {
+  nonce: string;
+  verifier: string;
+  expiresAt: number;
+  returnTo: string;
+};
 const flowLifetime = 5 * 60 * 1000;
 const random = () => randomBytes(32).toString('base64url');
 
@@ -19,36 +26,28 @@ export function registerCompanyCallback(
     req: Request,
     res: Response,
     identity: Identity,
-    expiresAt: number,
+    idTokenExpiresAt: number,
     logoutHint?: string,
-  ) => boolean,
+  ) => Promise<boolean>,
   transport = fetch,
   signingKey?: JWTVerifyGetKey,
+  pending: CompanyAuthState<CompanyOidcFlow> = memoryCompanyAuthState(),
 ) {
   const redirectUri = origin + '/api/auth/callback';
   const authority = 'https://login.microsoftonline.com/' + config.tenantId;
   const key =
     signingKey ??
     createRemoteJWKSet(new URL(authority + '/discovery/v2.0/keys'), { timeoutDuration: 5000 });
-  const pending = new Map<
-    string,
-    { nonce: string; verifier: string; expiresAt: number; returnTo: string }
-  >();
   const cookieState = (req: Request) =>
     /(?:^|;\s*)__Host-skill-oidc=([\w-]{43})(?=;|$)/.exec(req.get('Cookie') ?? '')?.[1];
-  app.get('/api/auth/login', (req, res) => {
+  app.get('/api/auth/login', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     const mode =
       req.query.mode === 'silent' || req.query.mode === 'choose' ? req.query.mode : 'default';
     logEvent('info', 'auth.oidc.login_started', { requestId: res.locals.requestId, mode });
     const now = Date.now();
-    for (const [state, flow] of pending) if (flow.expiresAt <= now) pending.delete(state);
     const previous = cookieState(req);
-    if (previous) pending.delete(previous);
-    if (pending.size >= 10_000) {
-      res.sendStatus(503);
-      return;
-    }
+    if (previous) await pending.remove(previous);
     const state = random(),
       nonce = random(),
       verifier = random();
@@ -59,7 +58,12 @@ export function registerCompanyCallback(
       requestedPath.length <= 2048
         ? requestedPath
         : '/';
-    pending.set(state, { nonce, verifier, expiresAt: now + flowLifetime, returnTo });
+    if (
+      !(await pending.write(state, { nonce, verifier, expiresAt: now + flowLifetime, returnTo }))
+    ) {
+      res.sendStatus(503);
+      return;
+    }
     res.cookie(flowCookie, state, { ...browserCookie, maxAge: flowLifetime });
     const query = new URLSearchParams({
       client_id: config.webClientId,
@@ -93,12 +97,22 @@ export function registerCompanyCallback(
     res.set('Cache-Control', 'no-store');
     res.redirect('/?signin=signed-out');
   });
+  app.get('/api/auth/resume-complete', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res
+      .type('text/plain')
+      .send(
+        req.query.signin
+          ? 'Sign-in could not finish. Return to Skill Genie and try again.'
+          : 'Return to your original Skill Genie tab and select Resume workspace.',
+      );
+  });
 
   app.get('/api/auth/callback', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     res.set('Referrer-Policy', 'no-referrer');
     const state = cookieState(req);
-    const flow = state && req.query.state === state ? pending.get(state) : undefined;
+    const flow = state && req.query.state === state ? await pending.take(state) : undefined;
     if (!flow || !state) {
       logEvent('warn', 'auth.oidc.callback_rejected', {
         requestId: res.locals.requestId,
@@ -107,7 +121,6 @@ export function registerCompanyCallback(
       res.redirect('/?signin=failed');
       return;
     }
-    pending.delete(state);
     res.clearCookie(flowCookie, browserCookie);
     const retry = (result: 'failed' | 'company-required') => {
       const target = new URL(origin + flow.returnTo);
@@ -170,7 +183,7 @@ export function registerCompanyCallback(
       }
       failureReason = 'session_unavailable';
       if (
-        !issue(
+        !(await issue(
           req,
           res,
           {
@@ -180,7 +193,7 @@ export function registerCompanyCallback(
           },
           payload.exp! * 1000,
           typeof payload.login_hint === 'string' ? payload.login_hint : undefined,
-        )
+        ))
       )
         throw Error('Session unavailable.');
       logEvent('info', 'auth.oidc.sign_in_succeeded', { requestId: res.locals.requestId });

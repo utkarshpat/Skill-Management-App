@@ -28,6 +28,13 @@ const migrations = [
   [105, '105_announcement_scope_hierarchy.sql'],
   [106, '106_announcement_pagination_retention.sql'],
   [107, '107_announcement_response_updates.sql'],
+  [108, '108_issuer_scoped_capability_leads.sql'],
+  [109, '109_capability_lead_scope_and_approvals.sql'],
+  [110, '110_beginner_proficiency_label.sql'],
+  [111, '111_business_analytics_approvals.sql'],
+  [112, '112_business_issuer_coverage.sql'],
+  [113, '113_shared_company_auth.sql'],
+  [114, '114_approval_queue_exports_response_versions.sql'],
 ];
 const literal = value => "N'" + value.replaceAll("'", "''") + "'";
 export function transactionMigration(
@@ -125,6 +132,13 @@ complete, run 04_091_search_people_administration.sql first.
 18. Apply 18_105_announcement_scope_hierarchy.sql after 104.
 19. Apply 19_106_announcement_pagination_retention.sql after 105. It adds pagination and the fixed 45-day expiry retention procedure.
 20. Apply 20_107_announcement_response_updates.sql after 106. It adds opt-in edits to existing responses.
+21. Apply 21_108_issuer_scoped_capability_leads.sql after 107. It enables audited issuer and organization scope assignments and approval fallback.
+22. Apply 22_109_capability_lead_scope_and_approvals.sql after 108. It groups issuer grants under standard scoped assignments and enables parallel approvals, N+1 notifications and scoped certificate analytics.
+23. Apply 23_110_beginner_proficiency_label.sql after 109. It renames rank one of the shared four-level framework to Beginner.
+24. Apply 24_111_business_analytics_approvals.sql after 110. Existing Business Analytics assignments provide all-issuer approvals within their current scope.
+25. Apply 25_112_business_issuer_coverage.sql after 111. It adds editable issuer coverage and shared enforcement for certificate analytics, exports, evidence and approvals.
+26. Apply 26_113_shared_company_auth.sql after 112 before deploying the matching app. It moves hosted company sign-in state and sessions into shared SQL storage.
+27. Apply 27_114_approval_queue_exports_response_versions.sql after 113 before deploying the matching app. It versions responses, pages the approvals queue, and tightens Excel export and import checks.
 20. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
    request topic/recipient discovery, current assigned-manager review and People & Access search.
 

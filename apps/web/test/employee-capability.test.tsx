@@ -62,9 +62,9 @@ test('Capability cards retain actor-bound assigned-record gating and claimed/rev
       onOpen={() => {}}
     />,
   );
-  assert.match(pendingHtml, /Open review/);
+  assert.match(pendingHtml, /Open approval/);
   assert.match(pendingHtml, /Employee’s claimed level/);
-  assert.doesNotMatch(pendingHtml, /Recorded reviewed level/);
+  assert.doesNotMatch(pendingHtml, /Approved level/);
   const combinedHtml = renderToStaticMarkup(
     <EmployeeSkillCards
       skills={[pending]}

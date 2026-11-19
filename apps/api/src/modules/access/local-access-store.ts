@@ -32,6 +32,7 @@ export interface LocalPerson extends EmploymentDetails, PrimaryCapabilityDetails
   employeeCode: string;
   active: boolean;
   hasDirectReports?: boolean;
+  issuerApprovals?: boolean;
   business?: BusinessProjection;
   entraObjectId?: string;
   roleIds: string[];

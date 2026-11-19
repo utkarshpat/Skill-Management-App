@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { ClaimEvidence } from './ClaimEvidence';
 import type { Claim } from './MySkills';
 import { useEffect, useRef, useState } from 'react';
@@ -202,11 +203,11 @@ export function SkillClaimWizard({
   );
   return (
     <FormDialog
-      title={aiDraft ? 'Review AI skill draft' : draft.revision ? 'Edit skill' : 'Add skill'}
+      title={aiDraft ? 'Preview AI skill draft' : draft.revision ? 'Edit skill' : 'Add skill'}
       className="skill-wizard"
       subtitle={
         page === 0
-          ? 'Find a skill, describe your experience and review before saving.'
+          ? 'Find a skill, describe your experience and check before saving.'
           : selected?.name
       }
       stepNavigation
@@ -403,7 +404,7 @@ export function SkillClaimWizard({
                   <div>
                     <h3>
                       {level
-                        ? 'Level ' + level.rank + ' · ' + level.name
+                        ? 'Level ' + level.rank + ' · ' + displayProficiencyName(level.rank, level.name)
                         : 'Choose your proficiency'}
                     </h3>
                     <p>
@@ -486,12 +487,12 @@ export function SkillClaimWizard({
           ),
         },
         {
-          label: 'Review & save',
+          label: 'Preview & save',
           content: (
             <div className="skill-review-layout">
               <section>
                 <div className="skill-section-heading">
-                  <h3>Review your skill information</h3>
+                  <h3>Check your skill information</h3>
                   <button type="button" className="skill-text-button" onClick={() => change(0)}>
                     Edit selection
                   </button>
@@ -545,7 +546,7 @@ export function SkillClaimWizard({
                   <h3>What happens next</h3>
                   <ol>
                     <li>Save your self-assessed draft.</li>
-                    <li>Submit when you are ready for your reporting manager’s review.</li>
+                    <li>Submit when you are ready for your reporting manager’s approval.</li>
                     <li>Track feedback and status in My skills.</li>
                   </ol>
                 </div>
@@ -599,7 +600,7 @@ export function SkillClaimWizard({
               disabled={busy}
               onClick={() => onSave(true)}
             >
-              Submit for review
+              Submit for approval
               <Send size={16} aria-hidden="true" />
             </button>
           )}

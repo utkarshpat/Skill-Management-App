@@ -136,7 +136,7 @@ test('recommendations paginate directions and show sent records without implying
 test('discussion requires employee facts and conflict preserves the response for retry', async () => {
   let updated = 0;
   await mount(undefined, { onAccepted: () => updated++ });
-  await click('Review recommendation');
+  await click('Open recommendation');
   await click('Ask for discussion');
   await click('Send discussion request');
   assert.equal(writes.length, 0);
@@ -164,7 +164,7 @@ test('discussion requires employee facts and conflict preserves the response for
 
 test('decline is explicit and can return to the unchanged detail before confirmation', async () => {
   await mount();
-  await click('Review recommendation');
+  await click('Open recommendation');
   await click('Decline');
   await fill('Response note', 'Focus is currently on the client release.');
   await click('Back');
@@ -178,7 +178,7 @@ test('decline is explicit and can return to the unchanged detail before confirma
 
 test('acceptance validates the personal schedule and retries with stable plan and task identities', async () => {
   await mount();
-  await click('Review recommendation');
+  await click('Open recommendation');
   await click('Accept & build plan');
   await click('Write plan manually');
   await fill('Plan name', '');

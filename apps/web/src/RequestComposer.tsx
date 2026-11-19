@@ -149,7 +149,7 @@ export function RequestComposer({
     <FormDialog
       className="request-composer"
       title={kind === 'INCIDENT' ? 'New incident' : 'New request'}
-      subtitle="Tell us what you need, choose a recipient and review before sending."
+      subtitle="Tell us what you need, choose a recipient and check before sending."
       busy={busy}
       onClose={onClose}
       page={page}
@@ -416,7 +416,7 @@ export function RequestComposer({
           ),
         },
         {
-          label: 'Review & send',
+          label: 'Preview & send',
           content: (
             <div className="request-review">
               <div className="request-review-top">

@@ -107,6 +107,7 @@ test('Excel boundaries reject invalid filters, malformed previews and invalid hi
   assert.equal((await send('catalogue', catalogue)).status, 503);
   legacySchema = false;
   const skills = catalogue.getWorksheet('Skills')!;
+  assert.equal(skills.getRow(1).getCell(6).value, 'Beginner');
   const certificates = catalogue.getWorksheet('Certifications')!;
   const id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
   const rejectCatalogue = async (message: RegExp) => {
@@ -126,7 +127,7 @@ test('Excel boundaries reject invalid filters, malformed previews and invalid hi
   skills.getRow(2).values = ['', 'SQL', 'Data', 'Query data', 'UNKNOWN'];
   await rejectCatalogue(/Status/);
   skills.getRow(2).getCell(5).value = 'PUBLISHED';
-  await rejectCatalogue(/Foundation/);
+  await rejectCatalogue(/Beginner/);
   skills.getRow(2).values = [
     '',
     'SQL',
@@ -159,6 +160,12 @@ test('Excel boundaries reject invalid filters, malformed previews and invalid hi
   );
   assert.equal(catalogueRows[0].definition.active, false);
   assert.deepEqual(catalogueRows[2].definition.relatedSkillIds, [id]);
+  skills.getRow(1).getCell(6).value = 'Foundation';
+  assert.equal((await send('catalogue', catalogue)).status, 200);
+  assert.equal(
+    operations.filter(x => x.operation === 'PREVIEW').at(-1)!.payload.rows[1].definition.levels[0].name,
+    'Beginner',
+  );
   certificates.getRow(2).getCell(7).value = '[]';
   skills.getRow(2).getCell(5).value = 'ARCHIVED';
   assert.equal((await send('catalogue', catalogue)).status, 200);

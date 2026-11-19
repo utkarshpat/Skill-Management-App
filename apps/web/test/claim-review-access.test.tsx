@@ -32,6 +32,6 @@ test('claim access explains historical state and fails closed without a current 
         decision={{ ...decision, allowed: true, reasonCode: 'REPORTING_POLICY' }}
       />,
     ),
-    /current direct manager and assigned reviewer/,
+    /current direct manager and assigned approver/,
   );
 });

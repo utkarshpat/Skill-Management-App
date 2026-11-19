@@ -85,15 +85,15 @@ for (const kind of ['FORM', 'POLL']) {
       };
       await reopen();
       if (kind === 'FORM') {
-        await expect(dialog.getByLabel('Work email')).toHaveValue(person.email);
+        await expect(dialog.locator('.announcement-identity dd').nth(1)).toHaveText(person.email);
         await dialog.getByLabel('Preferred batch').selectOption('Afternoon');
         await dialog.getByRole('button', { name: 'Register', exact: true }).click();
-        await expect(dialog.getByText('Response submitted.', { exact: true })).toBeVisible();
+        await expect(page.getByText('Response submitted.', { exact: true })).toBeVisible();
       } else {
         await dialog.getByRole('button', { name: 'Afternoon', exact: true }).click();
-        await expect(dialog.getByText('Vote recorded.', { exact: true })).toBeVisible();
+        await expect(page.getByText('Vote recorded.', { exact: true })).toBeVisible();
       }
-      await dialog.getByRole('button', { name: 'Close ' + title }).click();
+      await expect(dialog).toBeHidden();
       await expect(page).toHaveURL(/\/announcements$/);
       await reopen();
       await expect(dialog.getByText('Response recorded', { exact: true })).toBeVisible();

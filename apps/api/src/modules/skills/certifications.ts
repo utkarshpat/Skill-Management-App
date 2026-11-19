@@ -20,6 +20,7 @@ export interface CertificationFields {
   notes: string;
 }
 export interface Certification extends CertificationFields {
+  issuerApproval?: boolean;
   renewedFromId?: string;
   supersededById?: string;
   activeRenewalId?: string;

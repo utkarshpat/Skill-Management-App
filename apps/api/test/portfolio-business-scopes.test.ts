@@ -94,7 +94,7 @@ test('Portfolio responsibility preview binds the exact active server scope witho
   const preview = previewBusiness(actor, state, command);
   assert.ok(preview.receipt);
   assert.equal(preview.impact.binding, 'Financial Services');
-  assert.doesNotMatch(JSON.stringify(preview.impact), /skill review|direct report/i);
+  assert.doesNotMatch(JSON.stringify(preview.impact), /skill approval|direct report/i);
   for (const nodes of [
     [],
     [{ ...state.nodes[0], active: false }],

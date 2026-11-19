@@ -634,8 +634,8 @@ export function LearningHome({
                   </p>
                 )}
                 <small>
-                  Learning completion is separate from assessed proficiency. Skill review determines
-                  your recorded level.
+                  Learning completion is separate from assessed proficiency. Skill approval
+                  determines your recorded level.
                 </small>
               </section>
             </aside>

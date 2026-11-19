@@ -2,6 +2,7 @@ import type { BusinessStore } from '../business/index.js';
 import { readActorAccess } from '../access/index.js';
 import { MemoryAiBudget, type AiBudget } from './budget.js';
 import { AccessError } from '../../shared/errors.js';
+import { phaseTwoAvailable } from '../../shared/release-features.js';
 import type { WorkflowStore } from '../workflows/index.js';
 import type { LearningStore } from '../learning/index.js';
 import type { AccessStore } from '../access/index.js';
@@ -53,8 +54,26 @@ interface ToolCall {
   function: { name: string; arguments: string };
 }
 type Tool = ToolDefinition;
+const permissionsOverviewPrompt = 'Explain my current permissions and the actions available to me';
+
+function isPermissionsOverview(message: string) {
+  const normalized = message
+    .normalize('NFKC')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[.?!]+$/, '')
+    .toLowerCase();
+  return [
+    permissionsOverviewPrompt.toLowerCase(),
+    'what can i do',
+    'what are my current permissions',
+    'explain my current permissions',
+  ].includes(normalized);
+}
+
 export interface GenerationOptions {
   maxOutputTokens: number;
+  responseSchema?: { name: string; schema: Record<string, unknown> };
   onUsage?: (usage: TokenUsage) => void;
 }
 export interface Provider {
@@ -443,7 +462,7 @@ export class AssistantService {
           {
             label: 'What can I do?',
             destination: '/workspace',
-            prompt: 'Explain my current permissions and the actions available to me.',
+            prompt: permissionsOverviewPrompt + '.',
           },
           ...(capabilities.canDraftRequest
             ? [
@@ -591,18 +610,21 @@ export class AssistantService {
         prepared = this.memory.prepare(actorId, input, policy);
         request = { messages: prepared.history };
       }
-      conversation(request);
+      const history = conversation(request);
       if (!this.provider) throw new AccessError(503, 'AI model is not connected yet.');
       const quotaState = await readActorAccess(this.store, actorId),
         quotaPerson = quotaState.people.find(p => p.id === actorId);
       if (!quotaPerson || !this.registry.permits(quotaState, quotaPerson, 'own_profile'))
         throw new AccessError(403, 'Assistant access is not assigned.');
+      const capabilities = assistantCapabilities(quotaState, quotaPerson);
       const initialPolicy = JSON.stringify({
-        capabilities: assistantCapabilities(quotaState, quotaPerson),
+        capabilities,
         tools: this.registry.available(quotaState, quotaPerson),
       });
       signal.throwIfAborted();
-      const shortcut = workflowChatShortcut(conversation(request), this.provider);
+      const shortcut = isPermissionsOverview(history.at(-1)!.content)
+        ? capabilityGreeting(capabilities)
+        : workflowChatShortcut(history, this.provider);
       if (!shortcut) release = await this.budget.acquire(actorId);
       const result = shortcut
         ? { reply: shortcut, sources: [], mode: 'read-only' }
@@ -835,6 +857,8 @@ export class AssistantService {
         const outputContext = await recheck('own_profile');
         const outputCapabilities = assistantCapabilities(outputContext.state, outputContext.person);
         if (
+          ((artifact.kind === 'practice_quiz' || artifact.kind === 'task_draft') &&
+            !phaseTwoAvailable()) ||
           (artifact.kind === 'amendment_draft' && !outputCapabilities.canDraftAmendment) ||
           (artifact.kind === 'demand_draft' && !outputCapabilities.canDraftDemand) ||
           (artifact.kind === 'request_draft' && !outputCapabilities.canDraftRequest) ||

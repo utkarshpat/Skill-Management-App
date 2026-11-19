@@ -194,8 +194,8 @@ for name in ['SkillEvidence','CertificationImage','CapabilityIntakeFiles','Capab
     procedures[name]['source'] = 'database/migrations/085_private_file_storage.sql'
 
 groups={
- 'Identity foundation':['SchemaMigration','Account','DeliveryUnit','Department','Team','AppUser','TeamMembership','ReportingRelationship','AppRole','Permission','UserRole','RolePermission','UserPermission','AuditEvent'],
- 'Access & organization':['AccessWorkspace','AccessRuntimeAccount','AccountRole','AccessPerson','AccountRolePermission','AccessPersonRole','AccessPersonOverride','AccessAudit','AccessOrgNode','AccessOrgAssignment','AccessImplementedScope'],
+ 'Identity foundation':['SchemaMigration','Account','DeliveryUnit','Department','Team','AppUser','TeamMembership','ReportingRelationship','AppRole','Permission','UserRole','RolePermission','UserPermission','AuditEvent','CompanyAuthState'],
+ 'Access & organization':['AccessWorkspace','AccessRuntimeAccount','AccountRole','AccessPerson','AccountRolePermission','AccessPersonRole','AccessPersonOverride','AccessAudit','AccessOrgNode','AccessOrgAssignment','AccessImplementedScope','CapabilityLeadGrant','CapabilityLeadScope','BusinessResponsibilityIssuerScope'],
  'Skills & claims':['SkillCatalogue','ProficiencyFramework','ProficiencyLevel','SkillDefinitionVersion','SkillVersionCriterion','SkillClaimDraft','SkillClaimNotification','SkillClaimEvidence','CertificationRecord','CertificationReminderSchedule','CertificationExpiryReminder','CertificationImageRecord','CapabilitySubmission','CapabilitySubmissionItem','SkillCertificationLink','CapabilityIntakeFile'],
  'Learning & recommendations':['LearningPlan','LearningSession','LearningQuiz','LearningAttempt','LearningRecommendation','LearningRecommendationEvent','CertificationRecommendation','CertificationRecommendationEvent'],
  'Requests & incidents':['WorkflowRecord','WorkflowEvent'],
@@ -207,7 +207,7 @@ groups={
 assert set(sum(groups.values(), []))==set(tables), 'Update schema domain groups for new tables'
 for name,t in tables.items():
     t['domain']=next(group for group,names in groups.items() if name in names)
-data={'title':'Cognitive Intelligence Lab','version':re.search(r'^Version: (\d{4}-\d{2}-\d{2})',document,re.M)[1],'basis':'Repository source and migrations; not live introspection',
+data={'title':'Skill Genie','version':re.search(r'^Version: (\d{4}-\d{2}-\d{2})',document,re.M)[1],'basis':'Repository source and migrations; not live introspection',
  'revision':hashlib.sha256((document+baseline+migration+onboarding+storage+json.dumps(sections,sort_keys=True)+json.dumps(tables,sort_keys=True)+json.dumps(routes)+json.dumps(procedures,sort_keys=True)).encode()).hexdigest()[:16],
  'sections':sections,'schema':{'migrations':inputs,'tables':tables,'views':views,'removedTables':removed},
  'routes':routes,'procedures':list(procedures.values()),'groups':groups}

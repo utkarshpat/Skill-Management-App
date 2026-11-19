@@ -33,7 +33,7 @@ function AskAi() {
           </h3>
           <p>
             Describe what work needs: skills, minimum level and headcount. The assistant compares it
-            with your direct reports’ reviewed records. Nothing is saved.
+            with your direct reports’ approved records. Nothing is saved.
           </p>
         </div>
       </header>
@@ -75,7 +75,7 @@ function Radar({ profiles }: { profiles: SkillProfile[] }) {
   if (skills.length < 3)
     return (
       <p className="team-chart-caption">
-        The radar appears once three or more skills have a reviewed record.
+        The radar appears once three or more skills have a approved record.
       </p>
     );
   const point = (i: number, value: number, r = 78) => {
@@ -153,17 +153,17 @@ export function TeamInsightCharts({
       <div className="team-kpi-strip" aria-label="Additional team indicators">
         <div>
           <strong>{profiles.length}</strong>
-          <span>Reviewed skills</span>
-          <small>Distinct skills with a reviewed record</small>
+          <span>Approved skills</span>
+          <small>Distinct skills with a approved record</small>
         </div>
         <div>
           <strong>{average ? 'L' + average : '—'}</strong>
-          <span>Average reviewed level</span>
+          <span>Average approved level</span>
           <small>Current four-level framework</small>
         </div>
         <div>
           <strong>{without}</strong>
-          <span>Without reviewed skills</span>
+          <span>Without approved skills</span>
           <small>
             {analytics.members ? Math.round((without / analytics.members) * 100) : 0}% of active
             members
@@ -175,7 +175,7 @@ export function TeamInsightCharts({
           <small>
             {profiles[0]
               ? `${profiles[0].holders} holders · avg ${profiles[0].average} (L4)`
-              : 'No reviewed skills yet'}
+              : 'No approved skills yet'}
           </small>
         </div>
       </div>
@@ -199,7 +199,7 @@ export function TeamInsightCharts({
             <div>
               <h3>Recorded gaps at L{minimumRank}+</h3>
               <p>
-                Reviewed holders against members without recorded coverage. Select a skill to filter
+                Approved holders against members without recorded coverage. Select a skill to filter
                 the member list.
               </p>
             </div>
@@ -228,12 +228,12 @@ export function TeamInsightCharts({
               ))}
             </div>
           ) : (
-            <p className="team-chart-caption">No reviewed skills yet.</p>
+            <p className="team-chart-caption">No approved skills yet.</p>
           )}
           <p className="team-chart-legend-inline">
             <span>
               <i className="teal" />
-              Reviewed coverage
+              Approved coverage
             </span>
             <span>
               <i className="amber" />
@@ -245,7 +245,7 @@ export function TeamInsightCharts({
           <header>
             <div>
               <h3>Level mix by skill</h3>
-              <p>How reviewed holders spread across proficiency levels.</p>
+              <p>How approved holders spread across proficiency levels.</p>
             </div>
           </header>
           {profiles.length ? (
@@ -273,7 +273,7 @@ export function TeamInsightCharts({
               ))}
             </div>
           ) : (
-            <p className="team-chart-caption">No reviewed skills yet.</p>
+            <p className="team-chart-caption">No approved skills yet.</p>
           )}
           <p className="team-chart-legend-inline">
             {LEVELS.map((l, i) => (
@@ -293,14 +293,14 @@ export function TeamInsightCharts({
                 </span>
               </div>
               <p>
-                Reviewed level per member for the top skills. Historical frameworks are excluded.
+                Approved level per member for the top skills. Historical frameworks are excluded.
                 Members on this page only; select a cell or member to open their profile.
               </p>
             </div>
             <div className="team-heatmap-legend" aria-label="Heatmap level legend">
               <span className="heatmap-legend-item">
                 <i className="heat-legend-swatch heat-0" />
-                <span>No reviewed record</span>
+                <span>No approved record</span>
               </span>
               <span className="heatmap-legend-item">
                 <i className="heat-legend-swatch heat-1" />
@@ -368,14 +368,14 @@ export function TeamInsightCharts({
                       </th>
                       {heatSkills.map(s => {
                         const level = memberLevel(analytics, s, p.id, index),
-                          label = level ? 'L' + level : 'no reviewed record';
+                          label = level ? 'L' + level : 'no approved record';
                         return (
                           <td key={s} className="heatmap-cell">
                             <button
                               className={'heat-cell-btn heat-' + level}
                               onClick={() => onPerson(p.id)}
                               aria-label={`${p.name}, ${s}: ${level ? 'reviewed ' + label : label}`}
-                              title={`${p.name} · ${s}: ${level ? `Reviewed proficiency ${label}` : 'No reviewed record'}`}
+                              title={`${p.name} · ${s}: ${level ? `Approved proficiency ${label}` : 'No approved record'}`}
                             >
                               {level ? label : '—'}
                             </button>
@@ -389,7 +389,7 @@ export function TeamInsightCharts({
             </div>
           ) : (
             <p className="team-chart-caption">
-              The heatmap appears once members on this page have reviewed skills.
+              The heatmap appears once members on this page have approved skills.
             </p>
           )}
         </section>

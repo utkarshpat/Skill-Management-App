@@ -268,7 +268,7 @@ test('templates are first-class actions, preserve historical grants and save onl
   await waitSearch();
   assert.match(document.body.textContent ?? '', /Historical reporting/);
   await fill('Template to assign', role);
-  await click('Review template assignment');
+  await click('Preview template assignment');
   assert.equal(writes.length, 0);
   assert.deepEqual(previews[0].body.roleIds, [oldRole, role]);
   assert.deepEqual(previews[0].body.overrides, initial().person.overrides);
@@ -317,7 +317,7 @@ test('organization and manager removal are explicit, person-bound and receipt ch
   await open();
   await click('Organization & manager');
   await waitSearch();
-  await click('Review organization changes');
+  await click('Preview organization changes');
   assert.equal(previews.length, 0);
   assert.match(
     document.body.textContent ?? '',
@@ -325,7 +325,7 @@ test('organization and manager removal are explicit, person-bound and receipt ch
   );
   await click('Clear organization assignment');
   await click('Remove manager');
-  await click('Review organization changes');
+  await click('Preview organization changes');
   const command = previews[0];
   assert.equal(command.path, '/api/dev-access/organization/preview');
   assert.deepEqual(command.body, {
@@ -366,7 +366,7 @@ test('assigning a new placement uses the selected parent at every level and keep
   await click('Organization & manager');
   await waitSearch();
   await fill('Delivery Unit', 'new-du');
-  await click('Review organization changes');
+  await click('Preview organization changes');
   assert.equal(previews.length, 0);
   await waitSearch();
   await fill('Portfolio/Division', 'new-portfolio');
@@ -381,7 +381,7 @@ test('assigning a new placement uses the selected parent at every level and keep
       .textContent,
     'Payments Platform',
   );
-  await click('Review organization changes');
+  await click('Preview organization changes');
   assert.deepEqual(previews[0].body, {
     kind: 'assignment',
     revision: 7,
@@ -399,7 +399,7 @@ test('profile review shows work changes and conflicts do not report successful s
   await mount();
   await open();
   await fill('Grade', 'G4');
-  await click('Review profile changes');
+  await click('Preview profile changes');
   assert.match(document.querySelector('.form-dialog')?.textContent ?? '', /G3.*G4/);
   writeFailure = true;
   await click('Confirm & save');
@@ -435,7 +435,7 @@ test('revoked person reads clear the editor instead of leaving cached sensitive 
   await mount();
   await open();
   await fill('Grade', 'G4');
-  await click('Review profile changes');
+  await click('Preview profile changes');
   writeFailure = true;
   await click('Confirm & save');
   denied = true;
@@ -471,7 +471,7 @@ test('manager search excludes the employee and inactive matches while preserving
   const matches = document.querySelector('.people-manager-results')!;
   assert.doesNotMatch(matches.textContent ?? '', /Aditi Menon|Neha Rao/);
   await click('Rohan Mehta', matches);
-  await click('Review organization changes');
+  await click('Preview organization changes');
   assert.deepEqual(previews[0].body, {
     kind: 'assignment',
     revision: 7,
@@ -530,7 +530,7 @@ test('template paging keeps unsupported grants unassignable and never reuses the
   assert.equal(option?.disabled, true);
   assert.match(option?.textContent ?? '', /Unavailable for assignment/);
   const reviewButton = [...document.querySelectorAll('button')].find(
-    b => b.textContent?.trim() === 'Review template assignment',
+    b => b.textContent?.trim() === 'Preview template assignment',
   );
   assert.equal(reviewButton?.disabled, true);
   assert.equal(previews.length, 0);
@@ -546,10 +546,10 @@ test('permission exceptions preview shows one modal at a time and preserves draf
   assert.equal(document.querySelectorAll('dialog').length, 1);
   await fill('Business reason (Mandatory for audit compliance)', 'Temporary audit verification');
   await fill('Expiry date (your local time)', '2099-12-31');
-  await click('Review exception');
+  await click('Preview exception');
   await settle();
   assert.equal(document.querySelectorAll('dialog').length, 1);
-  assert.match(document.querySelector('dialog')?.textContent ?? '', /Review person change/);
+  assert.match(document.querySelector('dialog')?.textContent ?? '', /Preview person change/);
   await click('Back to edit');
   await settle();
   assert.equal(document.querySelectorAll('dialog').length, 1);
@@ -568,7 +568,7 @@ test('employee ID corrections and deactivation are shown in preview and cancel w
   await act(async () =>
     document.querySelector<HTMLInputElement>('.people-checkbox input')!.click(),
   );
-  await click('Review profile changes');
+  await click('Preview profile changes');
   assert.equal(previews[0].body.employeeCode, '710992');
   assert.equal(previews[0].body.active, false);
   assert.deepEqual(previews[0].body.roleIds, [oldRole]);
@@ -640,7 +640,7 @@ test('a profile preview without a receipt cannot enable saving or discard the dr
   await mount();
   await open();
   await fill('Full name', 'Aditi R. Menon');
-  await click('Review profile changes');
+  await click('Preview profile changes');
   assert.match(
     document.querySelector('[role="alert"]')!.textContent!,
     /preview could not be confirmed/,
@@ -663,7 +663,7 @@ test('an unconfirmed write invalidates its receipt and reloads the selected pers
   await mount();
   await open();
   await fill('Full name', 'Aditi R. Menon');
-  await click('Review profile changes');
+  await click('Preview profile changes');
   await click('Confirm & save');
   assert.deepEqual(submitted, [{ ...previews[0].body, previewReceipt: 'reviewed-person' }]);
   assert.equal(changed, 0);

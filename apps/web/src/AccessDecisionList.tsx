@@ -32,9 +32,9 @@ const explanation: Record<string, string> = {
   EXPLICIT_DENY: 'A matching scoped Block overrides Allow.',
   INACTIVE_ACTOR: 'The person is inactive.',
   NO_RESOLVED_DIRECT_REPORTS: 'There are no confirmed current active direct reports.',
-  REPORTING_POLICY: 'Current direct-manager policy permits assigned direct-report reviews.',
-  SELF_APPROVAL: 'You cannot review your own claim.',
-  NOT_ASSIGNED_REVIEWER: 'An exact claim and its assigned reviewer must be checked before review.',
+  REPORTING_POLICY: 'Current direct-manager policy permits assigned direct-report approvals.',
+  SELF_APPROVAL: 'You cannot decide your own claim.',
+  NOT_ASSIGNED_REVIEWER: 'An exact claim and its assigned approver must be checked before review.',
 };
 export function AccessDecisionList({ summary }: { summary: AccessSummary }) {
   const [filter, setFilter] = useState('allowed'),

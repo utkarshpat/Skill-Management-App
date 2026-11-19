@@ -82,7 +82,7 @@ function Preview() {
           setKind('wizard');
         }}
       >
-        Open skill review preview
+        Open skill approval preview
       </button>
       {kind === 'plain' && (
         <FormDialog

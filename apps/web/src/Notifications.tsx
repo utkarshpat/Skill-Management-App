@@ -7,6 +7,7 @@ import { readApiResponse } from './api-response';
 import { startActivityRefresh, type RefreshStatus } from './activity-refresh';
 import { RefreshIndicator } from './RefreshIndicator';
 import { reportClientAction } from './client-diagnostics';
+import { lockPageScroll } from './page-scroll-lock';
 interface Item {
   id: string;
   at: string;
@@ -61,17 +62,7 @@ export function Notifications({ id }: { id: string }) {
   const unsavedReadIds = useRef(new Map<string, string[]>());
   useEffect(() => {
     if (!open) return;
-    const overflow = document.body.style.overflow;
-    const rootOverflow = document.documentElement.style.overflow;
-    const gutter = document.documentElement.style.scrollbarGutter;
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-    document.documentElement.style.scrollbarGutter = 'auto';
-    return () => {
-      document.body.style.overflow = overflow;
-      document.documentElement.style.overflow = rootOverflow;
-      document.documentElement.style.scrollbarGutter = gutter;
-    };
+    return lockPageScroll({ lockRoot: true });
   }, [open]);
   useEffect(() => {
     const controller = new AbortController();

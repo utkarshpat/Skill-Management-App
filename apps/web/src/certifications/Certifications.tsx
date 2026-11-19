@@ -233,7 +233,7 @@ export function Certifications({
               aria-current={view === 'queue' ? 'page' : undefined}
               onClick={() => changeView('queue')}
             >
-              Assigned reviews
+              Assigned approvals
             </button>
           )}
         </nav>
@@ -324,7 +324,7 @@ export function Certifications({
           <section className="cert-review-banner">
             <p>Category: {viewing.category}</p>
             <p>
-              <strong>Review status:</strong> {certificationStatusLabels[viewing.status]}
+              <strong>Approval status:</strong> {certificationStatusLabels[viewing.status]}
             </p>
             <p
               className={
@@ -375,7 +375,7 @@ export function Certifications({
           onDecision={(record, action, feedback) =>
             mutate(
               { action, id: record.id, revision: record.revision, feedback },
-              'Certification review saved.',
+              'Certification approval saved.',
             )
           }
         />

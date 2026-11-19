@@ -98,7 +98,7 @@ test('credential recommendation payloads are bounded and reject forged fields an
   );
 });
 
-test('certification review workspace SQL stays within assigned queue and current-manager recommendations', async () => {
+test('certification approval workspace SQL stays within assigned queue and current-manager recommendations', async () => {
   const sql = await readFile(
     new URL('../../../database/migrations/058_certification_review_workspace.sql', import.meta.url),
     'utf8',

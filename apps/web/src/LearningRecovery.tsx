@@ -189,7 +189,7 @@ export function LearningRecovery({
         setAdvicePage(0);
       } else {
         setStale(true);
-        throw Error('The plan changed. Review a fresh preview.');
+        throw Error('The plan changed. Open a fresh preview.');
       }
     } catch (e) {
       if (!abort.signal.aborted)

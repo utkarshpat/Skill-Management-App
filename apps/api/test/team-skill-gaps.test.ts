@@ -165,7 +165,7 @@ test('requirement gaps report qualified people, shortfall, near-miss and unknown
   assert.match(report.basis, /not saved/);
 });
 
-test('team_skill_gaps requires direct-report review authority, binds the actor and rejects stale assignments', async () => {
+test('team_skill_gaps requires direct-report approval authority, binds the actor and rejects stale assignments', async () => {
   const access = await LocalAccessStore.open(),
     state = access.snapshot(),
     person = state.people[0];

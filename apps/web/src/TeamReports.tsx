@@ -180,8 +180,8 @@ export function TeamReports({
             </button>
           ))}
           <p className="team-report-popover-note">
-            Manager-reviewed data only. A gap is missing recorded coverage, not a proven deficiency.
-            No names or employee IDs.
+            Approved data only. A gap is missing recorded coverage, not a proven deficiency. No
+            names or employee IDs.
           </p>
         </div>
       )}

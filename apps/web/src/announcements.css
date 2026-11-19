@@ -142,8 +142,10 @@
   border-radius: 8px;
 }
 .form-dialog.announcement-dialog.form-dialog-compact {
+  box-sizing: border-box;
   width: min(680px, calc(100vw - 24px));
-  height: auto;
+  /* A modal dialog has both block insets set by the browser. An auto height can stretch. */
+  height: fit-content;
   max-height: calc(100dvh - 24px);
 }
 .announcement-dialog .form-dialog-header {
@@ -157,8 +159,10 @@
   background: var(--surface);
 }
 .announcement-dialog .form-dialog-body {
+  flex: 0 1 auto;
   padding: 0;
   min-height: 0;
+  scrollbar-gutter: auto;
 }
 .announcement-dialog .form-dialog-fields {
   padding: 0;
@@ -223,7 +227,7 @@
   display: grid;
   gap: 5px;
 }
-.announcement-form input:not([type='checkbox']),
+.announcement-form input:not([type='checkbox'], [type='radio']),
 .announcement-form select,
 .announcement-form textarea,
 .announcement-editor input:not([type='checkbox']),
@@ -239,7 +243,7 @@
   background: var(--surface);
   font: inherit;
 }
-.announcement-form label:has(input[type='checkbox']),
+.announcement-form label:has(input:is([type='checkbox'], [type='radio'])),
 .announcement-editor .announcement-check {
   display: flex;
   align-items: center;
@@ -668,12 +672,45 @@ html[data-theme] :is(.announcement-strip, .announcement-card)[style] .admin-prim
   }
 }
 
-.announcement-form input:not([type='checkbox']),
+.announcement-form input:not([type='checkbox'], [type='radio']),
 .announcement-form select {
   min-height: 44px;
 }
 .announcement-form textarea {
   min-height: 80px;
+}
+
+.announcement-identity {
+  margin: 0;
+}
+.announcement-identity div {
+  padding: 0.65rem 0.75rem;
+  background: var(--raised);
+  border-radius: 8px;
+  min-width: 0;
+}
+.announcement-identity dt {
+  color: var(--muted);
+  font-size: 0.85em;
+}
+.announcement-identity dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+.announcement-radio-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.announcement-radio-group label {
+  min-height: 44px;
+}
+.announcement-form input:is([type='checkbox'], [type='radio']) {
+  accent-color: var(--teal, #126b70);
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 auto;
 }
 
 .announcement-state.state-expired {

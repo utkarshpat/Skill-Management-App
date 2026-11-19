@@ -36,6 +36,7 @@ const claim: Claim = {
 const feedback = 'The reconciliation matches the delivery evidence.';
 let view: Awaited<ReturnType<typeof render>> | undefined;
 let queue: URLSearchParams[], details: string[], writes: unknown[];
+let combinedQueries: URLSearchParams[];
 let failure: number, denied: boolean, historical: boolean, combined: boolean, writeFailure: number;
 let team: boolean, emptyQueue: boolean;
 
@@ -45,6 +46,7 @@ function Query() {
 
 beforeEach(async () => {
   queue = [];
+  combinedQueries = [];
   details = [];
   writes = [];
   failure = writeFailure = 0;
@@ -54,6 +56,25 @@ beforeEach(async () => {
     const url = new URL(String(input), 'http://localhost');
     const path = url.pathname;
     if (path === '/api/dev-login') return demoResponse();
+    if (path === '/api/capability-submissions') {
+      combinedQueries.push(url.searchParams);
+      return Response.json({
+        records: [
+          {
+            id: 'combined-id',
+            name:
+              url.searchParams.get('page') === '2' || url.searchParams.get('search')
+                ? 'Older Employee'
+                : 'Recent Employee',
+            label: 'Certification request',
+            total: url.searchParams.get('search') ? 1 : 51,
+            skills: 1,
+            certifications: 1,
+            status: 'SUBMITTED',
+          },
+        ],
+      });
+    }
     if (path === '/api/skill-reviews/team')
       return Response.json({
         people: [
@@ -112,7 +133,7 @@ beforeEach(async () => {
         reviewAccess,
       });
     }
-    throw Error('Unexpected review request ' + url);
+    throw Error('Unexpected approval request ' + url);
   });
   await refreshDevelopmentLogin();
 });
@@ -123,10 +144,10 @@ afterEach(async () => {
 });
 after(closeBrowser);
 
-async function mount(path = '/skill-reviews', unified = false) {
+async function mount(path = '/skill-reviews', unified = false, includeCombined = false) {
   view = await render(
     <MemoryRouter initialEntries={[path]}>
-      <SkillReviews unified={unified} />
+      <SkillReviews unified={unified} includeCombined={includeCombined} />
       <Query />
     </MemoryRouter>,
   );
@@ -136,22 +157,46 @@ async function mount(path = '/skill-reviews', unified = false) {
 const dialog = () => document.querySelector('.claim-review-dialog')!;
 const filters = () => queue.at(-1)!;
 
+test('combined approvals can reach and search beyond the first fifty requests', async () => {
+  await mount('/skill-reviews', true, true);
+  await click('Next combined approvals page');
+  assert.equal(combinedQueries.at(-1)?.get('page'), '2');
+  assert.match(document.body.textContent!, /Older Employee/);
+  await change(
+    document.querySelector<HTMLInputElement>(
+      '[aria-label="Search approvals by employee or skill"]',
+    )!,
+    'Older Employee',
+  );
+  await act(async () =>
+    document
+      .querySelector('.review-filters')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })),
+  );
+  await settle();
+  assert.equal(combinedQueries.at(-1)?.get('search'), 'Older Employee');
+  assert.equal(combinedQueries.at(-1)?.has('page'), false);
+  assert.match(document.body.textContent!, /Older Employee/);
+});
+
 test('queue filters reset pagination and keep the review workbench visible through empty results', async () => {
   await mount('/skill-reviews', true);
-  await click('Next reviews page');
+  await click('Next approvals page');
   assert.equal(filters().get('page'), '2');
-  await click('Previous reviews page');
+  await click('Previous approvals page');
   assert.equal(filters().get('page'), '1');
   await change(
-    document.querySelector<HTMLSelectElement>('[aria-label="Review status"]')!,
+    document.querySelector<HTMLSelectElement>('[aria-label="Approval status"]')!,
     'APPROVED',
   );
   await change(
-    document.querySelector<HTMLSelectElement>('[aria-label="Review category"]')!,
+    document.querySelector<HTMLSelectElement>('[aria-label="Approval category"]')!,
     'Data',
   );
   await change(
-    document.querySelector<HTMLInputElement>('[aria-label="Search review employee or skill"]')!,
+    document.querySelector<HTMLInputElement>(
+      '[aria-label="Search approvals by employee or skill"]',
+    )!,
     ' no match ',
   );
   await act(async () =>
@@ -166,7 +211,7 @@ test('queue filters reset pagination and keep the review workbench visible throu
     category: 'Data',
     status: 'APPROVED',
   });
-  assert.match(document.body.textContent!, /No matching reviews/);
+  assert.match(document.body.textContent!, /No matching approval records/);
   assert.ok(document.querySelector('.review-workbench'));
   await click('Reset filters');
   assert.deepEqual(Object.fromEntries(filters()), {
@@ -180,14 +225,14 @@ test('queue filters reset pagination and keep the review workbench visible throu
 test('current review denial renders read-only and combined claim routes to its current submission', async () => {
   denied = true;
   await mount('/skill-reviews', true);
-  await click('Review claim');
+  await click('Open claim approval');
   assert.match(dialog().textContent!, /SQL reporting/);
-  assert.equal(dialog().querySelector('[aria-label="Review feedback"]'), null);
+  assert.equal(dialog().querySelector('[aria-label="Approval feedback"]'), null);
   assert.equal(writes.length, 0);
   await click('Close SQL reporting', dialog());
   denied = false;
   combined = true;
-  await click('Review claim');
+  await click('Open claim approval');
   const query = new URLSearchParams(document.querySelector('[data-query]')!.textContent!);
   assert.equal(query.get('submission'), 'submission-42');
   assert.equal(query.get('tab'), 'queue');
@@ -195,12 +240,12 @@ test('current review denial renders read-only and combined claim routes to its c
   assert.equal(details.length, 2);
 });
 
-test('assignment conflict preserves review feedback and requires a fresh authorized claim to save', async () => {
+test('assignment conflict preserves approval feedback and requires a fresh authorized claim to save', async () => {
   await mount('/skill-reviews?claim=reporting-sql');
   assert.ok(dialog());
   await click('Verify', dialog());
   await change(
-    dialog().querySelector<HTMLTextAreaElement>('[aria-label="Review feedback"]')!,
+    dialog().querySelector<HTMLTextAreaElement>('[aria-label="Approval feedback"]')!,
     feedback,
   );
   writeFailure = 409;
@@ -208,10 +253,10 @@ test('assignment conflict preserves review feedback and requires a fresh authori
   assert.match(dialog().textContent!, /Reviewer assignment changed/);
   assert.equal(dialog().querySelector('textarea')!.value, feedback);
   await click('Cancel', dialog());
-  await click('Review claim');
+  await click('Open claim approval');
   await click('Verify', dialog());
   await change(
-    dialog().querySelector<HTMLTextAreaElement>('[aria-label="Review feedback"]')!,
+    dialog().querySelector<HTMLTextAreaElement>('[aria-label="Approval feedback"]')!,
     feedback,
   );
   writeFailure = 0;
@@ -242,7 +287,7 @@ test('queue denial and unavailable history deep link cannot fabricate an authori
 test('team analytics review link replaces the tab and filters only the selected direct report', async () => {
   team = true;
   await mount('/skill-reviews?tab=team', true);
-  await click('Review claims');
+  await click('Open claim approvals');
   assert.equal(filters().get('person'), 'aditi');
   assert.equal(filters().get('status'), 'SUBMITTED');
   assert.equal(
@@ -255,13 +300,13 @@ test('team analytics review link replaces the tab and filters only the selected 
   assert.equal(writes.length, 0);
 });
 
-test('empty pending queue can show all review states and retry the canonical queue', async () => {
+test('empty pending queue can show all approval states and retry the canonical queue', async () => {
   emptyQueue = true;
   await mount();
-  await click('View all review states');
+  await click('View all approval states');
   assert.equal(filters().get('status'), 'ALL');
   const before = queue.length;
-  await click('Review queue');
+  await click('Approval queue');
   assert.equal(queue.length, before + 1);
   assert.equal(filters().get('status'), 'ALL');
   assert.equal(writes.length, 0);

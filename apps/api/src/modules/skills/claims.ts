@@ -114,7 +114,7 @@ export function reviewQuery(input: Record<string, unknown>) {
     typeof status !== 'string' ||
     !['SUBMITTED', 'APPROVED', 'CHANGES_REQUESTED', 'REJECTED', 'ALL'].includes(status)
   )
-    throw new AccessError(400, 'Choose a valid review status.');
+    throw new AccessError(400, 'Choose a valid approval status.');
   return {
     search: claimSearch(input.search),
     category: claimCategory(input.category),

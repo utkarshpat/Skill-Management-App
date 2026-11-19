@@ -29,7 +29,7 @@ const grant: Grant = {
   validFrom: '2026-10-01T00:00:00Z',
 };
 
-test('valid permission permits an assigned reviewer inside scope', () => {
+test('valid permission permits an assigned approver inside scope', () => {
   assert.equal(authorize(actor, 'skill.verify', resource, [grant], at).allowed, true);
   assert.equal(authorize(actor, 'reports.export', resource, [grant], at).reason, 'DEFAULT_DENY');
 });

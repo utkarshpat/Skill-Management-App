@@ -126,7 +126,7 @@ test('team charts narrow current direct reports, search and paging requery and s
   );
   await click('Clear chart filters');
   await change(
-    document.querySelector<HTMLSelectElement>('select[aria-label="Minimum reviewed proficiency"]')!,
+    document.querySelector<HTMLSelectElement>('select[aria-label="Minimum approved proficiency"]')!,
     '3',
   );
   await click('SQL');
@@ -142,9 +142,9 @@ test('team charts narrow current direct reports, search and paging requery and s
   await settle();
   assert.ok(
     document.querySelector('.team-level-bars') ||
-      document.body.textContent?.includes('Reviewed categories'),
+      document.body.textContent?.includes('Categories with approved claims'),
   );
-  await click('Review claims');
+  await click('Open claim approvals');
   assert.deepEqual(reviews, ['aditi']);
   await click('Next');
   assert.match(requests.at(-1) ?? '', /page=2/);
@@ -162,10 +162,10 @@ test('team charts narrow current direct reports, search and paging requery and s
   const table = document.querySelector('table[aria-label="Employee certifications"]');
   assert.match(
     table?.textContent ?? '',
-    /Azure Fundamentals.*Microsoft.*Manager reviewed.*2026-01-02.*No expiry/,
+    /Azure Fundamentals.*Microsoft.*Approved.*2026-01-02.*No expiry/,
   );
   assert.equal(document.querySelector('input[aria-label="Search employee skills"]'), null);
-  await click('Open pending reviews');
+  await click('Open pending approvals');
   assert.equal(reviews.at(-1), 'aditi');
   await click('All direct reports');
   assert.match(document.body.textContent ?? '', /Current manager scope/);
@@ -184,7 +184,7 @@ test('employee capability filters source-bound skill records, guards foreign det
   await click('Skill list');
   await click('View evidence & history');
   assert.match(document.body.textContent ?? '', /unavailable in this employee profile/);
-  await click('Review records');
+  await click('Approval records');
   assert.match(document.body.textContent ?? '', /SQL/);
   const status = document.querySelector<HTMLSelectElement>(
     'select[aria-label="Employee skill status"]',
@@ -199,7 +199,7 @@ test('employee capability filters source-bound skill records, guards foreign det
     'Azure',
   );
   assert.match(document.body.textContent ?? '', /Azure/);
-  await click('Open pending reviews');
+  await click('Open pending approvals');
   assert.equal(reviews, 1);
 });
 test('team request errors are explicit and retry restores current summaries without stale people', async () => {
@@ -229,7 +229,7 @@ test('team report menus recheck aggregate scope for each format and notify on re
   await click('Interactive report');
   assert.match(downloads[0], /\.html$/);
   await click('Report');
-  await click('Reviewed skill coverage');
+  await click('Approved skill coverage');
   assert.ok(downloads.some(n => n.endsWith('.csv')));
   respond = async () =>
     Response.json({ error: { message: 'Reporting access revoked' } }, { status: 403 });
@@ -239,7 +239,7 @@ test('team report menus recheck aggregate scope for each format and notify on re
   assert.equal(revoked, 1);
 });
 
-test('team summary and chart filters can be cleared independently without changing review access', async () => {
+test('team summary and chart filters can be cleared independently without changing approval access', async () => {
   const reviews: string[] = [];
   view = await render(<TeamCapability onReviews={id => reviews.push(id)} />);
   await settle();
@@ -249,7 +249,7 @@ test('team summary and chart filters can be cleared independently without changi
   assert.doesNotMatch(result(), /Rohan Mehta/);
   await click('Show all members', legend());
   assert.match(result(), /Rohan Mehta/);
-  await click('Manager reviewed', legend());
+  await click('Approved', legend());
   assert.doesNotMatch(result(), /Rohan Mehta/);
   const stat = (color: string) => document.querySelector<HTMLButtonElement>('.team-stat.' + color)!;
   await act(async () => stat('blue').click());

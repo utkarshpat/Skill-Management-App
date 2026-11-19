@@ -245,8 +245,8 @@ export function TeamCapability({
                 <FileCheck2 size={23} />
                 <span>
                   <strong>{reviewed}</strong>
-                  <small>Manager reviewed claims</small>
-                  <em>View reviewed members</em>
+                  <small>Approved claims</small>
+                  <em>View members with approved claims</em>
                 </span>
                 <ChevronRight size={18} />
               </button>
@@ -263,8 +263,8 @@ export function TeamCapability({
                 <Clock3 size={23} />
                 <span>
                   <strong>{pending}</strong>
-                  <small>Assigned pending reviews</small>
-                  <em>Find claims to review</em>
+                  <small>Assigned pending approvals</small>
+                  <em>Find claims awaiting approval</em>
                 </span>
                 <ChevronRight size={18} />
               </button>
@@ -282,11 +282,11 @@ export function TeamCapability({
               <section className="team-chart">
                 <header>
                   <div>
-                    <h3>Reviewed skill coverage</h3>
-                    <p>Members with a manager-reviewed claim at or above the selected level.</p>
+                    <h3>Approved skill coverage</h3>
+                    <p>Members with a approved claim at or above the selected level.</p>
                   </div>
                   <select
-                    aria-label="Minimum reviewed proficiency"
+                    aria-label="Minimum approved proficiency"
                     value={minimumRank}
                     onChange={e => {
                       setMinimumRank(Number(e.target.value));
@@ -335,8 +335,8 @@ export function TeamCapability({
                 ) : (
                   <div className="team-chart-empty">
                     <Layers3 size={28} />
-                    <strong>No reviewed coverage at this level</strong>
-                    <p>Coverage appears after a claim is manager reviewed.</p>
+                    <strong>No approved coverage at this level</strong>
+                    <p>Coverage appears after a claim is approved.</p>
                   </div>
                 )}
                 {skillFilter && (
@@ -349,14 +349,14 @@ export function TeamCapability({
                 <header>
                   <div>
                     <h3>Claim status distribution</h3>
-                    <p>Manager-reviewed and assigned pending claims.</p>
+                    <p>Approved and assigned pending claims.</p>
                   </div>
                 </header>
                 <div className="team-donut-layout">
                   <div
                     className="team-donut"
                     role="img"
-                    aria-label={`${reviewed} manager-reviewed and ${pending} assigned pending claims`}
+                    aria-label={`${reviewed} approved and ${pending} assigned pending claims`}
                     style={{
                       background: totalClaims
                         ? `conic-gradient(var(--teal,#008595) 0 ${reviewedPercent}%,#d49a38 ${reviewedPercent}% 100%)`
@@ -374,7 +374,7 @@ export function TeamCapability({
                       onClick={() => setMemberFilter('reviewed')}
                     >
                       <i className="teal" />
-                      <span>Manager reviewed</span>
+                      <span>Approved</span>
                       <strong>{reviewed}</strong>
                     </button>
                     <button
@@ -423,8 +423,8 @@ export function TeamCapability({
                   <section className="team-chart">
                     <header>
                       <div>
-                        <h3>Reviewed proficiency</h3>
-                        <p>Claim counts by reviewed level.</p>
+                        <h3>Approved proficiency</h3>
+                        <p>Claim counts by approved level.</p>
                       </div>
                     </header>
                     <div className="team-level-chart">
@@ -468,7 +468,7 @@ export function TeamCapability({
                   <section className="team-chart">
                     <header>
                       <div>
-                        <h3>Reviewed categories</h3>
+                        <h3>Categories with approved claims</h3>
                         <p>Recorded claims grouped by category.</p>
                       </div>
                     </header>
@@ -489,7 +489,7 @@ export function TeamCapability({
                     ) : (
                       <div className="team-chart-empty">
                         <Layers3 size={25} />
-                        <p>No manager-reviewed categories yet.</p>
+                        <p>No manager-categories with approved claims yet.</p>
                       </div>
                     )}
                   </section>
@@ -517,8 +517,8 @@ export function TeamCapability({
                   </h3>
                   <p>
                     {memberFilter === 'all'
-                      ? 'Open capability → inspect evidence → review an assigned claim.'
-                      : `Showing members on this page with ${memberFilter === 'reviewed' ? 'reviewed claims' : 'assigned pending claims'}.`}
+                      ? 'Open capability → inspect evidence → decide an assigned claim.'
+                      : `Showing members on this page with ${memberFilter === 'reviewed' ? 'approved claims' : 'assigned pending claims'}.`}
                   </p>
                 </div>
                 <div className="team-members-actions">
@@ -543,7 +543,7 @@ export function TeamCapability({
               </header>
               {skillFilter || levelFilter ? (
                 <p className="team-chart-caption">
-                  Showing members on this page with reviewed {skillFilter || `L${levelFilter}`}{' '}
+                  Showing members on this page with approved {skillFilter || `L${levelFilter}`}{' '}
                   claims{skillFilter ? ` at L${minimumRank} or above` : ''}.
                 </p>
               ) : null}
@@ -569,7 +569,7 @@ export function TeamCapability({
                     <thead>
                       <tr>
                         <th>Employee</th>
-                        <th>Manager reviewed</th>
+                        <th>Approved</th>
                         <th>Assigned pending</th>
                         <th>Actions</th>
                       </tr>
@@ -609,7 +609,7 @@ export function TeamCapability({
                                   className="team-clear-filter"
                                   onClick={() => onReviews(p.id)}
                                 >
-                                  Review claims
+                                  Open claim approvals
                                 </button>
                               )}
                             </div>

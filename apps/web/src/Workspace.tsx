@@ -18,6 +18,7 @@ import { subscribeWorkspaceUpdates } from './cross-tab-updates';
 import { Sidebar } from './Sidebar';
 import { NavigationDrawer } from './NavigationDrawer';
 import { NavbarAccount } from './NavbarAccount';
+import { phaseTwoVisible } from './release-features';
 import { catalogueNavigationVisible, catalogueRouteAllowed } from './WorkspaceNavigation';
 const PersonalProfile = lazy(() =>
   import('./PersonalProfile').then(module => ({ default: module.PersonalProfile })),
@@ -36,6 +37,11 @@ const SkillCatalogue = lazy(() =>
 const BusinessOperations = lazy(() =>
   import('./business/BusinessOperations').then(module => ({ default: module.BusinessOperations })),
 );
+const CapabilityLeadAnalytics = lazy(() =>
+  import('./business/CapabilityLeadAnalytics').then(module => ({
+    default: module.CapabilityLeadAnalytics,
+  })),
+);
 const Dashboard = lazy(() => import('./Dashboard').then(module => ({ default: module.Dashboard })));
 export interface WorkspaceState {
   businessPolicyRevision?: number;
@@ -51,6 +57,7 @@ export interface WorkspaceState {
     viewAudit?: boolean;
     manageCatalogue: boolean;
     reviewSkills?: boolean;
+    issuerApprovals?: boolean;
     learning?: boolean;
     requests?: boolean;
     requestProfileCorrection?: boolean;
@@ -149,14 +156,14 @@ export function Workspace({
       label: 'Analytics',
       href: '/business',
       icon: LineChart,
-      visible: state?.capabilities.businessOperations,
+      visible: state?.capabilities.businessOperations || state?.capabilities.issuerApprovals,
     },
     {
       id: 'skill-reviews',
-      label: 'Reviews',
+      label: 'Approvals',
       href: '/skill-reviews',
       icon: ShieldCheck,
-      visible: state?.capabilities.reviewSkills,
+      visible: state?.capabilities.reviewSkills || state?.capabilities.issuerApprovals,
     },
     {
       id: 'overview',
@@ -191,14 +198,14 @@ export function Workspace({
       label: 'Requests',
       href: '/requests',
       icon: ShieldCheck,
-      visible: state?.capabilities.requests,
+      visible: phaseTwoVisible && state?.capabilities.requests,
     },
     {
       id: 'learning',
       label: 'Learn & Grow',
       href: '/learning',
       icon: BookOpen,
-      visible: state?.capabilities.learning,
+      visible: phaseTwoVisible && state?.capabilities.learning,
     },
     {
       id: 'skills',
@@ -217,12 +224,44 @@ export function Workspace({
         : view === 'skills'
           ? catalogueRouteAllowed(state?.capabilities)
           : sections.some(section => section.id === view && section.visible));
+  const businessAccess = state?.capabilities.businessOperations;
+  const leadAccess = state?.capabilities.issuerApprovals;
+  const leadAnalyticsSelected =
+    leadAccess &&
+    (!businessAccess || new URLSearchParams(routeSearch).get('view') === 'capability-lead');
+  const analytics = view === 'business' && (
+    <>
+      {businessAccess && leadAccess && (
+        <nav className="header-actions" aria-label="Analytics views">
+          <Link
+            to="/business"
+            className="secondary-button"
+            aria-current={!leadAnalyticsSelected ? 'page' : undefined}
+          >
+            Overview
+          </Link>
+          <Link
+            to="/business?view=capability-lead"
+            className="secondary-button"
+            aria-current={leadAnalyticsSelected ? 'page' : undefined}
+          >
+            Issuer analytics
+          </Link>
+        </nav>
+      )}
+      {leadAnalyticsSelected ? (
+        <CapabilityLeadAnalytics key={state?.businessPolicyRevision} />
+      ) : (
+        businessAccess && <BusinessOperations key={state?.businessPolicyRevision} />
+      )}
+    </>
+  );
   const sidebarContent = (close: () => void = () => {}) => (
     <>
       <Link className="admin-brand" to="/workspace">
         <img src="/brand/sopra-steria.svg" alt="Sopra Steria" />
       </Link>
-      <p className="nav-caption">MY WORKSPACE</p>
+      <p className="nav-caption">SKILL GENIE</p>
       <SidebarNavigation
         actorId={state?.person.id}
         label="Personal workspace sections"
@@ -284,7 +323,7 @@ export function Workspace({
         {state && permitted && (
           <>
             <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
-              {view === 'business' && <BusinessOperations key={state?.businessPolicyRevision} />}
+              {analytics}
               {view === 'announcements' && <Announcements page />}
               {view === 'overview' && <Dashboard />}
               {view === 'profile' && <PersonalProfile workspace={state} />}
@@ -297,7 +336,12 @@ export function Workspace({
               {view === 'requests' && <Requests actionsContainer={actionsContainer} />}
               {view === 'learning' && <Learning actionsContainer={actionsContainer} />}
               {view === 'skill-reviews' && (
-                <SkillReviews certificationsAllowed={Boolean(state.capabilities.certifications)} />
+                <SkillReviews
+                  certificationsAllowed={Boolean(state.capabilities.certifications)}
+                  issuerOnly={
+                    !state.capabilities.reviewSkills && state.capabilities.issuerApprovals
+                  }
+                />
               )}
               {view === 'skills' && (
                 <SkillCatalogue
@@ -386,7 +430,7 @@ export function Workspace({
           {state && permitted && (
             <>
               <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
-                {view === 'business' && <BusinessOperations key={state?.businessPolicyRevision} />}
+                {analytics}
                 {view === 'announcements' && <Announcements page />}
                 {view === 'overview' && <Dashboard />}
                 {view === 'profile' && <PersonalProfile workspace={state} />}
@@ -398,6 +442,9 @@ export function Workspace({
                 {view === 'skill-reviews' && (
                   <SkillReviews
                     certificationsAllowed={Boolean(state.capabilities.certifications)}
+                    issuerOnly={
+                      !state.capabilities.reviewSkills && state.capabilities.issuerApprovals
+                    }
                   />
                 )}
                 {view === 'skills' && (

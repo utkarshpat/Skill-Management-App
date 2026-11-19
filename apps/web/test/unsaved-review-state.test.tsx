@@ -17,7 +17,7 @@ test('completed requests from stale queues retain outcomes without claiming outs
     assert.deepEqual(submissionReviewSummary('REVIEWED', items, readOnly), {
       pendingCount: 0,
       canDecide: false,
-      label: 'Review completed',
+      label: 'Decision recorded',
     });
     assert.deepEqual(submissionReviewSummary('LINKED', items, readOnly), {
       pendingCount: 0,

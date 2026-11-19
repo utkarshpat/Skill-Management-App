@@ -117,7 +117,7 @@ export function AssistantOutput({
           {finished && (
             <div className="quiz-explanation">
               <strong>
-                {answers[page] === question.correctIndex ? 'Correct' : 'Review this question'}
+                {answers[page] === question.correctIndex ? 'Correct' : 'Check this question'}
               </strong>
               <p>Answer: {question.options[question.correctIndex]}</p>
               <p>{question.explanation}</p>
@@ -201,7 +201,7 @@ export function AssistantOutput({
                 })
               }
             >
-              Review plan & add to calendar
+              Preview plan & add to calendar
             </button>
           )}
           {['request_draft', 'incident_draft'].includes(artifact.kind) && onReviewRequest && (
@@ -216,8 +216,8 @@ export function AssistantOutput({
               }
             >
               {artifact.kind === 'incident_draft'
-                ? 'Review incident draft'
-                : 'Review request draft'}
+                ? 'Preview incident draft'
+                : 'Preview request draft'}
             </button>
           )}
           {['amendment_draft', 'demand_draft'].includes(artifact.kind) && onReviewBusiness && (
@@ -232,12 +232,12 @@ export function AssistantOutput({
                 })
               }
             >
-              Review business draft
+              Preview business draft
             </button>
           )}
           {artifact.kind === 'skill_draft' && onReview && (
             <button className="admin-primary" onClick={() => onReview(body)}>
-              Review skill draft
+              Preview skill draft
             </button>
           )}
           <button
@@ -257,7 +257,7 @@ export function AssistantOutput({
             {copied ? 'Copied' : 'Copy draft'}
           </button>
           {copyError && <p role="alert">Copy is unavailable. Select and copy the draft text.</p>}
-          <p>Review this suggestion before using it. No records have been changed.</p>
+          <p>Check this suggestion before using it. No records have been changed.</p>
         </>
       )}
     </section>

@@ -17,9 +17,18 @@ let cookieSessionEnabled = false;
 let backendSignIn = false;
 let automaticSignInStarted = false;
 let companySession = false;
+let companySubject: string | undefined;
 let sessionExpired = false;
 let openingCompanySession: Promise<void> | undefined;
 let companySessionCheck: Promise<void> | undefined;
+
+function pauseCompanySession() {
+  if (!companySession) return;
+  companySession = false;
+  sessionExpired = true;
+  reads.invalidate();
+  window.dispatchEvent(new Event('company-session-expired'));
+}
 
 function confirmCompanySessionExpiry() {
   return (companySessionCheck ??= (async () => {
@@ -31,10 +40,7 @@ function confirmCompanySessionExpiry() {
       if (!response.ok) return;
       const state = await response.json();
       if (!companySession || state.cookieSession !== true || state.sessionActive !== false) return;
-      companySession = false;
-      sessionExpired = true;
-      reads.invalidate();
-      window.dispatchEvent(new Event('company-session-expired'));
+      pauseCompanySession();
     } catch {
       // A failed verification cannot determine the current session state.
     }
@@ -53,6 +59,7 @@ function configureSignIn() {
     const config = parseSignInConfig(body);
     cookieSessionEnabled = Boolean(config) && body.cookieSession === true;
     companySession = cookieSessionEnabled && body.sessionActive === true;
+    companySubject = typeof body.sessionSubject === 'string' ? body.sessionSubject : undefined;
     backendSignIn = cookieSessionEnabled && body.backendSignIn === true;
     tenant = config?.tenantId ?? '';
     web = config?.webClientId ?? '';
@@ -195,6 +202,27 @@ function companyLoginPath(mode: 'silent' | 'choose' | 'default') {
   const options = new URLSearchParams({ mode, returnTo });
   return '/api/auth/login?' + options;
 }
+export function companyResumePath() {
+  if (!backendSignIn || !companySubject) return undefined;
+  return (
+    '/api/auth/login?' +
+    new URLSearchParams({ mode: 'default', returnTo: '/api/auth/resume-complete' })
+  );
+}
+export async function resumeCompanySession() {
+  if (!backendSignIn || !companySubject) return false;
+  const response = await fetch('/api/auth/config', {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!response.ok) throw Error('Company sign-in could not be verified. Try again.');
+  const state = await response.json();
+  if (!state.sessionActive) throw Error('Complete Microsoft sign-in in the other tab first.');
+  if (state.sessionSubject !== companySubject) return false;
+  sessionExpired = false;
+  companySession = true;
+  return true;
+}
 export async function signIn({ chooseAccount = false } = {}) {
   await configureSignIn();
   if (backendSignIn) {
@@ -230,8 +258,10 @@ export async function signOut() {
   if (cookieSessionEnabled) {
     const response = await fetch('/api/auth/session', {
       method: 'DELETE',
+      ...(companySubject ? { headers: { 'X-Company-Session-Subject': companySubject } } : {}),
       signal: AbortSignal.timeout(15000),
     });
+    if (response.headers.get('X-Company-Session-Changed') === 'true') pauseCompanySession();
     if (!response.ok) throw Error('Sign-out failed.');
     companySession = false;
     sessionExpired = true;
@@ -281,8 +311,10 @@ export async function authenticatedFetch(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   if (!isDemoSession()) await initializeAuth();
   const hadCompanySession = companySession;
-  if (hadCompanySession) headers.delete('Authorization');
-  else if (!isDemoSession()) {
+  if (hadCompanySession) {
+    headers.delete('Authorization');
+    if (companySubject) headers.set('X-Company-Session-Subject', companySubject);
+  } else if (!isDemoSession()) {
     if (sessionExpired || backendSignIn) throw Error('Please sign in again to continue.');
     headers.set('Authorization', 'Bearer ' + (await acquireProfileToken()));
   }
@@ -300,6 +332,9 @@ export async function authenticatedFetch(path: string, init: RequestInit = {}) {
   }
   if (hadCompanySession && companySession && response.status === 401) {
     await confirmCompanySessionExpiry();
+  }
+  if (hadCompanySession && response.headers.get('X-Company-Session-Changed') === 'true') {
+    pauseCompanySession();
   }
   void notifyResponse(path, (init.method ?? 'GET').toUpperCase(), response);
   return response;

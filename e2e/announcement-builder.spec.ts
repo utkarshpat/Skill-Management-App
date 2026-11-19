@@ -135,14 +135,12 @@ test('two-step builder refines with context, retries safely and rechecks the sel
   const prompt = editor.getByLabel('Message the design assistant');
   await prompt.fill('Use two columns and keep the primary button full width');
   await prompt.press('Enter');
-  await expect(
-    editor.getByRole('region', { name: 'New announcement content' }).getByRole('alert'),
-  ).toContainText('Design is temporarily unavailable');
+  await expect(chat.getByRole('alert')).toContainText('Design is temporarily unavailable');
   await expect(prompt).toHaveValue('Use two columns and keep the primary button full width');
   await expect(
     editor.getByText('I created a branded registration form from your details.'),
   ).toBeVisible();
-  await editor.getByRole('button', { name: 'Send', exact: true }).click();
+  await editor.getByRole('button', { name: 'Retry design', exact: true }).click();
   await expect(
     editor.getByText('I used two columns and kept the registration action connected.'),
   ).toBeVisible();
@@ -157,7 +155,7 @@ test('two-step builder refines with context, retries safely and rechecks the sel
   await preview.getByRole('button', { name: 'Register', exact: true }).click();
   await expect(editor.getByText('Preview response accepted. Nothing was submitted.')).toBeVisible();
   expect(responseWrites).toBe(0);
-  await editor.getByRole('button', { name: 'Review audience' }).click();
+  await editor.getByRole('button', { name: 'Check audience' }).click();
   await expect(publish).toBeEnabled();
   expect(saves.at(-1).definition.selectedVersion).toBe(versions[0]);
   await editor.getByRole('button', { name: 'Save draft', exact: true }).click();
@@ -178,7 +176,7 @@ test('two-step builder refines with context, retries safely and rechecks the sel
   await expect(editor.getByLabel('Step 2 of 2 - Design & preview')).toBeVisible();
   await expect(prompt).toHaveValue('Make the spacing more generous');
   await expect(publish).toBeDisabled();
-  await editor.getByRole('button', { name: 'Review audience' }).click();
+  await editor.getByRole('button', { name: 'Check audience' }).click();
   await expect(publish).toBeEnabled();
   await page.screenshot({
     path: info.outputPath('announcement-design-studio.png'),

@@ -83,8 +83,8 @@ export function CertificationProfileView({
     setStatus(value);
   };
   const distribution = [
-    { label: 'Manager reviewed', count: approved, color: 'var(--skill-reviewed)' },
-    { label: 'Pending review', count: pending, color: 'var(--skill-pending)' },
+    { label: 'Approved', count: approved, color: 'var(--skill-reviewed)' },
+    { label: 'Pending approval', count: pending, color: 'var(--skill-pending)' },
     { label: 'Drafts', count: drafts, color: 'var(--skill-draft)' },
     { label: 'Needs attention', count: attention, color: 'var(--skill-attention)' },
   ];
@@ -116,14 +116,14 @@ export function CertificationProfileView({
             filter: '',
           },
           {
-            label: 'Manager reviewed',
+            label: 'Approved',
             count: approved,
             Icon: ShieldCheck,
             tone: 'reviewed',
             filter: 'APPROVED',
           },
           {
-            label: 'Pending review',
+            label: 'Pending approval',
             count: pending,
             Icon: Clock3,
             tone: 'pending',
@@ -187,7 +187,7 @@ export function CertificationProfileView({
               {[
                 { id: 'all', label: 'All certifications' },
                 { id: 'attention', label: 'To complete', count: drafts + attention },
-                { id: 'reviewed', label: 'Reviewed', count: approved },
+                { id: 'reviewed', label: 'Approved', count: approved },
               ].map(item => (
                 <button
                   key={item.id}
@@ -219,14 +219,14 @@ export function CertificationProfileView({
               ))}
             </select>
             <select
-              aria-label="Filter certification review status"
+              aria-label="Filter certification approval status"
               value={status}
               onChange={e => {
                 setStatus(e.target.value);
                 setPage(1);
               }}
             >
-              <option value="">All review statuses</option>
+              <option value="">All approval statuses</option>
               {Object.entries(certificationStatusLabels).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -268,7 +268,7 @@ export function CertificationProfileView({
                         'Certification',
                         'Category',
                         'Issuer',
-                        'Review status',
+                        'Approval status',
                         'Validity',
                         'Issued',
                         'Actions',
@@ -367,11 +367,11 @@ export function CertificationProfileView({
                             {record.canSubmit && (
                               <button
                                 className="skills-action-btn skills-action-submit"
-                                aria-label={`${record.status === 'SUBMITTED' ? 'Reroute' : 'Submit'} ${record.certificationName} for review`}
+                                aria-label={`${record.status === 'SUBMITTED' ? 'Reroute' : 'Submit'} ${record.certificationName} for approval`}
                                 title={
                                   record.status === 'SUBMITTED'
-                                    ? 'Reroute review'
-                                    : 'Submit for review'
+                                    ? 'Reroute approval request'
+                                    : 'Submit for approval'
                                 }
                                 disabled={loading}
                                 onClick={() => onSubmit(record)}
@@ -383,7 +383,7 @@ export function CertificationProfileView({
                               <button
                                 className="skills-action-btn skills-action-review"
                                 aria-label={`Review ${record.certificationName}`}
-                                title="Review credential"
+                                title="Open credential"
                                 disabled={loading}
                                 onClick={() => onReview(record)}
                               >
@@ -493,7 +493,7 @@ export function CertificationProfileView({
           </section>
           <section className="skills-insight-card">
             <h3>Renewal attention</h3>
-            <p>Validity is separate from manager review.</p>
+            <p>Validity is separate from the approval decision.</p>
             <div className="skills-category-chart">
               {[
                 { label: 'Expired', count: expired },
@@ -520,11 +520,11 @@ export function CertificationProfileView({
             <h3>Your next step</h3>
             <p>
               {attention
-                ? 'Review your manager’s feedback and update returned records before resubmitting.'
+                ? 'Check your manager’s feedback and update returned records before resubmitting.'
                 : drafts
                   ? 'Check your draft details, then submit to your current manager.'
                   : pending
-                    ? 'Your submissions are awaiting manager review.'
+                    ? 'Your submissions are pending approval.'
                     : expired || soon
                       ? 'Check renewal dates with your issuer and add the renewed credential when available.'
                       : 'Keep credential details and renewal dates up to date.'}

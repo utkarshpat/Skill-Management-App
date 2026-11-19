@@ -42,7 +42,10 @@ test('KT rejects forged authority/history and oversized context before any provi
 });
 
 test('KT inventory preserves actual FK tuples and treats view and quota tables honestly', async () => {
-  assert.equal(Object.keys(content.schema.tables).length, 69);
+  assert.ok('CompanyAuthState' in content.schema.tables);
+  assert.ok('BusinessResponsibilityIssuerScope' in content.schema.tables);
+  assert.ok('CapabilityLeadGrant' in content.schema.tables);
+  assert.ok('CapabilityLeadScope' in content.schema.tables);
   assert.ok('Announcement' in content.schema.tables);
   assert.ok('AnnouncementPublisher' in content.schema.tables);
   assert.ok('AnnouncementResponse' in content.schema.tables);

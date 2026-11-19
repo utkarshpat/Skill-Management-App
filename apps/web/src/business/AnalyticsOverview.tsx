@@ -53,7 +53,7 @@ export function AnalyticsDonut({
       </div>
     </div>
   ) : (
-    <p className="an-empty">No reviewed credentials in this scope.</p>
+    <p className="an-empty">No approved credentials in this scope.</p>
   );
 }
 
@@ -69,7 +69,7 @@ function Activity({ items }: { items: BusinessDashboard['activity'] }) {
         </span>
         <span>
           <i className="dec" />
-          Review decisions
+          Approval decisions
         </span>
       </div>
       {months.length ? (
@@ -77,7 +77,7 @@ function Activity({ items }: { items: BusinessDashboard['activity'] }) {
           className="an-activity-chart"
           role="img"
           aria-label={months
-            .map(i => `${i.label}: ${i.submissions} submissions, ${i.decisions} review decisions`)
+            .map(i => `${i.label}: ${i.submissions} submissions, ${i.decisions} approval decisions`)
             .join('; ')}
         >
           {months.map(i => (
@@ -91,7 +91,7 @@ function Activity({ items }: { items: BusinessDashboard['activity'] }) {
                 <span
                   className="dec"
                   style={{ height: `${(100 * i.decisions) / max}%` }}
-                  title={`${i.decisions} review decisions`}
+                  title={`${i.decisions} approval decisions`}
                 />
               </div>
               <small>{i.label}</small>
@@ -102,7 +102,7 @@ function Activity({ items }: { items: BusinessDashboard['activity'] }) {
           ))}
         </div>
       ) : (
-        <p className="an-empty">No submission or review activity in this period.</p>
+        <p className="an-empty">No submission or approval activity in this period.</p>
       )}
     </>
   );
@@ -145,8 +145,8 @@ export function AnalyticsOverview({
     sort: '',
   };
   const labels: Record<string, string> = {
-    APPROVED: 'Manager reviewed',
-    SUBMITTED: 'Awaiting review',
+    APPROVED: 'Approved',
+    SUBMITTED: 'Pending approval',
     CHANGES_REQUESTED: 'Changes requested',
     REJECTED: 'Not approved',
   };
@@ -156,7 +156,7 @@ export function AnalyticsOverview({
         <div className="an-panel-heading">
           <h2>
             <TrendingUp size={18} />
-            Submission & review activity
+            Submission & approval activity
           </h2>
           <span>Last 6 active months</span>
         </div>
@@ -172,7 +172,7 @@ export function AnalyticsOverview({
             View all <ArrowRight size={14} />
           </button>
         </div>
-        <p className="an-caption">Top skills · reviewed holders in the four-level framework</p>
+        <p className="an-caption">Top skills · approved holders in the four-level framework</p>
         <div className="an-skill-bars">
           {coverage.slice(0, 5).map(row => (
             <button
@@ -196,7 +196,7 @@ export function AnalyticsOverview({
             </button>
           ))}
         </div>
-        {!coverage.length && <p className="an-empty">No reviewed four-level skill claims yet.</p>}
+        {!coverage.length && <p className="an-empty">No approved four-level skill claims yet.</p>}
         {!!coverage.length && (
           <div className="an-mini-matrix">
             <table>
@@ -204,7 +204,7 @@ export function AnalyticsOverview({
               <thead>
                 <tr>
                   <th>Skill</th>
-                  {['Foundation', 'Autonomous', 'Experienced', 'Expert'].map(label => (
+                  {['Beginner', 'Autonomous', 'Experienced', 'Expert'].map(label => (
                     <th key={label}>{label}</th>
                   ))}
                 </tr>
@@ -227,7 +227,7 @@ export function AnalyticsOverview({
                               maxRank: String(rank),
                             })
                           }
-                          aria-label={`${row.label}, level ${rank}: ${row.cells.get(rank)?.holders ?? 0} reviewed holders`}
+                          aria-label={`${row.label}, level ${rank}: ${row.cells.get(rank)?.holders ?? 0} approved holders`}
                         >
                           {row.cells.get(rank)?.holders ?? 0}
                         </button>
@@ -266,11 +266,11 @@ export function AnalyticsOverview({
             <strong>{data.summary.expiring}</strong>
           </button>
         </div>
-        <h3 className="an-caption">Reviewed credentials by issuer</h3>
+        <h3 className="an-caption">Approved credentials by issuer</h3>
         <AnalyticsDonut
           disabled={pending}
           items={data.distribution}
-          label="Reviewed credentials by issuer"
+          label="Approved credentials by issuer"
           onFilter={issuer =>
             onChange({ ...clear, dataset: 'certifications', issuer, status: 'APPROVED' })
           }
@@ -363,14 +363,14 @@ export function AnalyticsOverview({
                 <th>Employee</th>
                 {dataset === 'people' ? (
                   <>
-                    <th>Reviewed skills</th>
+                    <th>Approved skills</th>
                     <th>Current certificates</th>
                   </>
                 ) : (
                   <>
                     <th>Record</th>
-                    <th>Review status</th>
-                    <th>Submitted / reviewed</th>
+                    <th>Approval status</th>
+                    <th>Submitted / decision recorded</th>
                     <th>Files</th>
                   </>
                 )}
@@ -399,7 +399,7 @@ export function AnalyticsOverview({
                       <td>
                         <small>Submitted on</small>
                         <BusinessRecordDate value={row.submittedAt} by={row.submittedBy} />
-                        <small>Reviewed on</small>
+                        <small>Decision recorded on</small>
                         <BusinessRecordDate value={row.reviewedAt} by={row.reviewedBy} />
                       </td>
                       <td>

@@ -75,15 +75,15 @@ test('initial queues read in parallel and show combined submissions before slowe
   assert.match(content().textContent ?? '', /Loading combined submissions/);
   assert.equal(document.querySelector('.assigned-review-total'), null);
   await resolve(reads, '/api/capability-submissions', { records: [] });
-  assert.doesNotMatch(content().textContent ?? '', /No combined or individual skill reviews/);
+  assert.doesNotMatch(content().textContent ?? '', /No combined or individual skill approvals/);
   await resolve(reads, '/api/skill-reviews', skills);
   assert.equal(content().hidden, false);
   await resolve(reads, '/api/certifications', { records: [], total: 0, pageSize: 10 });
   assert.equal(content().hidden, false);
   assert.equal(document.querySelectorAll('.review-workspace-tabs button').length, 3);
-  assert.match(content().textContent ?? '', /No combined or individual skill reviews/);
+  assert.match(content().textContent ?? '', /No combined or individual skill approvals/);
   assert.equal(document.querySelector('.assigned-review-total'), null);
-  assert.ok(document.querySelector('[aria-label="Assigned reviews"]'));
+  assert.ok(document.querySelector('[aria-label="Assigned approvals"]'));
   assert.equal(reads.size, 3);
   await view.unmount();
 });
@@ -156,11 +156,11 @@ test('failed combined queue shows its error while other queues stay visible', as
     content.querySelector('[role="alert"]')!.textContent ?? '',
     /Combined queue unavailable/,
   );
-  assert.doesNotMatch(content.textContent ?? '', /No combined or individual skill reviews/);
+  assert.doesNotMatch(content.textContent ?? '', /No combined or individual skill approvals/);
   assert.equal(document.querySelectorAll('.review-workspace-tabs button').length, 1);
   await view.unmount();
 });
-test('review permission failure reveals only the error and retry, never resolved child content or privileged tabs', async () => {
+test('approval permission failure reveals only the error and retry, never resolved child content or privileged tabs', async () => {
   const reads = fixture();
   await initializeAuth();
   const view = await render(
@@ -174,14 +174,14 @@ test('review permission failure reveals only the error and retry, never resolved
   await resolve(
     reads,
     '/api/skill-reviews',
-    { error: { message: 'Review permission denied.' } },
+    { error: { message: 'Approval permission denied.' } },
     403,
   );
   assert.equal(document.querySelector<HTMLElement>('.review-workspace-content')!.hidden, true);
   const alert = [...document.querySelectorAll<HTMLElement>('[role="alert"]')].find(
     node => !node.closest('[hidden]'),
   );
-  assert.match(alert?.textContent ?? '', /Review permission denied.*Retry/);
+  assert.match(alert?.textContent ?? '', /Approval permission denied.*Retry/);
   assert.equal(document.querySelector('.review-loading'), null);
   await view.unmount();
 });
@@ -268,11 +268,11 @@ test('transient legacy review outage keeps the combined workspace usable', async
   );
   const content = document.querySelector<HTMLElement>('.review-workspace-content')!;
   assert.equal(content.hidden, false);
-  assert.doesNotMatch(content.textContent ?? '', /No combined or individual skill reviews/);
+  assert.doesNotMatch(content.textContent ?? '', /No combined or individual skill approvals/);
   assert.match(document.body.textContent ?? '', /Review database is waking up.*Retry/);
   await view.unmount();
 });
-test('review permission denial closes and blocks a submission deep-link dialog', async () => {
+test('approval permission denial closes and blocks a submission deep-link dialog', async () => {
   const submission = '2b5a1c9e-1111-4a2b-8c3d-000000000001';
   const { reads, other } = permissiveFixture(path =>
     path.startsWith('/api/capability-submissions/'),
@@ -289,7 +289,7 @@ test('review permission denial closes and blocks a submission deep-link dialog',
   await resolve(
     reads,
     '/api/skill-reviews',
-    { error: { message: 'Review permission denied.' } },
+    { error: { message: 'Approval permission denied.' } },
     403,
   );
   assert.equal(document.querySelector('dialog'), null);

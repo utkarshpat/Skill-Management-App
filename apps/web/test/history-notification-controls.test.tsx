@@ -1,3 +1,4 @@
+import './support/phase-two';
 import test, { after, afterEach, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { act } from 'react';
@@ -124,7 +125,7 @@ after(async () => {
   await closeBrowser();
 });
 
-test('review history pages through authorized events and long feedback without exposing private edits', async () => {
+test('approval history pages through authorized events and long feedback without exposing private edits', async () => {
   view = await render(<ReviewHistory id="aditi-sql" />);
   await settle();
   assert.match(document.body.textContent!, /Approved/);
@@ -150,7 +151,7 @@ test('review history pages through authorized events and long feedback without e
   assert.match(document.body.textContent!, /Employee draft edits are private/);
 });
 
-test('review history denial retries explicitly and an empty history never invents an event', async () => {
+test('approval history denial retries explicitly and an empty history never invents an event', async () => {
   failure = 403;
   view = await render(<ReviewHistory id="aditi-sql" />);
   await settle();

@@ -194,7 +194,7 @@ test('certification recommendation adapter normalizes identities and explains mi
     assert.equal((await store.analytics(actor)).categories.length, 1);
     f.reply('dbo.CertificationRecommendations', [
       { id, at, title: 'Oracle SQL', body: 'Recommended', href: '/certifications' },
-      { id: actor, at: at.toISOString(), title: 'Power BI', body: 'Reviewed', href: '/my-skills' },
+      { id: actor, at: at.toISOString(), title: 'Power BI', body: 'Approved', href: '/my-skills' },
     ]);
     assert.equal((await store.notifications(actor))[0].at, at.toISOString());
     for (const [number, status] of [

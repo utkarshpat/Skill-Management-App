@@ -20,7 +20,7 @@ const row = {
   status: 'SUBMITTED',
 };
 
-test('claim SQL adapter scopes every call and reconstructs versions, team aggregates and review history', async () => {
+test('claim SQL adapter scopes every call and reconstructs versions, team aggregates and approval history', async () => {
   assert.throws(() => new SqlClaimsStore('not-a-workspace'), /UUID/);
   const f = sqlAdapterFixture();
   try {
@@ -172,7 +172,7 @@ test('claim SQL adapter scopes every call and reconstructs versions, team aggreg
     f.reply(
       batch,
       [{ id, at, title: 'SQL review', body: 'Changes requested', href: '/my-skills' }],
-      [{ id: skill, at, title: 'Capability review', body: 'Reviewed', href: '/my-skills' }],
+      [{ id: skill, at, title: 'Capability review', body: 'Approved', href: '/my-skills' }],
     );
     assert.equal((await store.notifications(actor)).length, 2);
     f.reject(batch, { number: 51003 });

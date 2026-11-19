@@ -131,9 +131,9 @@ test('review assistance separates availability failures, generation cancellation
   await settle();
   assert.doesNotMatch(document.body.textContent ?? '', /Late private draft/);
   respond = async () =>
-    Response.json({ error: { message: 'Current review assignment revoked' } }, { status: 403 });
+    Response.json({ error: { message: 'Current preview assignment revoked' } }, { status: 403 });
   await click('Summarize evidence');
-  assert.match(document.body.textContent ?? '', /Current review assignment revoked/);
+  assert.match(document.body.textContent ?? '', /Current preview assignment revoked/);
 });
 
 const peopleQuery = {
@@ -230,7 +230,7 @@ const plan: any = {
   revision: 3,
   tasks: [task],
 };
-test('skill growth journey continues learning, resumes plans and links only to own reviewed claim workflows', async () => {
+test('skill growth journey continues learning, resumes plans and links only to own approved claim workflows', async () => {
   const continued: any[] = [];
   const resumed: any[] = [];
   respond = async url =>

@@ -120,12 +120,14 @@ test('audience hierarchy, local draft recovery and banner/popup preview remain c
     definition: { useCase: 'TRAINING', designViewport: 'both' },
     viewport: { width: page.viewportSize()!.width, height: page.viewportSize()!.height },
   });
-  await editor.getByRole('button', { name: 'Review audience', exact: true }).click();
+  await editor.getByRole('button', { name: 'Check audience', exact: true }).click();
   await editor.getByRole('button', { name: 'Mobile', exact: true }).click();
   await expect(editor.locator('.announcement-preview-stage.is-mobile')).toBeVisible();
   await editor.getByRole('button', { name: 'Popup preview' }).click();
-  await expect(editor.getByText('Announcement popup', { exact: true })).toBeVisible();
+  await expect(editor.locator('.announcement-preview-body.is-popup')).toBeVisible();
   await editor.getByRole('button', { name: 'Form preview' }).click();
-  await expect(editor.getByLabel('Work email')).toHaveValue('employee@example.com');
+  await expect(editor.locator('.announcement-identity dd').nth(1)).toHaveText(
+    'employee@example.com',
+  );
   await page.screenshot({ path: info.outputPath('announcement-preview.png'), fullPage: true });
 });

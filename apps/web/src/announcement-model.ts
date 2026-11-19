@@ -2,6 +2,7 @@ export const fields = [
   ['text', 'Short text'],
   ['longText', 'Long text'],
   ['choice', 'Dropdown'],
+  ['radio', 'Radio buttons (select one)'],
   ['checkbox', 'Checkbox'],
   ['date', 'Date'],
   ['rating', 'Rating (1–5)'],
@@ -12,8 +13,7 @@ export const exportColumns = [
   ['account', 'Account / Client'],
   ['portfolio', 'Portfolio'],
   ['grade', 'Grade'],
-  ['capability', 'Capability'],
-  ['primarySkill', 'Primary Skill'],
+  ['capability', 'Primary Capability'],
 ] as const;
 
 export interface AnswerField {
@@ -81,6 +81,7 @@ export interface RecordBase {
 export interface LiveAnnouncement extends RecordBase {
   definition: Definition;
   answered: boolean;
+  responseRevision?: number;
   savedAnswers?: Record<string, string | boolean>;
   hasImage: boolean;
 }

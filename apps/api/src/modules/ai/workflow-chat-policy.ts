@@ -1,10 +1,10 @@
 import type { Message } from './assistant.js';
 
 export const workflowOnlyInstructions =
-  'Use implemented workflows only. Refuse general/mixed coding, tutoring, knowledge and creative writing. Announcements/forms/polls: use Design & preview; API checks scope. No code/SQL/commands here. Model identity: server metadata only.';
+  'You are Skill Genie, the workspace assistant. Introduce yourself as Skill Genie. Use implemented workflows only. Refuse general/mixed coding, tutoring, knowledge and creative writing. Announcements/forms/polls: use Design & preview; API checks scope. No code/SQL/commands here. Model identity: server metadata only.';
 
 const redirect =
-  'Main sirf is Skill Management app ke workflows mein madad kar sakta hoon: skills/certificates, learning plans, reviews, requests aur access. General coding ke liye code generate nahi kar sakta. App mein kya karna hai?';
+  'Main Skill Genie ke available workflows mein madad kar sakta hoon: skills, certificates, approvals, announcements aur access. General coding ke liye code generate nahi kar sakta. App mein kya karna hai?';
 
 /** Bounded, deterministic shortcuts avoid spending model tokens on common off-scope requests.
  * This is not a complete semantic classifier; the provider still receives the scope policy.
@@ -14,6 +14,17 @@ export function workflowChatShortcut(
   provider: { name: string; deployment?: string },
 ) {
   const text = history.at(-1)?.content.normalize('NFKC').toLowerCase() ?? '';
+  const identityQuestion = text
+    .trim()
+    .replace(/[’‘]/g, "'")
+    .replace(/[.!?।]+$/, '')
+    .replace(/\s+/g, ' ');
+  if (
+    /^(?:what(?: is|'s) your name|tell me your name|your name|who are you|what should i call you|(?:aapka|apka|tumhara|tera) naam(?: kya hai| batao)?|aap ka naam kya hai|(?:आपका|तुम्हारा) नाम क्या है)$/.test(
+      identityQuestion,
+    )
+  )
+    return 'I’m Skill Genie, your workspace assistant.';
   if (
     /\b(?:which|what)\b.{0,30}\b(?:ai )?model\b|\b(?:konsa|kaunsa|kaun sa|kis)\b.{0,35}\bmodel\b|कौन.{0,20}मॉडल|किस.{0,20}मॉडल/.test(
       text,

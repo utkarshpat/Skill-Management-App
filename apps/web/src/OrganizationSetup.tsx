@@ -361,7 +361,7 @@ export function OrganizationSetup({
     <div className="organization-setup">
       {review && (
         <FormDialog
-          title="Review reporting & membership"
+          title="Preview reporting & membership"
           busy={busy}
           onClose={() => setReview(undefined)}
           footer={

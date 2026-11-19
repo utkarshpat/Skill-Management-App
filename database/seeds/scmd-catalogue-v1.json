@@ -9,7 +9,7 @@
       "levels": [
         {
           "rank": 1,
-          "name": "Foundation",
+          "name": "Beginner",
           "description": "Understand core Oracle HCM concepts and perform guided exercises."
         },
         {
@@ -37,7 +37,7 @@
       "levels": [
         {
           "rank": 1,
-          "name": "Foundation",
+          "name": "Beginner",
           "description": "Understand core Oracle Payroll concepts and perform guided exercises."
         },
         {
@@ -65,7 +65,7 @@
       "levels": [
         {
           "rank": 1,
-          "name": "Foundation",
+          "name": "Beginner",
           "description": "Understand core Oracle Recruiting concepts and perform guided exercises."
         },
         {
@@ -93,7 +93,7 @@
       "levels": [
         {
           "rank": 1,
-          "name": "Foundation",
+          "name": "Beginner",
           "description": "Understand core Oracle Learning concepts and perform guided exercises."
         },
         {
@@ -121,7 +121,7 @@
       "levels": [
         {
           "rank": 1,
-          "name": "Foundation",
+          "name": "Beginner",
           "description": "Understand core Oracle Benefits concepts and perform guided exercises."
         },
         {
@@ -149,7 +149,7 @@
       "levels": [
         {
           "rank": 1,
-          "name": "Foundation",
+          "name": "Beginner",
           "description": "Understand core Oracle OIC concepts and perform guided exercises."
         },
         {
@@ -177,7 +177,7 @@
       "levels": [
         {
           "rank": 1,
-          "name": "Foundation",
+          "name": "Beginner",
           "description": "Understand core Oracle OCI concepts and perform guided exercises."
         },
         {
@@ -205,7 +205,7 @@
       "levels": [
         {
           "rank": 1,
-          "name": "Foundation",
+          "name": "Beginner",
           "description": "Understand core Oracle APEX concepts and perform guided exercises."
         },
         {
@@ -233,7 +233,7 @@
       "levels": [
         {
           "rank": 1,
-          "name": "Foundation",
+          "name": "Beginner",
           "description": "Understand core Oracle EPM concepts and perform guided exercises."
         },
         {
@@ -261,7 +261,7 @@
       "levels": [
         {
           "rank": 1,
-          "name": "Foundation",
+          "name": "Beginner",
           "description": "Understand core AI & Automation concepts and perform guided exercises."
         },
         {
@@ -289,7 +289,7 @@
       "levels": [
         {
           "rank": 1,
-          "name": "Foundation",
+          "name": "Beginner",
           "description": "Understand core SQL & Analytics concepts and perform guided exercises."
         },
         {

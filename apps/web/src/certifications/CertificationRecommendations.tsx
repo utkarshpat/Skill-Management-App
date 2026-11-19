@@ -32,6 +32,7 @@ type Recommendation = {
   updatedAt: string;
 };
 type Person = { id: string; name: string; employeeCode: string };
+type CatalogueCredential = { id: string; name: string; provider: string; category: string };
 type Feed = {
   items: Recommendation[];
   total: number;
@@ -57,6 +58,15 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
   const [loadedFeed, setFeed] = useState<{ key: string; value: Feed }>();
   const [recipientLoading, setRecipientLoading] = useState(true);
   const [people, setPeople] = useState<Person[]>([]);
+  const [credentials, setCredentials] = useState<CatalogueCredential[]>();
+  const [catalogueSearch, setCatalogueSearch] = useState('');
+  const [cataloguePage, setCataloguePage] = useState(1);
+  const [catalogueHasNext, setCatalogueHasNext] = useState(false);
+  const [catalogueError, setCatalogueError] = useState('');
+  const [catalogueAttempt, setCatalogueAttempt] = useState(0);
+  const [sendError, setSendError] = useState('');
+  const [recipientError, setRecipientError] = useState('');
+  const [recipientAttempt, setRecipientAttempt] = useState(0);
   const [page, setPage] = useState(1),
     [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(true),
@@ -117,6 +127,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
 
   useEffect(() => {
     if (!sending) return;
+    setRecipientError('');
     setRecipientLoading(true);
     setPeople([]);
     setPersonId('');
@@ -137,14 +148,62 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
         if (!c.signal.aborted) {
           setPeople([]);
           setPersonId('');
-          setError(e.message);
+          setRecipientError(e.message);
         }
       })
       .finally(() => {
         if (!c.signal.aborted) setRecipientLoading(false);
       });
     return () => c.abort();
-  }, [sending, recipientSearch]);
+  }, [sending, recipientSearch, recipientAttempt]);
+  useEffect(() => {
+    if (!sending) {
+      setCredentials(undefined);
+      setCatalogueError('');
+      setCatalogueSearch('');
+      setCataloguePage(1);
+      setSendError('');
+      return;
+    }
+    const abort = new AbortController();
+    setCatalogueError('');
+    setCredentials(undefined);
+    setCatalogueHasNext(false);
+    const query = new URLSearchParams({
+      search: catalogueSearch.trim(),
+      page: String(cataloguePage),
+    });
+    const timer = setTimeout(
+      () => {
+        authenticatedFetch('/api/capability-submissions/catalogue?' + query, {
+          signal: abort.signal,
+        })
+          .then(response =>
+            readApiResponse<{
+              credentials: CatalogueCredential[];
+              total: number;
+              pageSize: number;
+            }>(response, 'Certification catalogue could not be loaded.'),
+          )
+          .then(data => {
+            if (!abort.signal.aborted) {
+              setCredentials(data.credentials);
+              setCatalogueHasNext(
+                cataloguePage < 100 && cataloguePage * data.pageSize < data.total,
+              );
+            }
+          })
+          .catch(error => {
+            if (!abort.signal.aborted) setCatalogueError(error.message);
+          });
+      },
+      catalogueSearch ? 200 : 0,
+    );
+    return () => {
+      clearTimeout(timer);
+      abort.abort();
+    };
+  }, [sending, catalogueAttempt, catalogueSearch, cataloguePage]);
   useEffect(() => {
     if (focused && !loading && feed?.items.length === 1) setDetail(feed.items[0]);
   }, [focused, loading, feed]);
@@ -284,7 +343,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
     if (!id) return;
     let saved = false;
     setSaving(true);
-    setError('');
+    setSendError('');
     try {
       await readApiResponse(
         await authenticatedFetch('/api/certification-recommendations/send', {
@@ -310,7 +369,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
       window.dispatchEvent(new Event('notifications-updated'));
     } catch (e) {
       const status = (e as { status?: number })?.status;
-      setError(
+      setSendError(
         !status || status >= 500
           ? 'Send status could not be confirmed. Retry unchanged details or check Sent recommendations.'
           : e instanceof Error
@@ -333,7 +392,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
           <p>
             {view === 'sent'
               ? 'Suggest a credential to a current direct report and explain why it may help.'
-              : 'Review credential suggestions from your current manager. Your certification record changes only when you add and submit a credential.'}
+              : 'Open credential suggestions from your current manager. Your certification record changes only when you add and submit a credential.'}
           </p>
         </div>
         {view === 'sent' && feed?.canSend && (
@@ -500,6 +559,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
             className="cert-recommend-form"
             style={{ border: 0, padding: 0, margin: 0 }}
           >
+            {sendError && <p role="alert">{sendError}</p>}
             <label>
               <span>
                 <Search size={14} /> Find direct report
@@ -532,6 +592,100 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
                 ))}
               </select>
             </label>
+            {recipientError && (
+              <p role="alert">
+                {recipientError}{' '}
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setRecipientAttempt(v => v + 1)}
+                >
+                  Retry direct reports
+                </button>
+              </p>
+            )}
+            <label>
+              Search certification catalogue
+              <input
+                type="search"
+                maxLength={100}
+                value={catalogueSearch}
+                onChange={event => {
+                  setCatalogueSearch(event.target.value);
+                  setCataloguePage(1);
+                }}
+                placeholder="Certification, issuer or category"
+              />
+            </label>
+            <label>
+              Certification catalogue
+              <select
+                disabled={!credentials?.length}
+                value={
+                  credentials?.find(
+                    credential =>
+                      credential.name === name &&
+                      credential.provider === provider &&
+                      credential.category === category,
+                  )?.id ?? ''
+                }
+                onChange={event => {
+                  const credential = credentials?.find(item => item.id === event.target.value);
+                  if (!credential) return;
+                  setName(credential.name);
+                  setProvider(credential.provider);
+                  setCategory(credential.category);
+                }}
+              >
+                <option value="" disabled>
+                  {catalogueError
+                    ? 'Certification catalogue unavailable'
+                    : !credentials
+                      ? 'Loading certifications…'
+                      : credentials.length
+                        ? 'Select a catalogue certification'
+                        : 'No certifications in the catalogue'}
+                </option>
+                {credentials?.map(credential => (
+                  <option key={credential.id} value={credential.id}>
+                    {credential.name} · {credential.provider}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {(cataloguePage > 1 || catalogueHasNext) && (
+              <div className="catalogue-picker-pagination" aria-label="Catalogue pages">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={cataloguePage <= 1 || !credentials}
+                  onClick={() => setCataloguePage(page => page - 1)}
+                >
+                  Previous
+                </button>
+                <span>Page {cataloguePage}</span>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={!catalogueHasNext}
+                  onClick={() => setCataloguePage(page => page + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+            {catalogueError && (
+              <div role="alert">
+                {catalogueError}{' '}
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setCatalogueAttempt(attempt => attempt + 1)}
+                >
+                  Retry catalogue
+                </button>
+              </div>
+            )}
             <label>
               Certification name *
               <input

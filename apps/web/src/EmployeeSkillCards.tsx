@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { ArrowRight, Clock3, FileCheck2, Layers3, RefreshCw } from 'lucide-react';
 import type { Claim } from './MySkills';
 import type { TeamSkill } from './team-analytics';
@@ -40,7 +41,7 @@ export function EmployeeSkillCards({
                 </span>
                 <span className={'employee-card-status ' + (pending ? 'pending' : 'reviewed')}>
                   {pending ? <Clock3 size={14} /> : <FileCheck2 size={14} />}{' '}
-                  {pending ? 'Awaiting review' : 'Manager reviewed'}
+                  {pending ? 'Pending approval' : 'Approved'}
                 </span>
               </header>
               <h3>{skill.skillName}</h3>
@@ -48,8 +49,8 @@ export function EmployeeSkillCards({
               <div className="employee-card-level">
                 <strong>L{skill.rank}</strong>
                 <div>
-                  <span>{skill.levelName}</span>
-                  <small>{pending ? 'Employee’s claimed level' : 'Recorded reviewed level'}</small>
+                  <span>{displayProficiencyName(skill.rank, skill.levelName)}</span>
+                  <small>{pending ? 'Employee’s claimed level' : 'Approved level'}</small>
                 </div>
               </div>
               <div className="employee-card-record">
@@ -70,7 +71,7 @@ export function EmployeeSkillCards({
                     onClick={() => onOpen(record.id)}
                   >
                     {opening ? <RefreshCw className="review-spin" size={16} /> : null}
-                    {pending ? 'Open review' : 'Evidence & history'}
+                    {pending ? 'Open approval' : 'Evidence & history'}
                     <ArrowRight size={16} />
                   </button>
                 ) : (
@@ -79,7 +80,7 @@ export function EmployeeSkillCards({
                       ? 'Checking available details…'
                       : pending && hasCombinedPending
                         ? 'Open the combined request below.'
-                        : 'Reviewed summary'}
+                        : 'Approval summary'}
                   </p>
                 )}
               </footer>

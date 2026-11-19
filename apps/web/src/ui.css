@@ -1161,7 +1161,8 @@ html[data-theme] .assistant-mascot img {
 .assistant-mascot-brand {
   right: calc(var(--mascot-width) * 0.5);
   bottom: calc(var(--mascot-width) * 0.155);
-  width: calc(var(--mascot-width) * 0.22);
+  width: calc(var(--mascot-width) * 0.28);
+  mix-blend-mode: multiply;
   transform: translate(50%, 50%);
 }
 .assistant-mascot-hand {
@@ -2608,4 +2609,12 @@ html[data-theme] .assistant-mascot img {
   background: var(--surface, #fff);
   color: var(--ink, #172033);
   box-shadow: 0 4px 16px #0002;
+}
+dialog.company-session-recovery::backdrop {
+  background: var(--bg, #141d2d);
+  backdrop-filter: none;
+}
+
+body:has(.company-session-recovery[open]) dialog[open]:not(.company-session-recovery) {
+  visibility: hidden;
 }

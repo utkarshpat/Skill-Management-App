@@ -25,7 +25,7 @@ const fields = {
   credentialUrl: 'https://issuer.example/badge',
   notes: 'Issuer transcript available.',
 };
-test('certification input rejects forged owners, review status, unsafe URLs and invalid dates', () => {
+test('certification input rejects forged owners, approval status, unsafe URLs and invalid dates', () => {
   const change = { action: 'SAVE_SUBMIT', id: randomUUID(), revision: 0, fields };
   assert.equal(certificationChange(change).action, 'SAVE_SUBMIT');
   const sourceId = randomUUID();

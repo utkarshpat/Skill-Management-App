@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { teamAnalytics, type TeamSkill } from '../src/team-analytics';
-test('Coverage deduplicates reviewed holders and excludes pending and outside members', () => {
+test('Coverage deduplicates approved holders and excludes pending and outside members', () => {
   const people = [
     { id: 'a', name: 'A', employeeCode: 'A', reviewed: 2, pending: 1 },
     { id: 'b', name: 'B', employeeCode: 'B', reviewed: 1, pending: 0 },

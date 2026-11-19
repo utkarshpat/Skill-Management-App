@@ -79,6 +79,22 @@ beforeEach(async () => {
   mock.method(globalThis, 'fetch', async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     if (url === '/api/dev-login') return demoResponse();
+    if (url === '/api/capability-leads/preview') {
+      const change = JSON.parse(String(init?.body));
+      previews.push(change);
+      return Response.json({
+        receipt: 'lead-receipt',
+        change,
+        before: null,
+        after: change,
+        impact: { actions: ['Review scoped submissions'] },
+        warnings: [],
+      });
+    }
+    if (url === '/api/capability-leads/save') {
+      saves.push(JSON.parse(String(init?.body)));
+      return Response.json({ ok: true });
+    }
     if (url === '/api/business/administration/preview') {
       const change = JSON.parse(String(init?.body));
       previews.push(change);
@@ -138,7 +154,37 @@ async function toggleLabel(text: string) {
   await act(async () => control.click());
   await settle();
 }
-const review = () => document.querySelector('[aria-label="Review configuration change"]')!;
+const review = () => document.querySelector('[aria-label="Preview configuration change"]')!;
+
+test('Business Analytics uses the existing assignment flow with one receipt for selected issuers', async () => {
+  state.capabilityLead = {
+    revision: 18,
+    issuers: [
+      { id: 'oracle', name: 'Oracle' },
+      { id: 'microsoft', name: 'Microsoft' },
+    ],
+    assignments: [],
+  };
+  await mount();
+  await fill('Person', 'aditi');
+  assert.doesNotMatch(document.body.textContent ?? '', /Capability Lead/);
+  const coverage = document.querySelector<HTMLSelectElement>('fieldset.bo-full select')!;
+  assert.equal(coverage.value, 'all');
+  await fill('Issuer coverage', 'selected');
+  await fill('Scope', 'DELIVERY_UNIT');
+  await fill('Scope binding', 'du');
+  await toggleLabel('Oracle');
+  await toggleLabel('Microsoft');
+  await fill('Reason', 'Approvals for the assigned credential issuers.');
+  await click('Preview change');
+  assert.equal(saves.length, 0);
+  assert.equal(previews[0].scopeId, 'du');
+  assert.equal(previews[0].allIssuers, false);
+  assert.deepEqual(previews[0].issuerIds, ['oracle', 'microsoft']);
+  assert.match(review().textContent ?? '', /Business Analytics.*DU UK.*Oracle, Microsoft/);
+  await click('Confirm & save', review());
+  assert.deepEqual(saves[0], { ...previews[0], receipt: 'lead-receipt' });
+});
 
 test('portfolio analytics DENY previews its exact binding and expiry before receipt confirmation', async () => {
   await mount();
@@ -163,6 +209,34 @@ test('portfolio analytics DENY previews its exact binding and expiry before rece
   await click('Confirm & save', review());
   assert.deepEqual(saves[0], { ...previews[1], previewReceipt: 'current-business-receipt' });
   assert.equal(contexts.length, 1);
+});
+
+test('existing All issuers coverage can be edited on the same Business Analytics assignment', async () => {
+  state.issuers = [{ id: 'oracle', name: 'Oracle' }];
+  state.responsibilities = [
+    {
+      id: 'existing-grant',
+      personId: 'aditi',
+      bundle: 'BUSINESS_OPERATIONS',
+      kind: 'DEPARTMENT',
+      scopeId: 'client',
+      effect: 'ALLOW',
+      active: true,
+      validUntil: null,
+    },
+  ];
+  await mount();
+  await click('Allowed');
+  await fill('Issuer coverage', 'selected');
+  await toggleLabel('Oracle');
+  await fill('Reason', 'Limit this assignment to Oracle');
+  await click('Preview change');
+  assert.equal(previews[0].id, 'existing-grant');
+  assert.equal(previews[0].payload.scopeId, 'client');
+  assert.deepEqual(previews[0].payload.issuerIds, ['oracle']);
+  assert.equal(saves.length, 0);
+  await click('Confirm & save', review());
+  assert.equal(saves[0].id, 'existing-grant');
 });
 
 test('switching to Admin makes the scope organization-bound instead of retaining a portfolio', async () => {
@@ -261,7 +335,7 @@ test('existing project deactivation previews its stable identity and leaves memb
     active: false,
     reason: 'Reporting delivery completed.',
   });
-  await click('Close Review configuration change', review());
+  await click('Close Preview configuration change', review());
   assert.equal(document.querySelector('.form-dialog'), null);
   assert.equal(saves.length, 0);
   assert.equal(state.projects[0].active, true);

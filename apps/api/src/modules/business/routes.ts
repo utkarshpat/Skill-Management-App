@@ -22,6 +22,7 @@ export interface BusinessDependencies {
   resolveAccess?: (identity: Identity) => Promise<string | undefined>;
   access?: AccessStore;
   business?: BusinessStore;
+  leadAdministration?: (actor: string, personId?: string) => Promise<unknown>;
 }
 export function registerBusinessRoutes(
   app: Express,
@@ -224,12 +225,24 @@ export function registerBusinessRoutes(
     try {
       if (Object.keys(req.query).some(k => k !== 'personId'))
         throw new AccessError(400, 'Unsupported administration filter.');
-      res.json(
-        await deps!.business!.administration(
-          res.locals.businessActor,
-          req.query.personId === undefined ? undefined : identifier(req.query.personId),
-        ),
-      );
+      const actor: string = res.locals.businessActor;
+      const personId =
+        req.query.personId === undefined ? undefined : identifier(req.query.personId);
+      const administration = await deps!.business!.administration(actor, personId);
+      if (!deps?.leadAdministration) {
+        res.json(administration);
+        return;
+      }
+      try {
+        const capabilityLead = await deps.leadAdministration(actor, personId);
+        res.json({ ...administration, capabilityLead });
+      } catch (error) {
+        res.json({
+          ...administration,
+          capabilityLeadError:
+            error instanceof AccessError ? error.message : 'Issuer assignments are unavailable.',
+        });
+      }
     } catch (error) {
       next(error);
     }

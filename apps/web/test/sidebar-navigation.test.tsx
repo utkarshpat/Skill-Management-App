@@ -1,3 +1,4 @@
+import './support/phase-two';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -81,7 +82,7 @@ test('portfolio navigation combines both destinations without restoring denied t
       false,
     );
     assert.equal(items.find(item => item.id === 'my-skills')?.active, true);
-    assert.equal(items.find(item => item.id === 'skill-reviews')?.label, 'Reviews');
+    assert.equal(items.find(item => item.id === 'skill-reviews')?.label, 'Approvals');
   }
   const limited = personalNavigationItems(
     { ownProfile: true, ownSkills: false, certifications: true, reviewSkills: false },

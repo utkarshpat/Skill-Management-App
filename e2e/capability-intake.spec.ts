@@ -102,9 +102,9 @@ test('intake: one skill submission carries exact revisions and follows save befo
   await expect.poll(() => catalogueReads).toEqual(['25', '12']);
   await page
     .locator('.form-dialog-footer')
-    .getByRole('button', { name: 'Review', exact: true })
+    .getByRole('button', { name: 'Preview', exact: true })
     .click();
-  await expect(page.getByText('Review your linked capabilities', { exact: true })).toBeVisible();
+  await expect(page.getByText('Preview your linked capabilities', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /submit.*review/i }).click();
   await expect(page.getByText('Capability saved', { exact: true })).toBeVisible();
   expect(calls.map(c => c.path)).toEqual(['save', 'submit']);

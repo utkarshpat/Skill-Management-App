@@ -4,10 +4,12 @@ import {
   type LocalAccessState,
   type LocalPerson,
 } from './local-access-store.js';
+import { phaseTwoAvailable } from '../../shared/release-features.js';
 
 // Navigation describes effective authority; it never grants that authority.
 // Future workflows remain explicitly unavailable until their services exist.
 export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
+  const phaseTwo = phaseTwoAvailable();
   const ownProfile = can(state, person, 'profile.view', true);
   const ownSkills = ownProfile && can(state, person, 'skill.view', true);
   const catalogue =
@@ -25,10 +27,11 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
     },
     capabilities: {
       requestProfileCorrection:
+        phaseTwo &&
         ownProfile &&
         can(state, person, 'request.view', true) &&
         can(state, person, 'request.create', true),
-      requests: available('request.view') || available('incident.view'),
+      requests: phaseTwo && (available('request.view') || available('incident.view')),
       businessOperations: can(state, person, 'reports.view'),
       amendments: can(state, person, 'skill.catalogue.propose'),
       approveAmendments: can(state, person, 'request.approve'),
@@ -41,10 +44,11 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
       ownProfile,
       ownSkills,
       certifications: ownSkills,
-      learning: can(state, person, 'learning.view', true),
+      learning: phaseTwo && can(state, person, 'learning.view', true),
       claimSkills:
         ownSkills && can(state, person, 'skill.claim', true) && can(state, person, 'skill.view'),
       reviewSkills: ownProfile && canReviewAssigned(state, person),
+      issuerApprovals: ownProfile && person.issuerApprovals === true,
       catalogue,
       administration,
       manageUsers: can(state, person, 'users.manage'),
@@ -61,13 +65,13 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
       {
         id: 'learning',
         label: 'Learning & development',
-        assigned: available('learning.view'),
+        assigned: phaseTwo && available('learning.view'),
         implemented: true,
       },
       {
         id: 'requests',
         label: 'Requests & incidents',
-        assigned: available('request.view') || available('incident.view'),
+        assigned: phaseTwo && (available('request.view') || available('incident.view')),
         implemented: true,
       },
       {

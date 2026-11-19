@@ -1,4 +1,8 @@
-export const proficiencyNames = ['Foundation', 'Autonomous', 'Experienced', 'Expert'] as const;
+export const proficiencyNames = ['Beginner', 'Autonomous', 'Experienced', 'Expert'] as const;
+
+export function displayProficiencyName(rank: number, name: string) {
+  return rank === 1 && name === 'Foundation' ? proficiencyNames[0] : name;
+}
 export const proficiencyCriteria = [
   'Understands fundamentals and completes routine work with guidance.',
   'Handles standard tasks independently and explains decisions.',

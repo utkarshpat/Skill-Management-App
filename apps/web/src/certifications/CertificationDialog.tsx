@@ -73,6 +73,7 @@ const EXPIRY_PRESETS = [
   { label: '3 months', months: 3 },
   { label: '6 months', months: 6 },
   { label: '1 year', months: 12 },
+  { label: '18 months', months: 18 },
   { label: '2 years', months: 24 },
   { label: '3 years', months: 36 },
 ];
@@ -405,7 +406,7 @@ export function CertificationDialog({
   async function save(submit: boolean) {
     if (saving.current || needsCheck) return;
     if (submit && !canSubmit) {
-      setError('Save a draft for now. A current manager with review access is needed to submit.');
+      setError('Save a draft for now. A current manager with approval access is needed to submit.');
       return;
     }
     const invalid = certificationFieldError(fields, today) || imageError();
@@ -495,7 +496,7 @@ export function CertificationDialog({
       );
       if (recovered.complete && submissionAttempted.current) {
         toast.success(
-          `Saved credential confirmed: ${result.record.status === 'APPROVED' ? 'Manager reviewed' : 'Pending review'}.`,
+          `Saved credential confirmed: ${result.record.status === 'APPROVED' ? 'Approved' : 'Pending approval'}.`,
         );
         window.dispatchEvent(new Event('notifications-updated'));
         onClose();
@@ -507,7 +508,7 @@ export function CertificationDialog({
       setNeedsCheck(false);
       storedImage.retry();
       setError(
-        'Saved draft checked. Your entries and selected file are still here; review them and retry saving.',
+        'Saved draft checked. Your entries and selected file are still here; check them and retry saving.',
       );
     } catch (e) {
       if ((e as { status?: number }).status === 404 && revision.current === 0) {
@@ -520,7 +521,7 @@ export function CertificationDialog({
     }
   }
 
-  /* ── review & save preview (left: file, right: details) ── */
+  /* ── preview & save preview (left: file, right: details) ── */
   const reviewContent = (
     <div className="cert-review-split">
       {/* LEFT — certificate file */}
@@ -548,8 +549,8 @@ export function CertificationDialog({
             ['Category', fields.category],
             ['Issue date', fields.certificationDate],
             [
-              'Expiry date',
-              fields.expiryDate === null ? 'Does not expire (Lifetime)' : fields.expiryDate || '—',
+              'Valid till',
+              fields.expiryDate === null ? 'Lifetime valid' : fields.expiryDate || '—',
             ],
             ['Credential ID', fields.credentialId || '—'],
             ['Issuer / badge link', fields.credentialUrl || '—'],
@@ -585,7 +586,7 @@ export function CertificationDialog({
           </ol>
         </div>
         <p className="cert-help">
-          Manager review records a decision; it does not verify the issuer or set a skill
+          Manager approval records a decision; it does not verify the issuer or set a skill
           proficiency level.
         </p>
       </section>
@@ -633,12 +634,12 @@ export function CertificationDialog({
             <div className="skill-details-layout certification-entry-layout">
               {renewal && (
                 <p className="cert-renewal-note">
-                  This creates a new credential record. Your current manager-reviewed credential
-                  stays unchanged while the renewed certificate is submitted for review.
+                  This creates a new credential record. Your current approved credential stays
+                  unchanged while the renewed certificate is submitted for approval.
                   {renewalSource && (
                     <span className="cert-renewal-source">
                       Original: {renewalSource.certificationName} · {renewalSource.provider}.{' '}
-                      Manager reviewed · {credentialValidity(renewalSource.expiryDate, today)}
+                      Approved · {credentialValidity(renewalSource.expiryDate, today)}
                       {renewalSource.expiryDate && ` (expiry: ${renewalSource.expiryDate})`}. Attach
                       the renewed certificate and enter its new validity dates below.
                     </span>
@@ -740,7 +741,7 @@ export function CertificationDialog({
                   {/* Expiry date column */}
                   <div className="form-group cert-expiry-col">
                     <label htmlFor={fields.expiryDate !== null ? 'cert-expiry-date' : undefined}>
-                      <span>Expiry date{fields.expiryDate !== null && <RequiredMark />}</span>
+                      <span>Valid till{fields.expiryDate !== null && <RequiredMark />}</span>
                     </label>
                     {fields.expiryDate !== null ? (
                       <div className="cert-expiry-row">
@@ -785,7 +786,7 @@ export function CertificationDialog({
                         checked={fields.expiryDate === null}
                         onChange={e => update('expiryDate', e.target.checked ? null : '')}
                       />
-                      <span>Does not expire</span>
+                      <span>Lifetime valid</span>
                     </label>
                   </div>
 
@@ -832,7 +833,7 @@ export function CertificationDialog({
           ),
         },
         {
-          label: 'Review & save',
+          label: 'Preview & save',
           content: reviewContent,
         },
       ]}
@@ -889,7 +890,7 @@ export function CertificationDialog({
                     disabled={busy || needsCheck || !canSubmit}
                     onClick={() => void save(true)}
                   >
-                    Submit for review
+                    Submit for approval
                     <Send size={16} aria-hidden="true" />
                   </button>
                 </>
@@ -901,7 +902,7 @@ export function CertificationDialog({
     >
       {!canSubmit && (
         <p className="cert-wizard-help">
-          You can save a draft. Submission needs an active current manager with review access.
+          You can save a draft. Submission needs an active current manager with approval access.
         </p>
       )}
     </FormDialog>

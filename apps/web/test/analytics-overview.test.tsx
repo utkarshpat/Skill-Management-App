@@ -53,12 +53,12 @@ test('overview preserves exact employee codes, ranks coverage by headcount and u
   const html = render();
   assert.match(html, /QA_CODE_01/);
   assert.ok(html.indexOf('Large skill') < html.indexOf('Small skill'));
-  assert.doesNotMatch(html, /2500%|99 reviewed holders/);
+  assert.doesNotMatch(html, /2500%|99 approved holders/);
   assert.match(html, /25%/);
   assert.match(html, /50%/);
-  assert.match(html, /No submission or review activity/);
+  assert.match(html, /No submission or approval activity/);
   assert.doesNotMatch(html, /Coverage growth|Newly certified/);
-  assert.doesNotMatch(html, /Currently certified employees|Employees with reviewed skills/);
+  assert.doesNotMatch(html, /Currently certified employees|Employees with approved skills/);
 });
 test('overview file actions require server row eligibility and exports respect canonical capability', () => {
   const html = render(
@@ -82,7 +82,7 @@ test('overview file actions require server row eligibility and exports respect c
   );
   assert.match(html, /View submitted files for Certificate/);
   assert.match(html, /Submitted on/);
-  assert.match(html, /Reviewed on/);
+  assert.match(html, /Decision recorded on/);
   assert.match(html, /disabled=""[^>]*>CSV/);
   const denied = render(
     {

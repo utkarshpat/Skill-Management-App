@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createSkillProfileIndex, filterSkillProfile } from './skill-profile-index';
 
@@ -34,9 +35,9 @@ import type { Claim } from './MySkills';
 
 const statuses: Record<Claim['status'], string> = {
   DRAFT: 'Self-assessed',
-  SUBMITTED: 'Pending review',
+  SUBMITTED: 'Pending approval',
   CHANGES_REQUESTED: 'Changes requested',
-  APPROVED: 'Manager reviewed',
+  APPROVED: 'Approved',
   REJECTED: 'Not approved',
 };
 function SkillIcon({ category }: { category: string }) {
@@ -113,8 +114,8 @@ export function SkillsProfileView({
       change();
     };
   const distribution = [
-    { label: 'Manager reviewed', count: approved, color: 'var(--skill-reviewed)' },
-    { label: 'Pending review', count: pending, color: 'var(--skill-pending)' },
+    { label: 'Approved', count: approved, color: 'var(--skill-reviewed)' },
+    { label: 'Pending approval', count: pending, color: 'var(--skill-pending)' },
     { label: 'Self-assessed', count: drafts, color: 'var(--skill-draft)' },
     { label: 'Needs attention', count: attention, color: 'var(--skill-attention)' },
   ];
@@ -129,13 +130,19 @@ export function SkillsProfileView({
   const metrics = [
     { label: 'Total skills', count: claims.length, Icon: Layers, tone: 'total', filter: '' },
     {
-      label: 'Manager reviewed',
+      label: 'Approved',
       count: approved,
       Icon: ShieldCheck,
       tone: 'reviewed',
       filter: 'APPROVED',
     },
-    { label: 'Pending review', count: pending, Icon: Clock3, tone: 'pending', filter: 'SUBMITTED' },
+    {
+      label: 'Pending approval',
+      count: pending,
+      Icon: Clock3,
+      tone: 'pending',
+      filter: 'SUBMITTED',
+    },
     { label: 'Self-assessed', count: drafts, Icon: UserRound, tone: 'draft', filter: 'DRAFT' },
   ];
   return (
@@ -195,7 +202,7 @@ export function SkillsProfileView({
               {[
                 { id: 'all', label: 'All skills' },
                 { id: 'attention', label: 'To complete', count: drafts + attention },
-                { id: 'reviewed', label: 'Reviewed', count: approved },
+                { id: 'reviewed', label: 'Approved', count: approved },
               ].map(item => (
                 <button
                   key={item.id}
@@ -323,7 +330,7 @@ export function SkillsProfileView({
                         <div className="skills-item-proficiency">
                           <div className="skills-level-header">
                             <strong className="skills-level-label">Level {claim.rank}</strong>
-                            <span className="skills-level-name">{claim.levelName}</span>
+                            <span className="skills-level-name">{displayProficiencyName(claim.rank, claim.levelName)}</span>
                           </div>
                           <span className="skills-rank-bars" aria-hidden="true">
                             {Array.from({ length: 4 }, (_, i) => (
@@ -358,10 +365,10 @@ export function SkillsProfileView({
                               type="button"
                               title={
                                 claim.status === 'SUBMITTED'
-                                  ? 'Reroute review'
-                                  : 'Submit for review'
+                                  ? 'Reroute approval request'
+                                  : 'Submit for approval'
                               }
-                              aria-label={`${claim.status === 'SUBMITTED' ? 'Reroute' : 'Submit'} ${claim.skillName} for review`}
+                              aria-label={`${claim.status === 'SUBMITTED' ? 'Reroute' : 'Submit'} ${claim.skillName} for approval`}
                               disabled={loading}
                               onClick={() => onSubmit(claim)}
                             >
@@ -519,11 +526,11 @@ export function SkillsProfileView({
             <h3>Your next step</h3>
             <p>
               {attention
-                ? `${attention} claims need an update. Review your manager’s feedback before resubmitting.`
+                ? `${attention} claims need an update. Check your manager’s feedback before resubmitting.`
                 : drafts
-                  ? `${drafts} self-assessed ${drafts === 1 ? 'draft is' : 'drafts are'} ready for you to review and submit.`
+                  ? `${drafts} self-assessed ${drafts === 1 ? 'draft is' : 'drafts are'} ready for you to check and submit.`
                   : pending
-                    ? `${pending} ${pending === 1 ? 'claim is' : 'claims are'} awaiting your reporting manager’s review.`
+                    ? `${pending} ${pending === 1 ? 'claim is' : 'claims are'} pending approval from your reporting manager.`
                     : 'Add a skill and describe your experience to keep your profile up to date.'}
             </p>
             {drafts + attention > 0 && (
@@ -534,7 +541,7 @@ export function SkillsProfileView({
                   setTab('attention');
                 }}
               >
-                Review my drafts
+                Open my drafts
                 <ArrowUpRight size={14} />
               </button>
             )}

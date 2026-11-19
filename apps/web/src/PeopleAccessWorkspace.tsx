@@ -553,7 +553,7 @@ export function PeopleAccessWorkspace({
       </div>
       {review && (
         <FormDialog
-          title="Review person change"
+          title="Preview person change"
           busy={busy}
           onClose={() => setReview(undefined)}
           footer={
@@ -788,7 +788,7 @@ function PersonEditor({
               type="submit"
               disabled={JSON.stringify(person) === JSON.stringify(detail.person)}
             >
-              Review profile changes
+              Preview profile changes
             </button>
           </fieldset>
         </form>
@@ -806,7 +806,10 @@ function PersonEditor({
           {canManageScoped && (
             <>
               <h3>Built-in access templates</h3>
-              <p>Business Analytics and Admin include announcement publishing for permitted audiences.</p>
+              <p>
+                Business Analytics and Admin include announcement publishing for permitted
+                audiences.
+              </p>
               <div className="people-template-actions">
                 <button
                   type="button"
@@ -855,7 +858,7 @@ function PersonEditor({
             </ul>
           )}
           <p>
-            Employee baseline and direct-manager review access are separate from additional
+            Employee baseline and direct-manager approval access are separate from additional
             templates. Unsupported historical templates are retained until explicitly reviewed.
           </p>
           <label>
@@ -927,7 +930,7 @@ function PersonEditor({
                   )
                 }
               >
-                Review template assignment
+                Preview template assignment
               </button>
             </>
           )}
@@ -1343,7 +1346,7 @@ function PersonOrganization({
         <Pager data={matches.data} page={managerPage} onPage={setManagerPage} />
         {error && <p role="alert">{error}</p>}
         <button className="microsoft-button" type="submit">
-          Review organization changes
+          Preview organization changes
         </button>
       </fieldset>
     </form>

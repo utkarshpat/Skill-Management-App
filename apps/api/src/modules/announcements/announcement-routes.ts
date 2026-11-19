@@ -1,7 +1,8 @@
 import { announcementNotifications } from './announcement-notifications.js';
-import { checkAnnouncementBindings } from './announcement-sandbox.js';
+import { announcementBindings, checkAnnouncementBindings } from './announcement-sandbox.js';
 import {
   announcementDesignContext,
+  announcementDesignResponse,
   announcementDesignSystemPrompt,
 } from './announcement-design.js';
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
@@ -16,6 +17,7 @@ import type { AiBudget, Provider } from '../ai/index.js';
 import { excelMime, writeExcel } from '../skills/index.js';
 import {
   answers,
+  canonicalExportFields,
   definition,
   design,
   exportFields,
@@ -27,6 +29,7 @@ import {
 } from './announcement-definition.js';
 
 const base = '/api/announcements';
+const designTimeoutMs = 65_000;
 const previewKey = process.env.ENTRA_WEB_CLIENT_SECRET || randomBytes(32);
 
 function seal(actor: string, key: string | undefined, definition: object, expiry: number) {
@@ -245,6 +248,13 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
     await store.execute(actor, 'DESIGN', key, { grantId });
     const prompt = text(input.prompt, 1000);
     const release = await store.budget.acquire(actor);
+    const disconnected = new AbortController();
+    const close = () => disconnected.abort();
+    res.once('close', close);
+    if (res.destroyed) close();
+    const timeout = AbortSignal.timeout(designTimeoutMs);
+    const signal = AbortSignal.any([timeout, disconnected.signal]);
+    const started = Date.now();
     try {
       const result = await store.provider.complete(
         [
@@ -265,9 +275,10 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
           },
         ],
         [],
-        AbortSignal.timeout(25000),
+        signal,
         {
           maxOutputTokens: 6000,
+          responseSchema: announcementDesignResponse,
           onUsage: usage =>
             logEvent('info', 'announcements.design.usage', {
               inputTokens: usage.inputTokens,
@@ -277,7 +288,11 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
             }),
         },
       );
+      if (disconnected.signal.aborted) return;
+      signal.throwIfAborted();
       await store.execute(actor, 'DESIGN', key, { grantId });
+      if (disconnected.signal.aborted) return;
+      signal.throwIfAborted();
       if (result.calls.length) throw new AccessError(502, 'AI returned an unsupported design.');
       let validated;
       let reply: string;
@@ -285,20 +300,43 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
         const candidate = record(
           JSON.parse(result.content.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')),
         );
-        validated = design(candidate);
+        if (candidate.format === 'sandbox-v1') {
+          const bindings = announcementBindings(def);
+          if (input.viewport && record(input.viewport).hasImage === true) {
+            bindings.push({ elementId: 'ann-image', kind: 'image', key: 'image' });
+          }
+          validated = design({ ...candidate, bindings });
+        } else {
+          validated = design(candidate);
+        }
         checkAnnouncementBindings({ ...def, design: validated });
         reply =
           candidate.message === undefined
             ? 'Design updated. Try the preview, or tell me what to refine next.'
             : text(candidate.message, 600, false);
       } catch {
+        logEvent('warn', 'announcements.design.invalid_output', {
+          durationMs: Date.now() - started,
+        });
         throw new AccessError(
           422,
           'AI design did not pass validation. Revise the prompt and try again.',
         );
       }
+      logEvent('info', 'announcements.design.completed', { durationMs: Date.now() - started });
       res.json({ id: randomUUID(), feedback: prompt, reply, design: validated });
+    } catch (error) {
+      if (disconnected.signal.aborted) return;
+      if (timeout.aborted) {
+        logEvent('warn', 'announcements.design.timed_out', { durationMs: Date.now() - started });
+        throw new AccessError(
+          504,
+          'The AI design timed out. Try again or continue with the current preview.',
+        );
+      }
+      throw error;
     } finally {
+      res.off('close', close);
       await release();
     }
   });
@@ -316,6 +354,8 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
         key,
         {
           revision: current.revision,
+          responseRevision:
+            input.responseRevision === undefined ? 0 : revision(input.responseRevision),
           answers: answers(current.definition, input.answers),
         },
         res.locals.workEmail,
@@ -366,7 +406,7 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
       { source: 'name', name: 'Name' },
       { source: 'email', name: 'Work Email' },
       { source: 'employeeId', name: 'Employee ID' },
-      ...def.exports.map(source => ({ source, name: exportFields[source] })),
+      ...canonicalExportFields(def.exports).map(source => ({ source, name: exportFields[source] })),
     ];
     const custom =
       def.kind === 'POLL'

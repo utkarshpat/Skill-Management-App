@@ -1,3 +1,4 @@
+import './support/phase-two';
 import test, { after, afterEach, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { act } from 'react';
@@ -287,11 +288,11 @@ test('assistant learning handoff requires the same current actor and remains an 
   await mount();
   await replyWith('task_draft');
   navActor = 'rohan';
-  await click('Review plan & add to calendar');
+  await click('Preview plan & add to calendar');
   assert.equal(location().pathname, '/');
   assert.match(document.body.textContent!, /current permissions do not allow/);
   navActor = 'aditi';
-  await click('Review plan & add to calendar');
+  await click('Preview plan & add to calendar');
   assert.equal(location().pathname, '/learning');
   assert.equal(location().searchParams.get('action'), 'draft');
   const ticket = location().searchParams.get('draftTicket')!;
@@ -313,11 +314,11 @@ test('business draft handoffs recheck revoked access and preserve demand versus 
     await mount();
     await replyWith(kind);
     grants = false;
-    await click('Review business draft');
+    await click('Preview business draft');
     assert.equal(location().pathname, '/');
     assert.match(document.body.textContent!, /current access does not allow/);
     grants = true;
-    await click('Review business draft');
+    await click('Preview business draft');
     assert.equal(location().pathname, kind === 'amendment_draft' ? '/skills' : '/business');
     assert.equal(
       location().searchParams.get('tab'),
@@ -333,7 +334,7 @@ test('request and incident drafts cannot open a composer after current options d
   await mount();
   for (const kind of ['request_draft', 'incident_draft'] as const) {
     await replyWith(kind);
-    const labels = kind === 'request_draft' ? 'Review request draft' : 'Review incident draft';
+    const labels = kind === 'request_draft' ? 'Preview request draft' : 'Preview incident draft';
     await click(labels);
     assert.match(document.body.textContent!, /current permissions do not allow this draft/);
     assert.equal(document.querySelector('.request-composer'), null);

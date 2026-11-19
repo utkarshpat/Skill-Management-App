@@ -83,8 +83,7 @@ export function BusinessRecordFiles({
   return (
     <FormDialog title={`Submitted files · ${name}`} onClose={onClose}>
       <p className="bo-note">
-        Read-only files from a submitted or manager-reviewed record in your current authorized
-        scope.
+        Read-only files from a submitted or approved record in your current authorized scope.
       </p>
       {error && (
         <p role="alert" className="bo-error">

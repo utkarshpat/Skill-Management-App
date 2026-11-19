@@ -408,7 +408,7 @@ export function AccessAdmin({
         (err instanceof Error ? err.message : 'Save failed.') +
           ' ' +
           saved +
-          ' people saved. Review remaining selections before saving again.',
+          ' people saved. Check remaining selections before saving again.',
       );
     } finally {
       setBusy(false);
@@ -438,7 +438,7 @@ export function AccessAdmin({
       <Link className="admin-brand" to="/access">
         <img src="/brand/sopra-steria.svg" alt="Sopra Steria" />
       </Link>
-      <p className="nav-caption">WORKSPACE</p>
+      <p className="nav-caption">SKILL GENIE</p>
       <SidebarNavigation
         actorId={workspaceContext?.person.id ?? state?.currentPerson?.id}
         label="Administration sections"
@@ -794,7 +794,7 @@ export function AccessAdmin({
               )}
               {bulkReview && (
                 <FormDialog
-                  title="Review template assignments"
+                  title="Preview template assignments"
                   busy={busy}
                   onClose={() => setBulkReview(false)}
                   footer={
@@ -848,7 +848,7 @@ export function AccessAdmin({
               )}
               {review && (
                 <FormDialog
-                  title="Review access change"
+                  title="Preview access change"
                   busy={busy}
                   onClose={() => setReview(undefined)}
                   footer={
@@ -876,7 +876,7 @@ export function AccessAdmin({
                   </p>
                   <h3>{String(review.body.name)}</h3>
                   <details>
-                    <summary>Review exact assignments and details</summary>
+                    <summary>Check exact assignments and details</summary>
                     <pre>{JSON.stringify(review.body, null, 2)}</pre>
                   </details>
                   {review.impacts.length ? (

@@ -6,12 +6,16 @@ export const exportFields = {
   account: 'Account / Client',
   portfolio: 'Portfolio',
   grade: 'Grade',
-  capability: 'Capability',
+  capability: 'Primary Capability',
   primarySkill: 'Primary Skill',
 } as const;
 
+export function canonicalExportFields(fields: readonly (keyof typeof exportFields)[]) {
+  return [...new Set(fields.map(key => (key === 'primarySkill' ? 'capability' : key)))];
+}
+
 export const scopeKinds = ['DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT', 'PROJECT'] as const;
-const fieldTypes = ['text', 'longText', 'choice', 'checkbox', 'date', 'rating'] as const;
+const fieldTypes = ['text', 'longText', 'choice', 'radio', 'checkbox', 'date', 'rating'] as const;
 const slots = ['title', 'message', 'image', 'action'] as const;
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const fieldId = /^[\w-]{1,36}$/;
@@ -186,7 +190,7 @@ export function definition(value: unknown, image?: string) {
             label: text(entry.label, 120),
             type,
             required: entry.required === true,
-            options: type === 'choice' ? choices(entry.options) : [],
+            options: type === 'choice' || type === 'radio' ? choices(entry.options) : [],
           };
         })
       : [];
@@ -221,7 +225,7 @@ export function definition(value: unknown, image?: string) {
     fields,
     options: input.kind === 'POLL' ? choices(input.options) : [],
     audience,
-    exports: [...new Set(input.exports as (keyof typeof exportFields)[])],
+    exports: canonicalExportFields(input.exports as (keyof typeof exportFields)[]),
     versions: history,
     selectedVersion: selected?.id,
     design: selected?.design,
@@ -263,7 +267,7 @@ export function answers(def: Definition, value: unknown) {
     }
     const value = text(answer ?? '', field.type === 'longText' ? 2000 : 240, field.required);
     requireValue(
-      !value || field.type !== 'choice' || field.options.includes(value),
+      !value || !['choice', 'radio'].includes(field.type) || field.options.includes(value),
       'Choose a valid option.',
     );
     requireValue(

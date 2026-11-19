@@ -100,7 +100,7 @@ beforeEach(async () => {
     if (action === 'apply')
       return failApply
         ? Response.json(
-            { error: { message: 'Plan changed. Review a fresh preview.' } },
+            { error: { message: 'Plan changed. Open a fresh preview.' } },
             { status: 409 },
           )
         : Response.json(

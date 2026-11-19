@@ -64,7 +64,7 @@ test('migration preserves participant lifecycle, notification, revision, audit a
     ),
   );
 });
-test('SQL shares category gate between discovery and transaction-time create without granting review authority', () => {
+test('SQL shares category gate between discovery and transaction-time create without granting approval authority', () => {
   assert.match(migration, /WHERE dbo\.WorkflowTopicCan\(@account_id,@actor_id,k\.kind,c\.code\)=1/);
   assert.match(
     migration,

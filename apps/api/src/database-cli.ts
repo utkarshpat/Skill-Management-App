@@ -140,6 +140,13 @@ if (command !== 'check' && command !== 'migrate') {
           [105, '105_announcement_scope_hierarchy.sql'],
           [106, '106_announcement_pagination_retention.sql'],
           [107, '107_announcement_response_updates.sql'],
+          [108, '108_issuer_scoped_capability_leads.sql'],
+          [109, '109_capability_lead_scope_and_approvals.sql'],
+          [110, '110_beginner_proficiency_label.sql'],
+          [111, '111_business_analytics_approvals.sql'],
+          [112, '112_business_issuer_coverage.sql'],
+          [113, '113_shared_company_auth.sql'],
+          [114, '114_approval_queue_exports_response_versions.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

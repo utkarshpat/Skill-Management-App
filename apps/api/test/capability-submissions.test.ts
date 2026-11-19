@@ -93,7 +93,7 @@ test('linked submission parser accepts many-to-many links, rejects duplicate/for
       decisions: [{ id: skill, revision: 1, kind: 'SKILL', action: 'APPROVE', feedback: '' }],
     }),
   );
-  const item = { id: skill, revision: 1, kind: 'SKILL', action: 'APPROVE', feedback: 'Reviewed' };
+  const item = { id: skill, revision: 1, kind: 'SKILL', action: 'APPROVE', feedback: 'Approved' };
   assert.throws(() => capabilityDecision({ id, revision: 1, decisions: [item, item] }));
 });
 test('AI extraction uses bounded catalogue candidates, strips invented proficiency and malformed dates; revocation discards the reply', async () => {
@@ -170,6 +170,77 @@ test('AI extraction uses bounded catalogue candidates, strips invented proficien
     ),
     /access|Access|assigned/,
   );
+});
+
+test('certificate autofill auto-selects a unique high-scoring issuer match and refuses ambiguous or incompatible credentials', async () => {
+  const current = state();
+  const access = { snapshot: () => structuredClone(current) } as AccessStore;
+  const catalogued = {
+    id: 'azure-definition',
+    name: 'Azure Fundamentals AZ-900',
+    provider: 'Microsoft',
+    category: 'Cloud',
+  };
+  let title = 'Azure Fundamentalss AZ-900';
+  let issuer = '  MICROSOFT  ';
+  let catalogue = [catalogued];
+  const autofill = new CertificateAutofillService(
+    access,
+    {} as ClaimsStore,
+    new MemoryAiBudget(),
+    {
+      name: 'fixture',
+      complete: async () => ({
+        calls: [],
+        content: JSON.stringify({
+          fields: { ...fields, certificationName: title, provider: issuer, category: 'Invented' },
+          searchTerms: [],
+        }),
+      }),
+    },
+    async caller => {
+      assert.equal(caller, actor);
+      return catalogue;
+    },
+  );
+  const extract = () =>
+    autofill.extract(
+      actor,
+      { data: Buffer.from('Synthetic credential'), mimeType: 'text/plain', fileName: 'qa.txt' },
+      AbortSignal.timeout(5000),
+    );
+  const match = await extract();
+  assert.equal(match.catalogueMatch.status, 'matched');
+  if (match.catalogueMatch.status === 'matched') {
+    assert.ok(match.catalogueMatch.confidence >= 90 && match.catalogueMatch.confidence < 100);
+    assert.deepEqual(match.catalogueMatch.credential, catalogued);
+  }
+  assert.equal(match.fields.certificationName, catalogued.name);
+  assert.equal(match.fields.category, 'Cloud');
+
+  catalogue = [catalogued, { ...catalogued, id: 'duplicate', name: 'Azure Fundamentalss AZ-900' }];
+  const exact = await extract();
+  assert.equal(exact.catalogueMatch.status, 'matched');
+  catalogue = [catalogued, { ...catalogued, id: 'duplicate' }];
+  assert.equal((await extract()).catalogueMatch.status, 'ambiguous');
+  catalogue = [catalogued];
+  title = 'Azure Fundamentals AZ-901';
+  const missing = await extract();
+  assert.equal(missing.catalogueMatch.status, 'not_found');
+  assert.equal(missing.fields.certificationName, '');
+  assert.equal(missing.fields.category, '');
+  title = catalogued.name;
+  issuer = 'Another issuer';
+  assert.equal((await extract()).catalogueMatch.status, 'not_found');
+  issuer = '';
+  assert.equal((await extract()).catalogueMatch.status, 'unreadable');
+  issuer = 'Microsoft';
+  title = 'Azure Fundamentals';
+  const officialTitle = 'Microsoft Certified: Azure Fundamentals';
+  catalogue = [{ ...catalogued, name: officialTitle }];
+  const official = await extract();
+  assert.equal(official.catalogueMatch.status, 'matched');
+  assert.equal(official.fields.certificationName, officialTitle);
 });
 
 test('certificate autofill distinguishes explicit non-expiring dates from unknown and invalid expiry', async () => {

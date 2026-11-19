@@ -550,9 +550,9 @@ export function BusinessWorkflows({
           <p className="bo-note">
             {view === 'amendments'
               ? directCatalogue
-                ? 'Add or amend catalogue definitions directly. Personal claims still follow their existing review process.'
-                : 'Request a catalogue addition or amendment. An authorized administrator reviews it before the catalogue changes.'
-              : 'Match explicit requirements against reviewed skills and current reviewed credentials. Missing evidence means “not established”; availability is not assessed.'}
+                ? 'Add or amend catalogue definitions directly. Personal claims still follow their existing approval process.'
+                : 'Request a catalogue addition or amendment. An authorized administrator decides on it before the catalogue changes.'
+              : 'Match explicit requirements against approved skills and current approved credentials. Missing evidence means “not established”; availability is not assessed.'}
           </p>
         </div>
         {catalogueMode && directCatalogue && (
@@ -774,7 +774,7 @@ export function BusinessWorkflows({
                             <td>
                               {(
                                 {
-                                  SUBMITTED: 'Awaiting admin review',
+                                  SUBMITTED: 'Pending admin approval',
                                   APPROVED: 'Approved',
                                   REJECTED: 'Not approved',
                                 } as Record<string, string>
@@ -838,7 +838,7 @@ export function BusinessWorkflows({
                                       }}
                                     >
                                       <Check size={13} aria-hidden="true" />
-                                      Review & approve
+                                      Open approval
                                     </button>
                                     <button
                                       type="button"
@@ -935,7 +935,7 @@ export function BusinessWorkflows({
           <p className="bo-note">
             {matches
               ? 'As of ' + new Date(matches.asOf).toLocaleString()
-              : 'Checking current reviewed records…'}
+              : 'Checking current approved records…'}
             . Exact master credential name and provider matching; expired credentials are excluded.
           </p>
           {matches && (
@@ -991,7 +991,7 @@ export function BusinessWorkflows({
                             }}
                           >
                             <Plus size={13} aria-hidden="true" />
-                            {p.shortlisted ? 'Shortlisted' : 'Review shortlist'}
+                            {p.shortlisted ? 'Shortlisted' : 'Open shortlist'}
                           </button>
                         </td>
                       </tr>
@@ -1097,9 +1097,9 @@ export function BusinessWorkflows({
                 >
                   {view === 'amendments'
                     ? directCatalogue
-                      ? 'Review changes'
+                      ? 'Preview changes'
                       : 'Preview request'
-                    : 'Review proposal'}{' '}
+                    : 'Preview proposal'}{' '}
                   <ArrowRight size={14} aria-hidden="true" />
                 </button>
               )}
@@ -1113,7 +1113,7 @@ export function BusinessWorkflows({
             >
               <span aria-current={amendmentStep === 0 ? 'step' : undefined}>1 · Choose change</span>
               <span aria-current={amendmentStep === 1 ? 'step' : undefined}>2 · Entry details</span>
-              <span>{directCatalogue ? '3 · Review & save' : '3 · Preview & submit'}</span>
+              <span>{directCatalogue ? '3 · Preview & save' : '3 · Preview & submit'}</span>
             </div>
           )}
           <div className="bo-page bo-admin-form">
@@ -1176,10 +1176,10 @@ export function BusinessWorkflows({
                 </strong>
                 <p>
                   {directCatalogue
-                    ? 'Review and confirm to save this catalogue entry. No amendment request is created.'
+                    ? 'Check and confirm to save this catalogue entry. No amendment request is created.'
                     : amendmentMode === 'edit'
                       ? 'The existing catalogue entry stays unchanged until an administrator approves your request.'
-                      : 'Your request will be reviewed before this entry appears in the catalogue.'}
+                      : 'Your request must be approved before this entry appears in the catalogue.'}
                 </p>
               </section>
             )}
@@ -1534,7 +1534,7 @@ export function BusinessWorkflows({
                         Requirements <span className="bo-required">*</span> · choose 1–20 skills /
                         credentials
                       </legend>
-                      <p>Reviewed skills</p>
+                      <p>Approved skills</p>
                       {masters?.skills.map(s => (
                         <div key={s.id} className="bo-check">
                           <label className="bo-check">
@@ -1606,8 +1606,8 @@ export function BusinessWorkflows({
         <FormDialog
           title={
             decision.operation === 'SHORTLIST'
-              ? 'Review candidate shortlist'
-              : 'Review master decision'
+              ? 'Open candidate shortlist'
+              : 'Open catalogue decision'
           }
           onClose={() => setDecision(undefined)}
           busy={busy}
@@ -1677,7 +1677,7 @@ export function BusinessWorkflows({
       )}
       {preview && (
         <FormDialog
-          title="Review & confirm"
+          title="Preview & confirm"
           busy={busy}
           onClose={() => setPreview(undefined)}
           footer={
@@ -1712,7 +1712,7 @@ export function BusinessWorkflows({
           }
         >
           <p>
-            Review the details before confirming. The app checks that your access and the record are
+            Check the details before confirming. The app checks that your access and the record are
             still current, and records the change in history.
           </p>
           {['PROPOSE', 'SAVE_MASTER'].includes(preview.command.operation) && (
@@ -1793,7 +1793,7 @@ export function BusinessWorkflows({
               <p>
                 <strong>
                   {requestDetail.status === 'SUBMITTED'
-                    ? 'Awaiting admin review'
+                    ? 'Pending admin approval'
                     : requestDetail.status === 'APPROVED'
                       ? 'Approved — catalogue updated'
                       : 'Not approved — catalogue unchanged'}
@@ -1883,7 +1883,7 @@ function DefinitionPreview({
   const skillDetails = d.relatedSkillDetails as { id: string; name: string }[] | undefined;
   return (
     <div className="bo-page bo-review">
-      <h3>{String(d.name ?? d.title ?? 'Reviewed decision')}</h3>
+      <h3>{String(d.name ?? d.title ?? 'Approval decision')}</h3>
       <dl>
         {credentialMappings && (
           <>
@@ -2002,7 +2002,7 @@ function DefinitionPreview({
             <p key={id}>
               {masters?.certifications.find(c => c.id === id)?.name ??
                 'Selected approved credential'}{' '}
-              · current and manager reviewed
+              · current and approved
             </p>
           ))}
         </>

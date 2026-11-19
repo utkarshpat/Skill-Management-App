@@ -37,11 +37,11 @@ function Harness() {
         employeeName="Aditi Menon"
         readOnly={mode === 'capability-history'}
         onClose={() => setOutcome('Review closed')}
-        onSaved={() => setOutcome('Review decision confirmed')}
+        onSaved={() => setOutcome('Approval decision confirmed')}
       />
     );
   if (mode === 'team')
-    return <TeamCapability onReviews={id => setOutcome('Review queue for ' + id)} canAskAi />;
+    return <TeamCapability onReviews={id => setOutcome('Approval queue for ' + id)} canAskAi />;
   if (mode === 'analytics') return <BusinessOperations />;
   if (mode === 'access-profiles')
     return (

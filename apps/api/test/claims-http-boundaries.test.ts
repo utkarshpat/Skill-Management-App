@@ -11,7 +11,7 @@ import type { EvidenceStore } from '../src/modules/skills/evidence.js';
 const manager = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   employee = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-test('claim HTTP distinguishes own learning, exact assigned review, stale snapshots and private evidence delivery', async t => {
+test('claim HTTP distinguishes own learning, exact assigned approval, stale snapshots and private evidence delivery', async t => {
   const permissions: Assignment[] = (
     ['profile.view', 'skill.view', 'skill.claim', 'learning.view'] as const
   ).map(permission => ({ permission, scope: 'OWN', effect: 'ALLOW' }));

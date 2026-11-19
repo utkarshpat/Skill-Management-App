@@ -48,7 +48,7 @@ test('manager review: notes required per pending item; mixed decisions preserve 
   page,
 }) => {
   const writes = await review(page, {}),
-    save = page.getByRole('button', { name: 'Save review decisions (2)', exact: true });
+    save = page.getByRole('button', { name: 'Save approval decisions (2)', exact: true });
   await save.click();
   await expect(page.locator('.form-dialog-message').getByRole('alert')).toContainText(
     'feedback notes for every pending item',
@@ -74,7 +74,7 @@ test('manager review: notes required per pending item; mixed decisions preserve 
     page.getByRole('radiogroup', { name: 'Decision for Power BI', exact: true }),
   ).toHaveCount(0);
   await save.click();
-  await expect(page.getByText('Review decision confirmed', { exact: true })).toBeVisible();
+  await expect(page.getByText('Approval decision confirmed', { exact: true })).toBeVisible();
   expect(writes).toHaveLength(1);
   expect(writes[0].revision).toBe(5);
   expect(writes[0].decisions.map((d: any) => [d.kind, d.action, d.revision])).toEqual([
@@ -95,29 +95,29 @@ test('manager review: stale write shows conflict and retains notes without false
     .getByRole('textbox', { name: /Feedback notes/ })
     .nth(1)
     .fill('Credential details reviewed.');
-  await page.getByRole('button', { name: 'Save review decisions (2)', exact: true }).click();
+  await page.getByRole('button', { name: 'Save approval decisions (2)', exact: true }).click();
   await expect(page.locator('.form-dialog-message').getByRole('alert')).toContainText(
     'submission version changed',
   );
   await expect(page.getByRole('textbox', { name: /Feedback notes/ }).nth(0)).toHaveValue(
     'Query work needs one more example.',
   );
-  await expect(page.getByText('Review decision confirmed', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Approval decision confirmed', { exact: true })).toHaveCount(0);
   expect(writes).toHaveLength(1);
 });
-test('employee history: view-only snapshots show saved proficiency and can reroute only the reviewed record set', async ({
+test('employee history: view-only snapshots show saved proficiency and can reroute only the approved record set', async ({
   page,
 }) => {
   const writes = await review(page, {}, 'capability-history');
   await expect(page.getByRole('radio')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /Save review decisions/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Save approval decisions/ })).toHaveCount(0);
   await expect(page.getByText(/Experienced/).first()).toBeVisible();
   await page.route('**/api/capability-submissions/reroute', r => {
     writes.push(r.request().postDataJSON());
     return r.fulfill({ json: { saved: true } });
   });
   await page.getByRole('button', { name: 'Send to current manager', exact: true }).click();
-  await expect(page.getByText('Review decision confirmed', { exact: true })).toBeVisible();
+  await expect(page.getByText('Approval decision confirmed', { exact: true })).toBeVisible();
   expect(writes[0].revision).toBe(5);
   expect(writes[0].skills).toHaveLength(3);
   expect(writes[0]).not.toHaveProperty('managerId');

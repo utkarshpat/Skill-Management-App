@@ -85,7 +85,7 @@ test('certification context is actor-bound, paginated, separates expiry and revi
   );
 });
 
-test('personal certification readers cannot discover assigned review tools', async () => {
+test('personal certification readers cannot discover assigned approval tools', async () => {
   const access = await LocalAccessStore.open(),
     state = access.snapshot(),
     actor = state.people[0];

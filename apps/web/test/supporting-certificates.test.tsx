@@ -79,7 +79,7 @@ test('supporting certificates preserve independent reviewed and expired states a
       today="2026-10-12"
     />,
   );
-  assert.match(html, /Manager reviewed/);
+  assert.match(html, /Approved/);
   assert.match(html, /Expired/);
   assert.match(html, /Cloud Developer/);
   assert.match(html, /<button/);

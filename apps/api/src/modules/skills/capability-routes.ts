@@ -63,16 +63,30 @@ export function registerCapabilityRoutes(
   });
   app.get('/api/capability-submissions', async (req, res, next) => {
     try {
+      const { view, page, search, person } = req.query;
+      const queue = view === 'queue';
       if (
-        Object.keys(req.query).some(k => k !== 'view') ||
-        (req.query.view && !['mine', 'queue'].includes(String(req.query.view)))
+        Object.keys(req.query).some(
+          k => !['view', ...(queue ? ['page', 'search', 'person'] : [])].includes(k),
+        ) ||
+        (view !== undefined && view !== 'mine' && !queue) ||
+        (search !== undefined && (typeof search !== 'string' || search.length > 100)) ||
+        (page !== undefined &&
+          (typeof page !== 'string' ||
+            !/^\d{1,6}$/.test(page) ||
+            Number(page) < 1 ||
+            Number(page) > 100000))
       )
         throw new AccessError(400, 'Invalid submission filters.');
       res.json(
         await deps!.capabilitySubmissions!.run(
           res.locals.capabilityActor,
-          req.query.view === 'queue' ? 'QUEUE' : 'MINE',
-          {},
+          queue ? 'QUEUE' : 'MINE',
+          {
+            ...(page ? { page: Number(page) } : {}),
+            ...(typeof search === 'string' && search.trim() ? { search: search.trim() } : {}),
+            ...(person !== undefined ? { person: certificationId(person) } : {}),
+          },
         ),
       );
     } catch (e) {
@@ -103,6 +117,44 @@ export function registerCapabilityRoutes(
       res.json(await deps!.capabilitySubmissions!.run(res.locals.capabilityActor, 'OPTIONS', {}));
     } catch (e) {
       next(e);
+    }
+  });
+  app.get('/api/capability-submissions/catalogue', async (req, res, next) => {
+    try {
+      const { search = '', page = '1' } = req.query;
+      if (
+        typeof search !== 'string' ||
+        search.length > 100 ||
+        typeof page !== 'string' ||
+        !/^\d{1,3}$/.test(page) ||
+        Number(page) < 1 ||
+        Number(page) > 100
+      )
+        throw new AccessError(400, 'Check the catalogue search and page.');
+      const { credentials, total, pageSize } = await deps!.capabilitySubmissions!.run(
+        res.locals.capabilityActor,
+        'CATALOGUE',
+        { search: search.trim(), page: Number(page) },
+      );
+      res.json({
+        total,
+        pageSize,
+        credentials: (credentials ?? []).map(
+          ({
+            id,
+            name,
+            provider,
+            category,
+          }: {
+            id: string;
+            name: string;
+            provider: string;
+            category: string;
+          }) => ({ id, name, provider, category }),
+        ),
+      });
+    } catch (error) {
+      next(error);
     }
   });
   const draftAction =

@@ -282,7 +282,7 @@ export function registerClaimsRoutes(
   app.get('/api/skill-reviews', async (req, res) => {
     try {
       if (!dependencies?.claims?.reviews)
-        throw new AccessError(503, 'Skill reviews are not configured.');
+        throw new AccessError(503, 'Skill approvals are not configured.');
       // Use the revision checked during admission. Delivery still rechecks access
       // and rejects a result if the revision changed during the queue read.
       const revision = res.locals.claimAccessRevision;
@@ -300,9 +300,9 @@ export function registerClaimsRoutes(
         !canReviewAssigned(state, person) ||
         !can(state, person, 'profile.view', true)
       )
-        throw new AccessError(403, 'Review access changed.');
+        throw new AccessError(403, 'Approval access changed.');
       if (state.revision !== revision)
-        throw new AccessError(409, 'Review assignments changed. Refresh before continuing.');
+        throw new AccessError(409, 'Approval assignments changed. Refresh before continuing.');
       res.json({
         ...data,
         canAskTeamAi: Boolean(
@@ -334,7 +334,7 @@ export function registerClaimsRoutes(
     app.post(path, async (req, res) => {
       try {
         if (!dependencies?.claims?.transition)
-          throw new AccessError(503, 'Skill reviews are not configured.');
+          throw new AccessError(503, 'Skill approvals are not configured.');
         const change = claimTransition(req.body);
         if (path.endsWith('/submit') !== (change.action === 'SUBMIT'))
           throw new AccessError(400, 'Choose a valid action for this page.');
@@ -343,7 +343,7 @@ export function registerClaimsRoutes(
             throw new AccessError(503, 'Current claim access cannot be checked.');
           const access = dependencies.access ?? store,
             before = await access?.snapshot({ includeAudit: false });
-          if (!before) throw new AccessError(403, 'Review access unavailable.');
+          if (!before) throw new AccessError(403, 'Approval access unavailable.');
           const detail = await dependencies.claims.reviewDetail(
             res.locals.claimActor,
             change.id,
@@ -354,7 +354,7 @@ export function registerClaimsRoutes(
               person => person.id === res.locals.claimActor && person.active,
             );
           if (after.revision !== before.revision || detail.claim.revision !== change.revision)
-            throw new AccessError(409, 'Review records changed. Refresh before continuing.');
+            throw new AccessError(409, 'Approval records changed. Refresh before continuing.');
           if (!actor || !effectiveClaimReview(after, actor, detail.claim).allowed)
             throw new AccessError(403, 'This claim is not currently available for your decision.');
         }
@@ -429,20 +429,20 @@ export function registerClaimsRoutes(
         page = claimPage(req.query.page),
         access = dependencies?.access ?? store;
       const before = await access?.snapshot({ includeAudit: false });
-      if (!before) throw new AccessError(403, 'Review access unavailable.');
+      if (!before) throw new AccessError(403, 'Approval access unavailable.');
       const revision = before.revision;
       if (!dependencies?.claims?.reviewDetail)
-        throw new AccessError(503, 'Review history is not configured.');
+        throw new AccessError(503, 'Approval history is not configured.');
       const data = await dependencies.claims.reviewDetail(res.locals.claimActor, id, page),
         after = await access!.snapshot({ includeAudit: false }),
         person = after.people.find(p => p.id === res.locals.claimActor && p.active);
       if (!person || !canReviewAssigned(after, person) || !can(after, person, 'profile.view', true))
-        throw new AccessError(403, 'Review access changed.');
+        throw new AccessError(403, 'Approval access changed.');
       if (after.revision !== revision)
-        throw new AccessError(409, 'Review records changed. Refresh before continuing.');
+        throw new AccessError(409, 'Approval records changed. Refresh before continuing.');
       const reviewAccess = effectiveClaimReview(after, person, data.claim);
       if (!reviewAccess.allowed && reviewAccess.reasonCode !== 'NOT_AWAITING_REVIEW')
-        throw new AccessError(404, 'Assigned review unavailable.');
+        throw new AccessError(404, 'Assigned approval unavailable.');
       res.json({ ...data, reviewAccess });
     } catch (error) {
       if (error instanceof AccessError) {

@@ -6,7 +6,7 @@ Updated 16 November 2026. The company cutover was confirmed committed at revisio
 
 Hosted company sign-in uses a server-side OpenID Connect (OIDC) authorization-code flow with PKCE. The browser is redirected to Entra; the API exchanges the code using the server-only `ENTRA_WEB_CLIENT_SECRET`, validates the ID-token signature/JWKS, issuer, web-client audience, nonce, expiry, tenant and UUID object ID, then requires the verified `preferred_username` to end in `@soprasteria.com`. The application identity is `(tenant ID, object ID)`; the email-domain check is an admission restriction, not the identity key. No Microsoft Graph call or Graph `User.Read` permission is used by this sign-in flow. SAML is not configured.
 
-The server issues an opaque `__Host-skill-session` cookie with `Secure`, `HttpOnly`, `SameSite=Strict` and host-only scope. It is bounded by the ID token expiry and one hour, whichever comes first; the in-memory session is invalidated by process restart and is not shared across instances. Mutating cookie-authenticated requests require the configured exact Origin. Current authorization and active employee mapping are still checked by the existing backend/SQL policy. A valid Microsoft sign-in alone does not provision a profile, link by email, activate an employee or grant workspace access.
+The server issues an opaque `__Host-skill-session` cookie with `Secure`, `HttpOnly`, `SameSite=Strict` and host-only scope. A verified OIDC login starts a fixed eight-hour app session. The ID token must be valid at sign-in. Hosted OIDC state and application sessions use shared SQL storage after migration 113. They remain available across app instances and process restarts until expiry or sign-out. Mutating cookie-authenticated requests require the configured exact Origin. Current authorization and active employee mapping are still checked by the existing backend/SQL policy. A valid Microsoft sign-in alone does not provision a profile, link by email, activate an employee or grant workspace access.
 
 At the bare app URL, the page first attempts silent OIDC sign-in with `prompt=none` and a remembered, verified `login_hint`. The hint only helps Entra find an account; it is not proof or authorization. If Entra has no usable SSO session or requires interaction, the app shows its Microsoft sign-in action. Entra/Conditional Access can still require an account choice or other interaction. Explicit sign-out ends the app session and redirects to Entra's OIDC logout endpoint; because that also ends the relevant Entra browser session, the next visit may require interactive sign-in rather than silent SSO.
 
@@ -66,10 +66,11 @@ ends the relevant Entra browser session, so the next silent attempt can fail and
 interactive sign-in action. This does not promise sign-out from every Microsoft app or
 browser profile.
 
-Sessions live in the serving Node process and expire at the earlier of the ID token expiry
-and one hour. Restarting the process invalidates them. Multiple instances need session
-affinity or a shared session store for seamless operation. The backend OIDC flow requests
-`openid profile`; it makes no Graph call and requires no Graph `User.Read` permission.
+Hosted OIDC sessions expire eight hours after issuance. The legacy bearer-to-cookie exchange caps its session at the earlier of the bearer token expiry and eight hours. The backend OIDC flow requests `openid profile`. It makes no Graph call and requires no Graph `User.Read` permission. Deploy migration 113 before the matching app. From that deployment onwards, hosted sessions survive an App Service restart. The first deployment requires one fresh Microsoft sign-in because earlier sessions were stored in the process.
+
+If an open workspace loses its session, sign in in the new tab and select **Resume workspace** in the original tab. The original tab pauses access and retains mounted form state while verifying the same work account and refreshing permissions. A different account starts a fresh workspace.
+
+Company browser tabs identify the account whose workspace they loaded. If the Microsoft account changes in another tab, the server rejects requests from the stale workspace before reading or changing records. The original tab pauses and requires a fresh account check before continuing.
 
 ### Web callback and scaling boundary
 
@@ -81,7 +82,4 @@ issues the application cookie. The API client ID setting remains required by the
 configuration contract, although this login flow does not request the API's `access_as_user`
 scope. Employee profile resolution still requires an existing Entra binding.
 
-The OIDC login state and sessions are process-local. Keep login and callback on the same
-instance when scaling out, or move both stores to shared storage. A restart invalidates
-existing sessions. No SAML assertion consumer service, SAML SLO or front-channel logout
-handler is part of the current implementation.
+Hosted login state is consumed once in shared SQL. Session cookies remain opaque, and SQL stores hashes of the opaque identifiers. Development fixtures and the legacy bearer-only mode retain process-local storage.

@@ -108,13 +108,25 @@ test('sandbox bridge rejects forged sources, channels and answer keys and uses c
 });
 
 test('sandbox accepts app-owned image bytes while rejecting external image URLs', async () => {
-  mock.method(globalThis, 'fetch', async (input: any) => {
-    if (String(input) === '/api/dev-login') return demoResponse();
-    return new window.Response(new Uint8Array([137, 80, 78, 71]), {
-      headers: { 'Content-Type': 'image/png' },
-    }) as unknown as Response;
+  const imageRequests: string[] = [];
+  mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
+    const path = String(input);
+    if (path === '/api/dev-login') return demoResponse();
+    imageRequests.push(path);
+    return Object.assign(new Response(null, { headers: { 'Content-Type': 'image/png' } }), {
+      blob: async () => new window.Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' }),
+    });
   });
   const original = globalThis.FileReader;
+  mock.method(
+    window.FileReader.prototype,
+    'readAsDataURL',
+    function (this: FileReader, blob: Blob) {
+      assert.equal(blob.type, 'image/png');
+      Object.defineProperty(this, 'result', { value: 'data:image/png;base64,iVBORw==' });
+      this.onload?.call(this, new window.ProgressEvent('load') as ProgressEvent<FileReader>);
+    },
+  );
   Object.assign(globalThis, { FileReader: window.FileReader });
   try {
     await refreshDevelopmentLogin();
@@ -151,14 +163,6 @@ test('sandbox accepts app-owned image bytes while rejecting external image URLs'
     );
     await settle();
     assert.equal(rendered.at(-1).image, 'data:image/png;base64,iVBORw==');
-    const fetchedImage = new window.Blob([new Uint8Array([137, 80, 78, 71])], {
-      type: 'image/png',
-    });
-    const authenticatedFetch = await import('../src/auth.js');
-    mock.method(authenticatedFetch, 'authenticatedFetch', async () => ({
-      ok: true,
-      blob: async () => fetchedImage,
-    }));
     await view.update(
       <AnnouncementSandbox
         definition={definition}
@@ -168,10 +172,8 @@ test('sandbox accepts app-owned image bytes while rejecting external image URLs'
     );
     await settle();
     await settle();
-    await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 30));
-    });
     assert.match(rendered.at(-1).image, /^data:image\/png;base64,/);
+    assert.deepEqual(imageRequests, ['/api/announcements/unit-image/image']);
   } finally {
     Object.assign(globalThis, { FileReader: original });
   }

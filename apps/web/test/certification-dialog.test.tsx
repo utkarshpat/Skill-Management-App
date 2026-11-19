@@ -183,7 +183,7 @@ test('submission is disabled without current review routing; saved fields remain
   await mount({ canSubmit: false });
   await click('Next');
   const submit = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(b =>
-    b.textContent?.includes('Submit for review'),
+    b.textContent?.includes('Submit for approval'),
   );
   assert.ok(submit?.disabled);
   await click('Back');
@@ -195,12 +195,12 @@ test('uncertain credential submission blocks duplicate writes until exact commit
   await mount();
   saveError = Object.assign(Error('Response lost after submission'), { status: 503 });
   await click('Next');
-  await click('Submit for review');
+  await click('Submit for approval');
   assert.equal(saved.length, 1);
   assert.match(document.body.textContent!, /Check the saved draft before retrying/);
   assert.ok(
     Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(b =>
-      b.textContent?.includes('Submit for review'),
+      b.textContent?.includes('Submit for approval'),
     )?.disabled,
   );
   recovered = { ...record, revision: 3, status: 'SUBMITTED', canEdit: false };
@@ -218,7 +218,7 @@ test('revoked certificate retrieval never permits review or saving and a retry c
   await click('Retry loading saved file');
   await settle();
   await click('Next');
-  await click('Submit for review');
+  await click('Submit for approval');
   assert.equal(saved.length, 1);
   assert.equal(saved[0][3], true);
   assert.equal(closed, 1);
@@ -293,7 +293,7 @@ test('expiry presets, lifetime choice and edited credential details persist only
   );
   assert.equal(document.querySelector<HTMLInputElement>('#cert-expiry-date')!.value, '2026-07-31');
   const lifetime = [...document.querySelectorAll('label')]
-    .find(l => l.textContent?.includes('Does not expire'))!
+    .find(l => l.textContent?.includes('Lifetime valid'))!
     .querySelector<HTMLInputElement>('input')!;
   await act(async () => lifetime.click());
   assert.match(document.body.textContent!, /Lifetime credential/);

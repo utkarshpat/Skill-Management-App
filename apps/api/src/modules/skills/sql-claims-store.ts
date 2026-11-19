@@ -289,7 +289,7 @@ export class SqlClaimsStore implements ClaimsStore {
       const result = await this.workbench(actorId, 1, reviewQuery({ status: 'ALL' }), id, page);
       const sets = result.recordsets as unknown as sql.IRecordSet<Record<string, unknown>>[];
       const raw = sets[1][0] as unknown as Omit<SkillClaim, 'updatedAt'> & { updatedAt: Date };
-      if (!raw) throw new AccessError(404, 'Assigned review unavailable.');
+      if (!raw) throw new AccessError(404, 'Assigned approval unavailable.');
       return {
         claim: {
           ...raw,
@@ -360,7 +360,7 @@ function claimError(error: unknown) {
   if (number === 51011)
     return new AccessError(
       409,
-      'An active reporting manager with review permission must be assigned before submission. Ask your access administrator.',
+      'An active reporting manager with approval permission must be assigned before submission. Ask your access administrator.',
     );
   if (number === 2601 || number === 2627)
     return new AccessError(409, 'A draft for this skill already exists. Reload and edit it.');

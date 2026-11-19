@@ -1,8 +1,11 @@
+import { isPhaseTwoPage, phaseTwoVisible } from './release-features';
+
 export interface AssistantPage {
   label: string;
   url: string;
 }
 export function canonicalAssistantDestination(input: string): string | undefined {
+  if (!phaseTwoVisible && isPhaseTwoPage(input.split('?')[0])) return undefined;
   if (input === '/') return '/profile';
   if (input === '/access') return '/access?view=overview';
   if (

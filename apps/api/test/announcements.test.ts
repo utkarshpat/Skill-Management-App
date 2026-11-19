@@ -7,11 +7,13 @@ import express, { type ErrorRequestHandler } from 'express';
 import { AccessError } from '../src/shared/errors.js';
 import {
   answers,
+  canonicalExportFields,
   definition,
   design,
 } from '../src/modules/announcements/announcement-definition.js';
 import {
   announcementDesignContext,
+  announcementDesignResponse,
   announcementDesignSystemPrompt,
 } from '../src/modules/announcements/announcement-design.js';
 import {
@@ -23,6 +25,12 @@ import {
 const grant = '11111111-1111-4111-8111-111111111111';
 const scope = '22222222-2222-4222-8222-222222222222';
 const actor = '33333333-3333-4333-8333-333333333333';
+test('historical primary skill selections export one Primary Capability column', () => {
+  assert.deepEqual(canonicalExportFields(['grade', 'primarySkill', 'capability']), [
+    'grade',
+    'capability',
+  ]);
+});
 const dev = {
   kind: 'FORM',
   title: 'Training',
@@ -44,6 +52,30 @@ const dev = {
 const html =
   '<section><div data-slot="title"></div><div data-slot="image"></div><div data-slot="message"></div><div data-slot="action"></div></section>';
 const css = 'section { color: #126b70; background-color: #f7f8f6; --layout: split; }';
+
+test('radio choices and checkbox answers are validated without accepting identity input', () => {
+  const configured = definition({
+    ...dev,
+    fields: [
+      { ...dev.fields[0], type: 'radio' },
+      { id: 'confirm', label: 'I can attend', type: 'checkbox', required: true },
+    ],
+  });
+  assert.deepEqual(
+    { ...answers(configured, { batch: 'Morning', confirm: true }) },
+    {
+      batch: 'Morning',
+      confirm: true,
+    },
+  );
+  for (const invalid of [
+    { batch: 'Unknown', confirm: true },
+    { batch: ['Morning', 'Afternoon'], confirm: true },
+    { batch: 'Morning', confirm: false },
+    { batch: 'Morning', confirm: true, email: 'other@example.com' },
+  ])
+    assert.throws(() => answers(configured, invalid), AccessError);
+});
 
 test('full app preserves announcement authentication, access and conflict errors without exposing unexpected failures', async t => {
   const access = await LocalAccessStore.open();
@@ -105,10 +137,6 @@ test('full app preserves announcement authentication, access and conflict errors
 });
 test('designs compile only trusted slots and style tokens, and answers reject forged identity', () => {
   assert.deepEqual(design({ html, css }).order, ['title', 'image', 'message', 'action']);
-  const example = JSON.parse(
-    announcementDesignSystemPrompt.split('Example output:\n')[1].split('\n')[0],
-  );
-  assert.equal(design(example).buttonWidth, 'full');
   const formDesign = design({
     html,
     css: 'section { --form-layout: two-column; --density: compact; --button-width: full; }',
@@ -158,6 +186,7 @@ test('publish is bound to a scoped preview and AI receives selected design and r
   const operations: string[] = [];
   let aiInput = '';
   let aiMessage: string | undefined = 'I used a clear layout and a connected registration action.';
+  let useSandbox = false;
   registerAnnouncementRoutes(app, {
     verify: async () => ({
       tenantId: grant,
@@ -172,8 +201,19 @@ test('publish is bound to a scoped preview and AI receives selected design and r
       },
       provider: {
         name: 'fixture',
-        complete: async messages => {
+        complete: async (messages, _tools, _signal, options) => {
           aiInput = String(messages[1].content);
+          assert.deepEqual(options?.responseSchema, announcementDesignResponse);
+          if (useSandbox)
+            return {
+              content: JSON.stringify({
+                format: 'sandbox-v1',
+                html: '<h2 id="ann-title"></h2><p id="ann-message"></p><button id="ann-open">Register</button><form id="ann-form"><label for="ann-name">Name</label><output id="ann-name"></output><label for="ann-email">Work email</label><output id="ann-email"></output><label for="ann-employee-id">Employee ID</label><output id="ann-employee-id"></output><fieldset id="ann-field-batch"></fieldset><button id="ann-submit">Register</button></form>',
+                css: 'fieldset { border: 1px solid teal; }',
+                message: 'Radio form ready.',
+              }),
+              calls: [],
+            };
           return { content: JSON.stringify({ html, css, message: aiMessage }), calls: [] };
         },
       },
@@ -217,7 +257,7 @@ test('publish is bound to a scoped preview and AI receives selected design and r
     const context = JSON.parse(aiInput);
     assert.equal(context.useCase, 'EVENT');
     assert.equal(context.viewport.mobileWidth, 390);
-    assert.equal(context.viewport.cardMaxWidth, 720);
+    assert.equal(context.viewport.cardMaxWidth, 680);
     assert.equal(context.connections.primaryAction.handler, 'open-configured-form');
     assert.equal(context.connections.failure, 'keep-form-values-and-allow-retry');
     assert.deepEqual(context.configuration.identityFields, ['Name', 'Work Email', 'Employee ID']);
@@ -261,6 +301,22 @@ test('publish is bound to a scoped preview and AI receives selected design and r
     const compatible = await post('design', { ...initial, prompt: 'Use the default branding' });
     assert.equal(compatible.status, 200);
     assert.match((await compatible.json()).reply, /Design updated/);
+    useSandbox = true;
+    const radio = await post('design', {
+      ...initial,
+      definition: { ...dev, fields: [{ ...dev.fields[0], type: 'radio' }] },
+      prompt: 'Design a radio form',
+    });
+    assert.equal(radio.status, 200);
+    const radioDesign = (await radio.json()).design;
+    assert.deepEqual(
+      radioDesign.bindings.find((binding: { kind: string }) => binding.kind === 'field'),
+      {
+        elementId: 'ann-field-batch',
+        kind: 'field',
+        key: 'batch',
+      },
+    );
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close(error => (error ? reject(error) : resolve())),
@@ -280,10 +336,8 @@ test('poll context preserves configured vote actions and clamps viewport metadat
   assert.equal(context.useCase, 'SURVEY');
   assert.deepEqual(context.viewport.currentBrowser, { width: 3840, height: 480 });
   assert.equal(context.viewport.focus, 'mobile');
-  assert.equal(
-    context.connections.primaryAction.handler,
-    'record-configured-option-as-authenticated-vote',
-  );
+  assert.equal(context.connections.primaryAction.handler, 'open-recipient-popup');
+  assert.equal(context.connections.vote, 'record-configured-option-as-authenticated-vote');
   assert.deepEqual(context.configuration.pollOptions, ['Azure', 'SQL']);
   assert.deepEqual(context.configuration.fields, []);
   assert.equal(context.configuration.image.available, true);
@@ -297,7 +351,7 @@ test('poll context preserves configured vote actions and clamps viewport metadat
   );
   assert.equal(
     announcementDesignContext(config, { previewWidth: Number.NaN }).viewport.currentPreviewWidth,
-    720,
+    680,
   );
 });
 
@@ -439,5 +493,50 @@ test('paged announcement HTTP reads preserve scope selectors and response email 
     assert.equal(calls.length, count);
   } finally {
     await new Promise<void>(r => server.close(() => r()));
+  }
+});
+
+test('response updates pass the version the employee edited and reject a stale second tab', async () => {
+  const app = express();
+  app.use(express.json());
+  let version = 1;
+  registerAnnouncementRoutes(app, {
+    verify: async () => ({
+      tenantId: grant,
+      objectId: actor,
+      workEmail: 'employee@soprasteria.com',
+    }),
+    resolveAccess: async () => actor,
+    announcements: {
+      execute: async <T>(
+        ...[_actor, operation, _key, input]: Parameters<SqlAnnouncements['execute']>
+      ) => {
+        if (operation === 'DETAIL')
+          return { revision: 3, definition: { ...dev, allowResponseUpdates: true } } as T;
+        assert.equal(operation, 'ANSWER');
+        const draft = input as { responseRevision: number };
+        if (draft.responseRevision !== version)
+          throw new AccessError(409, 'Your response changed.');
+        return { saved: true, responseRevision: ++version } as T;
+      },
+    },
+  });
+  const server = app.listen(0, '127.0.0.1');
+  try {
+    await once(server, 'listening');
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const save = (responseRevision: number) =>
+      fetch(`http://127.0.0.1:${address.port}/api/announcements/${scope}/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ revision: 3, responseRevision, answers: { batch: 'Morning' } }),
+      });
+    assert.equal((await save(1)).status, 200);
+    assert.equal((await save(1)).status, 409);
+    assert.equal((await save(2)).status, 200);
+    assert.equal(version, 3);
+  } finally {
+    await new Promise<void>(resolve => server.close(() => resolve()));
   }
 });

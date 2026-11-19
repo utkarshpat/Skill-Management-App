@@ -32,7 +32,7 @@ const person: Props['person'] = {
       permission: 'reports.view',
       scope: 'ORGANIZATION',
       effect: 'ALLOW',
-      reason: 'Historical unsupported grant retained for review',
+      reason: 'Historical unsupported grant retained for approval',
     },
   ],
 };
@@ -222,11 +222,11 @@ test('additional templates are explicitly previewed; unsupported historical assi
     false,
   );
   await change(select, 'people');
-  await click('Review assignment');
+  await click('Preview assignment');
   assert.deepEqual(previews[0].roleIds, ['support', 'people']);
   assert.deepEqual(previews[0].overrides, person.overrides);
   assert.deepEqual(person.roleIds, ['support']);
-  await click('Review removal');
+  await click('Preview removal');
   assert.deepEqual(previews[1].roleIds, []);
   assert.deepEqual(previews[1].overrides, person.overrides);
 });
@@ -276,7 +276,7 @@ test('permission exceptions require current supported scope, reason and future e
       permission: 'reports.view',
       scope: 'ORGANIZATION',
       effect: 'ALLOW',
-      reason: 'Historical unsupported grant retained for review',
+      reason: 'Historical unsupported grant retained for approval',
     },
   ]);
 });
@@ -289,7 +289,7 @@ test('preview failures and repeated clicks cannot silently save or duplicate a p
     'people',
   );
   previewError = true;
-  await click('Review assignment');
+  await click('Preview assignment');
   assert.match(document.body.textContent!, /Configuration changed/);
   await click('Reload current configuration');
   assert.equal(reloaded, 1);
@@ -303,8 +303,8 @@ test('preview failures and repeated clicks cannot silently save or duplicate a p
     document.querySelector<HTMLSelectElement>('[aria-label="Additional access template"]')!,
     'people',
   );
-  await click('Review assignment');
-  await click('Review assignment');
+  await click('Preview assignment');
+  await click('Preview assignment');
   assert.equal(previews.length, 2);
   wait.resolve();
   await settle();
@@ -322,7 +322,7 @@ test('read-only and identity-mismatched access profiles never expose person edit
   await click('Additional templates');
   assert.doesNotMatch(
     document.querySelector('.form-dialog')!.textContent!,
-    /Review assignment|Review removal/,
+    /Preview assignment|Preview removal/,
   );
   await advanced();
   await click('Permission exceptions');

@@ -38,7 +38,12 @@ export function Announcements({ page = false }: { page?: boolean }) {
   const [loadedLink, setLoadedLink] = useState<string>();
   const handledLink = useRef('');
   const [feed, setFeed] = useState<Feed>();
-  const [dialog, setDialog] = useState<{ item: string; form: boolean; editing?: boolean }>();
+  const [dialog, setDialog] = useState<{
+    item: string;
+    form: boolean;
+    editing?: boolean;
+    responseRevision?: number;
+  }>();
   const [view, setView] = useState<'announcements' | 'responses'>('announcements');
   const [feedError, setFeedError] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -49,8 +54,14 @@ export function Announcements({ page = false }: { page?: boolean }) {
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [confirmation, setConfirmation] = useState('');
   const [responseError, setResponseError] = useState(false);
   const responseLock = useRef(false);
+  useEffect(() => {
+    if (!confirmation || dialog) return;
+    notify(confirmation, 'success');
+    setConfirmation('');
+  }, [confirmation, dialog]);
   useEffect(() => {
     let request: AbortController | undefined;
     const refresh = () => {
@@ -199,11 +210,13 @@ export function Announcements({ page = false }: { page?: boolean }) {
     setFeedback('');
     setResponseError(false);
     try {
-      await readApiResponse(
+      const responseRevision =
+        dialog?.item === entry.id && dialog.editing ? (dialog.responseRevision ?? 0) : 0;
+      const result = await readApiResponse<{ responseRevision?: number }>(
         await authenticatedFetch(endpoint + '/' + entry.id + '/respond', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ revision: entry.revision, answers }),
+          body: JSON.stringify({ revision: entry.revision, responseRevision, answers }),
         }),
         'Response could not be saved.',
       );
@@ -212,24 +225,36 @@ export function Announcements({ page = false }: { page?: boolean }) {
           current && {
             ...current,
             items: current.items.map(item =>
-              item.id === entry.id ? { ...item, answered: true, savedAnswers: answers } : item,
+              item.id === entry.id
+                ? {
+                    ...item,
+                    answered: true,
+                    responseRevision: result.responseRevision ?? responseRevision + 1,
+                    savedAnswers: answers,
+                  }
+                : item,
             ),
           },
       );
       dismiss(entry);
-      notify(
+      setConfirmation(
         entry.answered
           ? 'Response updated.'
           : entry.definition.kind === 'POLL'
             ? 'Vote recorded.'
             : 'Response submitted.',
-        'success',
       );
       window.dispatchEvent(new Event(notificationEvent));
       window.dispatchEvent(new Event('notifications-updated'));
     } catch (error) {
       setResponseError(true);
       setFeedback((error as Error).message);
+      if ((error as { status?: number }).status === 409) {
+        setDialog(current =>
+          current?.item === entry.id ? { item: entry.id, form: false } : current,
+        );
+        setAttempt(attempt => attempt + 1);
+      }
     } finally {
       responseLock.current = false;
       setBusy(false);
@@ -464,7 +489,15 @@ export function Announcements({ page = false }: { page?: boolean }) {
                     <button
                       type="button"
                       className="admin-primary"
-                      onClick={() => setDialog({ item: open.id, form: true, editing: true })}
+                      disabled={feedLoading}
+                      onClick={() =>
+                        setDialog({
+                          item: open.id,
+                          form: true,
+                          editing: true,
+                          responseRevision: open.responseRevision,
+                        })
+                      }
                     >
                       Edit response
                     </button>

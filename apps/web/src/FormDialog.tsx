@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { ToastHost } from './ToastHost';
 import { notify } from './toast';
+import { lockPageScroll } from './page-scroll-lock';
 
 export interface FormPage {
   label: string;
@@ -63,10 +64,9 @@ export function FormDialog({
   useEffect(() => {
     const element = dialog.current;
     if (!element) return;
-    const previous = document.activeElement as HTMLElement | null,
-      overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const previous = document.activeElement as HTMLElement | null;
     element.showModal();
+    const unlockScroll = lockPageScroll();
     const input = Array.from(element.querySelectorAll<HTMLElement>('input,select,textarea')).find(
       field => !field.closest('[hidden]') && !field.hasAttribute('disabled') && field.tabIndex >= 0,
     );
@@ -77,8 +77,8 @@ export function FormDialog({
       input?.focus();
     return () => {
       element.close();
-      document.body.style.overflow = overflow;
-      if (previous?.isConnected) previous.focus();
+      unlockScroll();
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
   }, []);
   function trapFocus(event: React.KeyboardEvent<HTMLDialogElement>) {

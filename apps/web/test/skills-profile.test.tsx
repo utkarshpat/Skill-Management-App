@@ -42,8 +42,8 @@ function render(canClaim = true) {
 test('skill profile totals and overview account for every status without claiming verified capability', () => {
   const html = render();
   assert.match(html, /Total skills: 5/);
-  assert.match(html, /Manager reviewed: 1/);
-  assert.match(html, /Pending review: 1/);
+  assert.match(html, /Approved: 1/);
+  assert.match(html, /Pending approval: 1/);
   assert.match(html, /Self-assessed: 1/);
   assert.match(html, /2 Needs attention/);
   assert.doesNotMatch(html, />Verified</);
@@ -58,7 +58,7 @@ test('skill profile exposes editing only for editable statuses and suppresses mu
   const readOnly = render(false);
   assert.doesNotMatch(
     readOnly,
-    /Edit Skill \d draft|Submit Skill \d for review|Reroute Skill \d for review/,
+    /Edit Skill \d draft|Submit Skill \d for approval|Reroute Skill \d for approval/,
   );
   assert.match(readOnly, /View Skill 0 claim/);
 });

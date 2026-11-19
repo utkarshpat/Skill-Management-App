@@ -19,7 +19,7 @@ test('review filters reject routing, drafts, repeated selectors and malformed id
   assert.throws(() => reviewIdentifier('foreign'));
   assert.equal(reviewIdentifier(randomUUID()).length, 36);
 });
-test('review history binds actor, rejects forged selectors and discards revoked or changed scope responses', async () => {
+test('approval history binds actor, rejects forged selectors and discards revoked or changed scope responses', async () => {
   const access = await LocalAccessStore.open(),
     state = access.snapshot(),
     person = state.people[0];

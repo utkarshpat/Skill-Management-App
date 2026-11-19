@@ -1,3 +1,4 @@
+import { displayProficiencyName } from '../proficiency';
 import type { SkillChoice } from '../SkillClaimWizard';
 import type { CertificationFields } from '../certifications/types';
 export interface CertificateSkillSuggestion {
@@ -101,7 +102,7 @@ export function submissionLevelName(skill: {
   rank: number;
   levels?: { rank: number; name: string }[];
 }) {
-  return skill.levels?.find(level => level.rank === skill.rank)?.name ?? '';
+  return displayProficiencyName(skill.rank, skill.levels?.find(level => level.rank === skill.rank)?.name ?? '');
 }
 
 export function submissionReviewState(status: string, needsReview: boolean, canDecide: boolean) {
@@ -109,8 +110,8 @@ export function submissionReviewState(status: string, needsReview: boolean, canD
   return (
     (
       {
-        APPROVED: 'Manager reviewed',
-        SUBMITTED: 'Awaiting review',
+        APPROVED: 'Approved',
+        SUBMITTED: 'Pending approval',
         CHANGES_REQUESTED: 'Changes requested',
         REJECTED: 'Not approved',
         DRAFT: 'Draft',
@@ -127,7 +128,7 @@ export function submissionReviewSummary(
   const pendingCount = status === 'SUBMITTED' ? items.filter(item => item.needsReview).length : 0;
   const label =
     status === 'REVIEWED'
-      ? 'Review completed'
+      ? 'Decision recorded'
       : status === 'LINKED'
         ? 'Links saved'
         : status === 'DRAFT'

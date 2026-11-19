@@ -6,6 +6,7 @@ test('Vercel entrypoint exports the configured app and public routing retains AP
   process.env.VERCEL = '1';
   process.env.NODE_ENV = 'production';
   process.env.DEV_DIRECT_LOGIN = 'false';
+  process.env.PHASE_TWO_ENABLED = 'false';
   const { default: app } = await import('../app.js');
   assert.equal(typeof app, 'function');
   const server = app.listen(0, '127.0.0.1');
@@ -17,9 +18,10 @@ test('Vercel entrypoint exports the configured app and public routing retains AP
     const health = await fetch(origin + '/api/health');
     assert.equal(health.status, 200);
     assert.equal((await health.json()).service, 'capability-api');
-    for (const path of ['/api/profile', '/api/my-skills', '/api/assistant', '/api/learning']) {
+    for (const path of ['/api/profile', '/api/my-skills', '/api/assistant']) {
       assert.equal((await fetch(origin + path)).status, 401);
     }
+    assert.equal((await fetch(origin + '/api/learning')).status, 404);
     assert.equal((await fetch(origin + '/api/dev-login')).status, 404);
   } finally {
     await new Promise<void>((resolve, reject) =>

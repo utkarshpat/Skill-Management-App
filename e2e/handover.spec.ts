@@ -106,12 +106,12 @@ test('handover: failed guide reply restores question; retry cites source; new ch
     })
     .click();
   const question = page.getByRole('textbox', { name: 'Ask the project guide' });
-  await question.fill('How does manager skill review work?');
+  await question.fill('How does manager skill approval work?');
   await page.getByRole('button', { name: 'Send project question' }).click();
   await expect(
     page.getByRole('complementary', { name: 'Project AI guide' }).getByRole('alert'),
   ).toContainText('Project guide temporarily unavailable');
-  await expect(question).toHaveValue('How does manager skill review work?');
+  await expect(question).toHaveValue('How does manager skill approval work?');
   failure = false;
   await page.getByRole('button', { name: 'Send project question' }).click();
   await expect(page.getByRole('log')).toContainText(

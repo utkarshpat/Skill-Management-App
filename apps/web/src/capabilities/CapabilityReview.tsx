@@ -119,9 +119,9 @@ export function CapabilityReview({
             })),
           }),
         }),
-        'Review was not confirmed. Reload before retrying.',
+        'Decision was not confirmed. Reload before retrying.',
       );
-      toast.success('Individual decisions saved for this review request.');
+      toast.success('Individual decisions saved for this approval request.');
       onSaved();
     } catch (e) {
       setError((e as Error).message);
@@ -170,7 +170,7 @@ export function CapabilityReview({
 
   return (
     <FormDialog
-      title={readOnly ? 'Skills & supporting certificates' : 'Review skill request'}
+      title={readOnly ? 'Skills & supporting certificates' : 'Skill approval request'}
       subtitle={
         employeeName
           ? `Submitted by ${employeeName}${submissionLabel ? ` · ${submissionLabel}` : ''}`
@@ -203,8 +203,8 @@ export function CapabilityReview({
               onClick={() => void save()}
             >
               {pendingCount > 0
-                ? `Save review decisions (${pendingCount})`
-                : 'Save review decisions'}
+                ? `Save approval decisions (${pendingCount})`
+                : 'Save approval decisions'}
             </button>
           )}
         </>
@@ -509,7 +509,7 @@ export function CapabilityReview({
               {canDecide && !row.needsReview && (
                 <footer className="cap-review-verified-footer">
                   <ShieldCheck size={15} aria-hidden="true" />
-                  <span>Previously manager reviewed · No review required</span>
+                  <span>Previously approved</span>
                 </footer>
               )}
             </article>

@@ -18,9 +18,10 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
   if (capabilities.ownSkills) pages.push({ label: 'My certifications', url: '/certifications' });
   if (capabilities.requests) pages.push({ label: 'Requests', url: '/requests' });
   if (capabilities.learning) pages.push({ label: 'Learn & Grow', url: '/learning' });
-  if (capabilities.reviewSkills) pages.push({ label: 'Skill reviews', url: '/skill-reviews' });
+  if (capabilities.reviewSkills || capabilities.issuerApprovals)
+    pages.push({ label: 'Approvals', url: '/skill-reviews' });
   if (capabilities.reviewSkills)
-    pages.push({ label: 'Certification reviews', url: '/skill-reviews?type=certifications' });
+    pages.push({ label: 'Certification approvals', url: '/skill-reviews?type=certifications' });
   if (capabilities.catalogue) pages.push({ label: 'Skill catalogue', url: '/skills' });
   if (capabilities.catalogue && (capabilities.amendments || capabilities.approveAmendments))
     pages.push({ label: 'Catalogue amendments', url: '/skills?tab=amendments' });
@@ -51,8 +52,8 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
       action: 'View certification validity and manage credential drafts',
       url: '/certifications',
       steps: [
-        'Open Skills and expand a skill’s supporting certificates, or use the renewal summary. Review status and calendar validity are separate: manager-reviewed credentials can be expired.',
-        'With skill.claim, Add certification uses a mandatory private certificate file (PDF, JPEG/PNG/WebP, DOCX or text; maximum 5 MB), credential details and dates, then Review & save. Images are compressed. Save draft and Submit for review are explicit human actions.',
+        'Open Skills and expand a skill’s supporting certificates, or use the renewal summary. Approval status and calendar validity are separate: manager-approved credentials can be expired.',
+        'With skill.claim, Add certification uses a mandatory private certificate file (PDF, JPEG/PNG/WebP, DOCX or text; maximum 5 MB), credential details and dates, then Preview & save. Images are compressed. Save draft and Submit for approval are explicit human actions.',
         'View certificate and Download certificate open saved attachments. Approved credentials remain locked; Renew starts a separate editable renewal for the same credential and issuer with extended validity.',
         'Expiry reminders use milestones 14, 10, 7, 5, 3 and 0 days and are evaluated when notifications are read. Background scheduled delivery and email are not implemented.',
       ],
@@ -64,9 +65,13 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
       steps: ['Open My profile.', 'Review your profile and assigned workspace information.'],
     });
   const canDraftRequest =
-      can(state, person, 'request.create', true) && can(state, person, 'request.view', true),
+      capabilities.requests &&
+      can(state, person, 'request.create', true) &&
+      can(state, person, 'request.view', true),
     canDraftIncident =
-      can(state, person, 'incident.create', true) && can(state, person, 'incident.view', true);
+      capabilities.requests &&
+      can(state, person, 'incident.create', true) &&
+      can(state, person, 'incident.view', true);
   if (capabilities.requests)
     guidance.push({
       action: 'Read requests, incidents, replies and recipient options',
@@ -81,9 +86,9 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
       action: 'Draft and submit a request or report an incident',
       url: '/requests',
       steps: [
-        'AI can prepare a request_draft or incident_draft. Review request draft opens the existing popup in place; do not ask the user to copy/paste.',
+        'AI can prepare a request_draft or incident_draft. Preview request draft opens the existing popup in place; do not ask the user to copy/paste.',
         'Choose the category, review the subject and description, search a recipient by name and select their card. Do not invent who is an administrator or promise automatic routing.',
-        'Review & send shows the final details. Only explicit Submit persists the record and notifies its recipient.',
+        'Preview & send shows the final details. Only explicit Submit persists the record and notifies its recipient.',
       ],
     });
   if (capabilities.ownSkills)
@@ -92,7 +97,7 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
       url: '/my-skills',
       steps: [
         'Open My skills.',
-        'Review your claim status and manager feedback. Drafts are unverified; approved entries are manager-reviewed claims.',
+        'Review your claim status and manager feedback. Drafts are unverified; approved entries are approved claims.',
       ],
     });
   if (capabilities.claimSkills)
@@ -102,8 +107,8 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
       steps: [
         'Open My skills and choose Add skill, or edit an existing draft.',
         'Choose a published skill and its proficiency level.',
-        'Describe your experience, project contributions and evidence references; an AI draft can prefill the description for your review.',
-        'Review and Save draft, then choose Submit for review and confirm. Your current reporting manager must have review permission. Saving alone does not submit or verify the skill.',
+        'Describe your experience, project contributions and supporting references. An AI draft can prefill the description for you to check.',
+        'Check your details and choose Save draft, then select Submit for approval and confirm. Your current reporting manager must have approval permission. Saving alone does not submit or verify the skill.',
       ],
     });
   if (capabilities.reviewSkills)
@@ -111,10 +116,10 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
       action: 'Review assigned skill submissions',
       url: '/skill-reviews',
       steps: [
-        'Open Skill reviews to see pending submissions assigned to you from current direct reports.',
+        'Open Approvals to see pending submissions assigned to you from current direct reports.',
         'Review proficiency criteria, experience, projects and evidence.',
         'Choose Approve, Request changes or Reject, enter feedback, and confirm the decision.',
-        'You cannot review your own claim or a claim outside your assignment. Learning quizzes do not verify a claim.',
+        'You cannot decide your own claim or a claim outside your assignment. Learning quizzes do not verify a claim.',
       ],
     });
   if (capabilities.learning)
@@ -143,8 +148,8 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
       action: 'Recommend learning to a current direct report',
       url: '/learning',
       steps: [
-        'Open Learn & Grow → Recommendations → Sent → Recommend a skill. Skill reviews also has a Recommendations tab.',
-        'Search current eligible direct reports, select a published skill and level, explain the reason and optionally include an HTTPS resource or target date. Review & send notifies the employee.',
+        'Open Learn & Grow → Recommendations → Sent → Recommend a skill. Skill approvals also has a Recommendations tab.',
+        'Search current eligible direct reports, select a published skill and level, explain the reason and optionally include an HTTPS resource or target date. Preview & send notifies the employee.',
         'Only the employee may accept and create their own reviewed plan. AI may help draft a reason or learning tasks; it cannot send, accept, verify or change another person’s learning plan.',
       ],
     });
@@ -189,7 +194,7 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
           steps: [
             'Open Role assignments.',
             'Select the person and role checkboxes.',
-            'Review changes and Save assignments.',
+            'Preview changes and Save assignments.',
             'Use People to amend individual permission overrides.',
           ],
         },
@@ -229,11 +234,12 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
     personalWorkflowScope: capabilities.requests
       ? 'Personal workflow access includes records you submitted AND records currently addressed to you; OWN is not creator-only. Start and Resolve remain current-recipient-only, with the matching permission and workflow state. Reassign is available to the requester or current recipient with assign permission; cancel is requester-only. For a specific record use its current can* flags.'
       : undefined,
-    canManageLearning: can(state, person, 'learning.manage', true),
+    canManageLearning: capabilities.learning && can(state, person, 'learning.manage', true),
     canManagePeople: capabilities.administration && can(state, person, 'users.manage'),
     canManagePermissions: capabilities.administration,
-    learningPractice:
-      'Personal plans, calendar and completion logs are available with learning permissions. Task-linked AI practice quizzes save attempts and explanations in learning. They do not verify skills or complete tasks; chat-only quizzes remain unsaved previews.',
+    learningPractice: capabilities.learning
+      ? 'Personal plans, calendar and completion logs are available with learning permissions. Task-linked AI practice quizzes save attempts and explanations in learning. They do not verify skills or complete tasks; chat-only quizzes remain unsaved previews.'
+      : undefined,
     pendingWorkflows: workspace.upcoming
       .filter(item => !item.implemented)
       .map(item => ({ label: item.label, implemented: false })),
@@ -247,5 +253,8 @@ export function capabilityGreeting(context: ReturnType<typeof assistantCapabilit
     items.push('- Draft your own skill description for review and saving in My skills');
   if (context.canManageLearning)
     items.push('- Draft learning tasks or create a practice quiz (choose 1–20 questions)');
-  return `Hello! Based on your current access, I can help you with:\n\n${items.join('\n')}\n\nI can guide you through permitted pages and prepare drafts. Changes must be reviewed and saved in the app; learning plans are saved in Learn & Grow. Task-linked practice attempts are stored in History; quizzes shown only in chat remain previews.`;
+  const learning = context.learningPractice
+    ? ' Learning plans are saved in Learn & Grow. Task-linked practice attempts are stored in History.'
+    : '';
+  return `Hello, I’m Skill Genie. Based on your current access, I can help you with:\n\n${items.join('\n')}\n\nI can guide you through permitted pages and prepare drafts. Changes must be reviewed and saved in the app.${learning}`;
 }

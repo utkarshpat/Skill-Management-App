@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { useState } from 'react';
 import {
   CheckCircle2,
@@ -68,7 +69,7 @@ export function SkillClaimDialog({
       if (!r.ok) throw Error(data?.error?.message ?? 'Could not save. Refresh and try again.');
       onSaved(mode === 'submit' ? 'submitted' : 'reviewed');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not save the review.');
+      setError(reason instanceof Error ? reason.message : 'Could not save the decision.');
     } finally {
       setBusy(false);
     }
@@ -76,7 +77,7 @@ export function SkillClaimDialog({
   return (
     <FormDialog
       title={
-        review ? 'Review skill claim' : mode === 'submit' ? 'Submit for review' : claim.skillName
+        review ? 'Open claim approval' : mode === 'submit' ? 'Submit for approval' : claim.skillName
       }
       subtitle={claim.personName ? `${claim.personName} · ${claim.skillName}` : claim.category}
       className="claim-review-dialog"
@@ -101,7 +102,7 @@ export function SkillClaimDialog({
               {busy
                 ? 'Saving…'
                 : mode === 'submit'
-                  ? 'Submit for review'
+                  ? 'Submit for approval'
                   : decision === 'APPROVE'
                     ? 'Confirm verification'
                     : decision === 'REJECT'
@@ -117,7 +118,7 @@ export function SkillClaimDialog({
           {!review && (
             <div className="claim-status-banner">
               <div className="claim-status-banner-left">
-                <span className="claim-status-label">Review status:</span>
+                <span className="claim-status-label">Approval status:</span>
                 <span className={`cap-status-pill ${claim.status.toLowerCase()}`}>
                   {claim.status === 'APPROVED' ? (
                     <ShieldCheck size={12} aria-hidden="true" />
@@ -129,7 +130,7 @@ export function SkillClaimDialog({
                     <AlertCircle size={12} aria-hidden="true" />
                   )}
                   {claim.status === 'SUBMITTED'
-                    ? 'Awaiting review'
+                    ? 'Pending approval'
                     : claim.status.replaceAll('_', ' ')}
                 </span>
               </div>
@@ -156,7 +157,7 @@ export function SkillClaimDialog({
                   ))}
                 </div>
               </div>
-              <span className="claim-fact-level-name">{claim.levelName}</span>
+              <span className="claim-fact-level-name">{displayProficiencyName(claim.rank, claim.levelName)}</span>
               {claim.levelDescription && (
                 <p className="claim-fact-desc">{claim.levelDescription}</p>
               )}
@@ -200,7 +201,7 @@ export function SkillClaimDialog({
           </section>
           {history && (
             <details className="claim-detail">
-              <summary>Review history</summary>
+              <summary>Approval history</summary>
               <ReviewHistory id={claim.id} />
             </details>
           )}
@@ -258,7 +259,7 @@ export function SkillClaimDialog({
                 *
               </span>
               <textarea
-                aria-label="Review feedback"
+                aria-label="Approval feedback"
                 rows={4}
                 maxLength={2000}
                 disabled={working || !allowed}
@@ -281,12 +282,12 @@ export function SkillClaimDialog({
               </details>
             )}
             <p className="claim-decision-note">
-              Verification records reviewed proficiency. Learning completion stays separate.
+              Verification records approved proficiency. Learning completion stays separate.
             </p>
           </aside>
         ) : mode === 'submit' ? (
           <section className="claim-content-block">
-            <h3>Ready for manager review</h3>
+            <h3>Ready for approval</h3>
             <strong>{claim.status.replaceAll('_', ' ')}</strong>
             <p>
               Your current reporting manager receives this claim. Submitted claims remain locked

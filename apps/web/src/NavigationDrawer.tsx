@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { lockPageScroll } from './page-scroll-lock';
 
 export function NavigationDrawer({
   onClose,
@@ -23,10 +24,9 @@ export function NavigationDrawer({
   useEffect(() => {
     const element = dialog.current;
     if (!element) return;
-    const previous = document.activeElement as HTMLElement | null,
-      overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const previous = document.activeElement as HTMLElement | null;
     element.showModal();
+    const unlockScroll = lockPageScroll();
     const media = matchMedia('(max-width:650px)'),
       resized = () => {
         if (!media.matches) onClose();
@@ -36,8 +36,8 @@ export function NavigationDrawer({
       clearTimeout(timer.current);
       media.removeEventListener('change', resized);
       element.close();
-      document.body.style.overflow = overflow;
-      if (previous?.isConnected) previous.focus();
+      unlockScroll();
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
   }, []);
   return createPortal(

@@ -23,6 +23,8 @@ interface Administration {
     active: boolean;
     validUntil: string | null;
     reason: string;
+    allIssuers?: boolean;
+    issuerIds?: string[];
   }[];
   people: {
     id: string;
@@ -33,6 +35,7 @@ interface Administration {
     hasDirectReports?: boolean;
     managerAccess?: boolean;
     analyticsAccess?: boolean;
+    issuerAnalyticsAccess?: boolean;
     adminAccess?: boolean;
   }[];
   nodes: {
@@ -44,8 +47,26 @@ interface Administration {
     scopeValid?: boolean;
   }[];
   historicalGrantsForReview: unknown[];
+  capabilityLead?: LeadConfiguration;
+  capabilityLeadError?: string;
+  issuers?: { id: string; name: string }[];
 }
 export type ScopedAccessTemplate = 'BUSINESS_OPERATIONS' | 'SYSTEM_ADMIN';
+
+interface LeadConfiguration {
+  revision: number;
+  issuers: { id: string; name: string }[];
+  assignments: {
+    id: string;
+    personId: string;
+    scopeKind: string;
+    scopeId: string;
+    effect: string;
+    active: boolean;
+    allIssuers: boolean;
+    issuerIds: string[];
+  }[];
+}
 
 export function BusinessAdministration({
   onSaved,
@@ -68,6 +89,8 @@ export function BusinessAdministration({
     [name, setName] = useState(''),
     [department, setDepartment] = useState(''),
     [bundle, setBundle] = useState<string>(initialTemplate ?? 'BUSINESS_OPERATIONS'),
+    [allIssuers, setAllIssuers] = useState(true),
+    [issuerIds, setIssuerIds] = useState<string[]>([]),
     [scopeKind, setScopeKind] = useState(
       initialTemplate === 'SYSTEM_ADMIN' ? 'ORGANIZATION' : initialTemplate ? '' : 'DEPARTMENT',
     ),
@@ -94,6 +117,8 @@ export function BusinessAdministration({
     setPreview(undefined);
   };
   useEffect(() => () => previewRequest.current?.abort(), []);
+  const leadConfig = state?.capabilityLead;
+  const leadLoadError = state?.capabilityLeadError;
   useEffect(() => {
     const abort = new AbortController();
     setLoadError('');
@@ -138,6 +163,8 @@ export function BusinessAdministration({
     setId(r.id);
     setPerson(r.personId);
     setBundle(r.bundle);
+    setAllIssuers(r.allIssuers ?? !r.issuerIds?.length);
+    setIssuerIds(r.issuerIds ?? []);
     setScopeKind(r.kind);
     setScope(r.scopeId ?? '');
     setEffect(r.effect);
@@ -168,6 +195,8 @@ export function BusinessAdministration({
     setUntil('');
     setScope('');
     setBundle('BUSINESS_OPERATIONS');
+    setAllIssuers(true);
+    setIssuerIds([]);
     setScopeKind('DEPARTMENT');
   };
   const payload = () =>
@@ -184,30 +213,52 @@ export function BusinessAdministration({
               effect,
               active,
               validUntil: until ? new Date(until).toISOString() : null,
+              ...(bundle === 'BUSINESS_OPERATIONS' && state?.issuers
+                ? { issuerIds: allIssuers ? [] : issuerIds }
+                : {}),
               reason,
             }
           : { enabled, reason };
   async function prepare() {
     if (guard.current || !state) return;
+    const isLead = kind === 'RESPONSIBILITY' && bundle === 'CAPABILITY_LEAD';
+    if (
+      (isLead && !leadConfig) ||
+      (kind === 'RESPONSIBILITY' && bundle !== 'SYSTEM_ADMIN' && !allIssuers && !issuerIds.length)
+    ) {
+      setError('Select at least one issuer or choose all issuers.');
+      return;
+    }
     guard.current = true;
     setBusy(true);
     setError('');
     const abort = new AbortController();
     previewRequest.current = abort;
     try {
-      const change = {
-        revision: state.revision,
-        kind,
-        id: id || crypto.randomUUID(),
-        payload: payload(),
-      };
+      const change = isLead
+        ? {
+            revision: leadConfig!.revision,
+            id: id || crypto.randomUUID(),
+            personId: person,
+            scopeKind,
+            scopeId: scope,
+            effect,
+            active,
+            reason,
+            allIssuers,
+            issuerIds: allIssuers ? [] : issuerIds,
+          }
+        : { revision: state.revision, kind, id: id || crypto.randomUUID(), payload: payload() };
       const prepared = await readApiResponse<NonNullable<typeof preview>>(
-        await authenticatedFetch('/api/business/administration/preview', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(change),
-          signal: abort.signal,
-        }),
+        await authenticatedFetch(
+          isLead ? '/api/capability-leads/preview' : '/api/business/administration/preview',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(change),
+            signal: abort.signal,
+          },
+        ),
         'Preview could not be prepared.',
       );
       if (!abort.signal.aborted) setPreview(prepared);
@@ -230,11 +281,21 @@ export function BusinessAdministration({
     setError('');
     try {
       await readApiResponse(
-        await authenticatedFetch('/api/business/administration', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...preview.change, previewReceipt: preview.receipt }),
-        }),
+        await authenticatedFetch(
+          'issuerIds' in preview.change
+            ? '/api/capability-leads/save'
+            : '/api/business/administration',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...preview.change,
+              ...('issuerIds' in preview.change
+                ? { receipt: preview.receipt }
+                : { previewReceipt: preview.receipt }),
+            }),
+          },
+        ),
         'Change could not be saved.',
       );
       setPreview(undefined);
@@ -344,12 +405,12 @@ export function BusinessAdministration({
                     ],
                     [
                       'Manager',
-                      'Reviews, team insights and recommendations for current direct reports. Reporting and review checks apply.',
+                      'Approvals, team insights and recommendations for current direct reports. Reporting and approval checks apply.',
                       'bo-profile-card-manager',
                     ],
                     [
                       'Business Analytics',
-                      'Analytics, exports, demand and matching within an explicitly assigned scope.',
+                      'Analytics and approvals within the assigned organization scope and issuer access.',
                       'bo-profile-card-analytics',
                     ],
                     [
@@ -367,6 +428,18 @@ export function BusinessAdministration({
                   ))}
                 </div>
               </details>
+              {leadLoadError && (
+                <p role="alert">
+                  {leadLoadError}{' '}
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setAttempt(n => n + 1)}
+                  >
+                    Retry
+                  </button>
+                </p>
+              )}
               {!selectedPersonId && (
                 <div className="bo-access-toolbar">
                   <div className="bo-search-group">
@@ -450,13 +523,26 @@ export function BusinessAdministration({
                                   : p.adminAccess
                                     ? p.analyticsAccess
                                       ? 'Admin + Business Analytics'
-                                      : 'Admin · analytics blocked'
+                                      : p.issuerAnalyticsAccess
+                                        ? 'Admin + issuer analytics'
+                                        : 'Admin · analytics blocked'
                                     : p.analyticsAccess
                                       ? 'Business Analytics'
-                                      : 'No business access'}
+                                      : p.issuerAnalyticsAccess
+                                        ? 'Business Analytics · issuer scoped'
+                                        : 'No business access'}
                               </span>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                {state.responsibilities
+                                {[
+                                  ...state.responsibilities,
+                                  ...(leadConfig?.assignments ?? []).map(grant => ({
+                                    ...grant,
+                                    bundle: 'CAPABILITY_LEAD',
+                                    kind: grant.scopeKind,
+                                    validUntil: null,
+                                    reason: '',
+                                  })),
+                                ]
                                   .filter(r => r.personId === p.id)
                                   .map(r => (
                                     <div key={r.id}>
@@ -485,6 +571,32 @@ export function BusinessAdministration({
                                             (r.kind === 'ORGANIZATION'
                                               ? 'Organization'
                                               : 'Unavailable scope')}
+                                          {r.bundle === 'CAPABILITY_LEAD' &&
+                                            (r.allIssuers
+                                              ? ' · All issuers'
+                                              : ' · ' +
+                                                r.issuerIds
+                                                  ?.map(
+                                                    issuerId =>
+                                                      leadConfig?.issuers.find(
+                                                        issuer => issuer.id === issuerId,
+                                                      )?.name ?? 'Unavailable issuer',
+                                                  )
+                                                  .join(', '))}
+                                          {r.bundle === 'BUSINESS_OPERATIONS' &&
+                                            (r.issuerIds?.length
+                                              ? ' · ' +
+                                                r.issuerIds
+                                                  .map(
+                                                    id =>
+                                                      state.issuers?.find(
+                                                        issuer =>
+                                                          issuer.id.toLowerCase() ===
+                                                          id.toLowerCase(),
+                                                      )?.name ?? 'Unavailable issuer',
+                                                  )
+                                                  .join(', ')
+                                              : ' · All issuers')}
                                         </span>
                                         <span
                                           className={
@@ -685,9 +797,12 @@ export function BusinessAdministration({
                   <label>
                     Responsibility
                     <select
-                      value={bundle}
+                      value={bundle === 'CAPABILITY_LEAD' ? 'BUSINESS_OPERATIONS' : bundle}
+                      disabled={Boolean(id) && bundle === 'CAPABILITY_LEAD'}
                       onChange={e => {
                         setBundle(e.target.value);
+                        setAllIssuers(true);
+                        setIssuerIds([]);
                         setScopeKind(e.target.value === 'SYSTEM_ADMIN' ? 'ORGANIZATION' : '');
                         setScope('');
                       }}
@@ -710,15 +825,16 @@ export function BusinessAdministration({
                       <option value="" disabled>
                         Choose scope
                       </option>
-                      {['ORGANIZATION', 'DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT', 'PROJECT'].map(
-                        k => (
-                          <option key={k} value={k}>
-                            {k === 'ORGANIZATION'
-                              ? 'Organization (entire company workspace)'
-                              : organizationKindLabel(k)}
-                          </option>
-                        ),
-                      )}
+                      {(bundle === 'CAPABILITY_LEAD'
+                        ? ['DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT', 'PROJECT']
+                        : ['ORGANIZATION', 'DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT', 'PROJECT']
+                      ).map(k => (
+                        <option key={k} value={k}>
+                          {k === 'ORGANIZATION'
+                            ? 'Organization (entire company workspace)'
+                            : organizationKindLabel(k)}
+                        </option>
+                      ))}
                     </select>
                   </label>
                   {scopeKind === 'ORGANIZATION' && (
@@ -726,7 +842,7 @@ export function BusinessAdministration({
                       Organization covers active provisioned employees in this company workspace,
                       across its delivery units, accounts/clients and projects. Matching denies
                       still apply. It does not grant access to other accounts, private files or
-                      unrelated claim reviews.
+                      unrelated claim approvals.
                     </p>
                   )}
                   {scopeKind && scopeKind !== 'ORGANIZATION' && (
@@ -754,6 +870,54 @@ export function BusinessAdministration({
                       </select>
                     </label>
                   )}
+                  {bundle !== 'SYSTEM_ADMIN' && (
+                    <fieldset className="bo-full">
+                      <legend>Issuer access</legend>
+                      <label>
+                        Issuer coverage
+                        <select
+                          value={allIssuers ? 'all' : 'selected'}
+                          disabled={Boolean(id) && bundle !== 'CAPABILITY_LEAD' && !state.issuers}
+                          onChange={e => {
+                            const all = e.target.value === 'all';
+                            setAllIssuers(all);
+                            if (!id && !state.issuers) {
+                              setBundle(all ? 'BUSINESS_OPERATIONS' : 'CAPABILITY_LEAD');
+                              if (!all && scopeKind === 'ORGANIZATION') {
+                                setScopeKind('');
+                                setScope('');
+                              }
+                            }
+                          }}
+                        >
+                          <option value="all">All issuers in this scope</option>
+                          {(leadConfig || state.issuers) && (
+                            <option value="selected">Selected issuers</option>
+                          )}
+                        </select>
+                      </label>
+                      {!allIssuers &&
+                        (bundle === 'CAPABILITY_LEAD' ? leadConfig?.issuers : state.issuers)?.map(
+                          issuer => (
+                            <label className="bo-check" key={issuer.id}>
+                              <input
+                                type="checkbox"
+                                checked={issuerIds.includes(issuer.id)}
+                                onChange={e => {
+                                  const checked = e.target.checked;
+                                  setIssuerIds(current =>
+                                    checked
+                                      ? [...current, issuer.id]
+                                      : current.filter(id => id !== issuer.id),
+                                  );
+                                }}
+                              />
+                              {issuer.name}
+                            </label>
+                          ),
+                        )}
+                    </fieldset>
+                  )}
                   <label>
                     Effect
                     <select value={effect} onChange={e => setEffect(e.target.value)}>
@@ -761,20 +925,23 @@ export function BusinessAdministration({
                       <option value="DENY">Deny in this scope</option>
                     </select>
                   </label>
-                  <label>
-                    Expires {effect === 'DENY' && <span className="bo-required">*</span>}
-                    <input
-                      type="datetime-local"
-                      required={effect === 'DENY' && active}
-                      value={until}
-                      onChange={e => setUntil(e.target.value)}
-                    />
-                  </label>
-                  <p className="bo-note">
-                    Admin provides catalogue, audit and people/access administration plus
-                    organization-wide Business Analytics. Claim reviews still follow the assigned
-                    current manager.
-                  </p>
+                  {bundle !== 'CAPABILITY_LEAD' && (
+                    <label>
+                      Expires {effect === 'DENY' && <span className="bo-required">*</span>}
+                      <input
+                        type="datetime-local"
+                        required={effect === 'DENY' && active}
+                        value={until}
+                        onChange={e => setUntil(e.target.value)}
+                      />
+                    </label>
+                  )}
+                  {bundle === 'SYSTEM_ADMIN' && (
+                    <p className="bo-note">
+                      Admin provides catalogue, audit and people/access administration plus
+                      organization-wide analytics.
+                    </p>
+                  )}
                 </>
               )}
               {kind !== 'PERSONAL_BASELINE' ? (
@@ -870,7 +1037,7 @@ export function BusinessAdministration({
       {preview && (
         <FormDialog
           className="bo-access-admin"
-          title="Review configuration change"
+          title="Preview configuration change"
           onClose={() => setPreview(undefined)}
           busy={busy}
           footer={
@@ -895,11 +1062,27 @@ export function BusinessAdministration({
           <div className="bo-amendment-comparison">
             <section>
               <h3>Current access</h3>
-              <AccessChangeSummary value={preview.before} state={state} />
+              {'issuerIds' in preview.change ? (
+                <LeadChangeSummary
+                  value={preview.before}
+                  state={state}
+                  issuers={leadConfig?.issuers}
+                />
+              ) : (
+                <AccessChangeSummary value={preview.before} state={state} />
+              )}
             </section>
             <section>
               <h3>Proposed access</h3>
-              <AccessChangeSummary value={preview.after} state={state} />
+              {'issuerIds' in preview.change ? (
+                <LeadChangeSummary
+                  value={preview.after}
+                  state={state}
+                  issuers={leadConfig?.issuers}
+                />
+              ) : (
+                <AccessChangeSummary value={preview.after} state={state} />
+              )}
             </section>
           </div>
           <h3>Affected actions</h3>
@@ -924,6 +1107,37 @@ export function BusinessAdministration({
   );
 }
 
+function LeadChangeSummary({
+  value,
+  state,
+  issuers,
+}: {
+  value: unknown;
+  state?: Administration;
+  issuers?: LeadConfiguration['issuers'];
+}) {
+  if (!value) return <p>No saved assignment.</p>;
+  const grant = value as LeadConfiguration['assignments'][number];
+  const scope =
+    state?.nodes.find(node => node.id === grant.scopeId)?.name ??
+    state?.projects.find(project => project.id === grant.scopeId)?.name ??
+    'Unavailable scope';
+  return (
+    <p>
+      {state?.people.find(person => person.id === grant.personId)?.name} · Business Analytics ·{' '}
+      {scope}
+      {' · '}
+      {grant.allIssuers
+        ? 'All issuers'
+        : grant.issuerIds
+            .map(id => issuers?.find(issuer => issuer.id === id)?.name ?? 'Unavailable issuer')
+            .join(', ')}
+      {' · '}
+      {grant.active ? (grant.effect === 'ALLOW' ? 'Allow' : 'Deny') : 'Inactive'}
+    </p>
+  );
+}
+
 function AccessChangeSummary({ value, state }: { value: unknown; state?: Administration }) {
   if (!value || typeof value !== 'object') return <p>No existing assignment.</p>;
   const labels: Record<string, string> = {
@@ -945,10 +1159,16 @@ function AccessChangeSummary({ value, state }: { value: unknown; state?: Adminis
     validUntil: 'Expires',
     valid_until: 'Expires',
     reason: 'Reason',
+    issuerIds: 'Issuer coverage',
   };
+  const record = value as Record<string, unknown>;
+  const fields =
+    record.bundle === 'BUSINESS_OPERATIONS'
+      ? { ...record, issuerIds: record.issuerIds ?? [] }
+      : record;
   return (
     <dl className="bo-access-summary">
-      {Object.entries(value)
+      {Object.entries(fields)
         .filter(([key]) => key in labels)
         .map(([key, raw]) => {
           const resolved =
@@ -957,7 +1177,21 @@ function AccessChangeSummary({ value, state }: { value: unknown; state?: Adminis
                 state?.nodes.find(n => n.id.toLowerCase() === raw.toLowerCase())?.name ??
                 state?.projects.find(p => p.id.toLowerCase() === raw.toLowerCase())?.name)
               : undefined;
+          const issuerCoverage =
+            key === 'issuerIds' && Array.isArray(raw)
+              ? raw.length
+                ? raw
+                    .map(
+                      id =>
+                        state?.issuers?.find(
+                          issuer => issuer.id.toLowerCase() === String(id).toLowerCase(),
+                        )?.name ?? 'Unavailable issuer',
+                    )
+                    .join(', ')
+                : 'All issuers'
+              : undefined;
           const text =
+            issuerCoverage ??
             resolved ??
             (raw === 'BUSINESS_OPERATIONS'
               ? 'Business Analytics'

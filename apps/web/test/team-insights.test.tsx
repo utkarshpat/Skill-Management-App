@@ -45,7 +45,7 @@ test('skill profiles derive level buckets, capped averages and coverage from cum
   assert.equal(teamAverageLevel(analytics), 2);
 });
 
-test('chart shows a full gap when a reviewed skill has no holders at the selected threshold', () => {
+test('chart shows a full gap when a approved skill has no holders at the selected threshold', () => {
   const fixture = {
     ...analytics,
     coverage: [{ skillName: 'JavaScript', rank: 1, people: 1, memberIds: ['a'] }],
@@ -62,7 +62,7 @@ test('chart shows a full gap when a reviewed skill has no holders at the selecte
   );
   assert.match(html, /title="0 with coverage, 4 without"/);
   assert.match(html, /JavaScript<\/span>/);
-  assert.doesNotMatch(html, /No reviewed skills at this level yet/);
+  assert.doesNotMatch(html, /No approved skills at this level yet/);
   assert.deepEqual(coverageRows(fixture, 3), [
     { skillName: 'JavaScript', holders: 0, percent: 0, missing: 4 },
   ]);

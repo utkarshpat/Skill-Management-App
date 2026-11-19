@@ -17,7 +17,7 @@ export function escapeJsonForScript(json: string): string {
     .replace(/\u2029/g, '\\u2029');
 }
 
-const LEVEL_NAMES = ['Foundation', 'Autonomous', 'Experienced', 'Expert'];
+const LEVEL_NAMES = ['Beginner', 'Autonomous', 'Experienced', 'Expert'];
 const LEVEL_COLORS = ['#61bdb5', '#098b8c', '#357ac2', '#123c44'];
 const CATEGORY_COLORS = [
   '#008595',
@@ -625,7 +625,7 @@ export function businessReportHtml(
 
   <p class="report-scope">Applied filters: ${escapeHtml(appliedFilters || 'Default filters')}</p>
   <section class="chart-card" style="margin-bottom:24px"><h2>Certification headcount</h2><p class="report-scope">Distinct employees per credential. Counts overlap across credentials. Superseded renewals do not qualify as current records.</p>
-  ${data.coverageComplete ? '<div class="table-wrap"><table><thead><tr><th>Credential</th><th>Issuer</th><th>Current holders</th><th>Reviewed holders</th><th>Expired holders</th></tr></thead><tbody>' + [...(data.credentialCoverage || []), ...(data.uncataloguedCredentials || []).map(c => ({ ...c, name: c.name + ' (uncatalogued or retired)' }))].map(c => '<tr><td>' + escapeHtml(c.name) + '</td><td>' + escapeHtml(c.issuer) + '</td><td>' + c.currentHolders + '</td><td>' + c.reviewedHolders + '</td><td>' + c.expiredHolders + '</td></tr>').join('') + '</tbody></table></div>' : '<p>Full credential reporting is not available in this snapshot.</p>'}</section>
+  ${data.coverageComplete ? '<div class="table-wrap"><table><thead><tr><th>Credential</th><th>Issuer</th><th>Current holders</th><th>Approved holders</th><th>Expired holders</th></tr></thead><tbody>' + [...(data.credentialCoverage || []), ...(data.uncataloguedCredentials || []).map(c => ({ ...c, name: c.name + ' (uncatalogued or retired)' }))].map(c => '<tr><td>' + escapeHtml(c.name) + '</td><td>' + escapeHtml(c.issuer) + '</td><td>' + c.currentHolders + '</td><td>' + c.reviewedHolders + '</td><td>' + c.expiredHolders + '</td></tr>').join('') + '</tbody></table></div>' : '<p>Full credential reporting is not available in this snapshot.</p>'}</section>
   <!-- KPI Strip -->
   <section class="kpi-grid">
     <div class="kpi-card blue">
@@ -641,10 +641,10 @@ export function businessReportHtml(
     <div class="kpi-card green">
       <div class="kpi-label">Verified Skilled</div>
       <div class="kpi-value">${skilled.toLocaleString()}</div>
-      <div class="kpi-subtext">${skilledPct}% with manager-reviewed skills</div>
+      <div class="kpi-subtext">${skilledPct}% with approved skills</div>
     </div>
     <div class="kpi-card amber">
-      <div class="kpi-label">Pending Reviews</div>
+      <div class="kpi-label">Pending approvals</div>
       <div class="kpi-value">${pending.toLocaleString()}</div>
       <div class="kpi-subtext">Awaiting manager verification</div>
     </div>
@@ -679,7 +679,7 @@ export function businessReportHtml(
       </div>
       <div class="chart-legend" id="radarLegend">
         <span><i class="legend-dot" style="background:var(--primary)"></i> Average Level / 4-Level Framework</span>
-        <span><i class="legend-dot" style="background:#61bdb5"></i> L1: Foundation</span>
+        <span><i class="legend-dot" style="background:#61bdb5"></i> L1: Beginner</span>
         <span><i class="legend-dot" style="background:#098b8c"></i> L2: Autonomous</span>
         <span><i class="legend-dot" style="background:#357ac2"></i> L3: Experienced</span>
         <span><i class="legend-dot" style="background:#123c44"></i> L4: Expert</span>
@@ -690,7 +690,7 @@ export function businessReportHtml(
     <div class="chart-card">
       <div class="chart-header">
         <h3>Reported Skills Proficiency Mix</h3>
-        <span>${data.coverageComplete ? 'Full published catalogue' : 'Top reported skills'} · reviewed skill holders by rank</span>
+        <span>${data.coverageComplete ? 'Full published catalogue' : 'Top reported skills'} · approved skill holders by rank</span>
       </div>
       <div class="bar-chart-wrap">
         ${[1, 2, 3, 4]
@@ -820,7 +820,7 @@ export function businessReportHtml(
         <label for="hubLevel">Minimum Proficiency</label>
         <select id="hubLevel" class="filter-select" onchange="applyComplexFilters()">
           <option value="all">All Levels (L1–L4)</option>
-          <option value="1">L1 Foundation &amp; above</option>
+          <option value="1">L1 Beginner &amp; above</option>
           <option value="2">L2 Autonomous &amp; above</option>
           <option value="3">L3 Experienced &amp; above</option>
           <option value="4">L4 Expert only</option>
@@ -841,8 +841,8 @@ export function businessReportHtml(
       <div class="filter-field">
         <label for="hubSort">Sort Records By</label>
         <select id="hubSort" class="filter-select" onchange="applyComplexFilters()">
-          <option value="holders_desc">Reviewed Holders (Highest first)</option>
-          <option value="holders_asc">Reviewed Holders (Lowest first)</option>
+          <option value="holders_desc">Approved holders (Highest first)</option>
+          <option value="holders_asc">Approved holders (Lowest first)</option>
           <option value="name_asc">Skill Name (A to Z)</option>
           <option value="name_desc">Skill Name (Z to A)</option>
           <option value="level_desc">Proficiency Level (L4 to L1)</option>
@@ -882,7 +882,7 @@ export function businessReportHtml(
         <thead>
           <tr>
             <th onclick="toggleSort('name')">Skill Name ⬍</th>
-            <th onclick="toggleSort('level')">Highest Reviewed Level ⬍</th>
+            <th onclick="toggleSort('level')">Highest Approved level ⬍</th>
             <th>4-Level Mix Breakdown (L1 | L2 | L3 | L4)</th>
             <th onclick="toggleSort('average')">Average Level ⬍</th>
             <th onclick="toggleSort('holders')">Total Holders ⬍</th>
@@ -898,7 +898,7 @@ export function businessReportHtml(
 
   <!-- Footer -->
   <footer class="report-footer">
-    <p>Cognitive Intelligence Lab · Workforce Capability &amp; Access Governance Platform</p>
+    <p>Skill Genie · Workforce Capability &amp; Access Governance Platform</p>
     <p style="margin-top:4px;">Confidential · Self-Contained Offline Export · Generated strictly from execution-time authorized database aggregates</p>
   </footer>
 
@@ -1049,7 +1049,7 @@ export function businessReportHtml(
       return;
     }
 
-    const LEVEL_NAMES = ['Foundation', 'Autonomous', 'Experienced', 'Expert'];
+    const LEVEL_NAMES = ['Beginner', 'Autonomous', 'Experienced', 'Expert'];
     tbody.innerHTML = skills.map(s => {
       const sum = s.totalHolders || 1;
       const p1 = Math.round((s.l1 * 100) / sum);
@@ -1061,7 +1061,7 @@ export function businessReportHtml(
           <td><strong>\${escapeText(s.name)}</strong></td>
           <td>
             <span class="rank-badge rank-\${s.maxRank || 1}">
-              \${s.totalHolders ? 'L' + s.maxRank + ' · ' + escapeText(LEVEL_NAMES[s.maxRank - 1]) : 'No reviewed proficiency'}
+              \${s.totalHolders ? 'L' + s.maxRank + ' · ' + escapeText(LEVEL_NAMES[s.maxRank - 1]) : 'No approved proficiency'}
             </span>
           </td>
           <td>
@@ -1147,7 +1147,7 @@ export function businessReportHtml(
 
   function renderSkillRadarSvg(skills) {
     if (skills.length < 3) {
-      return '<p class="report-scope" style="padding:40px;text-align:center;">At least 3 reviewed skills are required to render the spider-web radar chart.</p>';
+      return '<p class="report-scope" style="padding:40px;text-align:center;">At least 3 approved skills are required to render the spider-web radar chart.</p>';
     }
     const count = skills.length;
     const maximum = 4;
@@ -1259,7 +1259,7 @@ function renderRadarSvg(
   totalEmployees: number,
 ): string {
   if (skills.length < 3) {
-    return '<p class="report-scope" style="padding:40px;text-align:center;">At least 3 reviewed skills are needed for the capability radar view.</p>';
+    return '<p class="report-scope" style="padding:40px;text-align:center;">At least 3 approved skills are needed for the capability radar view.</p>';
   }
   const count = skills.length;
   const maximum = 4;
@@ -1341,7 +1341,7 @@ function renderTableRows(
   totalEmployees: number,
 ): string {
   if (!skills.length) {
-    return '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">No reviewed skill coverage records established in this scope.</td></tr>';
+    return '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">No approved skill coverage records established in this scope.</td></tr>';
   }
 
   return skills
@@ -1352,7 +1352,7 @@ function renderTableRows(
         <td><strong>${escapeHtml(s.name)}</strong></td>
         <td>
           <span class="rank-badge rank-${s.maxRank || 1}">
-            ${s.totalHolders ? 'L' + s.maxRank + ' · ' + escapeHtml(LEVEL_NAMES[s.maxRank - 1]) : 'No reviewed proficiency'}
+            ${s.totalHolders ? 'L' + s.maxRank + ' · ' + escapeHtml(LEVEL_NAMES[s.maxRank - 1]) : 'No approved proficiency'}
           </span>
         </td>
         <td>

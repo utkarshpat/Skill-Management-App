@@ -89,7 +89,7 @@ export function catalogueChange(input: unknown) {
   if (!Array.isArray(body.levels) || body.levels.length !== 4)
     throw new AccessError(
       400,
-      'Use exactly four levels: Foundation, Autonomous, Experienced and Expert.',
+      'Use exactly four levels: Beginner, Autonomous, Experienced and Expert.',
     );
   const names = new Set<string>();
   const levels: SkillLevel[] = body.levels.map((item, index) => {
@@ -105,7 +105,7 @@ export function catalogueChange(input: unknown) {
   if (!hasStandardProficiency(levels))
     throw new AccessError(
       400,
-      'Use exactly four levels: Foundation, Autonomous, Experienced and Expert.',
+      'Use exactly four levels: Beginner, Autonomous, Experienced and Expert.',
     );
   const relatedCertificationIds = body.relatedCertificationIds;
   if (

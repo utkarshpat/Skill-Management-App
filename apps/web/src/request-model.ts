@@ -14,7 +14,7 @@ export const requestCategories = [
   {
     code: 'ASSESSMENT',
     label: 'Assessments & reviews',
-    description: 'Assessment or skill review questions',
+    description: 'Assessment or skill approval questions',
   },
   {
     code: 'PROJECT',

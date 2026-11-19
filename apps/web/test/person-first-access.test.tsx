@@ -123,7 +123,7 @@ test('person overview exposes reporting and access; advanced assignments remain 
     select.value = 'template';
     select.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  await click('Review assignment');
+  await click('Preview assignment');
   assert.equal(previews.length, 1);
   assert.deepEqual(previews[0].roleIds, ['template']);
   assert.deepEqual(person.roleIds, []);
@@ -135,7 +135,7 @@ test('person overview exposes reporting and access; advanced assignments remain 
       }}
     />,
   );
-  await click('Review assignment');
+  await click('Preview assignment');
   assert.match(dialog().textContent ?? '', /Preview unavailable; no changes saved/);
   assert.equal(
     dialog().querySelector<HTMLSelectElement>('select.access-select')!.value,

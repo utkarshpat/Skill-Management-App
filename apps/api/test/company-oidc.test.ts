@@ -6,6 +6,7 @@ import express from 'express';
 import { generateKeyPair, SignJWT } from 'jose';
 import { registerCompanyCallback } from '../src/modules/identity/company-oidc.js';
 import { registerCompanySessions } from '../src/modules/identity/company-session.js';
+import { memoryCompanyAuthState } from '../src/modules/identity/company-auth-state.js';
 import { verifyRequestIdentity } from '../src/shared/request-identity.js';
 
 test('backend callback binds PKCE and nonce, consumes state once, and authorizes via opaque cookie', async () => {
@@ -20,7 +21,22 @@ test('backend callback binds PKCE and nonce, consumes state once, and authorizes
   const rejectBearer = async () => {
     throw Error('No bearer in callback mode');
   };
-  const session = registerCompanySessions(app, origin, undefined);
+  const signedInAt = Date.now();
+  const eightHours = 8 * 60 * 60 * 1000;
+  let now = signedInAt;
+  const sharedSessions = memoryCompanyAuthState<
+    import('../src/modules/identity/company-session.js').CompanySession
+  >(() => now);
+  const session = registerCompanySessions(app, origin, undefined, () => now, sharedSessions);
+  const secondWorker = express();
+  registerCompanySessions(secondWorker, origin, undefined, () => now, sharedSessions);
+  secondWorker.get('/api/actor', async (req, res) => {
+    try {
+      res.json(await verifyRequestIdentity(req, rejectBearer));
+    } catch {
+      res.sendStatus(401);
+    }
+  });
   let authorization: URL;
   let exchanges = 0;
   let wrongNonce = false;
@@ -30,7 +46,7 @@ test('backend callback binds PKCE and nonce, consumes state once, and authorizes
     origin,
     { tenantId, webClientId, apiClientId: webClientId },
     'test-secret',
-    session.issue,
+    session.issueFromOidc,
     async (input, init) => {
       assert.equal(
         String(input),
@@ -71,8 +87,11 @@ test('backend callback binds PKCE and nonce, consumes state once, and authorizes
     }
   });
   const server = app.listen(0, '127.0.0.1');
+  const secondServer = secondWorker.listen(0, '127.0.0.1');
   try {
     await once(server, 'listening');
+    const secondAddress = secondServer.address();
+    assert.ok(secondAddress && typeof secondAddress !== 'string');
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
     const get = (path: string, cookie = '') =>
@@ -121,10 +140,11 @@ test('backend callback binds PKCE and nonce, consumes state once, and authorizes
     assert.equal(exchanges, 0);
     const completed = await get(first.callback, first.cookie);
     assert.equal(completed.headers.get('location'), origin + '/requests');
-    const cookie = completed.headers
+    const sessionHeader = completed.headers
       .getSetCookie()
-      .find(value => value.startsWith('__Host-skill-session='))!
-      .split(';')[0];
+      .find(value => value.startsWith('__Host-skill-session='))!;
+    assert.match(sessionHeader, /(?:^|; )Max-Age=28800(?:;|$)/);
+    const cookie = sessionHeader.split(';')[0];
     const hintHeader = completed.headers
       .getSetCookie()
       .find(value => value.startsWith('__Host-skill-login-hint='))!;
@@ -133,23 +153,36 @@ test('backend callback binds PKCE and nonce, consumes state once, and authorizes
     const resumed = await start('?mode=silent', savedHint);
     assert.equal(resumed.authorization.searchParams.get('prompt'), 'none');
     assert.equal(resumed.authorization.searchParams.get('login_hint'), loginHint);
-    assert.deepEqual(await (await get('/api/actor', cookie)).json(), {
+    now = signedInAt + eightHours - 1;
+    const sharedResponse = await fetch('http://127.0.0.1:' + secondAddress.port + '/api/actor', {
+      headers: { Cookie: cookie },
+    });
+    assert.deepEqual(await sharedResponse.json(), {
       tenantId,
       objectId,
       workEmail: username.toLowerCase(),
     });
+    now = signedInAt + eightHours;
+    assert.equal((await get('/api/actor', cookie)).status, 401);
+    now = signedInAt;
+    const nextLogin = await start();
+    const nextSession = await get(nextLogin.callback, nextLogin.cookie);
+    const nextCookie = nextSession.headers
+      .getSetCookie()
+      .find(value => value.startsWith('__Host-skill-session='))!
+      .split(';')[0];
     assert.equal(
       (await get(first.callback, first.cookie)).headers.get('location'),
       '/?signin=failed',
     );
-    assert.equal(exchanges, 1);
+    assert.equal(exchanges, 2);
     const logout = await fetch('http://127.0.0.1:' + address.port + '/api/auth/session', {
       method: 'DELETE',
-      headers: { Origin: origin, Cookie: cookie },
+      headers: { Origin: origin, Cookie: nextCookie },
     });
     assert.equal(logout.status, 200);
     assert.deepEqual(await logout.json(), { logoutHint: loginHint });
-    assert.equal((await get('/api/actor', cookie)).status, 401);
+    assert.equal((await get('/api/actor', nextCookie)).status, 401);
     wrongNonce = true;
     const second = await start('?mode=choose', savedHint);
     assert.equal(second.authorization.searchParams.get('prompt'), 'select_account');
@@ -170,5 +203,6 @@ test('backend callback binds PKCE and nonce, consumes state once, and authorizes
     );
   } finally {
     server.close();
+    secondServer.close();
   }
 });

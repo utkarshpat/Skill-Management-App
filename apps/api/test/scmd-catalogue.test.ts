@@ -27,7 +27,7 @@ test('FDD catalogue has all eleven skill areas, four-level rubrics and real sour
   for (const skill of data.skills)
     assert.deepEqual(
       skill.levels.map((l: any) => l.name),
-      ['Foundation', 'Autonomous', 'Experienced', 'Expert'],
+      ['Beginner', 'Autonomous', 'Experienced', 'Expert'],
     );
   const codes = new Set(data.skills.map((s: any) => s.code));
   assert.equal(codes.size, 11);

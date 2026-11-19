@@ -112,7 +112,7 @@ test('credential portfolio opens read-only issuer details and navigates the auth
   assert.match(document.querySelector('.form-dialog')!.textContent!, /Rohan Mehta/);
   await click('Close');
   assert.equal(document.querySelector('.form-dialog'), null);
-  await click('Assigned reviews');
+  await click('Assigned approvals');
   assert.ok(requests.some(url => url.includes('view=queue')));
   await click('My certifications');
   assert.ok(requests.filter(url => url.includes('view=mine')).length >= 2);
@@ -141,7 +141,7 @@ test('portfolio filters search and reset without inventing empty certifications'
   assert.equal(document.querySelector('[aria-label="View Azure Fundamentals credential"]'), null);
   await click('Clear certification filters');
   await change(
-    document.querySelector('[aria-label="Filter certification review status"]')!,
+    document.querySelector('[aria-label="Filter certification approval status"]')!,
     'REJECTED',
   );
   assert.equal(document.querySelector('tbody tr'), null);
@@ -203,7 +203,7 @@ test('editable credential opens the combined editor from details and the submit 
   let editor = await waitForEditor('Add skill');
   assert.match(editor.textContent!, /Azure Fundamentals/);
   await click('Cancel', editor);
-  await click('Submit Azure Fundamentals for review');
+  await click('Submit Azure Fundamentals for approval');
   editor = await waitForEditor('Add skill');
   assert.match(editor.textContent!, /Azure Fundamentals/);
   await click('Cancel', editor);
@@ -284,7 +284,7 @@ test('credential pagination, status tabs and renewal attention apply independent
   await click('Drafts: 1. Filter certifications');
   assert.equal(rows().length, 1);
   assert.match(rows()[0].textContent!, /Data Engineering Associate/);
-  await click('Reviewed', document.querySelector('.skills-list-tabs')!);
+  await click('Approved', document.querySelector('.skills-list-tabs')!);
   assert.equal(rows().length, 11);
   const renewal = [...document.querySelectorAll('.skills-insight-card')].find(
     card => card.querySelector('h3')?.textContent === 'Renewal attention',

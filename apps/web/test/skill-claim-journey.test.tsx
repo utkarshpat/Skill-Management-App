@@ -125,7 +125,7 @@ test('skill claim browses paged results, validates proficiency and experience, a
       'Maintained customer reporting dashboards and validated data filters.',
     );
     await click('Next');
-    assert.match(document.body.textContent ?? '', /Review your skill information/);
+    assert.match(document.body.textContent ?? '', /Check your skill information/);
     assert.match(document.body.textContent ?? '', /24 months/);
     assert.equal(outcomes.length, 0);
     await click('Edit selection');
@@ -138,7 +138,7 @@ test('skill claim browses paged results, validates proficiency and experience, a
     await click('Next');
     assert.match(document.body.textContent!, /Reporting reconciliation record REF-102/);
     await click('Save draft');
-    await click('Submit for review');
+    await click('Submit for approval');
     assert.deepEqual(
       outcomes.map(v => [
         v.submit,

@@ -1,6 +1,7 @@
 import { Bell, BookOpen, ClipboardCheck, Inbox, Megaphone } from 'lucide-react';
-export function notificationDestination(href: string) {
-  if (!href.startsWith('/') || href.startsWith('//') || /[\\\u0000-\u0020\u007f]/.test(href))
+import { isPhaseTwoPage, phaseTwoVisible } from './release-features';
+export function notificationDestination(href: string | null) {
+  if (!href?.startsWith('/') || href.startsWith('//') || /[\\\u0000-\u0020\u007f]/.test(href))
     return undefined;
   let url: URL;
   try {
@@ -9,6 +10,7 @@ export function notificationDestination(href: string) {
     return undefined;
   }
   if (url.origin !== 'https://workspace.invalid') return undefined;
+  if (!phaseTwoVisible && isPhaseTwoPage(url.pathname)) return undefined;
   const actions: Record<string, { label: string; kind: string; icon: typeof Bell }> = {
     '/announcements': { label: 'Open announcement', kind: 'Announcements', icon: Megaphone },
     '/requests': { label: 'View request', kind: 'Requests', icon: Inbox },
@@ -24,16 +26,16 @@ export function notificationDestination(href: string) {
           ? 'View employee'
           : url.searchParams.get('type') === 'certifications' ||
               url.searchParams.has('certification')
-            ? 'Review certification'
+            ? 'Open certification approval'
             : url.searchParams.has('submission')
-              ? 'Open review request'
-              : 'Review skill claim',
-      kind: 'Skills & reviews',
+              ? 'Open approval request'
+              : 'Open claim approval',
+      kind: 'Skills & approvals',
       icon: ClipboardCheck,
     },
     '/my-skills': {
-      label: url.searchParams.has('submission') ? 'View review outcome' : 'View skill claim',
-      kind: 'Skills & reviews',
+      label: url.searchParams.has('submission') ? 'View approval outcome' : 'View skill claim',
+      kind: 'Skills & approvals',
       icon: ClipboardCheck,
     },
     '/certifications': {
@@ -42,7 +44,7 @@ export function notificationDestination(href: string) {
         : url.searchParams.has('recommendation')
           ? 'Open certification recommendation'
           : 'View certification',
-      kind: 'Skills & reviews',
+      kind: 'Skills & approvals',
       icon: ClipboardCheck,
     },
     '/profile': { label: 'View profile', kind: 'Profile & access', icon: Bell },

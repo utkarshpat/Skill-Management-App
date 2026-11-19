@@ -51,8 +51,8 @@ test('Excel import requires current access and a preview for the exact workbook'
   const origin = 'https://skills.example.test';
   const identity = { tenantId: 'test-tenant', objectId: 'test-object' };
   const session = registerCompanySessions(app, origin, undefined);
-  app.post('/__test/session', (req, res) => {
-    session.issue(req, res, identity, Date.now() + 60000);
+  app.post('/__test/session', async (req, res) => {
+    assert.ok(await session.issueFromOidc(req, res, identity, Date.now() + 60000));
     res.sendStatus(204);
   });
   let canImport = false;

@@ -47,7 +47,7 @@ const walkthroughs = [
   {
     name: 'Learning',
     section: 'learn-grow-workflow',
-    steps: ['Goal & time', 'Skill focus', 'Daily tasks', 'Review plan', 'Study / log / practice'],
+    steps: ['Goal & time', 'Skill focus', 'Daily tasks', 'Preview plan', 'Study / log / practice'],
   },
   {
     name: 'Recommendation',
@@ -66,7 +66,7 @@ const walkthroughs = [
     steps: [
       'Topic + details',
       'Search recipient',
-      'Review & send',
+      'Preview & send',
       'Participant actions',
       'Event + notification',
     ],
@@ -99,7 +99,7 @@ const walkthroughs = [
     steps: [
       'Upload credential',
       'Multimodal AI autofill',
-      'Manager review queue',
+      'Manager approval queue',
       'Calendar expiry tracking',
       'Renewal notification loop',
     ],
@@ -350,8 +350,8 @@ export function KnowledgeTransfer() {
               <em>Own the next step.</em>
             </h1>
             <p>
-              The architecture, decisions and workflows behind Cognitive Intelligence Lab—connected
-              to the code that actually runs.
+              The architecture, decisions and workflows behind Skill Genie—connected to the code
+              that actually runs.
             </p>
             <div className="kt-hero-links">
               <button onClick={() => open('architecture-trust-boundaries')}>
@@ -1041,7 +1041,7 @@ function ProjectGuide({
             <div className="kt-guide-prompts">
               {[
                 'Explain the architecture to a new developer',
-                'How does manager skill review work?',
+                'How does manager skill approval work?',
                 'How is AI context kept small?',
                 'What is still missing for production?',
               ].map(q => (

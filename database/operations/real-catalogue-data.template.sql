@@ -232,7 +232,7 @@ BEGIN TRY
 
  DECLARE @framework uniqueidentifier='00000000-0000-4000-8000-000000000003';
  IF (SELECT COUNT(*) FROM dbo.ProficiencyLevel WITH(HOLDLOCK) WHERE framework_id=@framework)<>4
-  OR EXISTS(SELECT 1 FROM (VALUES(1,N'Foundation'),(2,N'Autonomous'),(3,N'Experienced'),(4,N'Expert')) e(rank,name)
+  OR EXISTS(SELECT 1 FROM (VALUES(1,N'Beginner'),(2,N'Autonomous'),(3,N'Experienced'),(4,N'Expert')) e(rank,name)
    LEFT JOIN dbo.ProficiencyLevel l WITH(HOLDLOCK) ON l.framework_id=@framework AND l.rank=e.rank
    AND l.display_name COLLATE Latin1_General_100_BIN2=e.name COLLATE Latin1_General_100_BIN2
    WHERE l.rank IS NULL OR NULLIF(LTRIM(RTRIM(l.description)),'') IS NULL)

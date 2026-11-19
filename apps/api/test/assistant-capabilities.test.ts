@@ -56,6 +56,57 @@ test('assistant greeting and navigation use effective grants, not editable role 
   assert.equal(assistantCapabilities(state, person).canManagePermissions, false);
 });
 
+test('permissions overview uses fresh effective capabilities even with oversized model context', async () => {
+  const store = await LocalAccessStore.open();
+  const state = store.snapshot();
+  const person = state.people[0];
+  store.snapshot = () => structuredClone(state);
+  person.business = {
+    personalBaseline: false,
+    systemAdmin: false,
+    view: true,
+    export: false,
+    manage: false,
+    amend: false,
+    scopes: Array.from({ length: 150 }, (_, index) => ({
+      id: String(index),
+      bundle: 'BUSINESS_OPERATIONS',
+      kind: 'PROJECT',
+      scopeId: String(index),
+      label: 'Test project ' + index,
+      effect: 'ALLOW',
+      validUntil: null,
+      reason: 'Assigned project scope for the synthetic permissions overview fixture.',
+    })),
+  };
+  const service = new AssistantService(store, undefined, {
+    name: 'fixture',
+    complete: async () => assert.fail('The permissions overview should never call the model.'),
+  });
+  const { suggestions } = await service.navigation(person.id);
+  const prompt = suggestions!.find(suggestion => suggestion.label === 'What can I do?')!.prompt;
+  assert.ok(Buffer.byteLength(JSON.stringify(assistantCapabilities(state, person))) > 32_000);
+
+  const result = await service.chat(person.id, { message: prompt });
+  assert.match(result.reply, /People & Access/);
+  assert.equal(result.usage.modelCalls, 0);
+  assert.ok(result.conversationId);
+
+  person.overrides.push({ permission: 'users.manage', scope: 'ORGANIZATION', effect: 'DENY' });
+  const revised = await service.chat(person.id, {
+    message: 'What can I do?',
+    conversationId: result.conversationId,
+  });
+  assert.doesNotMatch(revised.reply, /People & Access/);
+  assert.equal(revised.usage.modelCalls, 0);
+
+  person.overrides.push({ permission: 'profile.view', scope: 'OWN', effect: 'DENY' });
+  await assert.rejects(
+    service.chat(person.id, { message: prompt }),
+    /Assistant access is not assigned/,
+  );
+});
+
 test('greetings are permission-specific and every model request receives fresh capability context', async () => {
   const store = await LocalAccessStore.open(),
     state = store.snapshot(),

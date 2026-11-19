@@ -45,6 +45,7 @@ type ResultSets = [
       grade: string | null;
       active: boolean;
       hasDirectReports: boolean;
+      issuerApprovals?: boolean;
       businessJson?: string;
       entraObjectId: string | null;
     }
@@ -131,6 +132,7 @@ export class SqlAccessStore implements AccessStore {
         primaryCapabilityStatus: row.primaryCapabilityStatus,
         active: row.active,
         hasDirectReports: Boolean(row.hasDirectReports),
+        ...(row.issuerApprovals === true ? { issuerApprovals: true } : {}),
         ...(row.businessJson ? { business: readSqlJson(row.businessJson) } : {}),
         ...(row.entraObjectId ? { entraObjectId: row.entraObjectId.toLowerCase() } : {}),
         roleIds: (roles.get(row.id) ?? []).map(item => item.roleId.toLowerCase()),

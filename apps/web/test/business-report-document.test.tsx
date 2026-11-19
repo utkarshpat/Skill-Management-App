@@ -29,7 +29,7 @@ test('full catalogue snapshots include zero-holder skills without inventing leve
   const html = businessReportHtml(data, 'Organization');
   assert.match(html, /full published four-level catalogue/);
   assert.match(html, /Unclaimed skill/);
-  assert.match(html, /No reviewed proficiency/);
+  assert.match(html, /No approved proficiency/);
   assert.ok(!html.includes('L0 · Foundation'));
   assert.match(html, /Credential &lt;safe&gt;/);
 });

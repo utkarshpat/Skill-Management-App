@@ -44,7 +44,7 @@ test('capability states target separate full lists and recent preview links to e
 });
 const topSkills: TopReviewedSkill[] = Array.from({ length: 6 }, (_, i) => ({
   id: 'reviewed-' + i,
-  skillName: i === 0 ? 'Azure' : 'Reviewed skill ' + i,
+  skillName: i === 0 ? 'Azure' : 'Approved skill ' + i,
   category: 'Cloud',
   rank: 5 - (i % 4),
   levelName: 'Saved proficiency ' + i,
@@ -56,12 +56,12 @@ test('top skill snapshot renders exact saved levels, accessible radar and own cl
   assert.match(html, /S1: Azure, level 5 of 8/);
   assert.match(html, /L5 \/ 8/);
   assert.match(html, /Saved proficiency 0/);
-  assert.match(html, /Showing 6 of 40 reviewed skills/);
+  assert.match(html, /Showing 6 of 40 approved skills/);
   assert.match(html, /claim=reviewed-5/);
   assert.doesNotMatch(html, /NaN|Infinity|percentage score:|average proficiency/i);
   assert.equal((html.match(/class="skill-radar-ring"/g) ?? []).length, 14);
 });
-test('radar never invents axes for one/two skills or treats missing data as no reviewed skills', () => {
+test('radar never invents axes for one/two skills or treats missing data as no approved skills', () => {
   for (const count of [1, 2]) {
     const html = renderToStaticMarkup(
       <MemoryRouter>
@@ -71,9 +71,9 @@ test('radar never invents axes for one/two skills or treats missing data as no r
     assert.match(html, /unlock the spider-web view/);
     assert.doesNotMatch(html, /<svg/);
   }
-  assert.match(render({ ...data, topSkills: [] }), /No manager-reviewed skills yet/);
+  assert.match(render({ ...data, topSkills: [] }), /No approved skills yet/);
   assert.match(render(data), /snapshot is unavailable/);
-  assert.doesNotMatch(render(data), /No manager-reviewed skills yet/);
+  assert.doesNotMatch(render(data), /No approved skills yet/);
   const historical = render({ ...data, topSkills: topSkills.map(s => ({ ...s, maxRank: null })) });
   assert.match(historical, /no chart scale has been assumed/);
   assert.match(historical, /Scale unavailable/);

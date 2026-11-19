@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import type { Claim } from './MySkills';
 
 // Derived display data only. Rebuild for each fresh claims array; no access decisions are cached.
@@ -17,7 +18,7 @@ export function createSkillProfileIndex(claims: Claim[]) {
     ranks.add(claim.rank);
     return {
       claim,
-      search: [claim.skillName ?? '', claim.category ?? '', claim.levelName ?? ''].map(text =>
+      search: [claim.skillName ?? '', claim.category ?? '', displayProficiencyName(claim.rank, claim.levelName ?? '')].map(text =>
         text.toLocaleLowerCase(),
       ),
     };

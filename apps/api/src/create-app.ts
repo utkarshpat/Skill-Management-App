@@ -1,5 +1,9 @@
 import { registerCompanyCallback } from './modules/identity/company-oidc.js';
-import { registerCompanySessions } from './modules/identity/company-session.js';
+import {
+  registerCompanySessions,
+  type CompanySession,
+} from './modules/identity/company-session.js';
+import { sqlCompanyAuthState } from './modules/identity/company-auth-state.js';
 import {
   registerAnnouncementRoutes,
   type SqlAnnouncements,
@@ -44,6 +48,11 @@ import {
   type ClaimsHttpDependencies,
 } from './modules/skills/claims-routes.js';
 import { registerLearningRoutes, type LearningDependencies } from './modules/learning/index.js';
+import { phaseTwoAvailable } from './shared/release-features.js';
+import {
+  registerCapabilityLeadRoutes,
+  type CapabilityLeadDependencies,
+} from './modules/skills/capability-lead-routes.js';
 import { registerWorkflowRoutes, type WorkflowDependencies } from './modules/workflows/index.js';
 import {
   registerRecommendationRoutes,
@@ -78,6 +87,7 @@ export type AppDependencies = IdentityDependencies &
   WorkflowDependencies &
   RecommendationDependencies &
   CertificationDependencies &
+  CapabilityLeadDependencies &
   CertificationRecommendationDependencies &
   KnowledgeDependencies &
   BusinessDependencies & {
@@ -94,6 +104,7 @@ export function createApp(
     identityConfig?: IdentityConfig;
     companySessionOrigin?: string;
     companyOidcSecret?: string;
+    sharedCompanyAuth?: boolean;
     onRequestTiming?: (metric: {
       requestId: string;
       method: string;
@@ -109,6 +120,7 @@ export function createApp(
   } = {},
 ) {
   const app = express();
+  const phaseTwo = phaseTwoAvailable();
   const store = options.developmentStore;
   const demo = store ? createDevelopmentSessions(store, Date.now, options.hostedDemo) : undefined;
   app.disable('x-powered-by');
@@ -210,6 +222,8 @@ export function createApp(
           app,
           options.companySessionOrigin,
           options.companyOidcSecret ? undefined : dependencies.verify,
+          undefined,
+          options.sharedCompanyAuth ? sqlCompanyAuthState<CompanySession>('SESSION') : undefined,
         )
       : undefined;
   const backendSignIn = Boolean(companySession && options.companyOidcSecret);
@@ -221,10 +235,13 @@ export function createApp(
       options.companySessionOrigin,
       options.identityConfig,
       options.companyOidcSecret,
-      companySession.issue,
+      companySession.issueFromOidc,
+      undefined,
+      undefined,
+      options.sharedCompanyAuth ? sqlCompanyAuthState('OIDC') : undefined,
     );
   }
-  app.get('/api/auth/config', (req, res) => {
+  app.get('/api/auth/config', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const config = options.identityConfig;
     res.json(
@@ -236,7 +253,8 @@ export function createApp(
             webClientId: config.webClientId,
             ...(companySession && {
               cookieSession: true,
-              sessionActive: companySession.active(req),
+              sessionActive: await companySession.active(req),
+              sessionSubject: await companySession.subject(req),
               backendSignIn,
             }),
           }
@@ -339,14 +357,26 @@ export function createApp(
     store,
     demo,
   );
-  registerLearningRoutes(app, dependencies, store, demo);
+  if (phaseTwo) registerLearningRoutes(app, dependencies, store, demo);
   registerCertificationRoutes(app, dependencies, store, demo);
   registerExcelBulkRoutes(app, dependencies);
   registerAnnouncementRoutes(app, dependencies);
   registerCapabilityRoutes(app, dependencies, store, demo);
+  registerCapabilityLeadRoutes(app, dependencies);
   registerCertificationRecommendationRoutes(app, dependencies, store, demo);
-  registerRecommendationRoutes(app, dependencies, store, demo);
-  registerWorkflowRoutes(app, dependencies, store, demo);
+  if (phaseTwo) {
+    registerRecommendationRoutes(app, dependencies, store, demo);
+    registerWorkflowRoutes(app, dependencies, store, demo);
+  } else {
+    app.use(
+      ['/api/learning', '/api/recommendations', '/api/workflows', '/api/assistant/workflow-draft'],
+      (_req, res) => {
+        res
+          .status(404)
+          .json({ error: { message: 'This feature is unavailable in this release.' } });
+      },
+    );
+  }
   registerDashboardRoutes(
     app,
     dependencies
@@ -355,7 +385,18 @@ export function createApp(
     store,
     demo,
   );
-  registerBusinessRoutes(app, dependencies, store, demo);
+  const capabilityLeads = dependencies?.capabilityLeads;
+  registerBusinessRoutes(
+    app,
+    dependencies && capabilityLeads
+      ? {
+          ...dependencies,
+          leadAdministration: (actor, personId) => capabilityLeads.run(actor, 'LIST', { personId }),
+        }
+      : dependencies,
+    store,
+    demo,
+  );
   aiRoutes(app, dependencies, store, demo);
   // Temporary KT feature: no business persistence or changes to core policy.
   registerKnowledgeRoutes(app, dependencies, demo);

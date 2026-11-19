@@ -166,8 +166,8 @@ test('legacy certification queue pages and debounced search retain current revie
     await new Promise(resolve => setTimeout(resolve, 340));
   });
   await settle();
-  await click('Review certification');
-  await fill('Review note', 'Verified supplied issuer details.');
+  await click('Open certification approval');
+  await fill('Decision note', 'Verified supplied issuer details.');
   writeFailure = 409;
   await click('Approve with note');
   assert.match(document.body.textContent!, /Certification assignment changed/);

@@ -16,6 +16,47 @@ async function assistant(page: Page, role: 'employee' | 'admin' = 'employee') {
     }),
   );
 }
+test('company sign-in recovery keeps an unsent draft in the original tab', async ({ page }) => {
+  await assistant(page);
+  let sessionActive = true;
+  await page.route('**/api/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/auth/config')
+      return route.fulfill({
+        json: {
+          enabled: true,
+          tenantId: ids.tenant,
+          apiClientId: ids.api,
+          webClientId: ids.api,
+          cookieSession: true,
+          backendSignIn: true,
+          sessionActive,
+          sessionSubject: 'test-subject',
+        },
+      });
+    if (!sessionActive && path === '/api/workspace')
+      return route.fulfill({ status: 401, json: { error: { message: 'Session expired' } } });
+    return route.fallback({
+      headers: { ...route.request().headers(), authorization: 'Bearer synthetic-e2e-access-token' },
+    });
+  });
+  await page.goto('/profile');
+  await page.getByRole('button', { name: 'Open AI assistant' }).click();
+  const input = page.getByPlaceholder('Ask about this workspace…');
+  await input.fill('Help me check my draft skill');
+  sessionActive = false;
+  await page.evaluate(() => window.dispatchEvent(new Event('workspace-access-updated')));
+  const recovery = page.getByRole('dialog', { name: 'Sign in to resume your work' });
+  await expect(recovery).toBeVisible();
+  await expect(recovery.getByRole('link', { name: 'Sign in with Microsoft' })).toHaveAttribute(
+    'target',
+    '_blank',
+  );
+  sessionActive = true;
+  await recovery.getByRole('button', { name: 'Resume workspace' }).click();
+  await expect(recovery).toBeHidden();
+  await expect(input).toHaveValue('Help me check my draft skill');
+});
 test('assistant mascot loads its artwork and respects reduced motion', async ({
   page,
 }, testInfo) => {
@@ -31,7 +72,7 @@ test('assistant mascot loads its artwork and respects reduced motion', async ({
   await expect(greeting).toHaveCSS('animation-name', 'assistant-type-greeting');
   await expect(launcher.locator('img')).toHaveCount(4);
   const brand = launcher.locator('.assistant-mascot-brand');
-  await expect(brand).toHaveAttribute('src', '/brand/sopra-steria-mark.svg');
+  await expect(brand).toHaveAttribute('src', '/brand/skill-genie-logo.png');
   await expect(brand).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await expect
     .poll(() =>
@@ -73,14 +114,21 @@ test('assistant mascot loads its artwork and respects reduced motion', async ({
   await expect(hand).toHaveCSS('animation-name', 'none');
   await expect(head).toHaveCSS('animation-name', 'none');
   const bodyBounds = await body.boundingBox();
+  const brandBounds = await brand.boundingBox();
   expect(bodyBounds!.y + bodyBounds!.height).toBeCloseTo(viewport.height);
+  expect(brandBounds!.y).toBeGreaterThan(bodyBounds!.y + bodyBounds!.height * 0.7);
+  expect(brandBounds!.y + brandBounds!.height).toBeLessThan(viewport.height);
   await page.screenshot({
     path: testInfo.outputPath('mascot.png'),
     clip,
   });
   await launcher.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('dialog', { name: 'AI assistant' })).toBeVisible();
+  const panel = page.getByRole('dialog', { name: 'AI assistant' });
+  await expect(panel).toBeVisible();
+  await expect(panel.locator('.assistant-message').first()).toContainText(
+    'Hello, I’m Skill Genie. How can I help you?',
+  );
 });
 test('blue mascot stays transparent in both admin themes', async ({ page }, info) => {
   await assistant(page, 'admin');

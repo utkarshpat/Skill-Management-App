@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { CapabilityReview } from './capabilities/CapabilityReview';
 import { readApiResponse } from './api-response';
 import { useEffect, useRef, useState } from 'react';
@@ -26,8 +27,8 @@ interface Assigned {
   canReadHistory?: boolean;
 }
 const labels: Record<string, string> = {
-  APPROVED: 'Manager reviewed',
-  SUBMITTED: 'Awaiting review',
+  APPROVED: 'Approved',
+  SUBMITTED: 'Pending approval',
   CHANGES_REQUESTED: 'Changes requested',
   REJECTED: 'Not approved',
 };
@@ -204,7 +205,7 @@ export function EmployeeCapability({
           </span>
           <span>
             <strong>{person.reviewed}</strong>
-            <small>Manager reviewed</small>
+            <small>Approved</small>
           </span>
           <ArrowRight size={16} />
         </button>
@@ -217,7 +218,7 @@ export function EmployeeCapability({
           </span>
           <span>
             <strong>{person.pending}</strong>
-            <small>Assigned pending reviews</small>
+            <small>Assigned pending approvals</small>
           </span>
           <ArrowRight size={16} />
         </button>
@@ -248,12 +249,12 @@ export function EmployeeCapability({
               }}
             >
               <History size={16} />
-              Review records
+              Approval records
             </button>
           </nav>
           {person.pending > 0 && (
             <button className="admin-primary" onClick={onReviews}>
-              Open pending reviews
+              Open pending approvals
               <ArrowRight size={16} />
             </button>
           )}
@@ -269,7 +270,7 @@ export function EmployeeCapability({
                   <tr>
                     <th>Certification</th>
                     <th>Issuer</th>
-                    <th>Review status</th>
+                    <th>Approval status</th>
                     <th>Issued</th>
                     <th>Expires</th>
                   </tr>
@@ -315,8 +316,8 @@ export function EmployeeCapability({
                 onChange={e => setFilter(e.target.value)}
               >
                 <option value="ALL">All statuses</option>
-                <option value="APPROVED">Manager reviewed</option>
-                <option value="SUBMITTED">Awaiting review</option>
+                <option value="APPROVED">Approved</option>
+                <option value="SUBMITTED">Pending approval</option>
                 {tab === 'history' && (
                   <>
                     <option value="CHANGES_REQUESTED">Changes requested</option>
@@ -352,14 +353,14 @@ export function EmployeeCapability({
             )}
             {loading && (
               <p role="status" className="employee-details-loading">
-                Loading assigned review records…
+                Loading assigned approval records…
               </p>
             )}
             {tab === 'skills' && (
               <div className="employee-view-toolbar">
                 <p>
-                  <strong>{visibleSkills.length}</strong> visible skills · open a review or inspect
-                  evidence below
+                  <strong>{visibleSkills.length}</strong> visible skills · open an approval request
+                  or inspect evidence below
                 </p>
                 <div className="employee-view-switch" aria-label="Skill display">
                   <button
@@ -418,7 +419,7 @@ export function EmployeeCapability({
                                 <td>
                                   <span className="employee-level">L{s.rank}</span>
                                   <span className="review-subtext">
-                                    {s.levelName}
+                                    {displayProficiencyName(s.rank, s.levelName)}
                                     {s.status === 'SUBMITTED' ? ' · Claimed' : ''}
                                   </span>
                                 </td>
@@ -438,7 +439,7 @@ export function EmployeeCapability({
                                       onClick={() => void open(record.id)}
                                     >
                                       {s.status === 'SUBMITTED'
-                                        ? 'Open review'
+                                        ? 'Open approval'
                                         : 'View evidence & history'}
                                       <ArrowRight size={15} />
                                     </button>
@@ -448,7 +449,7 @@ export function EmployeeCapability({
                                         ? 'Loading details…'
                                         : s.status === 'SUBMITTED' && combined.length > 0
                                           ? 'Open combined request below'
-                                          : 'Reviewed summary'}
+                                          : 'Approval summary'}
                                     </span>
                                   )}
                                 </td>
@@ -463,7 +464,7 @@ export function EmployeeCapability({
                               </td>
                               <td>
                                 <span className="employee-level">L{c.rank}</span>
-                                <span className="review-subtext">{c.levelName}</span>
+                                <span className="review-subtext">{displayProficiencyName(c.rank, c.levelName)}</span>
                               </td>
                               <td>
                                 <span className={'review-status ' + c.status.toLowerCase()}>
@@ -479,7 +480,7 @@ export function EmployeeCapability({
                                     onClick={() => void open(c.id)}
                                   >
                                     {c.status === 'SUBMITTED'
-                                      ? 'Open review'
+                                      ? 'Open approval'
                                       : 'View evidence & history'}
                                     <ArrowRight size={15} />
                                   </button>
@@ -499,13 +500,13 @@ export function EmployeeCapability({
                     {search || filter !== 'ALL'
                       ? 'No matching skills'
                       : tab === 'history'
-                        ? 'No assigned review records'
-                        : 'No reviewed or assigned pending skills yet'}
+                        ? 'No assigned approval records'
+                        : 'No approved or assigned pending skills yet'}
                   </h3>
                   <p>
                     {search || filter !== 'ALL'
                       ? 'Try another skill, category or status.'
-                      : 'Submitted claims assigned to you will appear here for review.'}
+                      : 'Submitted claims assigned to you will appear here for approval.'}
                   </p>
                 </div>
               )
@@ -522,7 +523,7 @@ export function EmployeeCapability({
                   disabled={loading || page * pageSize >= total}
                   onClick={() => setPage(n => n + 1)}
                 >
-                  Load more review records
+                  Load more approval records
                 </button>
               )}
             </footer>
@@ -532,7 +533,7 @@ export function EmployeeCapability({
       {combinedError && <p role="alert">{combinedError}</p>}
       {combined.length > 0 && (
         <section className="profile-panel">
-          <h3>Skills and supporting certificates awaiting review</h3>
+          <h3>Skills and supporting certificates pending approval</h3>
           {combined.map(r => (
             <article className="combined-review-item" key={r.id}>
               <div>
@@ -564,7 +565,7 @@ export function EmployeeCapability({
       <p className="employee-access-note">
         <ShieldCheck size={16} />
         Evidence and history are available for claims assigned to you. Private drafts stay with the
-        employee. Review eligibility is checked again when you open a claim.
+        employee. Approval eligibility is checked again when you open a claim.
       </p>
       {claim && (
         <SkillClaimDialog

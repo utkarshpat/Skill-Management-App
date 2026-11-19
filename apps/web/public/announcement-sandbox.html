@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-6s0p2Tm4mKvuUQ/oKLpMr6Td9RDRYvvPjMV1xmjAZAg='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
-<title>Announcement design</title><style>html,body{margin:0;padding:0;font-family:system-ui,sans-serif;overflow-x:hidden}*{box-sizing:border-box}#bridge-status{font:13px system-ui;margin:8px;color:inherit}button,input,select,textarea{font:inherit}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}</style><style id="bridge-css"></style></head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FtcnzFG4n9NaP+RDy/7Mb8DARRqh3HcRL/g6fX+MeWY='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
+<title>Announcement design</title><style>html,body{margin:0;padding:0;font-family:system-ui,sans-serif;overflow-x:hidden}*{box-sizing:border-box}#bridge-status{font:13px system-ui;margin:8px;color:inherit}button,input,select,textarea{font:inherit}output[data-identity]{display:block;overflow-wrap:anywhere}fieldset[data-radio] label{display:flex;align-items:center;gap:.6rem;min-height:44px}input:is([type=radio],[type=checkbox]){accent-color:#126b70}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}</style><style id="bridge-css"></style></head>
 <body><div id="bridge-canvas"></div><p id="bridge-status" role="status"></p>
 <script id="announcement-bridge">
 (() => {
@@ -14,7 +14,7 @@
   const locked = () => !current || current.busy || current.answered;
   function apply(value) {
     channel = value.channel; current = value;
-    const next = JSON.stringify([value.html, value.css, value.bindings]);
+    const next = JSON.stringify([value.html, value.css, value.bindings, value.definition.fields]);
     const fresh = signature !== next;
     if (fresh) { signature = next; stylesheet.textContent = value.css; canvas.innerHTML = value.html; }
     document.body.dataset.surface = value.surface;
@@ -22,10 +22,35 @@
     for (const binding of value.bindings) {
       const node = element(binding); if (!node) continue;
       if (binding.kind === 'content') node.textContent = value.definition[binding.key] || '';
-      if (binding.kind === 'identity') { node.value = value.person[binding.key] || ''; node.readOnly = true; node.disabled = true; }
+      if (binding.kind === 'identity') {
+        let output = node;
+        if (node.tagName !== 'OUTPUT') {
+          output = document.createElement('output');
+          output.id = node.id;
+          output.className = node.className;
+          node.replaceWith(output);
+        }
+        output.dataset.identity = binding.key;
+        output.value = value.person[binding.key] || 'Unavailable';
+      }
       if (binding.kind === 'image') { if (/^data:image\/(png|jpeg|webp);base64,/.test(value.image || '')) node.src = value.image; else node.removeAttribute('src'); }
       if (binding.kind === 'field') {
         const field = value.definition.fields.find(f => f.id === binding.key); if (!field) { node.disabled = true; continue; }
+        if (field.type === 'radio') {
+          node.disabled = locked();
+          if (fresh) {
+            node.dataset.radio = '';
+            const legend = document.createElement('legend');
+            legend.textContent = field.label + (field.required ? ' *' : '');
+            node.replaceChildren(legend, ...field.options.map(option => {
+              const label = document.createElement('label'), radio = document.createElement('input');
+              radio.type = 'radio'; radio.name = field.id; radio.value = option; radio.required = field.required;
+              label.append(radio, document.createTextNode(option));
+              return label;
+            }));
+          }
+          continue;
+        }
         node.name = field.id; node.required = field.required; node.disabled = locked(); node.readOnly = false;
         if (node.tagName === 'INPUT') node.type = ['checkbox', 'date'].includes(field.type) ? field.type : 'text';
         if (node.tagName === 'INPUT' || node.tagName === 'TEXTAREA') node.maxLength = field.type === 'longText' ? 2000 : 240;
@@ -59,14 +84,16 @@
     if (locked() || !current.person.email || form?.id !== 'ann-form' || !form.reportValidity()) return;
     const answers = Object.fromEntries(current.bindings.filter(b => b.kind === 'field').map(binding => {
       const node = element(binding), field = current.definition.fields.find(f => f.id === binding.key);
-      return [binding.key, field?.type === 'checkbox' ? node.checked : node.value];
+      const answer = field?.type === 'radio' ? (node.querySelector('input:checked')?.value ?? '')
+        : field?.type === 'checkbox' ? node.checked : node.value;
+      return [binding.key, answer];
     }));
     send({ type:'announcement.action', action:'submit', answers });
   }
   document.addEventListener('submit', event => {
     event.preventDefault(); event.stopPropagation(); submit(event.target);
   }, true);
-  document.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.isComposing && event.target.tagName === 'INPUT') { event.preventDefault(); submit(event.target.closest('form')); } }, true);
+  document.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.isComposing && event.target.tagName === 'INPUT' && !['radio', 'checkbox'].includes(event.target.type)) { event.preventDefault(); submit(event.target.closest('form')); } }, true);
   new ResizeObserver(resize).observe(canvas);
   host.postMessage({ type:'announcement.ready' }, '*');
 })();

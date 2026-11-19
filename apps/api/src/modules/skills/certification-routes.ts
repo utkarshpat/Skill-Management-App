@@ -100,19 +100,22 @@ export function registerCertificationRoutes(
         state: LocalAccessState;
         actor: LocalPerson;
       };
-      if (query.view === 'queue' && !canReviewAssigned(state, actor))
-        throw new AccessError(403, 'Assigned certification review is unavailable.');
+      const issuerApprovals = actor.issuerApprovals === true;
+      if (query.view === 'queue' && !canReviewAssigned(state, actor) && !issuerApprovals)
+        throw new AccessError(403, 'Assigned certification approval is unavailable.');
       const snapshotRevision = state.revision;
       const result = await deps!.certifications!.read(actor.id, query);
       // An empty review-only page has no reporting edges or personal
       // submission actions to resolve. Recheck the actor and revision either way.
       ({ state, actor } = await context(actor.id, queueOnly && !result.records.length));
-      if (query.view === 'queue' && !canReviewAssigned(state, actor))
-        throw new AccessError(403, 'Assigned certification review is unavailable.');
+      if (query.view === 'queue' && !canReviewAssigned(state, actor) && !issuerApprovals)
+        throw new AccessError(403, 'Assigned certification approval is unavailable.');
       // Do not deliver records if current reporting scope changed during the SQL read.
       if (
         query.view === 'queue' &&
-        result.records.some(r => !certificationAccess(state, actor, r).canReview)
+        result.records.some(
+          r => !r.issuerApproval && !certificationAccess(state, actor, r).canReview,
+        )
       )
         throw new AccessError(403, 'Review assignments changed. Refresh the queue.');
       if (query.view === 'mine' && result.records.some(r => r.personId !== actor.id))
@@ -131,13 +134,18 @@ export function registerCertificationRoutes(
         pageSize: 25,
         canManage: can(state, actor, 'skill.claim', true),
         canSubmitNew: !queueOnly && canSubmitNewCertification(state, actor),
-        canReview: canReviewAssigned(state, actor),
+        canReview: canReviewAssigned(state, actor) || issuerApprovals,
         canRecommend: effectiveAccess(state, actor, 'learning.recommend', 'DIRECT_REPORTS').allowed,
         canViewRecommendations: can(state, actor, 'learning.view', true),
         canUploadImage: Boolean(deps?.certificationImages),
         records: result.records.map(r => {
           const access = certificationAccess(state, actor, r);
-          return { ...r, ...access, canSubmit: access.canSubmit && r.hasImage === true };
+          return {
+            ...r,
+            ...access,
+            canReview: access.canReview || r.issuerApproval === true,
+            canSubmit: access.canSubmit && r.hasImage === true,
+          };
         }),
       });
     } catch (e) {
@@ -192,8 +200,11 @@ export function registerCertificationRoutes(
       } else {
         const record = await deps!.certifications!.get(actor.id, certificationId(change.id));
         const fresh = await context(actor.id);
-        if (!certificationAccess(fresh.state, fresh.actor, record).canReview)
-          throw new AccessError(403, 'Current assigned review is unavailable.');
+        if (
+          !record.issuerApproval &&
+          !certificationAccess(fresh.state, fresh.actor, record).canReview
+        )
+          throw new AccessError(403, 'Current assigned approval is unavailable.');
       }
       if (change.action === 'SUBMIT' || change.action === 'SAVE_SUBMIT') {
         if (!deps?.certificationImages)
@@ -224,7 +235,11 @@ export function registerCertificationRoutes(
     const record = await deps!.certifications!.get(actorId, certification);
     const fresh = await context(actorId),
       access = certificationAccess(fresh.state, fresh.actor, record);
-    if (write ? !access.canEdit : record.personId !== actorId && !access.canReview)
+    if (
+      write
+        ? !access.canEdit
+        : record.personId !== actorId && !access.canReview && !record.issuerApproval
+    )
       throw new AccessError(403, 'Certification image access is unavailable.');
     if (!deps?.certificationImages)
       throw new AccessError(503, 'Certificate image storage is not configured.');

@@ -23,6 +23,7 @@ interface ReviewSubmission {
   certifications: number;
   status: string;
   updatedAt?: string;
+  total?: number;
 }
 
 export function CapabilitySubmissions({
@@ -31,6 +32,9 @@ export function CapabilitySubmissions({
   onUpdated,
   onInitialLoad,
   active = true,
+  queuePage = 1,
+  queueSearch = '',
+  queuePerson,
   renderQueue,
 }: {
   review?: boolean;
@@ -38,8 +42,12 @@ export function CapabilitySubmissions({
   onUpdated?: () => void;
   onInitialLoad?: () => void;
   active?: boolean;
+  queuePage?: number;
+  queueSearch?: string;
+  queuePerson?: string;
   renderQueue?: (queue: {
     records: ReviewSubmission[];
+    total: number;
     loading: boolean;
     error: string;
     retry: () => void;
@@ -62,7 +70,13 @@ export function CapabilitySubmissions({
   useEffect(() => {
     const abort = new AbortController();
     setLoading(true);
-    authenticatedFetch('/api/capability-submissions?view=' + (review ? 'queue' : 'mine'), {
+    const filters = new URLSearchParams({ view: review ? 'queue' : 'mine' });
+    if (review) {
+      if (queuePage > 1) filters.set('page', String(queuePage));
+      if (queueSearch) filters.set('search', queueSearch);
+      if (queuePerson) filters.set('person', queuePerson);
+    }
+    authenticatedFetch('/api/capability-submissions?' + filters, {
       signal: abort.signal,
     })
       .then(r => readApiResponse<any>(r, 'Combined submissions could not be loaded.'))
@@ -85,7 +99,7 @@ export function CapabilitySubmissions({
         }
       });
     return () => abort.abort();
-  }, [review, attempt, onInitialLoad]);
+  }, [review, attempt, onInitialLoad, queuePage, queueSearch, queuePerson]);
   useEffect(() => {
     const refresh = () => setAttempt(v => v + 1);
     window.addEventListener('notifications-remote-updated', refresh);
@@ -173,6 +187,7 @@ export function CapabilitySubmissions({
       <>
         {renderQueue({
           records,
+          total: records[0]?.total ?? records.length,
           loading,
           error,
           retry: () => setAttempt(n => n + 1),
@@ -206,13 +221,13 @@ export function CapabilitySubmissions({
           </p>
         </div>
       </header>
-      {showEmpty && loading && <p role="status">Loading review requests…</p>}
+      {showEmpty && loading && <p role="status">Loading approval requests…</p>}
       {showEmpty && !loading && !visibleRecords.length && !error && (
         <div className="cap-empty-box" role="status">
           <CheckCircle2 size={22} className="cap-empty-check" aria-hidden="true" />
           <div>
             <strong>All caught up!</strong>
-            <p>No combined submissions are awaiting your review.</p>
+            <p>No combined submissions are awaiting your decision.</p>
           </div>
         </div>
       )}
@@ -250,7 +265,7 @@ export function CapabilitySubmissions({
                 </span>
                 <span className={`cap-status-pill ${record.status.toLowerCase()}`}>
                   <Clock3 size={11} aria-hidden="true" />
-                  {record.status === 'SUBMITTED' ? 'Awaiting review' : record.status.toLowerCase()}
+                  {record.status === 'SUBMITTED' ? 'Pending approval' : record.status.toLowerCase()}
                 </span>
               </div>
             </div>
@@ -264,7 +279,7 @@ export function CapabilitySubmissions({
               >
                 {review ? (
                   <>
-                    Review request <ArrowRight size={14} aria-hidden="true" />
+                    Approval request <ArrowRight size={14} aria-hidden="true" />
                   </>
                 ) : (
                   'Continue'

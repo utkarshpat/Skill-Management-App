@@ -222,7 +222,7 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
     setPage(prefill && learningDraftReviewable(prefill) ? 3 : 0);
     setReviewPage(0);
     setFormError('');
-    setNotice(prefill ? 'Review the draft, then create the plan to add it to your calendar.' : '');
+    setNotice(prefill ? 'Check the draft, then create the plan to add it to your calendar.' : '');
     setCreating(true);
   }
   useEffect(() => {
@@ -825,7 +825,7 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
               ),
             },
             {
-              label: 'Review',
+              label: 'Preview',
               content: (
                 <div>
                   <h3>{title || 'Your learning plan'}</h3>

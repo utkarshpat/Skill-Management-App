@@ -41,7 +41,7 @@ test('coverage and team summary export all aggregate rows, never employee IDs or
   assert.match(teamReportCsv(analytics, 'coverage', 3, '', at), /"SQL","L3","30","30","0","100"/);
   const summary = teamReportCsv(analytics, 'summary', 3, '', at);
   assert.match(summary, /"Active direct reports","30"/);
-  assert.match(summary, /"Assigned pending reviews","8"/);
+  assert.match(summary, /"Assigned pending approvals","8"/);
   assert.match(summary, /"Cloud","14"/);
   assert.match(summary, /"L3","4"/);
   assert.doesNotMatch(summary, /private-member|memberIds/);

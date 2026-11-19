@@ -24,11 +24,11 @@ test('Find people shortcut fits sidebar bounds, retains explicit scope identity 
 });
 test('matching labels keep the four-level distinction and leave unsupported criteria unchanged', () => {
   assert.equal(
-    peopleCriterionLabel('Four-level framework manager-reviewed proficiency L2 or above'),
+    peopleCriterionLabel('Four-level framework manager-approved proficiency L2 or above'),
     'Autonomous+',
   );
   assert.equal(
-    peopleCriterionLabel('Four-level framework manager-reviewed proficiency L4 or above'),
+    peopleCriterionLabel('Four-level framework manager-approved proficiency L4 or above'),
     'Expert+',
   );
   assert.equal(

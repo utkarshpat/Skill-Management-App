@@ -153,7 +153,7 @@ test('analytics: scope, chart perspectives, dataset filters and export use the c
   await views.getByRole('button', { name: 'Skill coverage', exact: true }).click();
   await expect(
     page.getByRole('button', {
-      name: 'SQL, level 3: 1 reviewed holders; drill-through level 3',
+      name: 'SQL, level 3: 1 approved holders; drill-through level 3',
       exact: true,
     }),
   ).toBeVisible();
@@ -164,7 +164,7 @@ test('analytics: scope, chart perspectives, dataset filters and export use the c
   const filters = page.locator('.bo-record-filters');
   await filters.getByRole('combobox', { name: 'Dataset', exact: true }).selectOption('skills');
   await filters
-    .getByRole('combobox', { name: 'Review status', exact: true })
+    .getByRole('combobox', { name: 'Approval status', exact: true })
     .selectOption('APPROVED');
   await expect.poll(() => queries.at(-1)?.get('status')).toBe('APPROVED');
   expect(queries.at(-1)?.get('scopeId')).toBe(scope);

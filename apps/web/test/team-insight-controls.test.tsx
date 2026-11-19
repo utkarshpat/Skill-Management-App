@@ -21,7 +21,7 @@ const analytics = {
 };
 after(closeBrowser);
 
-test('radar and heatmap distinguish reviewed proficiency from a missing record, with person and skill navigation', async () => {
+test('radar and heatmap distinguish approved proficiency from a missing record, with person and skill navigation', async () => {
   const actions: string[] = [];
   const view = await render(
     <TeamInsightCharts
@@ -44,7 +44,7 @@ test('radar and heatmap distinguish reviewed proficiency from a missing record, 
       'SQL',
     );
     await click('SQL', view.container.querySelector('.team-gap-chart')!);
-    await click('Rohan Mehta, SQL: no reviewed record', view.container);
+    await click('Rohan Mehta, SQL: no approved record', view.container);
     await click('Aditi Menon, SQL: reviewed L3', view.container);
     const rosterButton = view.container.querySelector<HTMLButtonElement>(
       '[title="Open capability profile for Rohan Mehta"]',

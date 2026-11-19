@@ -7,6 +7,7 @@ import type { CertificationPage, CertificationRecord } from './certifications/ty
 import { toast } from './toast';
 import { ArrowRight, Award, Clock3, RefreshCw, Search, ShieldCheck, X } from 'lucide-react';
 import { CertificationRecommendations } from './certifications/CertificationRecommendations';
+import { CapabilitySubmissions } from './capabilities/CapabilitySubmissions';
 import './capability-workspace.css';
 import './review-workbench.css';
 import './certifications/certifications.css';
@@ -14,9 +15,18 @@ const SkillReviews = lazy(() => import('./SkillReviews').then(m => ({ default: m
 
 export function ReviewWorkspace({
   certificationsAllowed = false,
+  issuerOnly = false,
 }: {
   certificationsAllowed?: boolean;
+  issuerOnly?: boolean;
 }) {
+  if (issuerOnly)
+    return (
+      <>
+        <CapabilitySubmissions review showEmpty />
+        <CertificationReviewPanel view="queue" />
+      </>
+    );
   return (
     <Suspense
       fallback={
@@ -25,8 +35,8 @@ export function ReviewWorkspace({
             <RefreshCw size={24} />
           </div>
           <div>
-            <strong>Loading review workspace…</strong>
-            <p>Checking your permissions and assigned review queues.</p>
+            <strong>Loading approvals…</strong>
+            <p>Checking your permissions and assigned approval queues.</p>
           </div>
         </section>
       }
@@ -100,7 +110,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
       headers: { 'X-Certification-View': 'review-only' },
     })
       .then(r =>
-        readApiResponse<CertificationPage>(r, 'Certification review queue could not be loaded.'),
+        readApiResponse<CertificationPage>(r, 'Certification approval queue could not be loaded.'),
       )
       .then(value => {
         if (!controller.signal.aborted) setData(value);
@@ -118,7 +128,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
       });
     return () => controller.abort();
   }, [page, query, attempt, view]);
-  // Notification links open only records the authorized review queue returns.
+  // Notification links open only records the authorized approval queue returns.
   useEffect(() => {
     if (!linked || loading || error) return;
     const navigation = location.key + ':' + linked;
@@ -135,7 +145,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
     } else if (!query && page * data.pageSize < data.total) setPage(n => n + 1);
     else {
       consumed.current = navigation;
-      toast.info('This certification is no longer awaiting your review.');
+      toast.info('This certification is no longer awaiting your decision.');
     }
   }, [linked, loading, error, data, query, page, location.key]);
   useEffect(() => {
@@ -170,7 +180,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
   const saved = () => {
     setCredential(undefined);
     setAttempt(n => n + 1);
-    toast.success('Review saved.');
+    toast.success('Decision saved.');
     window.dispatchEvent(new Event('notifications-updated'));
   };
   const reviewDate = (value: string) => {
@@ -199,13 +209,13 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
         )}
         {certificationTab === 'queue' && showLegacyQueue && (
           <>
-            <div className="assigned-review-summary" aria-label="Certification review summary">
+            <div className="assigned-review-summary" aria-label="Certification approval summary">
               <article className="assigned-review-total">
                 <span>
-                  <Award size={17} /> Individual certification reviews
+                  <Award size={17} /> Individual certification approvals
                 </span>
                 <strong>{data?.total ?? '—'}</strong>
-                <small>Ready for your review</small>
+                <small>Ready for your decision</small>
               </article>
             </div>
             <div className="assigned-review-toolbar">
@@ -245,7 +255,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
             )}
             {loading && (
               <div className="assigned-review-skeleton" role="status">
-                <span className="sr-only">Loading certification review queue…</span>
+                <span className="sr-only">Loading certification approval queue…</span>
                 <div aria-hidden="true" />
                 <div aria-hidden="true" />
               </div>
@@ -277,7 +287,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
                         disabled={opening}
                         onClick={() => setCredential(record)}
                       >
-                        Review certification <ArrowRight size={16} />
+                        Open certification approval <ArrowRight size={16} />
                       </button>
                     </article>
                   ))}
@@ -330,7 +340,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
                 <strong>{analytics?.pending ?? '—'}</strong> Assigned certificates
               </span>
               <span>
-                <strong>{analytics?.reviewed ?? '—'}</strong> Manager reviewed
+                <strong>{analytics?.reviewed ?? '—'}</strong> Approved
               </span>
               <span>
                 <strong>{analytics?.certifiedPeople ?? '—'}</strong> Currently certified people
@@ -388,7 +398,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
                     feedback,
                   }),
                 }),
-                'Review failed. Your note is still here.',
+                'Could not save the decision. Your note is still here.',
               );
               saved();
             }}

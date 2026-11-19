@@ -17,7 +17,7 @@ export function generateCertificationsCsv(records: CertificationRecord[]): strin
     'Certification Date',
     'Does Not Expire',
     'Expiry Date',
-    'Review status',
+    'Approval status',
   ];
 
   const rows = records.map(item => [

@@ -4,6 +4,7 @@ import base from '../apps/web/vite.config.ts';
 export default mergeConfig(
   base,
   defineConfig({
+    define: { 'import.meta.env.VITE_PHASE_TWO_ENABLED': JSON.stringify('true') },
     resolve: {
       alias: {
         '@azure/msal-browser': fileURLToPath(new URL('./msal-fixture.ts', import.meta.url)),

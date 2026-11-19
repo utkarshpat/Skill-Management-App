@@ -1,5 +1,6 @@
 import { businessDraftHandoff, type BusinessDraft } from './business/business-draft-handoff';
 import { learningDraftHandoff } from './learning-draft-handoff';
+import { phaseTwoVisible } from './release-features';
 import { AssistantSession } from './assistant-session';
 import { assistantContextPrompt } from './assistant-context';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
@@ -528,7 +529,7 @@ export function AssistantWidget() {
         <span className="assistant-mascot" aria-hidden="true">
           <img className="assistant-mascot-body" src="/brand/assistant-robot.webp" alt="" />
           <img className="assistant-mascot-head" src="/brand/assistant-robot.webp" alt="" />
-          <img className="assistant-mascot-brand" src="/brand/sopra-steria-mark.svg" alt="" />
+          <img className="assistant-mascot-brand" src="/brand/skill-genie-logo.png" alt="" />
           <img className="assistant-mascot-hand" src="/brand/assistant-robot-hand.webp" alt="" />
         </span>
         {(unread || busy) && (
@@ -550,8 +551,12 @@ export function AssistantWidget() {
           <header>
             <Bot size={20} />
             <div>
-              <strong>AI assistant</strong>
-              <small>App workflows, drafts & learning practice</small>
+              <strong>Skill Genie</strong>
+              <small>
+                {phaseTwoVisible
+                  ? 'App workflows, drafts & learning practice'
+                  : 'Skills, approvals & workspace help'}
+              </small>
             </div>
             <button
               aria-label="Recent AI chats"
@@ -628,10 +633,14 @@ export function AssistantWidget() {
                 <p>The assistant is integrated. Connect a model on the server to start chatting.</p>
               </div>
             )}
+            {status?.configured && (
+              <div className="assistant-message assistant">
+                <small>Skill Genie</small>
+                <p>Hello, I’m Skill Genie. How can I help you?</p>
+              </div>
+            )}
             {status?.configured && !messages.length && (
               <div className="assistant-empty">
-                <strong>How can I help?</strong>
-                <p>Ask for guidance on features available to you, or prepare a draft for review.</p>
                 <div className="assistant-output-actions">
                   {navigation.suggestions
                     ?.filter(
@@ -655,7 +664,7 @@ export function AssistantWidget() {
             )}
             {messages.map((message, index) => (
               <div key={index} className={'assistant-message ' + message.role}>
-                <small>{message.role === 'user' ? 'You' : 'Assistant'}</small>
+                <small>{message.role === 'user' ? 'You' : 'Skill Genie'}</small>
                 {message.role === 'assistant' ? (
                   <AssistantRichText>{message.content}</AssistantRichText>
                 ) : (
@@ -766,7 +775,7 @@ export function AssistantWidget() {
                 to={'/my-skills?submitClaim=' + encodeURIComponent(skillSubmissionFailure.id)}
                 onClick={collapse}
               >
-                Review saved draft and retry submission
+                Check saved draft and retry submission
               </Link>
               <button
                 className="secondary-button"
@@ -840,7 +849,7 @@ export function AssistantWidget() {
       </div>
       {document && <AssistantDocument document={document} onClose={() => setDocument(undefined)} />}{' '}
       {reviewDescription !== undefined && (
-        <Suspense fallback={<div role="status">Opening skill review…</div>}>
+        <Suspense fallback={<div role="status">Opening skill approval…</div>}>
           <MySkills
             reviewRequest={{
               description: reviewDescription,

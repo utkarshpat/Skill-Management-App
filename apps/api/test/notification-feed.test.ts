@@ -9,6 +9,40 @@ const item = (id: string) => ({
   body: 'Update',
   href: '/profile',
 });
+test('approval wording updates stored notification labels and preserves reviewer comments', async () => {
+  const comment = 'Please review the attached evidence.';
+  const feed = await loadNotificationFeed({ personId: 'owner', items: [] }, [
+    {
+      name: 'reviews',
+      load: async () => [
+        {
+          ...item('capability'),
+          title: 'Capability review completed',
+          actionLabel: 'Review completed',
+          body: comment,
+        },
+      ],
+    },
+    {
+      name: 'certifications',
+      load: async () => [
+        {
+          ...item('certification'),
+          title: 'Certificate review requested',
+          actionLabel: 'Submitted for review',
+        },
+      ],
+    },
+  ]);
+  assert.deepEqual(
+    feed.items.map(({ title, actionLabel }) => [title, actionLabel]),
+    [
+      ['Capability decision recorded', 'Decision recorded'],
+      ['Certificate approval requested', 'Submitted for approval'],
+    ],
+  );
+  assert.equal(feed.items[0].body, comment);
+});
 test('one notification source failure preserves successful sources and marks partial results', async () => {
   const feed = await loadNotificationFeed({ personId: 'owner', items: [item('profile')] }, [
     { name: 'requests', load: async () => [item('request')] },

@@ -62,9 +62,9 @@ for (const [label, action] of [
     );
     await settle();
     await click(label);
-    assert.match(document.body.textContent!, /Add a review note/);
+    assert.match(document.body.textContent!, /Add a decision note/);
     assert.equal(decisions.length, 0);
-    await fill('Review note', '  Credential details checked with the issuer.  ');
+    await fill('Decision note', '  Credential details checked with the issuer.  ');
     await click(label);
     assert.deepEqual(decisions, [[record, action, 'Credential details checked with the issuer.']]);
     assert.equal(closed, 0);
@@ -91,7 +91,7 @@ test('failed certification decision preserves the note for retry and reports a r
       }}
     />,
   );
-  await fill('Review note', 'Issuer details match the supplied certificate.');
+  await fill('Decision note', 'Issuer details match the supplied certificate.');
   await click('Approve with note');
   assert.match(document.body.textContent!, /current manager changed/);
   assert.equal(

@@ -165,7 +165,7 @@ test('failed organization recheck requires a fresh preview and preserves assignm
   );
   assert.equal(
     [...document.querySelectorAll('h2')].some(
-      h => h.textContent === 'Review reporting & membership',
+      h => h.textContent === 'Preview reporting & membership',
     ),
     false,
   );
@@ -395,7 +395,7 @@ test('closing a reporting preview preserves the edit but never commits it', asyn
   await mount('aditi');
   await fill('Direct reporting manager', 'priya');
   await submit('reporting-editor');
-  await click('Close Review reporting & membership');
+  await click('Close Preview reporting & membership');
   const manager = [...document.querySelectorAll('label')]
     .find(label => label.textContent?.trim().startsWith('Direct reporting manager'))!
     .querySelector('select')!;

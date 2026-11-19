@@ -502,8 +502,8 @@ export function PersonAccessDialog({
               <div>
                 <h3 className="access-section-title">Assigned Access Templates</h3>
                 <p className="access-section-desc">
-                  Roles bundle standard reusable permissions. Current direct-manager skill review is
-                  derived by current direct-report and assigned-reviewer checks, not a role
+                  Roles bundle standard reusable permissions. Current direct-manager skill approval
+                  is derived by current direct-report and assigned-reviewer checks, not a role
                   template.
                 </p>
               </div>
@@ -536,7 +536,7 @@ export function PersonAccessDialog({
                         onClick={() => handleRemoveRole(roleId)}
                         title={`Remove ${roleName} from ${person.displayName}`}
                       >
-                        <Trash2 size={14} /> Review removal
+                        <Trash2 size={14} /> Preview removal
                       </button>
                     )}
                   </div>
@@ -582,7 +582,7 @@ export function PersonAccessDialog({
                     disabled={busy || !unassignedRoles.some(r => r.id === selectedRoleToAdd)}
                     onClick={handleAssignRole}
                   >
-                    <Plus size={15} /> Review assignment
+                    <Plus size={15} /> Preview assignment
                   </button>
                 </div>
               </div>
@@ -763,7 +763,7 @@ export function PersonAccessDialog({
 
                 <div className="access-form-actions">
                   <button type="submit" className="primary-button" disabled={busy}>
-                    <ShieldCheck size={16} /> Review exception
+                    <ShieldCheck size={16} /> Preview exception
                   </button>
                 </div>
               </form>

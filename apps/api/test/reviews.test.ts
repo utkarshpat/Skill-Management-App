@@ -41,7 +41,7 @@ test('review actions reject forged routing, invalid state selectors and missing 
     'Project',
   );
 });
-test('assigned review AI tool stays actor-bound and disappears on permission revocation', async () => {
+test('assigned approval AI tool stays actor-bound and disappears on permission revocation', async () => {
   const access = await LocalAccessStore.open(),
     state = access.snapshot(),
     person = state.people[0];
@@ -76,7 +76,7 @@ test('assigned review AI tool stays actor-bound and disappears on permission rev
   );
   await assert.rejects(registry.execute(person.id, 'assigned_skill_reviews', {}, signal));
 });
-test('review HTTP uses verified actor, independent review permission and strict decision endpoints', async () => {
+test('review HTTP uses verified actor, independent approval permission and strict decision endpoints', async () => {
   const access = await LocalAccessStore.open(),
     state = access.snapshot(),
     person = state.people[0];

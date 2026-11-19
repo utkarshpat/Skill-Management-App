@@ -27,7 +27,7 @@ export function reconcileCertificationSave(
   );
   if (!same)
     throw Error(
-      'Saved details changed. Review the saved credential before replacing anything. Your entries are still here.',
+      'Saved details changed. Check the saved credential before replacing anything. Your entries are still here.',
     );
   return { revision: record.revision, complete: ['SUBMITTED', 'APPROVED'].includes(record.status) };
 }

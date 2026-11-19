@@ -11,7 +11,7 @@ export interface TeamReportAnalytics {
 export type TeamReportKind = 'summary' | 'coverage' | 'gap';
 export const reportLabels: Record<TeamReportKind, string> = {
   summary: 'Team summary',
-  coverage: 'Reviewed skill coverage',
+  coverage: 'Approved skill coverage',
   gap: 'Recorded coverage gaps',
 };
 type Fetcher = (path: string, init?: RequestInit) => Promise<Response>;
@@ -82,7 +82,7 @@ export function teamReportCsv(
     ['Active members', analytics.members],
     [
       'Data basis',
-      'Manager-reviewed claims; only your assigned pending reviews. Private drafts excluded.',
+      'Approved claims; only your assigned pending approvals. Private drafts excluded.',
     ],
   ];
   if (kind === 'summary') {
@@ -90,29 +90,29 @@ export function teamReportCsv(
       [],
       ['Metric', 'Count'],
       ['Active direct reports', analytics.members],
-      ['Manager-reviewed claims', analytics.reviewed],
-      ['Assigned pending reviews', analytics.pending],
+      ['Approved claims', analytics.reviewed],
+      ['Assigned pending approvals', analytics.pending],
       [],
-      ['Reviewed category', 'Claim count'],
+      ['Approved category', 'Claim count'],
       ...analytics.categories.map(c => [c.category, c.count]),
       [],
-      ['Reviewed level', 'Claim count'],
+      ['Approved level', 'Claim count'],
       ...analytics.levels.map(l => ['L' + l.rank, l.count]),
     );
   } else {
     rows.push(
-      ['Minimum reviewed level', 'L' + rank],
+      ['Minimum approved level', 'L' + rank],
       [
         'Interpretation',
-        'Missing recorded coverage is not proof of a skill deficiency. No role-based targets are configured. Skills without any reviewed record are not included.',
+        'Missing recorded coverage is not proof of a skill deficiency. No role-based targets are configured. Skills without any approved record are not included.',
       ],
       [],
       [
         'Skill',
         'Minimum level',
         'Active members',
-        'Reviewed holders',
-        'Without reviewed coverage',
+        'Approved holders',
+        'Without approved coverage',
         'Coverage percent',
       ],
     );

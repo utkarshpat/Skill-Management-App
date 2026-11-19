@@ -43,7 +43,7 @@ test('charts exclude invalid samples and remain readable with empty or constant 
   const view = await render(
     <>
       <UI.DonutChart
-        caption="Review decisions"
+        caption="Approval decisions"
         slices={[
           { label: 'Approved', value: 3, color: 'green' },
           { label: 'Pending', value: 1, color: 'orange' },

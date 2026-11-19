@@ -54,7 +54,7 @@ export class SqlCertificationStore implements CertificationStore {
       if (number === 51011)
         throw new AccessError(
           409,
-          'An active current reporting manager with review access is required.',
+          'An active current reporting manager with approval access is required.',
         );
       if (number === 51012)
         throw new AccessError(
@@ -71,7 +71,7 @@ export class SqlCertificationStore implements CertificationStore {
           'Renew the same credential and issuer with current validity extending the original expiry.',
         );
       if (number === 51000 || number === 547)
-        throw new AccessError(400, 'Check credential details and review feedback.');
+        throw new AccessError(400, 'Check credential details and approval feedback.');
       throw e;
     }
   }
@@ -135,7 +135,7 @@ export class SqlCertificationStore implements CertificationStore {
         if (!rolledBack) await transaction.rollback().catch(() => undefined);
         const number = (e as { number?: number }).number;
         if (number === 51003)
-          throw new AccessError(403, 'Only your own manager-reviewed credential can be renewed.');
+          throw new AccessError(403, 'Only your own approved credential can be renewed.');
         if (number === 51004) throw new AccessError(404, 'Credential renewal is unavailable.');
         if (number === 51009)
           throw new AccessError(409, 'This credential changed. Refresh before retrying.');

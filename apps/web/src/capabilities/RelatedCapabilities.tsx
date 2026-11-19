@@ -55,11 +55,11 @@ export function RelatedCapabilities({ kind, id }: { kind: 'SKILL' | 'CERTIFICATI
                       <span className={`cap-status-pill ${link.status?.toLowerCase()}`}>
                         {link.status === 'SUBMITTED' ? (
                           <>
-                            <Clock3 size={11} aria-hidden="true" /> Awaiting review
+                            <Clock3 size={11} aria-hidden="true" /> Pending approval
                           </>
                         ) : link.status === 'APPROVED' ? (
                           <>
-                            <ShieldCheck size={11} aria-hidden="true" /> Manager reviewed
+                            <ShieldCheck size={11} aria-hidden="true" /> Approved
                           </>
                         ) : (
                           link.status?.toLowerCase()

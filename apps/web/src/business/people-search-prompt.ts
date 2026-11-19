@@ -17,8 +17,7 @@ export function peopleSearchUserText(content: string) {
 export function peopleCriterionLabel(criterion: string) {
   const level = criterion.match(/proficiency L([1-4]) or above/);
   if (level)
-    return `${['Foundation', 'Autonomous', 'Experienced', 'Expert'][Number(level[1]) - 1]}+`;
-  if (criterion.startsWith('Current manager-reviewed credential'))
-    return 'Current approved certificate';
+    return `${['Beginner', 'Autonomous', 'Experienced', 'Expert'][Number(level[1]) - 1]}+`;
+  if (criterion.startsWith('Current approved credential')) return 'Current approved certificate';
   return criterion;
 }

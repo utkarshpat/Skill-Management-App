@@ -9,19 +9,19 @@ export interface ClaimReviewDecision {
 }
 const reasons: Record<string, string> = {
   REPORTING_POLICY:
-    'You are the current direct manager and assigned reviewer. This claim is awaiting your decision.',
+    'You are the current direct manager and assigned approver. This claim is awaiting your decision.',
   NOT_AWAITING_REVIEW:
-    'This claim is no longer awaiting a decision. Its review history remains available.',
+    'This claim is no longer awaiting a decision. Its approval history remains available.',
   EXPLICIT_DENY: 'An applicable access restriction blocks this decision.',
   NOT_CURRENT_DIRECT_MANAGER: 'You are no longer this employee’s current direct manager.',
   NOT_ASSIGNED_REVIEWER:
-    'This claim is assigned to another reviewer. It must be rerouted through the submission workflow.',
-  SELF_APPROVAL: 'You cannot review your own claim.',
+    'This claim is assigned to another approver. It must be rerouted through the submission workflow.',
+  SELF_APPROVAL: 'You cannot decide your own claim.',
 };
 export function ClaimReviewAccess({ decision }: { decision?: ClaimReviewDecision }) {
   return (
     <section className="review-scope-note" aria-label="Current claim access">
-      <h3>{decision?.allowed ? 'You can review this claim' : 'Decision unavailable'}</h3>
+      <h3>{decision?.allowed ? 'You can decide this claim' : 'Decision unavailable'}</h3>
       <p>
         {decision
           ? (reasons[decision.reasonCode] ??

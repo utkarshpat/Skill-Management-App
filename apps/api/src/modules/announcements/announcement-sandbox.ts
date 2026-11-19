@@ -38,7 +38,7 @@ export function announcementBindings(def: Configuration): DesignBinding[] {
   ] as DesignBinding[];
 }
 const tags = new Set(
-  'div span section main article header footer nav aside h1 h2 h3 h4 h5 h6 p strong em b i u s small sup sub blockquote ul ol li dl dt dd figure figcaption img table caption thead tbody tfoot tr th td colgroup col br hr label input textarea select option optgroup button form fieldset legend details summary'.split(
+  'div span section main article header footer nav aside h1 h2 h3 h4 h5 h6 p strong em b i u s small sup sub blockquote ul ol li dl dt dd figure figcaption img table caption thead tbody tfoot tr th td colgroup col br hr label input output textarea select option optgroup button form fieldset legend details summary'.split(
     ' ',
   ),
 );
@@ -135,9 +135,9 @@ export function sandboxDesign(candidate: Record<string, unknown>) {
     if (!element) fail('A design binding points to a missing element.');
     const expected =
       binding.kind === 'identity'
-        ? ['input']
+        ? ['input', 'output']
         : binding.kind === 'field'
-          ? ['input', 'textarea', 'select']
+          ? ['input', 'textarea', 'select', 'fieldset']
           : binding.kind === 'form'
             ? ['form']
             : ['action', 'vote'].includes(binding.kind)
@@ -198,21 +198,24 @@ export function checkAnnouncementBindings(
         n.attrs.some(a => a.name === 'id' && a.value === binding.elementId),
       )!;
       const field = def.fields.find(f => f.id === binding.key);
-      const expectedTag =
+      const expectedTags =
         binding.kind === 'identity'
-          ? 'input'
-          : field?.type === 'longText'
-            ? 'textarea'
-            : ['choice', 'rating'].includes(field?.type ?? '')
-              ? 'select'
-              : 'input';
+          ? ['input', 'output']
+          : field?.type === 'radio'
+            ? ['fieldset']
+            : field?.type === 'longText'
+              ? ['textarea']
+              : ['choice', 'rating'].includes(field?.type ?? '')
+                ? ['select']
+                : ['input'];
       if (
-        node.tagName !== expectedTag ||
-        !nodes.some(
-          n =>
-            n.tagName === 'label' &&
-            n.attrs.some(a => a.name === 'for' && a.value === binding.elementId),
-        )
+        !expectedTags.includes(node.tagName) ||
+        (field?.type !== 'radio' &&
+          !nodes.some(
+            n =>
+              n.tagName === 'label' &&
+              n.attrs.some(a => a.name === 'for' && a.value === binding.elementId),
+          ))
       )
         fail('Use the configured field type and an associated label.');
     }

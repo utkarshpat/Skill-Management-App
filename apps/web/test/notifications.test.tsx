@@ -1,3 +1,4 @@
+import './support/phase-two';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { notificationDestination, notificationDay } from '../src/notification-model';
@@ -8,7 +9,7 @@ test('notification actions target implemented internal destinations without gran
       ?.label,
     'Open recommendation',
   );
-  assert.equal(notificationDestination('/skill-reviews?claim=123')?.kind, 'Skills & reviews');
+  assert.equal(notificationDestination('/skill-reviews?claim=123')?.kind, 'Skills & approvals');
   assert.equal(
     notificationDestination('/certifications?tab=recommendations&recommendation=123')?.label,
     'Open certification recommendation',
@@ -23,14 +24,14 @@ test('notification actions target implemented internal destinations without gran
   assert.equal(notificationDestination('/profile')?.label, 'View profile');
 });
 test('combined outcomes, catalogue requests and renewal updates have distinct actionable destinations', () => {
-  assert.equal(notificationDestination('/my-skills?submission=123')?.label, 'View review outcome');
+  assert.equal(notificationDestination('/my-skills?submission=123')?.label, 'View approval outcome');
   assert.equal(
     notificationDestination('/skill-reviews?submission=123')?.label,
-    'Open review request',
+    'Open approval request',
   );
   assert.equal(
     notificationDestination('/skill-reviews?certification=123')?.label,
-    'Review certification',
+    'Open certification approval',
   );
   assert.equal(
     notificationDestination('/skill-reviews?tab=team&person=123')?.label,

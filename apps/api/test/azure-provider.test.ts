@@ -46,6 +46,7 @@ test('Azure uses the supplied model endpoint and Entra token, with stateless Res
       assert.equal(body.store, false);
       assert.equal(body.previous_response_id, undefined);
       assert.equal(body.max_output_tokens, 1400);
+      assert.equal(body.text, undefined);
       assert.deepEqual(body.reasoning, { effort: 'low' });
       assert.deepEqual(body.include, ['reasoning.encrypted_content']);
       assert.deepEqual(body.tools, [{ type: 'function', ...tool.function, strict: false }]);
@@ -66,6 +67,37 @@ test('Azure uses the supplied model endpoint and Entra token, with stateless Res
   );
   assert.equal(result.content, 'Synthetic answer');
   assert.equal(tokens, 1);
+});
+
+test('Azure passes the requested strict response schema without enabling tools', async () => {
+  const responseSchema = {
+    name: 'design',
+    schema: {
+      type: 'object',
+      properties: { html: { type: 'string' } },
+      required: ['html'],
+      additionalProperties: false,
+    },
+  };
+  const provider = configuredProvider(
+    env,
+    async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      assert.deepEqual(body.text, {
+        format: { type: 'json_schema', strict: true, ...responseSchema },
+      });
+      assert.deepEqual(body.tools, []);
+      return completed([message('{"html":"<section></section>"}')]);
+    },
+    async () => 'synthetic-token',
+  );
+  const result = await provider!.complete(
+    [{ role: 'user', content: 'Design this announcement' }],
+    [],
+    AbortSignal.timeout(5000),
+    { maxOutputTokens: 6000, responseSchema },
+  );
+  assert.deepEqual(JSON.parse(result.content), { html: '<section></section>' });
 });
 
 test('Azure rejects foreign/project endpoints, invalid deployments and invalid auth without falling back', () => {
@@ -296,6 +328,14 @@ test('Azure file inputs preserve explicitly selected image/PDF autofill and curr
     {} as ClaimsStore,
     new MemoryAiBudget(),
     provider!,
+    async () => [
+      {
+        id: 'approved-definition',
+        name: 'Synthetic certificate',
+        provider: 'Synthetic issuer',
+        category: 'Cloud',
+      },
+    ],
   );
   for (const mimeType of ['application/pdf', 'image/webp']) {
     const result = await service.extract(

@@ -112,7 +112,7 @@ test('access profiles: explicit project scope preview precedes a receipt-bound s
     .getByPlaceholder('Why is this change needed?')
     .fill('Aditi supports customer reporting capability analysis for this project.');
   await form.getByRole('button', { name: 'Preview change', exact: true }).click();
-  const preview = page.getByRole('dialog', { name: 'Review configuration change' });
+  const preview = page.getByRole('dialog', { name: 'Preview configuration change' });
   await expect(preview).toContainText('Existing DENY assignments remain effective.');
   expect(writes).toHaveLength(0);
   expect(previews[0].payload.scopeId).toBe(project);
@@ -193,7 +193,7 @@ test('access profiles: Portfolio analytics preview keeps the exact binding and n
     .getByPlaceholder('Why is this change needed?')
     .fill('Aditi supports the Financial Services portfolio.');
   await form.getByRole('button', { name: 'Preview change', exact: true }).click();
-  const preview = page.getByRole('dialog', { name: 'Review configuration change' });
+  const preview = page.getByRole('dialog', { name: 'Preview configuration change' });
   await expect(preview).toBeVisible();
   expect(previews[0].payload).toMatchObject({
     kind: 'PORTFOLIO',

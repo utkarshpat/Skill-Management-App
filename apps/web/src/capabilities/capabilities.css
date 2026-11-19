@@ -282,6 +282,9 @@
   margin: 20px 0 0;
   padding: 16px 0 0;
 }
+.cap-skill-fields .cap-skill-certificates {
+  margin: 0;
+}
 .cap-skill-certificates p {
   flex-basis: 100%;
   margin: 0;

@@ -12,6 +12,7 @@ import type { WorkspaceState } from './Workspace';
 import { ProfileOrganization, type ProfileOrganizationDetails } from './ProfileOrganization';
 import { EmploymentSummary, type Employment } from './EmploymentDetails';
 import { ProfileCompleteness, type ProfileCompletenessDetails } from './ProfileCompleteness';
+import { phaseTwoVisible } from './release-features';
 
 export interface Profile extends Employment {
   id: string;
@@ -167,7 +168,7 @@ export function ProfileDetails({
                 <p className="profile-card-subtitle">Manage record updates and related areas</p>
               </div>
             </header>
-            {workspace.capabilities.requestProfileCorrection && (
+            {phaseTwoVisible && workspace.capabilities.requestProfileCorrection && (
               <div className="profile-correction-banner">
                 <div className="profile-correction-info">
                   <strong>Need an update or noticed an error?</strong>
@@ -179,7 +180,8 @@ export function ProfileDetails({
                 </Link>
               </div>
             )}
-            {(workspace.capabilities.ownSkills || workspace.capabilities.learning) && (
+            {(workspace.capabilities.ownSkills ||
+              (phaseTwoVisible && workspace.capabilities.learning)) && (
               <div className="profile-related-links" aria-label="Related workspace areas">
                 <span className="profile-related-label">Related workspace:</span>
                 {workspace.capabilities.ownSkills && (
@@ -188,7 +190,7 @@ export function ProfileDetails({
                     <span>My skills</span>
                   </Link>
                 )}
-                {workspace.capabilities.learning && (
+                {phaseTwoVisible && workspace.capabilities.learning && (
                   <Link to="/learning" className="profile-related-chip">
                     <BookOpen size={14} />
                     <span>Learn & Grow</span>

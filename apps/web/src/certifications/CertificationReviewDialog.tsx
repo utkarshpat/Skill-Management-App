@@ -24,7 +24,7 @@ export function CertificationReviewDialog({
   async function decide(action: 'APPROVE' | 'REQUEST_CHANGES' | 'REJECT') {
     if (saving.current || !certification.canReview) return;
     if (!feedback.trim()) {
-      setError('Add a review note explaining your decision.');
+      setError('Add a decision note explaining your decision.');
       return;
     }
     saving.current = true;
@@ -34,7 +34,9 @@ export function CertificationReviewDialog({
       await onDecision(certification, action, feedback.trim());
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Review failed. Your note is still here.');
+      setError(
+        e instanceof Error ? e.message : 'Could not save the decision. Your note is still here.',
+      );
     } finally {
       saving.current = false;
       setBusy(false);
@@ -42,7 +44,7 @@ export function CertificationReviewDialog({
   }
   return (
     <FormDialog
-      title="Review certification"
+      title="Open certification approval"
       subtitle={`${certification.name} · ${certification.employeeCode}`}
       onClose={onClose}
       busy={busy}
@@ -104,19 +106,19 @@ export function CertificationReviewDialog({
         )}
         {certification.notes && <p>{certification.notes}</p>}
         <p>
-          Review the credential details and issuer link. Approval does not extend validity or
+          Check the credential details and issuer link. Approval does not extend validity or
           establish skill proficiency.
         </p>
       </section>
       {!certification.canReview && (
         <p role="alert">
-          Assigned review is unavailable:{' '}
+          Assigned approval is unavailable:{' '}
           {certification.reviewAccess?.reasonCode ?? 'Refresh your queue.'}
         </p>
       )}
       {error && <p role="alert">{error}</p>}
       <label className="form-group">
-        Review note{' '}
+        Decision note{' '}
         <span className="cert-required-mark" aria-hidden="true">
           *
         </span>

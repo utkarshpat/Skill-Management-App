@@ -69,7 +69,7 @@ export function DashboardQuickActions({
       </div>
       {actions.some(a => a.assistance) && (
         <p className="dashboard-footnote">
-          AI helps prepare your work. Review the details before saving or submitting.
+          AI helps prepare your work. Check the details before saving or submitting.
         </p>
       )}
     </section>

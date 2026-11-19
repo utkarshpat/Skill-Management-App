@@ -1,3 +1,4 @@
+import './support/phase-two';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -37,9 +38,9 @@ test('skill output offers an in-place review only when the authorized review han
     questions: [],
   };
   const blocked = renderToStaticMarkup(<AssistantOutput artifact={artifact} />);
-  assert.doesNotMatch(blocked, /Review skill draft|href=|Review in My Skills/);
+  assert.doesNotMatch(blocked, /Preview skill draft|href=|Review in My Skills/);
   const allowed = renderToStaticMarkup(<AssistantOutput artifact={artifact} onReview={() => {}} />);
-  assert.match(allowed, /Review skill draft/);
+  assert.match(allowed, /Preview skill draft/);
   assert.doesNotMatch(allowed, /href=|Review in My Skills/);
 });
 
@@ -76,7 +77,7 @@ test('workflow drafts offer explicit review without automatic submission or navi
     );
     assert.match(
       allowed,
-      kind === 'incident_draft' ? /Review incident draft/ : /Review request draft/,
+      kind === 'incident_draft' ? /Preview incident draft/ : /Preview request draft/,
     );
     assert.match(allowed, /Not submitted|No records have been changed/);
     assert.doesNotMatch(allowed, /href=|Submit/);

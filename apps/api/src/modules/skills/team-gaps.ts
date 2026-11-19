@@ -138,21 +138,21 @@ export function requirementGaps(
         status: 'NO_REVIEWED_RECORD',
         qualified: 0,
         shortfall: requirement.headcount,
-        note: 'No current direct report has a manager-reviewed claim for a matching skill name. This is missing evidence, not proof nobody has the skill.',
+        note: 'No current direct report has a approved claim for a matching skill name. This is missing evidence, not proof nobody has the skill.',
       };
     if (candidates.length > 1)
       return {
         ...base,
         status: 'AMBIGUOUS',
         candidates: candidates.slice(0, 6),
-        note: 'Several reviewed skills match. Ask which skill the manager means.',
+        note: 'Several approved skills match. Ask which skill the manager means.',
       };
     if (!exact.length)
       return {
         ...base,
         status: 'MATCH_CONFIRMATION_REQUIRED',
         candidates,
-        note: 'Only a partial skill-name match was found. Ask the manager to confirm the exact reviewed skill name before evaluating demand; no qualification or shortfall has been inferred.',
+        note: 'Only a partial skill-name match was found. Ask the manager to confirm the exact approved skill name before evaluating demand; no qualification or shortfall has been inferred.',
       };
     const skill = candidates[0],
       qualified = holders(index, skill, requirement.level),
@@ -201,6 +201,6 @@ export function teamGapReport(
       })),
     categories: analytics.categories.slice(0, 8),
     basis:
-      'Scope: current active direct reports only. Coverage counts manager-reviewed (APPROVED) claims; pending reviews and private drafts are not proficiency. Requirements come only from this conversation and are not saved. Only exact skill-name matches evaluate demand; partial matches require confirmation. Missing records are not proven deficiencies. Per-skill holder averages use the current four-level framework. Historical frameworks are excluded from proficiency comparisons.',
+      'Scope: current active direct reports only. Coverage counts approved (APPROVED) claims; pending approvals and private drafts are not proficiency. Requirements come only from this conversation and are not saved. Only exact skill-name matches evaluate demand; partial matches require confirmation. Missing records are not proven deficiencies. Per-skill holder averages use the current four-level framework. Historical frameworks are excluded from proficiency comparisons.',
   };
 }

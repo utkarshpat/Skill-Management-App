@@ -1,6 +1,7 @@
 import { verifyRequestIdentity } from '../src/shared/request-identity.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import express from 'express';
 import { once } from 'node:events';
 import { SignJWT } from 'jose';
@@ -24,8 +25,10 @@ test('company cookie is opaque, origin-bound for writes, expires, and can be rev
     },
     () => now,
   );
-  app.get('/api/status', (req, res) => res.json({ active: session.active(req) }));
+  app.get('/api/status', async (req, res) => res.json({ active: await session.active(req) }));
+  let protectedWrites = 0;
   app.all('/api/protected', async (req, res) => {
+    if (req.method === 'POST') protectedWrites++;
     try {
       const identity = await verifyRequestIdentity(req, async () => {
         throw Error('Bearer missing');
@@ -60,7 +63,14 @@ test('company cookie is opaque, origin-bound for writes, expires, and can be rev
     assert.deepEqual(await (await send('status', 200, 'GET', { Cookie })).json(), { active: true });
     await send('protected', 204, 'GET', { Cookie });
     await send('protected', 403, 'POST', { Cookie, Origin: 'https://elsewhere.test' });
+    const staleSubject = createHash('sha256').update('tenant:previous-account').digest('hex');
+    const staleTab = { Cookie, Origin: origin, 'X-Company-Session-Subject': staleSubject };
+    const rejected = await send('protected', 409, 'POST', staleTab);
+    assert.equal(rejected.headers.get('X-Company-Session-Changed'), 'true');
+    assert.equal(protectedWrites, 0);
+    await send('auth/session', 409, 'DELETE', staleTab);
     await send('protected', 204, 'POST', { Cookie, Origin: origin });
+    assert.equal(protectedWrites, 1);
     await send('auth/session', 204, 'DELETE', { Cookie, Origin: origin });
     await send('protected', 401, 'GET', { Cookie });
     const fresh = (await issue()).headers.get('set-cookie')!.split(';')[0];

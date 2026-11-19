@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { useId } from 'react';
 import { Link } from 'react-router';
 
@@ -17,8 +18,8 @@ export function SkillRadar({ skills, reviewed }: { skills: TopReviewedSkill[]; r
       <section className="skill-radar-empty">
         <h4>Your top skills</h4>
         <p>
-          No manager-reviewed skills yet. Your proficiency snapshot appears after review; pending
-          claims and drafts stay separate.
+          No approved skills yet. Your proficiency snapshot appears after review; pending claims and
+          drafts stay separate.
         </p>
       </section>
     );
@@ -43,18 +44,18 @@ export function SkillRadar({ skills, reviewed }: { skills: TopReviewedSkill[]; r
     <section className="skill-radar" aria-labelledby={titleId}>
       <div className="skill-radar-heading">
         <h4 id={titleId}>Your top skills</h4>
-        <span>Manager reviewed</span>
+        <span>Approved</span>
       </div>
       <div className="skill-radar-layout">
         {skills.length >= 3 && scaleAvailable ? (
           <figure>
             <svg viewBox="0 0 260 240" role="img" aria-labelledby={`${titleId} ${descriptionId}`}>
               <desc id={descriptionId}>
-                Spider-web chart of reviewed proficiency.{' '}
+                Spider-web chart of approved proficiency.{' '}
                 {skills
                   .map(
                     (s, i) =>
-                      `S${i + 1}: ${s.skillName}, level ${s.rank} of ${s.maxRank}, ${s.levelName}`,
+                      `S${i + 1}: ${s.skillName}, level ${s.rank} of ${s.maxRank}, ${displayProficiencyName(s.rank, s.levelName)}`,
                   )
                   .join('. ')}
                 . Ranks use each skill's saved definition, not a percentage score.
@@ -97,19 +98,19 @@ export function SkillRadar({ skills, reviewed }: { skills: TopReviewedSkill[]; r
                 const p = point(i, s.rank);
                 return (
                   <circle key={s.id} cx={p.x} cy={p.y} r="3.5" className="skill-radar-point">
-                    <title>{`${s.skillName}: L${s.rank} / ${s.maxRank} — ${s.levelName}`}</title>
+                    <title>{`${s.skillName}: L${s.rank} / ${s.maxRank} — ${displayProficiencyName(s.rank, s.levelName)}`}</title>
                   </circle>
                 );
               })}
             </svg>
-            <figcaption>Reviewed level · scale 1–{maximum}</figcaption>
+            <figcaption>Approved level · scale 1–{maximum}</figcaption>
           </figure>
         ) : (
           <p className="skill-radar-small">
             {scaleAvailable ? (
               <>
-                Add more reviewed skills to unlock the spider-web view. Your{' '}
-                {skills.length === 1 ? 'reviewed skill is' : 'reviewed skills are'} listed here.
+                Add more approved skills to unlock the spider-web view. Your{' '}
+                {skills.length === 1 ? 'approved skill is' : 'approved skills are'} listed here.
               </>
             ) : (
               <>
@@ -127,7 +128,7 @@ export function SkillRadar({ skills, reviewed }: { skills: TopReviewedSkill[]; r
                 <Link to={'/my-skills?claim=' + s.id}>{s.skillName}</Link>
                 <span>
                   L{s.rank}
-                  {s.maxRank !== null ? ` / ${s.maxRank}` : ' · Scale unavailable'} · {s.levelName}
+                  {s.maxRank !== null ? ` / ${s.maxRank}` : ' · Scale unavailable'} · {displayProficiencyName(s.rank, s.levelName)}
                 </span>
               </div>
             </li>
@@ -137,9 +138,9 @@ export function SkillRadar({ skills, reviewed }: { skills: TopReviewedSkill[]; r
       <p className="skill-radar-summary">
         <strong>{strongest.skillName}</strong> is your highest recorded level:{' '}
         <strong>
-          L{strongest.rank} · {strongest.levelName}
+          L{strongest.rank} · {displayProficiencyName(strongest.rank, strongest.levelName)}
         </strong>
-        . Showing {skills.length} of {reviewed} reviewed skills, ordered by level. Different skill
+        . Showing {skills.length} of {reviewed} approved skills, ordered by level. Different skill
         frameworks may use different level definitions.
       </p>
     </section>

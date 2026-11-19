@@ -149,7 +149,7 @@ test('stopping project guide generation aborts the request and suppresses its la
   await mount();
   await click('AI guide', toolbar());
   const guide = document.querySelector('[aria-label="Project AI guide"]')!;
-  const prompt = 'How does manager skill review work?';
+  const prompt = 'How does manager skill approval work?';
   await click(prompt, guide);
   assert.equal(guide.querySelector('textarea')!.value, prompt);
   await click('Send project question', guide);

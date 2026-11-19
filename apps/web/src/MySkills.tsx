@@ -440,7 +440,8 @@ export function MySkills({
           }),
         }),
       );
-      let message = 'Skill draft saved. It is self-assessed and has not been submitted for review.',
+      let message =
+          'Skill draft saved. It is self-assessed and has not been submitted for approval.',
         submissionFailed = false;
       if (submit) {
         // Saving always advances the claim revision by one; the server rechecks reviewer routing on submit.
@@ -457,7 +458,7 @@ export function MySkills({
               }),
             }),
           );
-          message = 'Skill submitted to your assigned reporting manager for review.';
+          message = 'Skill submitted to your assigned reporting manager for approval.';
           notifySkillSubmitted(draft.id);
         } catch (error) {
           submissionFailed = true;
@@ -523,7 +524,7 @@ export function MySkills({
   if (reviewRequest && !draft)
     return (
       <FormDialog
-        title="Review skill draft"
+        title="Preview skill draft"
         onClose={reviewRequest.onClose}
         pages={[
           {
@@ -574,7 +575,7 @@ export function MySkills({
                 className="secondary-button"
                 to={'/my-skills?submitClaim=' + encodeURIComponent(submissionFailure.id)}
               >
-                Review saved draft and retry submission
+                Check saved draft and retry submission
               </Link>
               <button className="secondary-button" onClick={() => setSubmissionFailure(undefined)}>
                 Dismiss

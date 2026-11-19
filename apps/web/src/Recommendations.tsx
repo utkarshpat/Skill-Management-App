@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router';
 import {
@@ -139,7 +140,7 @@ export function Recommendations({
           <p>
             {view === 'sent'
               ? 'Support your current direct reports with a clear next step.'
-              : 'Choose what fits your development goal. Your skill profile changes only through a separate review.'}
+              : 'Choose what fits your development goal. Your skill profile changes only through a separate approval.'}
           </p>
         </div>
         <div className="recommendation-actions">
@@ -209,7 +210,7 @@ export function Recommendations({
               <h4>
                 {item.skillName}
                 <span className="recommendation-level">
-                  L{item.rank} · {item.levelName}
+                  L{item.rank} · {displayProficiencyName(item.rank, item.levelName)}
                 </span>
               </h4>
               <p>
@@ -228,7 +229,7 @@ export function Recommendations({
                 {statusName[item.status]}
               </span>
               <button className="secondary-button" onClick={() => setDetail(item)}>
-                {item.canRespond ? 'Review recommendation' : 'View details'}
+                {item.canRespond ? 'Open recommendation' : 'View details'}
                 <ArrowRight size={15} />
               </button>
             </div>
@@ -575,7 +576,7 @@ function RecommendSkill({ onClose, onSaved }: { onClose: () => void; onSaved: ()
           ),
         },
         {
-          label: 'Review & send',
+          label: 'Preview & send',
           content: (
             <div className="recommendation-form">
               <h3>{skill?.name}</h3>
@@ -651,7 +652,7 @@ function RecommendationDetail({
       `Review ${item.skillName} fundamentals\nPractice ${item.skillName} with a small exercise\nBuild and document a ${item.skillName} example`,
     ),
     [goal, setGoal] = useState(
-      `Develop ${item.skillName} toward ${item.levelName} (L${item.rank}). ${item.reason}`.slice(
+      `Develop ${item.skillName} toward ${displayProficiencyName(item.rank, item.levelName)} (L${item.rank}). ${item.reason}`.slice(
         0,
         2000,
       ),
@@ -792,7 +793,7 @@ function RecommendationDetail({
           {statusName[item.status]}
         </span>
         <h3>
-          {item.skillName} · L{item.rank} {item.levelName}
+          {item.skillName} · L{item.rank} {displayProficiencyName(item.rank, item.levelName)}
         </h3>
         <p>
           {item.senderName} recommended this for {item.personName}.
@@ -842,7 +843,7 @@ function RecommendationDetail({
         )}
         {action === 'ACCEPT' && (
           <>
-            <h3>Review your personal learning schedule</h3>
+            <h3>Preview your personal learning schedule</h3>
             <button className="secondary-button" onClick={() => setPlanning(true)}>
               <Sparkles size={17} />
               Plan with AI

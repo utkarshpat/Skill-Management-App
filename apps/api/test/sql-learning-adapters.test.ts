@@ -122,14 +122,14 @@ test('practice adapter reconstructs saved sessions, quiz questions and attempt s
     assert.deepEqual(data.attempts[0].answers, [1]);
     assert.equal(data.attempts[0].score, 1);
     f.reply('dbo.OwnLearningPractice');
-    await store.write(actor, plan, task, 'SESSION', { revision: 2, notes: 'Reviewed' });
+    await store.write(actor, plan, task, 'SESSION', { revision: 2, notes: 'Approved' });
     assert.deepEqual(f.calls.at(-1)?.inputs, {
       account_id: account,
       actor_id: actor,
       plan_id: plan,
       task_id: task,
       action: 'SESSION',
-      payload: '{"revision":2,"notes":"Reviewed"}',
+      payload: '{"revision":2,"notes":"Approved"}',
     });
     for (const [number, status] of [
       [51003, 403],

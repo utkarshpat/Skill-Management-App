@@ -1,0 +1,51 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: self
+
+  - task: UseNode@1
+    displayName: Use Node.js 24
+    inputs:
+      version: '24.x'
+
+  - script: npm ci
+    displayName: Install locked dependencies
+
+  - script: npm run docs:check
+    displayName: Check generated handover and schema reference
+
+  - script: npm run typecheck
+    displayName: Typecheck workspaces
+
+  - script: npm test
+    displayName: Run architecture, API and web regression tests
+
+  - script: npx playwright install --with-deps chromium
+    displayName: Install Chromium for browser tests
+
+  - script: npx playwright test e2e/assistant-workflows.spec.ts --grep 'company sign-in recovery keeps an unsent draft'
+    displayName: Verify draft recovery on desktop and mobile
+
+  - script: npm run build
+    displayName: Build the release
+
+  - bash: |
+      set -euo pipefail
+      npm run package:azure
+      node scripts/package-migrations.mjs
+      cp artifacts/skills-appservice-*.zip artifacts/skills-migrations-*.zip "$BUILD_ARTIFACTSTAGINGDIRECTORY/"
+    displayName: Package the app and ordered SQL migrations
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish deployment packages
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    inputs:
+      targetPath: '$(Build.ArtifactStagingDirectory)'
+      artifact: skill-genie-release

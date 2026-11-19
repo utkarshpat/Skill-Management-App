@@ -131,10 +131,12 @@ test('published catalogue supports literal search and read-only level inspection
   assert.match(document.body.textContent!, /No matching skills/);
   await change(document.querySelector<HTMLInputElement>('[aria-label="Search skills"]')!, 'SQL');
   await debounce();
+  assert.doesNotMatch(document.querySelector('.catalogue-table thead')!.textContent!, /Levels/);
   await click('SQL');
   const dialog = document.querySelector('.form-dialog')!;
   assert.match(dialog.textContent!, /Query and maintain customer reporting data/);
   assert.match(dialog.textContent!, /Autonomous/);
+  assert.match(dialog.textContent!, /Beginner/);
   assert.doesNotMatch(dialog.textContent!, /Save draft|Publish skill|Archive skill/);
   assert.equal(writes.length, 0);
   assert.equal(document.querySelector('#skill-editor'), null);

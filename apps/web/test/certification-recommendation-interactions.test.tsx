@@ -41,6 +41,7 @@ let record: any,
   readFailure = 0,
   writeFailure = 0,
   lookupFailure = false,
+  catalogueFailure = false,
   total = 1,
   writes: { path: string; body: any }[] = [],
   reads: string[] = [],
@@ -50,6 +51,7 @@ beforeEach(async () => {
   readFailure = 0;
   writeFailure = 0;
   lookupFailure = false;
+  catalogueFailure = false;
   total = 1;
   writes = [];
   reads = [];
@@ -57,6 +59,24 @@ beforeEach(async () => {
     const path = String(input);
     reads.push(path);
     if (path === '/api/dev-login') return demoResponse();
+    if (path.startsWith('/api/capability-submissions/catalogue?'))
+      return catalogueFailure
+        ? Response.json(
+            { error: { message: 'Catalogue temporarily unavailable' } },
+            { status: 503 },
+          )
+        : Response.json({
+            total: 1,
+            pageSize: 10,
+            credentials: [
+              {
+                id: 'catalogue-credential',
+                name: 'Oracle Database SQL',
+                provider: 'Oracle',
+                category: 'Databases',
+              },
+            ],
+          });
     if (init?.method === 'POST') {
       const body = JSON.parse(String(init.body));
       writes.push({ path, body });
@@ -102,12 +122,14 @@ async function mount(sentOnly = false) {
 
 test('credential suggestions keep one write identity across an unconfirmed unchanged send', async () => {
   await mount(true);
+  catalogueFailure = true;
   await click('Recommend a certification');
+  assert.match(document.body.textContent!, /Catalogue temporarily unavailable/);
+  catalogueFailure = false;
+  await click('Retry catalogue');
   await fill('Find direct report', 'Aditi');
   await fill('Direct report', employee);
-  await fill('Certification name', 'Oracle Database SQL');
-  await fill('Issuer', 'Oracle');
-  await fill('Category', 'Databases');
+  await fill('Certification catalogue', 'catalogue-credential');
   await fill('Why are you recommending it?', 'Supports Northstar customer reporting delivery');
   await fill('Credential information link', 'https://education.oracle.com/');
   await fill('Suggested target date', '2026-12-01');
@@ -120,6 +142,8 @@ test('credential suggestions keep one write identity across an unconfirmed uncha
   assert.deepEqual(writes[0].body, writes[1].body);
   assert.equal(writes[1].body.personId, employee);
   assert.equal(writes[1].body.certificationName, 'Oracle Database SQL');
+  assert.equal(writes[1].body.provider, 'Oracle');
+  assert.equal(writes[1].body.category, 'Databases');
   assert.equal(writes[1].body.targetDate, '2026-12-01');
   assert.equal('reviewerId' in writes[1].body, false);
   assert.equal(document.querySelector('.form-dialog'), null);

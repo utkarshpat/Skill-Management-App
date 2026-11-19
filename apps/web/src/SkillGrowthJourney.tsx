@@ -152,7 +152,7 @@ export function SkillGrowthJourney({ plans, canManage, onContinue, onResume }: P
               className="growth-recommendations"
               aria-labelledby="growth-recommendations-title"
             >
-              <h3 id="growth-recommendations-title">Recommendations to review</h3>
+              <h3 id="growth-recommendations-title">Recommendations to explore</h3>
               {activeRecommendations.map(item => (
                 <article key={item.id}>
                   <span className="growth-step-icon">
@@ -170,7 +170,7 @@ export function SkillGrowthJourney({ plans, canManage, onContinue, onResume }: P
                       '/learning?tab=recommendations&recommendation=' + encodeURIComponent(item.id)
                     }
                   >
-                    Review recommendation
+                    Open recommendation
                     <ArrowRight size={15} />
                   </Link>
                 </article>
@@ -216,13 +216,13 @@ export function SkillGrowthJourney({ plans, canManage, onContinue, onResume }: P
                             ? 'Skill-claim access is not assigned'
                             : 'Claim status unavailable'
                           : next.kind === 'EDIT_CLAIM'
-                            ? 'Review feedback and update claim'
+                            ? 'Approval feedback and update claim'
                             : next.kind === 'SUBMIT_CLAIM'
-                              ? 'Review and submit your claim'
+                              ? 'Check and submit your claim'
                               : next.kind === 'VIEW_CLAIM'
                                 ? claim?.status === 'SUBMITTED'
-                                  ? 'Await assigned review'
-                                  : 'View reviewed claim'
+                                  ? 'Await assigned approval'
+                                  : 'View approved claim'
                                 : 'No learning tasks in this plan';
               const blocked = next.kind === 'CLAIM_ACCESS_REQUIRED' || next.kind === 'NO_TASKS';
               return (
@@ -317,20 +317,20 @@ export function SkillGrowthJourney({ plans, canManage, onContinue, onResume }: P
                         )}
                       </span>
                       <div>
-                        <strong>Assigned review</strong>
+                        <strong>Assigned approval</strong>
                         <small>
                           {!sources.claimsReady
                             ? 'Status unavailable'
                             : claim?.status === 'APPROVED'
-                              ? 'Manager-reviewed proficiency'
+                              ? 'Manager-approved proficiency'
                               : claim?.status === 'SUBMITTED'
-                                ? 'Awaiting your assigned reviewer'
+                                ? 'Pending a decision from the assigned approver'
                                 : claim?.status === 'DRAFT'
                                   ? 'Only after you submit this draft'
                                   : claim?.status === 'CHANGES_REQUESTED'
                                     ? 'Revise the claim before resubmitting'
                                     : claim?.status === 'REJECTED'
-                                      ? 'Not approved · review feedback'
+                                      ? 'Not approved · approval feedback'
                                       : 'Only after you submit a claim'}
                         </small>
                       </div>
@@ -343,7 +343,7 @@ export function SkillGrowthJourney({ plans, canManage, onContinue, onResume }: P
                       </p>
                     )}
                     {next.kind === 'EDIT_CLAIM' && (
-                      <p>Use your reviewer’s feedback to update the claim before resubmitting.</p>
+                      <p>Use your approver’s feedback to update the claim before resubmitting.</p>
                     )}
                     {next.kind === 'CREATE_CLAIM' && (
                       <p>
