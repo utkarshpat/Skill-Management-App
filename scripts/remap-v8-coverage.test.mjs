@@ -97,7 +97,9 @@ test('esbuild import.meta shim does not become a production coverage entry', asy
     });
     const url = pathToFileURL(file).href;
     const data = JSON.parse(map);
-    assert.ok(data.sources.includes('<define:import.meta>'));
+    const shim = data.sources.indexOf('<define:import.meta>');
+    assert.notEqual(shim, -1);
+    data.sources[shim] = 'loader/<define:import.meta>';
     const report = {
       result: [
         {
