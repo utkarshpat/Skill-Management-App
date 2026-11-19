@@ -261,11 +261,9 @@ export class LocalAccessStore {
     const temporary = `${this.path}.${randomUUID()}.tmp`;
     try {
       await writeFile(temporary, JSON.stringify(state, null, 2), { encoding: 'utf8', mode: 0o600 });
-      let renamed = false;
       for (let attempt = 0; attempt < 5; attempt++) {
         try {
           await rename(temporary, this.path);
-          renamed = true;
           break;
         } catch (err) {
           const code = (err as { code?: string })?.code;
@@ -275,9 +273,6 @@ export class LocalAccessStore {
           }
           throw err;
         }
-      }
-      if (!renamed) {
-        await rename(temporary, this.path);
       }
     } finally {
       await rm(temporary, { force: true });

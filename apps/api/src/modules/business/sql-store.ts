@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import { readSqlJson } from '../../shared/sql-json.js';
 import sql from 'mssql';
 import { readBusinessFile } from './files.js';
@@ -24,10 +25,10 @@ export function assertBusinessScope(
   exporting = false,
 ) {
   const scopes = (context: BusinessContext) =>
-    JSON.stringify([...context.scopes].sort((a, b) => a.id.localeCompare(b.id)));
+    [...context.scopes].sort((a, b) => a.id.localeCompare(b.id));
   if (!after.canView || (exporting && !after.canExport))
     throw new AccessError(403, 'Business access changed. Reload your workspace.');
-  if (before.revision !== after.revision || scopes(before) !== scopes(after))
+  if (before.revision !== after.revision || !isDeepStrictEqual(scopes(before), scopes(after)))
     throw new AccessError(409, 'Scope changed during this read. Refresh before continuing.');
 }
 export class SqlBusinessStore implements BusinessStore {
@@ -219,10 +220,7 @@ export class SqlBusinessStore implements BusinessStore {
         ),
     );
     const after = await this.context(actor);
-    if (
-      JSON.stringify({ ...before, asOf: undefined }) !==
-      JSON.stringify({ ...after, asOf: undefined })
-    )
+    if (!isDeepStrictEqual({ ...before, asOf: undefined }, { ...after, asOf: undefined }))
       throw new AccessError(409, 'Access changed during recovery. Reload before continuing.');
     return result;
   }
@@ -232,10 +230,7 @@ export class SqlBusinessStore implements BusinessStore {
       { id: string; at: string; title: string; body: string; href: string }[]
     >(actor, 'dbo.BusinessAmendmentNotifications');
     const after = await this.context(actor);
-    if (
-      JSON.stringify({ ...before, asOf: undefined }) !==
-      JSON.stringify({ ...after, asOf: undefined })
-    )
+    if (!isDeepStrictEqual({ ...before, asOf: undefined }, { ...after, asOf: undefined }))
       throw new AccessError(409, 'Access changed during notification retrieval.');
     return result;
   }
@@ -252,10 +247,7 @@ export class SqlBusinessStore implements BusinessStore {
     );
     if (before) {
       const after = await this.context(actor);
-      if (
-        JSON.stringify({ ...before, asOf: undefined }) !==
-        JSON.stringify({ ...after, asOf: undefined })
-      )
+      if (!isDeepStrictEqual({ ...before, asOf: undefined }, { ...after, asOf: undefined }))
         throw new AccessError(409, 'Access changed during retrieval. Reload before continuing.');
       if (['DEMANDS', 'MATCHES'].includes(operation)) assertBusinessScope(before, after);
     }

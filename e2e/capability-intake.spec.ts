@@ -41,6 +41,16 @@ test('intake: proficiency and date validation keep drafts editable; discard requ
   await skill.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(skill).toContainText(/today|future/i);
   await skill.getByLabel('Last used', { exact: true }).fill('2026-11-01');
+  await skill.getByLabel('Experience in months', { exact: false }).fill('601');
+  await skill.getByRole('button', { name: 'Close SQL', exact: true }).click();
+  await expect(page.locator('.cap-skill-card')).toContainText('Needs details');
+  await page
+    .locator('.form-dialog-footer')
+    .getByRole('button', { name: 'Preview', exact: true })
+    .click();
+  await expect(skill.getByRole('alert')).toContainText(
+    'Enter experience between 0 and 600 months.',
+  );
   await skill.getByLabel('Experience in months', { exact: false }).fill('18');
   await skill
     .getByLabel('Describe your experience', { exact: true })

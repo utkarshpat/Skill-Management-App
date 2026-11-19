@@ -33,6 +33,29 @@ const definition = {
   },
 } as Definition;
 const person = { name: 'Employee', email: 'employee@example.com', employeeId: '100' };
+function fakeBridge(frame: HTMLIFrameElement) {
+  Object.defineProperty(frame, 'contentWindow', { configurable: true, value: {} });
+  const rendered: { channel: string; image?: string; person: typeof person }[] = [];
+  const channel = frame.getAttribute('src')!.split('#')[1];
+  const receiver = {
+    onmessage: undefined as ((event: MessageEvent) => void) | undefined,
+    postMessage: (data: (typeof rendered)[number]) => rendered.push(data),
+    close: () => {},
+  };
+  const ready = (source = frame.contentWindow, value = channel) =>
+    act(async () => {
+      window.dispatchEvent(
+        new window.MessageEvent('message', {
+          source,
+          origin: 'null',
+          data: { type: 'announcement.ready', channel: value },
+          ports: [receiver as unknown as MessagePort],
+        }),
+      );
+    });
+  const send = (data: unknown) => act(async () => receiver.onmessage?.({ data } as MessageEvent));
+  return { rendered, channel, ready, send };
+}
 let view: Awaited<ReturnType<typeof render>> | undefined;
 afterEach(async () => {
   await view?.unmount();
@@ -56,18 +79,12 @@ test('sandbox bridge rejects forged sources, channels and answer keys and uses c
   };
   view = await render(<AnnouncementSandbox {...props} />);
   const frame = document.querySelector('iframe')!;
-  const rendered: any[] = [];
-  Object.defineProperty(frame, 'contentWindow', {
-    configurable: true,
-    value: { postMessage: (data: any) => rendered.push(data) },
-  });
-  const send = async (data: unknown, source = frame.contentWindow) =>
-    act(async () => {
-      window.dispatchEvent(new window.MessageEvent('message', { source, data }));
-    });
-  await send({ type: 'announcement.ready' });
-  const channel = rendered.at(-1).channel;
-  assert.ok(channel);
+  const { channel, ready, rendered, send } = fakeBridge(frame);
+  await ready(window);
+  await ready(frame.contentWindow, 'wrong-channel');
+  assert.equal(rendered.length, 0);
+  await ready();
+  assert.deepEqual(rendered.at(-1)?.person, person);
   const action = (changes: object = {}) => ({
     type: 'announcement.action',
     channel,
@@ -75,7 +92,11 @@ test('sandbox bridge rejects forged sources, channels and answer keys and uses c
     answers: { batch: 'Evening' },
     ...changes,
   });
-  await send(action(), window);
+  await act(async () => {
+    window.dispatchEvent(
+      new window.MessageEvent('message', { source: frame.contentWindow, data: action() }),
+    );
+  });
   await send(action({ channel: 'forged' }));
   await send(action({ answers: { email: 'forged@example.com' } }));
   await send(action({ answers: [] }));
@@ -138,22 +159,9 @@ test('sandbox accepts app-owned image bytes while rejecting external image URLs'
       />,
     );
     const frame = document.querySelector('iframe')!;
-    const rendered: any[] = [];
-    Object.defineProperty(frame, 'contentWindow', {
-      configurable: true,
-      value: { postMessage: (data: any) => rendered.push(data) },
-    });
-    const ready = () =>
-      act(async () => {
-        window.dispatchEvent(
-          new window.MessageEvent('message', {
-            source: frame.contentWindow,
-            data: { type: 'announcement.ready' },
-          }),
-        );
-      });
+    const { ready, rendered } = fakeBridge(frame);
     await ready();
-    assert.equal(rendered.at(-1).image, undefined);
+    assert.equal(rendered.at(-1)!.image, undefined);
     await view.update(
       <AnnouncementSandbox
         definition={definition}
@@ -162,7 +170,7 @@ test('sandbox accepts app-owned image bytes while rejecting external image URLs'
       />,
     );
     await settle();
-    assert.equal(rendered.at(-1).image, 'data:image/png;base64,iVBORw==');
+    assert.equal(rendered.at(-1)!.image, 'data:image/png;base64,iVBORw==');
     await view.update(
       <AnnouncementSandbox
         definition={definition}
@@ -172,7 +180,7 @@ test('sandbox accepts app-owned image bytes while rejecting external image URLs'
     );
     await settle();
     await settle();
-    assert.match(rendered.at(-1).image, /^data:image\/png;base64,/);
+    assert.match(rendered.at(-1)!.image!, /^data:image\/png;base64,/);
     assert.deepEqual(imageRequests, ['/api/announcements/unit-image/image']);
   } finally {
     Object.assign(globalThis, { FileReader: original });

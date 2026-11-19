@@ -11,6 +11,7 @@ import {
 import { registerBusinessRoutes, type BusinessDependencies } from './modules/business/index.js';
 import { startRequestTiming } from './shared/request-timing.js';
 import { errorType, logEvent } from './shared/logger.js';
+import { AccessError } from './shared/errors.js';
 import { registerWebHosting } from './shared/web-hosting.js';
 import {
   registerCapabilityRoutes,
@@ -440,6 +441,16 @@ export function createApp(
       res.status(503).json({
         error: {
           code: 'DATABASE_QUOTA_EXHAUSTED',
+          message: error.message,
+          requestId: res.locals.requestId,
+        },
+      });
+      return;
+    }
+    if (error instanceof AccessError) {
+      res.status(error.status).json({
+        error: {
+          code: 'ACCESS_REJECTED',
           message: error.message,
           requestId: res.locals.requestId,
         },

@@ -248,8 +248,8 @@ export function PersonAccessDialog({
   };
 
   // Handle removing an exception
-  const handleRemoveOverride = async (index: number) => {
-    const updatedOverrides = person.overrides.filter((_, idx) => idx !== index);
+  const handleRemoveOverride = async (override: Assignment) => {
+    const updatedOverrides = person.overrides.filter(item => item !== override);
     await preview({ ...person, overrides: updatedOverrides });
   };
 
@@ -644,7 +644,7 @@ export function PersonAccessDialog({
                         type="button"
                         className="danger-ghost-button"
                         disabled={busy}
-                        onClick={() => handleRemoveOverride(index)}
+                        onClick={() => handleRemoveOverride(override)}
                         title={`Remove ${override.permission} override`}
                       >
                         <Trash2 size={14} /> Remove

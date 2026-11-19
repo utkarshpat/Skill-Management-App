@@ -1,6 +1,7 @@
 import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
+import { errorType, logEvent } from '../../shared/logger.js';
 import type {
   Certification,
   CertificationChange,
@@ -132,7 +133,12 @@ export class SqlCertificationStore implements CertificationStore {
         await transaction.commit();
         return revision;
       } catch (e) {
-        if (!rolledBack) await transaction.rollback().catch(() => undefined);
+        if (!rolledBack)
+          await transaction.rollback().catch(error => {
+            logEvent('error', 'certification.renewal_rollback_failed', {
+              errorType: errorType(error),
+            });
+          });
         const number = (e as { number?: number }).number;
         if (number === 51003)
           throw new AccessError(403, 'Only your own approved credential can be renewed.');

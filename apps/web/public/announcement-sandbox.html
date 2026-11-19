@@ -1,19 +1,22 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-FtcnzFG4n9NaP+RDy/7Mb8DARRqh3HcRL/g6fX+MeWY='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-1XU7a5H1feegcD5TK9uEYJgrdb0wUmqkbBfdFh9ylUY='; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'">
 <title>Announcement design</title><style>html,body{margin:0;padding:0;font-family:system-ui,sans-serif;overflow-x:hidden}*{box-sizing:border-box}#bridge-status{font:13px system-ui;margin:8px;color:inherit}button,input,select,textarea{font:inherit}output[data-identity]{display:block;overflow-wrap:anywhere}fieldset[data-radio] label{display:flex;align-items:center;gap:.6rem;min-height:44px}input:is([type=radio],[type=checkbox]){accent-color:#126b70}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}</style><style id="bridge-css"></style></head>
 <body><div id="bridge-canvas"></div><p id="bridge-status" role="status"></p>
 <script id="announcement-bridge">
 (() => {
   'use strict';
   const host = window.parent, canvas = document.getElementById('bridge-canvas'), stylesheet = document.getElementById('bridge-css'), status = document.getElementById('bridge-status');
-  let channel, current, signature = '';
+  const channel = location.hash.slice(1);
+  if (!/^[0-9a-f-]{36}$/i.test(channel)) return;
+  const bridge = new MessageChannel();
+  let current, signature = '';
   const element = binding => document.getElementById(binding.elementId);
-  const send = data => { if (channel) host.postMessage({ ...data, channel }, '*'); };
+  const send = data => bridge.port1.postMessage({ ...data, channel });
   const resize = () => send({ type: 'announcement.height', height: Math.max(64, Math.min(1800, Math.ceil(canvas.scrollHeight + status.offsetHeight + 16))) });
   const locked = () => !current || current.busy || current.answered;
   function apply(value) {
-    channel = value.channel; current = value;
+    current = value;
     const next = JSON.stringify([value.html, value.css, value.bindings, value.definition.fields]);
     const fresh = signature !== next;
     if (fresh) { signature = next; stylesheet.textContent = value.css; canvas.innerHTML = value.html; }
@@ -69,10 +72,10 @@
     status.textContent = value.answered ? 'Response recorded.' : value.busy ? 'Submitting...' : value.definition.fields.length && !value.person.email ? 'Sign in again to confirm your work email.' : '';
     requestAnimationFrame(resize);
   }
-  window.addEventListener('message', event => {
-    if (event.source !== host || event.data?.type !== 'announcement.render' || typeof event.data.channel !== 'string') return;
+  bridge.port1.onmessage = event => {
+    if (event.data?.type !== 'announcement.render' || event.data.channel !== channel) return;
     apply(event.data);
-  });
+  };
   document.addEventListener('click', event => {
     const button = event.target.closest?.('button'); if (!button || !current) return;
     const binding = current.bindings.find(b => b.elementId === button.id); if (!binding || locked()) { event.preventDefault(); return; }
@@ -95,6 +98,6 @@
   }, true);
   document.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.isComposing && event.target.tagName === 'INPUT' && !['radio', 'checkbox'].includes(event.target.type)) { event.preventDefault(); submit(event.target.closest('form')); } }, true);
   new ResizeObserver(resize).observe(canvas);
-  host.postMessage({ type:'announcement.ready' }, '*');
+  host.postMessage({ type:'announcement.ready', channel }, '*', [bridge.port2]);
 })();
 </script></body></html>

@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import type { Express } from 'express';
 import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
@@ -47,7 +47,6 @@ export class SqlCapabilityLeads {
   }
 }
 
-const previewKey = process.env.ENTRA_WEB_CLIENT_SECRET || randomBytes(32);
 export interface CapabilityLeadDependencies extends CertificationDependencies {
   capabilityLeads?: SqlCapabilityLeads;
 }
@@ -55,6 +54,7 @@ export interface CapabilityLeadDependencies extends CertificationDependencies {
 export function registerCapabilityLeadRoutes(app: Express, deps?: CapabilityLeadDependencies) {
   const leads = deps?.capabilityLeads;
   if (!leads || !deps?.resolveAccess) return;
+  const previewKey = process.env.ENTRA_WEB_CLIENT_SECRET;
   const base = '/api/capability-leads';
   app.use(base, async (req, res, next) => {
     res.set('Cache-Control', 'no-store');
@@ -108,6 +108,11 @@ export function registerCapabilityLeadRoutes(app: Express, deps?: CapabilityLead
         active: body.active,
         reason: body.reason.trim(),
       };
+      if (!previewKey)
+        throw new AccessError(
+          503,
+          'Issuer assignment previews require company sign-in configuration.',
+        );
       const receipt = createHmac('sha256', previewKey)
         .update(JSON.stringify({ actor, command }))
         .digest('hex');

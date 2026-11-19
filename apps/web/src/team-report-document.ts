@@ -134,7 +134,7 @@ export function teamReportHtml(analytics: TeamReportAnalytics, query: string, at
       teamAverageLevel(analytics) ? 'L' + teamAverageLevel(analytics) : '—',
       'Current four-level framework; not equivalence across frameworks',
     ],
-    ['Without approved skills', without, 'Members with no approved record'],
+    ['Without four-level skill coverage', without, 'Members with no approved four-level claim'],
   ];
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">

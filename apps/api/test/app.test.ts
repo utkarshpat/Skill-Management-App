@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createApp } from '../src/create-app.js';
+import { SqlCapabilityLeads } from '../src/modules/skills/capability-lead-routes.js';
+import { AccessError } from '../src/shared/errors.js';
 
 test('health is public; profile, permissions and writes require identity', async () => {
   const server = createApp().listen(0, '127.0.0.1');
@@ -85,6 +87,40 @@ test('profile trusts verified identity, denies missing membership and hides SQL 
     assert.equal(error.error.code, 'INTERNAL_ERROR');
     assert.ok(error.error.requestId);
     assert.doesNotMatch(JSON.stringify(error), /SQL|password/);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close(error => (error ? reject(error) : resolve())),
+    );
+  }
+});
+
+test('capability lead route keeps expected rejections in the public HTTP error contract', async t => {
+  const actor = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const leads = new SqlCapabilityLeads(actor);
+  t.mock.method(leads, 'run', async () => {
+    throw new AccessError(409, 'Workspace changed. Refresh and review again.');
+  });
+  const server = createApp({
+    capabilityLeads: leads,
+    profile: async () => undefined,
+    verify: async () => ({ tenantId: 'trusted-tenant', objectId: 'trusted-object' }),
+    resolveAccess: async () => actor,
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const url = `http://127.0.0.1:${address.port}/api/capability-leads`;
+  try {
+    for (const [path, status] of [
+      ['?personId=invalid', 400],
+      ['', 409],
+    ] as const) {
+      const response = await fetch(url + path, { headers: { Authorization: 'Bearer valid' } });
+      assert.equal(response.status, status);
+      const error = (await response.json()).error;
+      assert.equal(error.code, 'ACCESS_REJECTED');
+      assert.equal(error.requestId, response.headers.get('x-request-id'));
+    }
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close(error => (error ? reject(error) : resolve())),

@@ -225,6 +225,12 @@ export function AnnouncementManager({
         setError('The saved announcement is already published, closed or unavailable.');
         return;
       }
+      if (existing && existing.revision !== localDraft.revision) {
+        setError(
+          'This draft changed on the server. Open the saved draft from Your announcements. Your local copy is still on this device.',
+        );
+        return;
+      }
       setDraft(
         localDraft.draftId
           ? {

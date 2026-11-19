@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { authenticatedFetch } from './auth';
 import type { Definition, Person } from './announcement-model';
 
@@ -25,6 +25,7 @@ export function AnnouncementSandbox({
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const channel = useRef(crypto.randomUUID());
+  const port = useRef<MessagePort | undefined>(undefined);
   const [height, setHeight] = useState(300);
   const [imageData, setImageData] = useState<string>();
   const design = definition.design!;
@@ -55,28 +56,25 @@ export function AnnouncementSandbox({
   };
   const render = () => {
     const value = current.current;
-    frame.current?.contentWindow?.postMessage(
-      {
-        type: 'announcement.render',
-        channel: channel.current,
-        html: value.definition.design?.html,
-        css: value.definition.design?.css,
-        bindings: value.definition.design?.bindings ?? [],
-        definition: {
-          title: value.definition.title,
-          message: value.definition.message,
-          fields: value.definition.fields,
-          options: value.definition.options,
-        },
-        person: value.person,
-        image: value.imageData,
-        surface: value.surface,
-        busy: !!value.busy,
-        answered: !!value.answered,
-        theme: value.theme,
+    port.current?.postMessage({
+      type: 'announcement.render',
+      channel: channel.current,
+      html: value.definition.design?.html,
+      css: value.definition.design?.css,
+      bindings: value.definition.design?.bindings ?? [],
+      definition: {
+        title: value.definition.title,
+        message: value.definition.message,
+        fields: value.definition.fields,
+        options: value.definition.options,
       },
-      '*',
-    );
+      person: value.person,
+      image: value.imageData,
+      surface: value.surface,
+      busy: !!value.busy,
+      answered: !!value.answered,
+      theme: value.theme,
+    });
   };
   useEffect(() => {
     let active = true;
@@ -107,19 +105,9 @@ export function AnnouncementSandbox({
       controller.abort();
     };
   }, [image]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const receive = (event: MessageEvent) => {
-      if (
-        event.source !== frame.current?.contentWindow ||
-        !event.data ||
-        typeof event.data !== 'object'
-      )
-        return;
-      if (event.data.type === 'announcement.ready') {
-        render();
-        return;
-      }
-      if (event.data.channel !== channel.current) return;
+      if (event.data?.channel !== channel.current) return;
       if (event.data.type === 'announcement.height') {
         if (
           Number.isSafeInteger(event.data.height) &&
@@ -157,8 +145,29 @@ export function AnnouncementSandbox({
         value.onSubmit?.(answers);
       }
     };
-    window.addEventListener('message', receive);
-    return () => window.removeEventListener('message', receive);
+    const connect = (event: MessageEvent) => {
+      const target = frame.current?.contentWindow;
+      if (
+        !target ||
+        event.source !== target ||
+        event.origin !== 'null' ||
+        event.data?.type !== 'announcement.ready' ||
+        event.data?.channel !== channel.current ||
+        event.ports.length !== 1
+      )
+        return;
+      port.current?.close();
+      const next = event.ports[0];
+      next.onmessage = receive;
+      port.current = next;
+      render();
+    };
+    window.addEventListener('message', connect);
+    return () => {
+      window.removeEventListener('message', connect);
+      port.current?.close();
+      port.current = undefined;
+    };
   }, []);
   useEffect(render, [
     design,
@@ -180,14 +189,13 @@ export function AnnouncementSandbox({
       title={definition.title + ' design'}
       sandbox="allow-scripts"
       referrerPolicy="no-referrer"
-      src="/announcement-sandbox.html"
+      src={'/announcement-sandbox.html#' + channel.current}
       style={{
         width: '100%',
         height: surface === 'banner' ? Math.min(160, height) : height,
         border: 0,
         display: 'block',
       }}
-      onLoad={render}
     />
   );
 }

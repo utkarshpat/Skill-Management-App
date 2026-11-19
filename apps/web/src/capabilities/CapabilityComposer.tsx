@@ -7,6 +7,7 @@ import {
   Award,
   Check,
   Info,
+  Pencil,
   Plus,
   Search,
   Send,
@@ -95,6 +96,19 @@ function unlinkCertificateSkill(certificate: SelectedCertificate, skillId: strin
   if (!certificate.skillIds.includes(skillId)) return [certificate];
   const skillIds = certificate.skillIds.filter(id => id !== skillId);
   return certificate.reuse && !skillIds.length ? [] : [{ ...certificate, skillIds }];
+}
+
+function skillDetailsError(skill: SelectedSkill) {
+  if (!skill.reuse && !skill.choice.levels.some(level => level.rank === skill.rank))
+    return 'Choose your proficiency.';
+  if (
+    !skill.reuse &&
+    (!Number.isInteger(skill.experienceMonths) ||
+      skill.experienceMonths < 0 ||
+      skill.experienceMonths > 600)
+  )
+    return 'Enter experience between 0 and 600 months.';
+  return skillDateError(skill.lastUsedOn);
 }
 
 function catalogueAutofillMessage(match: CertificateAutofillMatch) {
@@ -410,6 +424,21 @@ export function CapabilityComposer({
         lastUsedOn: own?.lastUsedOn?.slice(0, 10) ?? '',
       },
     ]);
+    const suggestedBy = new Set(
+      activeSuggestions
+        .filter(entry => entry.skill.id === choice.id)
+        .map(entry => entry.certificateId),
+    );
+    if (!suggestedBy.size) {
+      const uploaded = certs.filter(c => !c.reuse && (c.file || c.uploaded));
+      if (uploaded.length === 1) suggestedBy.add(uploaded[0].id);
+    }
+    if (suggestedBy.size)
+      setCerts(old =>
+        old.map(c =>
+          suggestedBy.has(c.id) ? { ...c, skillIds: [...new Set([...c.skillIds, choice.id])] } : c,
+        ),
+      );
   }
   const addCertificate = () => {
     if (working || certs.length >= 10) return;
@@ -796,18 +825,8 @@ export function CapabilityComposer({
   }
   function validate() {
     if (!skills.length) return 'Select at least one published skill.';
-    for (const s of skills) {
-      if (
-        !s.reuse &&
-        (!s.choice.levels.some(level => level.rank === s.rank) ||
-          !Number.isInteger(s.experienceMonths) ||
-          s.experienceMonths < 0 ||
-          s.experienceMonths > 600)
-      )
-        return `Complete proficiency and experience for ${s.choice.name}.`;
-      const date = skillDateError(s.lastUsedOn);
-      if (date) return date;
-    }
+    const invalidSkill = skills.find(skillDetailsError);
+    if (invalidSkill) return `${invalidSkill.choice.name}: ${skillDetailsError(invalidSkill)}`;
     if (hasCertificate && !certs.length)
       return 'Add or link a certification, or choose skill without certification.';
     for (const c of certs) {
@@ -1458,41 +1477,6 @@ export function CapabilityComposer({
                     <span className="cap-count">{skills.length}/10</span>
                   </header>
                   <div className="cap-search">
-                    <div className="cap-chips" aria-label="Selected related skills">
-                      {skills.map(s => (
-                        <span key={s.id}>
-                          <button
-                            type="button"
-                            disabled={working}
-                            onClick={() => {
-                              setSkillDialogError('');
-                              setEditingSkill(s.choice.id);
-                            }}
-                          >
-                            {s.choice.name}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={working}
-                            aria-label={`Remove ${s.choice.name}`}
-                            onClick={() => {
-                              dirty.current = true;
-                              setSkills(old => old.filter(v => v.id !== s.id));
-                              setPendingEvidence(old => {
-                                const next = { ...old };
-                                delete next[s.id];
-                                return next;
-                              });
-                              replaceCertificates(
-                                certs.flatMap(c => unlinkCertificateSkill(c, s.choice.id)),
-                              );
-                            }}
-                          >
-                            <X size={14} />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
                     <Search size={18} />
                     <input
                       aria-label="Search related skills"
@@ -1588,20 +1572,7 @@ export function CapabilityComposer({
                                 skills.some(s => s.choice.id === option.id) ||
                                 skills.length >= 10
                               }
-                              onClick={() => {
-                                addSkill(option);
-                                for (const suggestion of activeSuggestions.filter(
-                                  v => v.skill.id === option.id,
-                                )) {
-                                  const certificate = certs.find(
-                                    c => c.id === suggestion.certificateId,
-                                  );
-                                  if (certificate)
-                                    patchCertificate(certificate.id, {
-                                      skillIds: [...new Set([...certificate.skillIds, option.id])],
-                                    });
-                                }
-                              }}
+                              onClick={() => addSkill(option)}
                             >
                               {suggested ? <Sparkles size={15} /> : <Plus size={15} />}
                               {option.name}
@@ -1618,6 +1589,119 @@ export function CapabilityComposer({
                       {searching && <span role="status">Searching catalogue…</span>}
                     </div>
                   </div>
+
+                  <section className="cap-selected-skills-section">
+                    <header className="cap-selected-skills-header">
+                      <div>
+                        <h4>Selected skills ({skills.length}/10)</h4>
+                        <p className="cap-selected-skills-sub">
+                          Set proficiency level and experience for each claim
+                        </p>
+                      </div>
+                      {skills.some(skillDetailsError) && (
+                        <span className="cap-status-badge incomplete">⚠️ Needs details</span>
+                      )}
+                    </header>
+                    {!skills.length ? (
+                      <div className="cap-skills-empty">
+                        <p>
+                          No skills selected yet. Search above or click suggested skills to add.
+                        </p>
+                      </div>
+                    ) : (
+                      <div
+                        className="cap-selected-skills-list"
+                        aria-label="Selected related skills"
+                      >
+                        {skills.map(s => {
+                          const isComplete = !skillDetailsError(s);
+                          return (
+                            <div
+                              key={s.id}
+                              className={'cap-skill-card' + (!isComplete ? ' incomplete' : '')}
+                            >
+                              <div className="cap-skill-card-header">
+                                <div className="cap-skill-card-info">
+                                  <span className="cap-skill-rank-badge">
+                                    {s.rank ? `L${s.rank}` : '?'}
+                                  </span>
+                                  <div className="cap-skill-card-meta">
+                                    <div className="cap-skill-title-row">
+                                      <button
+                                        type="button"
+                                        className="cap-skill-name-btn"
+                                        disabled={working}
+                                        onClick={() => {
+                                          setSkillDialogError('');
+                                          setEditingSkill(s.choice.id);
+                                        }}
+                                      >
+                                        {s.choice.name}
+                                      </button>
+                                      {isComplete ? (
+                                        <span className="cap-status-badge complete">
+                                          <Check size={12} />{' '}
+                                          {s.reuse
+                                            ? 'Approved'
+                                            : `L${s.rank} · ${s.experienceMonths} mos`}
+                                        </span>
+                                      ) : (
+                                        <span className="cap-status-badge incomplete">
+                                          ⚠️ Needs details
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="cap-skill-category">
+                                      {s.choice.category}
+                                      {isComplete && s.lastUsedOn
+                                        ? ` · Last used: ${s.lastUsedOn}`
+                                        : ''}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="cap-skill-card-actions">
+                                  <button
+                                    type="button"
+                                    className="cap-skill-edit-btn"
+                                    disabled={working}
+                                    onClick={() => {
+                                      setSkillDialogError('');
+                                      setEditingSkill(s.choice.id);
+                                    }}
+                                    aria-label={`Edit ${s.choice.name}`}
+                                  >
+                                    <Pencil size={14} />
+                                    <span>Edit</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="cap-skill-remove-btn"
+                                    disabled={working}
+                                    aria-label={`Remove ${s.choice.name}`}
+                                    onClick={() => {
+                                      dirty.current = true;
+                                      setSkills(old => old.filter(v => v.id !== s.id));
+                                      setPendingEvidence(old => {
+                                        const next = { ...old };
+                                        delete next[s.id];
+                                        return next;
+                                      });
+                                      replaceCertificates(
+                                        certs.flatMap(c => unlinkCertificateSkill(c, s.choice.id)),
+                                      );
+                                    }}
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
                 </section>
               </div>
             ),
@@ -1747,6 +1831,11 @@ export function CapabilityComposer({
                     const invalid = page === 1 ? validate() : '';
                     if (invalid) {
                       setError(invalid);
+                      const incomplete = skills.find(s => !s.reuse && skillDetailsError(s));
+                      if (incomplete) {
+                        setSkillDialogError(skillDetailsError(incomplete));
+                        setEditingSkill(incomplete.choice.id);
+                      }
                       return;
                     }
                     if (page === 0 && !hasUploadedCertificate && !isRenewal) {
@@ -1819,9 +1908,9 @@ export function CapabilityComposer({
                   className="admin-primary"
                   disabled={working}
                   onClick={() => {
-                    const dateError = skillDateError(s.lastUsedOn);
-                    if (!s.reuse && (!s.rank || dateError)) {
-                      setSkillDialogError(dateError || 'Choose your proficiency.');
+                    const detailsError = s.reuse ? '' : skillDetailsError(s);
+                    if (detailsError) {
+                      setSkillDialogError(detailsError);
                       return;
                     }
                     setEditingSkill(undefined);

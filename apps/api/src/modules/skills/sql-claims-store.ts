@@ -288,7 +288,12 @@ export class SqlClaimsStore implements ClaimsStore {
     try {
       const result = await this.workbench(actorId, 1, reviewQuery({ status: 'ALL' }), id, page);
       const sets = result.recordsets as unknown as sql.IRecordSet<Record<string, unknown>>[];
-      const raw = sets[1][0] as unknown as Omit<SkillClaim, 'updatedAt'> & { updatedAt: Date };
+      const raw = sets?.[1]?.[0] as unknown as
+        (Omit<SkillClaim, 'updatedAt'> & { updatedAt: Date }) | undefined;
+      const history = sets?.[4];
+      const total = Number(sets?.[5]?.[0]?.total ?? NaN);
+      if (!sets?.[1] || !Array.isArray(history) || !Number.isSafeInteger(total) || total < 0)
+        throw new AccessError(503, 'Approval history is unavailable. Try again later.');
       if (!raw) throw new AccessError(404, 'Assigned approval unavailable.');
       return {
         claim: {
@@ -299,14 +304,14 @@ export class SqlClaimsStore implements ClaimsStore {
           reviewerId: raw.reviewerId?.toLowerCase(),
           updatedAt: raw.updatedAt.toISOString(),
         },
-        history: sets[4].map(row => ({
+        history: history.map(row => ({
           revision: Number(row.revision),
           action: String(row.action),
           at: (row.at as Date).toISOString(),
           actorName: String(row.actorName),
-          feedback: String(row.feedback),
+          feedback: String(row.feedback ?? ''),
         })),
-        total: Number(sets[5][0].total),
+        total,
         page,
         pageSize: 20,
       };

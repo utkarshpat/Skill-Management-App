@@ -111,7 +111,9 @@ test('free HTML/CSS runs only inside the sandbox and preview actions never submi
   await frame.getByRole('button', { name: 'Register now' }).click();
   await expect(editor.getByText('Preview response accepted. Nothing was submitted.')).toBeVisible();
   expect(writes).toBe(0);
-  const content = page.frames().find(frame => frame.url().endsWith('/announcement-sandbox.html'));
+  const content = page
+    .frames()
+    .find(frame => new URL(frame.url()).pathname.endsWith('/announcement-sandbox.html'));
   expect(
     await content!.evaluate(() => {
       try {

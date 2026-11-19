@@ -843,13 +843,16 @@
 }
 .cap-suggestion-bar .cap-skill-results {
   flex: 1;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-width: 0;
-  max-height: none;
+  max-height: 76px;
   margin: 0;
-  padding-bottom: 8px;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
 }
 .cap-suggestion-bar .cap-skill-results button {
   flex-shrink: 0;
@@ -919,6 +922,181 @@
 .cap-skill-summary > span {
   color: var(--muted);
   font-size: 13px;
+}
+.cap-selected-skills-section {
+  margin-top: 24px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+.cap-selected-skills-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.cap-selected-skills-header h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.cap-selected-skills-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cap-skills-empty {
+  padding: 32px 20px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  background: var(--raised);
+}
+.cap-selected-skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cap-skill-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  overflow: hidden;
+}
+.cap-skill-card.incomplete {
+  border-color: color-mix(in srgb, #f59e0b 45%, var(--line));
+  background: color-mix(in srgb, #fef3c7 15%, var(--surface));
+}
+.cap-skill-card-header {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cap-skill-card-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.cap-skill-rank-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: var(--raised);
+  color: var(--accent-ink);
+}
+.cap-skill-card.incomplete .cap-skill-rank-badge {
+  background: #fef3c7;
+  color: #b45309;
+}
+.cap-skill-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cap-skill-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cap-skill-name-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.cap-skill-name-btn:hover {
+  color: var(--accent-ink);
+  text-decoration: underline;
+}
+.cap-selected-skills-section .cap-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.cap-status-badge.incomplete {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+.cap-status-badge.complete {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+.cap-skill-category {
+  font-size: 12px;
+  color: var(--muted);
+}
+.cap-skill-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.cap-skill-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.cap-skill-edit-btn:hover {
+  background: var(--raised);
+  border-color: var(--accent-ink);
+}
+.cap-skill-remove-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.cap-skill-remove-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
 }
 .cap-skill-dialog {
   width: min(760px, calc(100vw - 24px));

@@ -1,9 +1,11 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
+import { act } from 'react';
 import { closeBrowser, demoResponse, render, settle } from './support/browser';
 import {
   click,
   component,
+  debounce,
   fill,
   MemoryRouter,
   refreshDevelopmentLogin,
@@ -215,11 +217,12 @@ test('an incomplete intake stages its private certificate using the saved draft 
   }
 });
 
-test('linked submission waits for certificate upload and submits the new file revision', async t => {
+test('selecting a skill after a certificate upload links it and submits the new file revision', async t => {
   const file = new File(['%PDF-1.4\n'], 'SQL Foundations.pdf', { type: 'application/pdf' });
   const steps: string[] = [];
   let draftId = '';
   let credentialId = '';
+  let skillId = '';
   let confirmed = 0;
   t.mock.method(
     globalThis,
@@ -239,13 +242,14 @@ test('linked submission waits for certificate upload and submits the new file re
         assert.equal(body.revision, 0);
         draftId = body.id;
         credentialId = body.certifications[0].id;
+        skillId = body.skills[0].id;
         assert.deepEqual(body.certifications[0].skillIds, [choice.id]);
         assert.equal(body.certifications[0].fields.expiryDate, '2026-01-31');
         return Response.json({
           id: draftId,
           revision: 4,
           status: 'DRAFT',
-          skills: [{ id: initialSkillDraft.id, revision: 5 }],
+          skills: [{ id: skillId, revision: 5 }],
           certifications: [{ id: credentialId, revision: 6 }],
         });
       }
@@ -262,7 +266,7 @@ test('linked submission waits for certificate upload and submits the new file re
         assert.deepEqual(JSON.parse(String(options?.body)), {
           id: draftId,
           revision: 4,
-          skills: [{ id: initialSkillDraft.id, revision: 5 }],
+          skills: [{ id: skillId, revision: 5 }],
           certifications: [{ id: credentialId, revision: 7 }],
         });
         return Response.json({ id: draftId, revision: 5, status: 'SUBMITTED' });
@@ -274,7 +278,6 @@ test('linked submission waits for certificate upload and submits the new file re
   const form = await render(
     <MemoryRouter>
       <CapabilityComposer
-        initialSkillDraft={initialSkillDraft}
         initialEvidenceFile={file}
         onClose={() => assert.fail('Unexpected close')}
         onSaved={() => confirmed++}
@@ -289,6 +292,11 @@ test('linked submission waits for certificate upload and submits the new file re
     await fill('Issue date', '2025-01-31');
     await click('1 year');
     await click('Continue');
+    await debounce();
+    await click(choice.name, document.querySelector('.cap-skill-results')!);
+    const skillDialog = document.querySelector('.cap-skill-dialog')!;
+    await act(async () => skillDialog.querySelector<HTMLInputElement>('input[value="3"]')!.click());
+    await click('Done', skillDialog);
     await click('Preview', document.querySelector('.form-dialog-footer')!);
     assert.deepEqual(steps, []);
     await click('Submit for approval');

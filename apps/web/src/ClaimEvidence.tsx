@@ -175,7 +175,7 @@ export function ClaimEvidence({
     return () => c.abort();
   }, [root, attempt]);
   async function upload(file?: File) {
-    if (!file || !state || busy) return;
+    if (!file || !state || busy || uploadController.current) return;
     const controller = new AbortController();
     uploadController.current = controller;
     setBusy(true);
@@ -207,11 +207,13 @@ export function ClaimEvidence({
         notify(message, 'error');
       }
     } finally {
-      if (!controller.signal.aborted) {
-        setBusy(false);
-        onBusy?.(false);
+      if (uploadController.current === controller) {
+        uploadController.current = undefined;
+        if (!controller.signal.aborted) {
+          setBusy(false);
+          onBusy?.(false);
+        }
       }
-      uploadController.current = undefined;
     }
   }
 

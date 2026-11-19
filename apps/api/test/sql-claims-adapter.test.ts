@@ -139,17 +139,20 @@ test('claim SQL adapter scopes every call and reconstructs versions, team aggreg
           action: 'claim.submitted',
           at,
           actorName: 'Aditi Menon',
-          feedback: 'Please review',
+          feedback: null,
         },
       ],
       [{ total: 1 }],
     );
     const detail = await store.reviewDetail(actor, id, 2);
     assert.equal(detail.history[0].at, at.toISOString());
+    assert.equal(detail.history[0].feedback, '');
     assert.equal(detail.page, 2);
     assert.equal(f.calls.at(-1)?.inputs.claim_id, id);
     f.reply('dbo.ReadSkillReviewWorkbench', [{}], [], [], [], [], [{ total: 0 }]);
     await assert.rejects(store.reviewDetail(actor, id, 1), { status: 404 });
+    f.reply('dbo.ReadSkillReviewWorkbench', [{}], [row], [], []);
+    await assert.rejects(store.reviewDetail(actor, id, 1), { status: 503 });
     const draft = claimChange({
       id,
       skillId: skill,

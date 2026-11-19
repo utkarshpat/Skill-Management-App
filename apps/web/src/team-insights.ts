@@ -48,9 +48,7 @@ export function memberLevel(
 }
 
 export function membersWithoutReviewedSkills(analytics: TeamReportAnalytics) {
-  const covered = new Set(
-    analytics.coverage.filter(row => row.rank === 1).flatMap(row => row.memberIds),
-  );
+  const covered = new Set(analytics.coverage.flatMap(row => row.memberIds));
   return Math.max(0, analytics.members - covered.size);
 }
 

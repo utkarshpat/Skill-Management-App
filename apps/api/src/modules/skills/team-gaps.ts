@@ -179,14 +179,13 @@ export function teamGapReport(
 ) {
   const index = indexCoverage(analytics),
     profiles = skillProfiles(analytics, index);
-  const covered = new Set(
-    analytics.coverage.filter(row => row.rank === 1).flatMap(row => row.memberIds),
-  );
+  const covered = new Set(analytics.coverage.flatMap(row => row.memberIds));
   return {
     members: analytics.members,
     managerReviewedClaims: analytics.reviewed,
     assignedPendingReviews: analytics.pending,
     membersWithoutReviewedSkills: Math.max(0, analytics.members - covered.size),
+    reviewedSkillCoverageBasis: 'Only approved claims on the shared four-level framework.',
     requirements: requirementGaps(analytics, requirements, name, index),
     teamSkills: profiles.slice(0, 15),
     totalReviewedSkills: profiles.length,
