@@ -243,9 +243,19 @@ test('read marks beyond the first hundred stay read', async () => {
   assert.ok(document.querySelector('[aria-label="Notifications, 1 unread"]'));
 });
 
-test('notification refresh keeps session read marks when storage writes fail', async () => {
-  mock.method(Storage.prototype, 'setItem', () => {
+test('notification refresh keeps session read marks when storage writes fail', async t => {
+  const write = t.mock.fn(() => {
     throw Error('Storage unavailable');
+  });
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: { getItem: window.localStorage.getItem.bind(window.localStorage), setItem: write },
+  });
+  t.after(() => {
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: window.localStorage,
+    });
   });
   view = await render(
     <MemoryRouter>
@@ -254,6 +264,7 @@ test('notification refresh keeps session read marks when storage writes fail', a
   );
   await settle();
   await click('Mark read', document.querySelector('.notification-item-actions')!);
+  assert.ok(write.mock.callCount() > 0);
   assert.ok(document.querySelector('[aria-label="Notifications, 1 unread"]'));
   await click('Refresh notifications');
   await settle();
