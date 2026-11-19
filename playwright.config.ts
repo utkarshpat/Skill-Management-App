@@ -9,6 +9,7 @@ export default defineConfig({
     ['list'],
     ['html', { outputFolder: 'artifacts/e2e/report', open: 'never' }],
     ['json', { outputFile: 'artifacts/e2e/results.json' }],
+    ['junit', { outputFile: 'artifacts/e2e/junit.xml' }],
   ],
   use: {
     baseURL: 'http://127.0.0.1:4179',

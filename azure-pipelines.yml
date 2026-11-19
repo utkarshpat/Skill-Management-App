@@ -20,20 +20,74 @@ steps:
   - script: npm run docs:check
     displayName: Check generated handover and schema reference
 
+  - script: npm run architecture:check
+    displayName: Check repository architecture
+
   - script: npm run typecheck
     displayName: Typecheck workspaces
 
-  - script: npm test
-    displayName: Run architecture, API and web regression tests
+  - bash: |
+      set -euo pipefail
+      mkdir -p artifacts/test-results
+      node --test --test-reporter=spec --test-reporter-destination=stdout \
+        --test-reporter=junit --test-reporter-destination=artifacts/test-results/architecture.xml \
+        scripts/architecture.test.mjs scripts/package-appservice.test.mjs \
+        scripts/coverage-source.test.mjs scripts/remap-v8-coverage.test.mjs
+    displayName: Run architecture and packaging tests
+
+  - script: node scripts/test-coverage.mjs
+    displayName: Run API and web regression tests with coverage
+
+  - script: npm run build
+    displayName: Build the release
 
   - script: npx playwright install --with-deps chromium
     displayName: Install Chromium for browser tests
 
-  - script: npx playwright test e2e/assistant-workflows.spec.ts --grep 'company sign-in recovery keeps an unsent draft'
-    displayName: Verify draft recovery on desktop and mobile
+  - bash: |
+      status=0
+      npm run test:e2e || status=$?
+      if [ -d artifacts/e2e ]; then
+        echo '##vso[task.setvariable variable=browserReportsReady]true'
+      fi
+      exit "$status"
+    displayName: Run desktop and mobile browser tests
 
-  - script: npm run build
-    displayName: Build the release
+  - script: npm run coverage:browser
+    displayName: Merge browser and web regression coverage
+
+  # The existing 90% target is reported separately from required checks.
+  - script: npm run coverage:check -- --report-only
+    displayName: Report coverage against the 90% target
+
+  - task: PublishTestResults@2
+    displayName: Publish architecture, API, web and Playwright test results
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: |
+        artifacts/test-results/architecture.xml
+        artifacts/coverage/current/*/junit.xml
+        artifacts/e2e/junit.xml
+      failTaskOnFailedTests: true
+      failTaskOnFailureToPublishResults: true
+      failTaskOnMissingResultsFile: true
+
+  - task: PublishCodeCoverageResults@2
+    displayName: Publish API and combined web coverage
+    inputs:
+      summaryFileLocation: |
+        $(System.DefaultWorkingDirectory)/artifacts/coverage/current/api/cobertura-coverage.xml
+        $(System.DefaultWorkingDirectory)/artifacts/coverage/combined-web/cobertura-coverage.xml
+      pathToSources: $(System.DefaultWorkingDirectory)
+      failIfCoverageEmpty: true
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish browser reports and failure traces
+    condition: and(succeededOrFailed(), eq(variables['browserReportsReady'], 'true'))
+    inputs:
+      targetPath: '$(System.DefaultWorkingDirectory)/artifacts/e2e'
+      artifact: browser-test-reports
 
   - bash: |
       set -euo pipefail

@@ -69,7 +69,7 @@ for (const file of files) {
   merge(data);
 }
 const context = createContext({ dir: output, coverageMap: map });
-for (const name of ['html', 'json', 'json-summary', 'lcovonly'])
+for (const name of ['html', 'json', 'json-summary', 'lcovonly', 'cobertura'])
   reports.create(name).execute(context);
 const summary = map.getCoverageSummary().toJSON();
 writeFileSync(

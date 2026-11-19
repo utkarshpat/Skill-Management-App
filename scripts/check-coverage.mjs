@@ -87,4 +87,14 @@ for (const [app, report] of [
   }
 }
 console.log(JSON.stringify({ threshold, results }, null, 2));
-if (results.some(result => !result.passed)) process.exitCode = 1;
+const reportOnly = process.argv.includes('--report-only');
+if (
+  results.some(
+    result =>
+      result.error ||
+      result.missingFiles.length ||
+      result.unexpectedFiles.length ||
+      (!reportOnly && !result.passed),
+  )
+)
+  process.exitCode = 1;

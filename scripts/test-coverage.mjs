@@ -41,12 +41,17 @@ for (const app of apps) {
       '--reporter=json',
       '--reporter=lcov',
       '--reporter=html',
+      '--reporter=cobertura',
       `--reports-dir=${destination}`,
       process.execPath,
       '--import',
       'tsx',
       '--test',
       '--test-concurrency=4',
+      '--test-reporter=spec',
+      '--test-reporter-destination=stdout',
+      '--test-reporter=junit',
+      `--test-reporter-destination=${join(destination, 'junit.xml')}`,
       ...tests,
     ],
     {
@@ -65,7 +70,7 @@ for (const app of apps) {
     const { createContext } = require('istanbul-lib-report');
     const reports = require('istanbul-reports');
     const context = createContext({ dir: destination, coverageMap: map });
-    for (const name of ['json-summary', 'json', 'lcov', 'html'])
+    for (const name of ['json-summary', 'json', 'lcov', 'html', 'cobertura'])
       reports.create(name).execute(context);
   }
   const coverage = JSON.parse(readFileSync(join(destination, 'coverage-summary.json'), 'utf8'));
