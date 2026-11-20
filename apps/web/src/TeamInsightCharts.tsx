@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { useId, useMemo, useState } from 'react';
 import { Bot, Send } from 'lucide-react';
 import { coverageRows, type TeamReportAnalytics } from './team-reports';
@@ -14,7 +15,11 @@ import {
 } from './team-insights';
 
 const LEVEL_COLORS = ['#9cc9cf', '#5fb0ba', '#008595', '#0b5f6b', '#123c44'];
-const EXAMPLES = ['2 people at L3+ in Azure', 'React L4, 1 person', 'Who could grow into SQL L3?'];
+const EXAMPLES = [
+  '2 people at Experienced or above in Azure',
+  'React Expert, 1 person',
+  'Who could reach Experienced proficiency in SQL?',
+];
 
 export function askAssistant(prompt: string) {
   window.dispatchEvent(new CustomEvent('assistant-context-request', { detail: { prompt } }));
@@ -47,7 +52,7 @@ function AskAi() {
           aria-label="Skill demand for the AI assistant"
           rows={2}
           maxLength={400}
-          placeholder="e.g. Need 2 people at L3+ in Azure and 1 at L4 in React for the migration"
+          placeholder="e.g. Need 2 people at Experienced or above in Azure and 1 Expert in React for the migration"
           value={demand}
           onChange={e => setDemand(e.target.value)}
         />
@@ -112,7 +117,7 @@ function Radar({ profiles }: { profiles: SkillProfile[] }) {
         const [x, y] = point(i, s.average);
         return (
           <circle key={s.skill} cx={x} cy={y} r="3.5" className="team-radar-point">
-            <title>{`${s.skill}: holder average ${s.average} across ${s.holders} holders (L4)`}</title>
+            <title>{`${s.skill}: holder average ${s.average} across ${s.holders} holders`}</title>
           </circle>
         );
       })}
@@ -157,7 +162,7 @@ export function TeamInsightCharts({
           <small>Distinct skills with a approved record</small>
         </div>
         <div>
-          <strong>{average ? 'L' + average : '—'}</strong>
+          <strong>{average ? average : '—'}</strong>
           <span>Average approved level</span>
           <small>Current four-level framework</small>
         </div>
@@ -174,7 +179,7 @@ export function TeamInsightCharts({
           <span>Most covered skill</span>
           <small>
             {profiles[0]
-              ? `${profiles[0].holders} holders · avg ${profiles[0].average} (L4)`
+              ? `${profiles[0].holders} holders · avg ${profiles[0].average}`
               : 'No approved skills yet'}
           </small>
         </div>
@@ -185,19 +190,19 @@ export function TeamInsightCharts({
           <header>
             <div>
               <h3>Team skill radar</h3>
-              <p>Holder averages on L1–L4 for the most covered skills.</p>
+              <p>Average proficiency scores for the most covered skills.</p>
             </div>
           </header>
           <Radar profiles={profiles} />
           <p className="team-chart-caption">
-            Scale L1–L4. Historical frameworks are excluded from proficiency comparisons. These
-            averages include holders only, not the whole team.
+            Historical frameworks are excluded from proficiency comparisons. These averages include
+            holders only, not the whole team.
           </p>
         </section>
         <section className="team-chart">
           <header>
             <div>
-              <h3>Recorded gaps at L{minimumRank}+</h3>
+              <h3>Recorded gaps at {displayProficiencyName(minimumRank)} or above</h3>
               <p>
                 Approved holders against members without recorded coverage. Select a skill to filter
                 the member list.
@@ -256,14 +261,14 @@ export function TeamInsightCharts({
                   <span
                     className="team-mix-track"
                     role="img"
-                    aria-label={`${p.skill}: ${p.atLevel.map((n, i) => `L${i + 1} ${n}`).join(', ')}`}
+                    aria-label={`${p.skill}: ${p.atLevel.map((n, i) => `${displayProficiencyName(i + 1)}: ${n}`).join(', ')}`}
                   >
                     {p.atLevel.map((n, i) =>
                       n ? (
                         <span
                           key={i}
                           style={{ flex: n, background: LEVEL_COLORS[i] }}
-                          title={`L${i + 1}: ${n}`}
+                          title={`${displayProficiencyName(i + 1)}: ${n}`}
                         />
                       ) : null,
                     )}
@@ -278,7 +283,7 @@ export function TeamInsightCharts({
           <p className="team-chart-legend-inline">
             {LEVELS.map((l, i) => (
               <span key={l}>
-                <i style={{ background: LEVEL_COLORS[i] }} />L{l}
+                <i style={{ background: LEVEL_COLORS[i] }} /> {displayProficiencyName(l)}
               </span>
             ))}
           </p>
@@ -304,19 +309,19 @@ export function TeamInsightCharts({
               </span>
               <span className="heatmap-legend-item">
                 <i className="heat-legend-swatch heat-1" />
-                <span>L1</span>
+                <span>{displayProficiencyName(1)}</span>
               </span>
               <span className="heatmap-legend-item">
                 <i className="heat-legend-swatch heat-2" />
-                <span>L2</span>
+                <span>{displayProficiencyName(2)}</span>
               </span>
               <span className="heatmap-legend-item">
                 <i className="heat-legend-swatch heat-3" />
-                <span>L3</span>
+                <span>{displayProficiencyName(3)}</span>
               </span>
               <span className="heatmap-legend-item">
                 <i className="heat-legend-swatch heat-4" />
-                <span>L4</span>
+                <span>{displayProficiencyName(4)}</span>
               </span>
             </div>
           </header>
@@ -368,7 +373,7 @@ export function TeamInsightCharts({
                       </th>
                       {heatSkills.map(s => {
                         const level = memberLevel(analytics, s, p.id, index),
-                          label = level ? 'L' + level : 'no approved record';
+                          label = level ? displayProficiencyName(level) : 'no approved record';
                         return (
                           <td key={s} className="heatmap-cell">
                             <button

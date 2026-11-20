@@ -29,21 +29,24 @@ test('gaps include members with no claims, zero coverage at higher levels and ex
     { skillName: 'SQL', holders: 30, missing: 0, percent: 100 },
   ]);
   const csv = teamReportCsv(analytics, 'gap', 3, 'Cloud', at);
-  assert.match(csv, /"Java","L3","30","0","30","0"/);
-  assert.match(csv, /"Azure","L3","30","4","26","13"/);
-  assert.doesNotMatch(csv, /"SQL","L3"|private-member/);
+  assert.match(csv, /"Java","Experienced","30","0","30","0"/);
+  assert.match(csv, /"Azure","Experienced","30","4","26","13"/);
+  assert.doesNotMatch(csv, /"SQL","Experienced"|private-member/);
   assert.match(csv, /not proof of a skill deficiency/);
   assert.match(csv, /"Scope filter","Filtered current direct reports"/);
   assert.doesNotMatch(csv, /"Cloud"/);
   assert.match(csv, /2026-10-05T09:00:00.000Z/);
 });
 test('coverage and team summary export all aggregate rows, never employee IDs or private claims', () => {
-  assert.match(teamReportCsv(analytics, 'coverage', 3, '', at), /"SQL","L3","30","30","0","100"/);
+  assert.match(
+    teamReportCsv(analytics, 'coverage', 3, '', at),
+    /"SQL","Experienced","30","30","0","100"/,
+  );
   const summary = teamReportCsv(analytics, 'summary', 3, '', at);
   assert.match(summary, /"Active direct reports","30"/);
   assert.match(summary, /"Assigned pending approvals","8"/);
   assert.match(summary, /"Cloud","14"/);
-  assert.match(summary, /"L3","4"/);
+  assert.match(summary, /"Experienced","4"/);
   assert.doesNotMatch(summary, /private-member|memberIds/);
 });
 test('CSV cells neutralize spreadsheet formulas and preserve quotes, commas, multiline and Unicode data', () => {

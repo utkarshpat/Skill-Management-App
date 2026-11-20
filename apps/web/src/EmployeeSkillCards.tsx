@@ -47,7 +47,6 @@ export function EmployeeSkillCards({
               <h3>{skill.skillName}</h3>
               <p className="employee-card-category">{skill.category}</p>
               <div className="employee-card-level">
-                <strong>L{skill.rank}</strong>
                 <div>
                   <span>{displayProficiencyName(skill.rank, skill.levelName)}</span>
                   <small>{pending ? 'Employee’s claimed level' : 'Approved level'}</small>

@@ -1,3 +1,4 @@
+import { peopleCriterionLabel } from './people-search-prompt';
 import { useSearchParams } from 'react-router';
 import { organizationKindLabel } from '../organization-labels';
 import { businessDraftHandoff } from './business-draft-handoff';
@@ -16,7 +17,7 @@ import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
 import { CommonProficiency } from '../CommonProficiency';
-import { commonLevels } from '../proficiency';
+import { commonLevels, displayProficiencyName } from '../proficiency';
 import {
   CatalogueCertificationPicker,
   type CatalogueCertification,
@@ -969,7 +970,7 @@ export function BusinessWorkflows({
                           {p.criteria.map(c => (
                             <p key={c.type + c.name}>
                               {c.matched ? '✓' : '—'} {c.name}
-                              <small> · {c.criterion}</small>
+                              <small> · {peopleCriterionLabel(c.criterion)}</small>
                             </p>
                           ))}
                         </td>
@@ -1565,7 +1566,7 @@ export function BusinessWorkflows({
                             >
                               {[1, 2, 3, 4].map(n => (
                                 <option key={n} value={n}>
-                                  L{n} or above
+                                  {displayProficiencyName(n)} or above
                                 </option>
                               ))}
                             </select>
@@ -1995,7 +1996,7 @@ function DefinitionPreview({
           {requirements.skills.map(r => (
             <p key={r.id}>
               {masters?.skills.find(s => s.id === r.id)?.name ?? 'Selected published skill'} · L
-              {r.minRank} or above
+              {displayProficiencyName(r.minRank)} or above
             </p>
           ))}
           {requirements.certifications.map(id => (

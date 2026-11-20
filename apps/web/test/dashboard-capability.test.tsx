@@ -37,7 +37,8 @@ test('capability states target separate full lists and recent preview links to e
     assert.match(html, new RegExp('status=' + status));
   assert.match(html, /85/);
   assert.match(html, /claim=one/);
-  assert.match(html, /Level 3/);
+  assert.match(html, /Practitioner/);
+  assert.doesNotMatch(html, /Level 3|\bL3\b/);
   assert.match(html, /3 claims need changes/);
   assert.match(html, /2 not approved/);
   assert.doesNotMatch(html, /progressbar|capability percentage/);
@@ -53,9 +54,8 @@ const topSkills: TopReviewedSkill[] = Array.from({ length: 6 }, (_, i) => ({
 test('top skill snapshot renders exact saved levels, accessible radar and own claim links', () => {
   const html = render({ ...data, topSkills });
   assert.match(html, /Spider-web chart/);
-  assert.match(html, /S1: Azure, level 5 of 8/);
-  assert.match(html, /L5 \/ 8/);
-  assert.match(html, /Saved proficiency 0/);
+  assert.match(html, /S1: Azure, Saved proficiency 0/);
+  assert.doesNotMatch(html, /level 5 of 8|\bL5\b|skill-radar-tick/);
   assert.match(html, /Showing 6 of 40 approved skills/);
   assert.match(html, /claim=reviewed-5/);
   assert.doesNotMatch(html, /NaN|Infinity|percentage score:|average proficiency/i);

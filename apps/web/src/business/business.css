@@ -1689,8 +1689,9 @@
 .bo-heatmap-cell {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 4px;
   border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--surface);

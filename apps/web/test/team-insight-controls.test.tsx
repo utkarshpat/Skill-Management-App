@@ -45,7 +45,7 @@ test('radar and heatmap distinguish approved proficiency from a missing record, 
     );
     await click('SQL', view.container.querySelector('.team-gap-chart')!);
     await click('Rohan Mehta, SQL: no approved record', view.container);
-    await click('Aditi Menon, SQL: reviewed L3', view.container);
+    await click('Aditi Menon, SQL: reviewed Experienced', view.container);
     const rosterButton = view.container.querySelector<HTMLButtonElement>(
       '[title="Open capability profile for Rohan Mehta"]',
     )!;
@@ -74,8 +74,8 @@ test('eligible managers can hand off an app-specific demand prompt without savin
   );
   try {
     const field = view.container.querySelector('textarea')!;
-    await click('2 people at L3+ in Azure', view.container);
-    assert.equal(field.value, '2 people at L3+ in Azure');
+    await click('2 people at Experienced or above in Azure', view.container);
+    assert.equal(field.value, '2 people at Experienced or above in Azure');
     await change(field, 'Need three people at L4 in SQL');
     await click('Compare with team', view.container);
     assert.equal(prompts.length, 1);

@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { indexCoverage } from './team-coverage';
 
 export interface TeamReportAnalytics {
@@ -97,11 +98,11 @@ export function teamReportCsv(
       ...analytics.categories.map(c => [c.category, c.count]),
       [],
       ['Approved level', 'Claim count'],
-      ...analytics.levels.map(l => ['L' + l.rank, l.count]),
+      ...analytics.levels.map(l => [displayProficiencyName(l.rank), l.count]),
     );
   } else {
     rows.push(
-      ['Minimum approved level', 'L' + rank],
+      ['Minimum approved level', displayProficiencyName(rank)],
       [
         'Interpretation',
         'Missing recorded coverage is not proof of a skill deficiency. No role-based targets are configured. Skills without any approved record are not included.',
@@ -119,7 +120,14 @@ export function teamReportCsv(
     rows.push(
       ...coverageRows(analytics, rank)
         .filter(r => kind !== 'gap' || r.missing > 0)
-        .map(r => [r.skillName, 'L' + rank, analytics.members, r.holders, r.missing, r.percent]),
+        .map(r => [
+          r.skillName,
+          displayProficiencyName(rank),
+          analytics.members,
+          r.holders,
+          r.missing,
+          r.percent,
+        ]),
     );
   }
   return '\uFEFF' + rows.map(row => row.map(csvCell).join(',')).join('\r\n');

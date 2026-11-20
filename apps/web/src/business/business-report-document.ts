@@ -1,3 +1,4 @@
+import { displayProficiencyName, proficiencyNames } from '../proficiency';
 import type { BusinessDashboard } from './business-model';
 import { businessCoverageRows } from './business-model';
 
@@ -17,7 +18,7 @@ export function escapeJsonForScript(json: string): string {
     .replace(/\u2029/g, '\\u2029');
 }
 
-const LEVEL_NAMES = ['Beginner', 'Autonomous', 'Experienced', 'Expert'];
+const LEVEL_NAMES = proficiencyNames;
 const LEVEL_COLORS = ['#61bdb5', '#098b8c', '#357ac2', '#123c44'];
 const CATEGORY_COLORS = [
   '#008595',
@@ -669,7 +670,7 @@ export function businessReportHtml(
         <h3>Capability Spider / Radar Web</h3>
         <div style="display:flex;align-items:center;gap:6px;">
           <select id="radarMetricSelect" class="filter-select" style="padding:4px 8px;font-size:12px;" onchange="updateRadarView()">
-            <option value="topSkills">Top Skills Proficiency (Avg L1–L4)</option>
+            <option value="topSkills">Top Skills by Average Proficiency</option>
             <option value="domains">Credential Category Record Mix (relative to largest category)</option>
           </select>
         </div>
@@ -679,10 +680,10 @@ export function businessReportHtml(
       </div>
       <div class="chart-legend" id="radarLegend">
         <span><i class="legend-dot" style="background:var(--primary)"></i> Average Level / 4-Level Framework</span>
-        <span><i class="legend-dot" style="background:#61bdb5"></i> L1: Beginner</span>
-        <span><i class="legend-dot" style="background:#098b8c"></i> L2: Autonomous</span>
-        <span><i class="legend-dot" style="background:#357ac2"></i> L3: Experienced</span>
-        <span><i class="legend-dot" style="background:#123c44"></i> L4: Expert</span>
+        <span><i class="legend-dot" style="background:#61bdb5"></i> Beginner</span>
+        <span><i class="legend-dot" style="background:#098b8c"></i> Autonomous</span>
+        <span><i class="legend-dot" style="background:#357ac2"></i> Experienced</span>
+        <span><i class="legend-dot" style="background:#123c44"></i> Expert</span>
       </div>
     </div>
 
@@ -693,28 +694,24 @@ export function businessReportHtml(
         <span>${data.coverageComplete ? 'Full published catalogue' : 'Top reported skills'} · approved skill holders by rank</span>
       </div>
       <div class="bar-chart-wrap">
-        ${[1, 2, 3, 4]
-          .map((rank, i) => {
-            const count = distCounts[i] || 0;
-            const pct = maxDist ? Math.round((count * 100) / maxDist) : 0;
-            return `
+        ${LEVEL_NAMES.map((name, i) => {
+          const count = distCounts[i] || 0;
+          const pct = maxDist ? Math.round((count * 100) / maxDist) : 0;
+          return `
           <div class="bar-row">
-            <span class="bar-label">L${rank} ${escapeHtml(LEVEL_NAMES[i])}</span>
+            <span class="bar-label">${escapeHtml(name)}</span>
             <div class="bar-track">
               <div class="bar-fill" style="width: ${pct}%; background: ${LEVEL_COLORS[i]};"></div>
             </div>
             <span class="bar-value">${count.toLocaleString()}</span>
           </div>`;
-          })
-          .join('')}
+        }).join('')}
       </div>
       <div class="chart-legend">
-        ${[1, 2, 3, 4]
-          .map(
-            (r, i) =>
-              `<span><i class="legend-dot" style="background:${LEVEL_COLORS[i]}"></i> L${r}: ${escapeHtml(LEVEL_NAMES[i])}</span>`,
-          )
-          .join('')}
+        ${LEVEL_NAMES.map(
+          (name, i) =>
+            `<span><i class="legend-dot" style="background:${LEVEL_COLORS[i]}"></i> ${escapeHtml(name)}</span>`,
+        ).join('')}
       </div>
     </div>
 
@@ -819,11 +816,11 @@ export function businessReportHtml(
       <div class="filter-field">
         <label for="hubLevel">Minimum Proficiency</label>
         <select id="hubLevel" class="filter-select" onchange="applyComplexFilters()">
-          <option value="all">All Levels (L1–L4)</option>
-          <option value="1">L1 Beginner &amp; above</option>
-          <option value="2">L2 Autonomous &amp; above</option>
-          <option value="3">L3 Experienced &amp; above</option>
-          <option value="4">L4 Expert only</option>
+          <option value="all">All Levels</option>
+          <option value="1">Beginner &amp; above</option>
+          <option value="2">Autonomous &amp; above</option>
+          <option value="3">Experienced &amp; above</option>
+          <option value="4">Expert only</option>
         </select>
       </div>
 
@@ -845,7 +842,7 @@ export function businessReportHtml(
           <option value="holders_asc">Approved holders (Lowest first)</option>
           <option value="name_asc">Skill Name (A to Z)</option>
           <option value="name_desc">Skill Name (Z to A)</option>
-          <option value="level_desc">Proficiency Level (L4 to L1)</option>
+          <option value="level_desc">Proficiency Level (highest first)</option>
           <option value="coverage_desc">Coverage % (Highest first)</option>
         </select>
       </div>
@@ -856,9 +853,9 @@ export function businessReportHtml(
       <span class="preset-label">Quick Presets:</span>
       <button class="preset-btn active" id="preset-all" onclick="setPreset('all')">All Skills</button>
       <button class="preset-btn" id="preset-gaps" onclick="setPreset('gaps')">🚨 Critical Gaps (&lt;5%)</button>
-      <button class="preset-btn" id="preset-experts" onclick="setPreset('experts')">⭐ Expert Leadership (L4)</button>
+      <button class="preset-btn" id="preset-experts" onclick="setPreset('experts')">⭐ Expert Leadership</button>
       <button class="preset-btn" id="preset-high" onclick="setPreset('high')">🏆 High Adoption (&gt;30%)</button>
-      <button class="preset-btn" id="preset-autonomous" onclick="setPreset('autonomous')">🎯 Autonomous Standard (L2+)</button>
+      <button class="preset-btn" id="preset-autonomous" onclick="setPreset('autonomous')">🎯 Autonomous or Above</button>
     </div>
 
     <!-- Active Filter Tags -->
@@ -883,7 +880,7 @@ export function businessReportHtml(
           <tr>
             <th onclick="toggleSort('name')">Skill Name ⬍</th>
             <th onclick="toggleSort('level')">Highest Approved level ⬍</th>
-            <th>4-Level Mix Breakdown (L1 | L2 | L3 | L4)</th>
+            <th>Proficiency Mix</th>
             <th onclick="toggleSort('average')">Average Level ⬍</th>
             <th onclick="toggleSort('holders')">Total Holders ⬍</th>
             <th onclick="toggleSort('coverage')">Workforce Coverage % ⬍</th>
@@ -1017,6 +1014,8 @@ export function businessReportHtml(
     return filtered;
   }
 
+  const LEVEL_NAMES = ${JSON.stringify(LEVEL_NAMES)};
+
   function renderFilterBadges(query, cat, minLevel, cov) {
     const container = document.getElementById('activeFilterTags');
     const tags = [];
@@ -1027,7 +1026,7 @@ export function businessReportHtml(
       tags.push(\`<span class="filter-tag">Category: \${escapeText(cat)} <span class="filter-tag-close" onclick="clearFilter('cat')">✕</span></span>\`);
     }
     if (minLevel !== 'all') {
-      tags.push(\`<span class="filter-tag">Min Level: L\${minLevel}+ <span class="filter-tag-close" onclick="clearFilter('level')">✕</span></span>\`);
+      tags.push(\`<span class="filter-tag">Minimum proficiency: \${escapeText(LEVEL_NAMES[Number(minLevel) - 1])} <span class="filter-tag-close" onclick="clearFilter('level')">✕</span></span>\`);
     }
     if (cov !== 'all') {
       tags.push(\`<span class="filter-tag">Coverage: \${escapeText(cov.toUpperCase())} <span class="filter-tag-close" onclick="clearFilter('cov')">✕</span></span>\`);
@@ -1049,7 +1048,6 @@ export function businessReportHtml(
       return;
     }
 
-    const LEVEL_NAMES = ['Beginner', 'Autonomous', 'Experienced', 'Expert'];
     tbody.innerHTML = skills.map(s => {
       const sum = s.totalHolders || 1;
       const p1 = Math.round((s.l1 * 100) / sum);
@@ -1061,23 +1059,23 @@ export function businessReportHtml(
           <td><strong>\${escapeText(s.name)}</strong></td>
           <td>
             <span class="rank-badge rank-\${s.maxRank || 1}">
-              \${s.totalHolders ? 'L' + s.maxRank + ' · ' + escapeText(LEVEL_NAMES[s.maxRank - 1]) : 'No approved proficiency'}
+              \${s.totalHolders ? escapeText(LEVEL_NAMES[s.maxRank - 1]) : 'No approved proficiency'}
             </span>
           </td>
           <td>
             <div style="display:flex;align-items:center;gap:10px;">
-              <div class="mix-track" title="L1: \${s.l1} | L2: \${s.l2} | L3: \${s.l3} | L4: \${s.l4}">
+              <div class="mix-track" title="Beginner: \${s.l1} | Autonomous: \${s.l2} | Experienced: \${s.l3} | Expert: \${s.l4}">
                 <i style="flex:\${s.l1};background:#61bdb5"></i>
                 <i style="flex:\${s.l2};background:#098b8c"></i>
                 <i style="flex:\${s.l3};background:#357ac2"></i>
                 <i style="flex:\${s.l4};background:#123c44"></i>
               </div>
-              <small style="font-size:11px;color:var(--muted);white-space:nowrap;">
-                L1:\${s.l1} L2:\${s.l2} L3:\${s.l3} L4:\${s.l4}
+              <small style="font-size:11px;color:var(--muted);">
+                Beginner: \${s.l1} Autonomous: \${s.l2} Experienced: \${s.l3} Expert: \${s.l4}
               </small>
             </div>
           </td>
-          <td><strong>\${s.totalHolders ? 'L' + s.average : '—'}</strong></td>
+          <td><strong>\${s.totalHolders ? s.average : '—'}</strong></td>
           <td><strong>\${s.totalHolders.toLocaleString()}</strong></td>
           <td>
             <div style="display:flex;align-items:center;gap:8px;">
@@ -1095,7 +1093,7 @@ export function businessReportHtml(
   function exportFilteredCsv() {
     const filtered = applyComplexFilters();
 
-    const headers = ['Skill Name', 'Max Level Rank', 'L1 Holders', 'L2 Holders', 'L3 Holders', 'L4 Holders', 'Total Holders', 'Average Level', 'Coverage Pct'];
+    const headers = ['Skill Name', 'Max Level Rank', 'Beginner Holders', 'Autonomous Holders', 'Experienced Holders', 'Expert Holders', 'Total Holders', 'Average Level', 'Coverage Pct'];
     const rows = filtered.map(s => [
       csvEscape(s.name),
       s.maxRank,
@@ -1168,7 +1166,7 @@ export function businessReportHtml(
     // Rings
     [1, 2, 3, 4].forEach(v => {
       svg += \`<polygon points="\${ring(v)}" class="radar-ring"/>\`;
-      svg += \`<text x="\${cx + 4}" y="\${cy - (radius * v) / maximum + 4}" class="radar-tick">L\${v}</text>\`;
+      svg += \`<text x="\${cx + 4}" y="\${cy - (radius * v) / maximum + 4}" class="radar-tick">\${escapeText(LEVEL_NAMES[v - 1])}</text>\`;
     });
 
     // Axes & Labels
@@ -1190,7 +1188,7 @@ export function businessReportHtml(
     // Points
     skills.forEach((s, i) => {
       const [px, py] = point(i, Math.max(0.5, s.average));
-      svg += \`<circle cx="\${px.toFixed(1)}" cy="\${py.toFixed(1)}" r="4.5" class="radar-point"><title>\${escapeText(s.name)}: Holder Avg L\${s.average} (\${s.totalHolders} holders)</title></circle>\`;
+      svg += \`<circle cx="\${px.toFixed(1)}" cy="\${py.toFixed(1)}" r="4.5" class="radar-point"><title>\${escapeText(s.name)}: Average score \${s.average} (\${s.totalHolders} holders)</title></circle>\`;
     });
 
     svg += \`</svg>\`;
@@ -1289,7 +1287,7 @@ function renderRadarSvg(
   // Concentric Rings
   [1, 2, 3, 4].forEach(v => {
     svg += `<polygon points="${ring(v)}" class="radar-ring"/>`;
-    svg += `<text x="${cx + 4}" y="${cy - (radius * v) / maximum + 4}" class="radar-tick">L${v}</text>`;
+    svg += `<text x="${cx + 4}" y="${cy - (radius * v) / maximum + 4}" class="radar-tick">${escapeHtml(displayProficiencyName(v))}</text>`;
   });
 
   // Radial Axes and Labels
@@ -1318,7 +1316,7 @@ function renderRadarSvg(
   // Data Points
   skills.forEach((s, i) => {
     const [px, py] = point(i, Math.max(0.5, s.average));
-    svg += `<circle cx="${px!.toFixed(1)}" cy="${py!.toFixed(1)}" r="4.5" class="radar-point"><title>${escapeHtml(s.name)}: Holder Avg L${s.average} (${s.totalHolders} holders)</title></circle>`;
+    svg += `<circle cx="${px!.toFixed(1)}" cy="${py!.toFixed(1)}" r="4.5" class="radar-point"><title>${escapeHtml(s.name)}: Average score ${s.average} (${s.totalHolders} holders)</title></circle>`;
   });
 
   svg += `</svg>`;
@@ -1352,23 +1350,23 @@ function renderTableRows(
         <td><strong>${escapeHtml(s.name)}</strong></td>
         <td>
           <span class="rank-badge rank-${s.maxRank || 1}">
-            ${s.totalHolders ? 'L' + s.maxRank + ' · ' + escapeHtml(LEVEL_NAMES[s.maxRank - 1]) : 'No approved proficiency'}
+            ${s.totalHolders ? escapeHtml(LEVEL_NAMES[s.maxRank - 1]) : 'No approved proficiency'}
           </span>
         </td>
         <td>
           <div style="display:flex;align-items:center;gap:10px;">
-            <div class="mix-track" title="L1: ${s.l1} | L2: ${s.l2} | L3: ${s.l3} | L4: ${s.l4}">
+            <div class="mix-track" title="Beginner: ${s.l1} | Autonomous: ${s.l2} | Experienced: ${s.l3} | Expert: ${s.l4}">
               <i style="flex:${s.l1};background:#61bdb5"></i>
               <i style="flex:${s.l2};background:#098b8c"></i>
               <i style="flex:${s.l3};background:#357ac2"></i>
               <i style="flex:${s.l4};background:#123c44"></i>
             </div>
-            <small style="font-size:11px;color:var(--muted);white-space:nowrap;">
-              L1:${s.l1} L2:${s.l2} L3:${s.l3} L4:${s.l4}
+            <small style="font-size:11px;color:var(--muted);">
+              Beginner: ${s.l1} Autonomous: ${s.l2} Experienced: ${s.l3} Expert: ${s.l4}
             </small>
           </div>
         </td>
-        <td><strong>${s.totalHolders ? 'L' + s.average : '—'}</strong></td>
+        <td><strong>${s.totalHolders ? s.average : '—'}</strong></td>
         <td><strong>${s.totalHolders.toLocaleString()}</strong></td>
         <td>
           <div style="display:flex;align-items:center;gap:8px;">

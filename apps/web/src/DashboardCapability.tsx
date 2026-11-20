@@ -149,7 +149,7 @@ export function DashboardCapability({ data }: { data: DashboardCapabilityData })
                       <ArrowUpRight size={14} />
                     </Link>
                     <p>
-                      {c.category} · Level {c.rank} — {displayProficiencyName(c.rank, c.levelName)}
+                      {c.category} · {displayProficiencyName(c.rank, c.levelName)}
                     </p>
                     <time dateTime={c.updatedAt}>
                       Updated{' '}

@@ -153,7 +153,7 @@ test('analytics: scope, chart perspectives, dataset filters and export use the c
   await views.getByRole('button', { name: 'Skill coverage', exact: true }).click();
   await expect(
     page.getByRole('button', {
-      name: 'SQL, level 3: 1 approved holders; drill-through level 3',
+      name: 'SQL, Experienced: 1 approved holders',
       exact: true,
     }),
   ).toBeVisible();

@@ -24,6 +24,11 @@ export function SkillRadar({ skills, reviewed }: { skills: TopReviewedSkill[]; r
       </section>
     );
   const scaleAvailable = skills.every(s => s.maxRank !== null && s.maxRank >= s.rank);
+  const hasCommonScale = skills.every(
+    s =>
+      s.maxRank === 4 &&
+      displayProficiencyName(s.rank, s.levelName) === displayProficiencyName(s.rank),
+  );
   const maximum = Math.max(...skills.map(s => s.maxRank ?? s.rank), ...skills.map(s => s.rank));
   const point = (index: number, rank: number, radius = 82) => {
     const angle = (index * 2 * Math.PI) / skills.length - Math.PI / 2;
@@ -55,7 +60,7 @@ export function SkillRadar({ skills, reviewed }: { skills: TopReviewedSkill[]; r
                 {skills
                   .map(
                     (s, i) =>
-                      `S${i + 1}: ${s.skillName}, level ${s.rank} of ${s.maxRank}, ${displayProficiencyName(s.rank, s.levelName)}`,
+                      `S${i + 1}: ${s.skillName}, ${displayProficiencyName(s.rank, s.levelName)}`,
                   )
                   .join('. ')}
                 . Ranks use each skill's saved definition, not a percentage score.
@@ -63,9 +68,11 @@ export function SkillRadar({ skills, reviewed }: { skills: TopReviewedSkill[]; r
               {Array.from({ length: maximum }, (_, i) => i + 1).map(rank => (
                 <g key={rank}>
                   <polygon points={polygon(rank)} className="skill-radar-ring" />
-                  <text x="134" y={115 - (82 * rank) / maximum + 4} className="skill-radar-tick">
-                    {rank}
-                  </text>
+                  {hasCommonScale && (
+                    <text x="134" y={115 - (82 * rank) / maximum + 4} className="skill-radar-tick">
+                      {displayProficiencyName(rank)}
+                    </text>
+                  )}
                 </g>
               ))}
               {skills.map((s, i) => {
@@ -98,12 +105,12 @@ export function SkillRadar({ skills, reviewed }: { skills: TopReviewedSkill[]; r
                 const p = point(i, s.rank);
                 return (
                   <circle key={s.id} cx={p.x} cy={p.y} r="3.5" className="skill-radar-point">
-                    <title>{`${s.skillName}: L${s.rank} / ${s.maxRank} — ${displayProficiencyName(s.rank, s.levelName)}`}</title>
+                    <title>{`${s.skillName}: ${displayProficiencyName(s.rank, s.levelName)}`}</title>
                   </circle>
                 );
               })}
             </svg>
-            <figcaption>Approved level · scale 1–{maximum}</figcaption>
+            <figcaption>Approved proficiency by skill</figcaption>
           </figure>
         ) : (
           <p className="skill-radar-small">
@@ -127,8 +134,8 @@ export function SkillRadar({ skills, reviewed }: { skills: TopReviewedSkill[]; r
               <div>
                 <Link to={'/my-skills?claim=' + s.id}>{s.skillName}</Link>
                 <span>
-                  L{s.rank}
-                  {s.maxRank !== null ? ` / ${s.maxRank}` : ' · Scale unavailable'} · {displayProficiencyName(s.rank, s.levelName)}
+                  {displayProficiencyName(s.rank, s.levelName)}
+                  {s.maxRank === null && ' · Scale unavailable'}
                 </span>
               </div>
             </li>
@@ -137,11 +144,9 @@ export function SkillRadar({ skills, reviewed }: { skills: TopReviewedSkill[]; r
       </div>
       <p className="skill-radar-summary">
         <strong>{strongest.skillName}</strong> is your highest recorded level:{' '}
-        <strong>
-          L{strongest.rank} · {displayProficiencyName(strongest.rank, strongest.levelName)}
-        </strong>
-        . Showing {skills.length} of {reviewed} approved skills, ordered by level. Different skill
-        frameworks may use different level definitions.
+        <strong>{displayProficiencyName(strongest.rank, strongest.levelName)}</strong>. Showing{' '}
+        {skills.length} of {reviewed} approved skills, ordered by level. Different skill frameworks
+        may use different level definitions.
       </p>
     </section>
   );

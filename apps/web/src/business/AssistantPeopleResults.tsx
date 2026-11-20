@@ -153,7 +153,7 @@ export function AssistantPeopleResults({ query }: { query: PeopleQuery }) {
           </p>
           <div className="people-search-requirements">
             {data.requirements.map((r, i) => (
-              <span key={i} title={r.criterion}>
+              <span key={i} title={peopleCriterionLabel(r.criterion)}>
                 {r.name} · {peopleCriterionLabel(r.criterion)}
               </span>
             ))}
@@ -185,7 +185,9 @@ export function AssistantPeopleResults({ query }: { query: PeopleQuery }) {
                             <div key={i}>
                               {c.matched ? '✓' : '—'} {c.name}:{' '}
                               {c.matched ? 'Matched' : 'Not established'}
-                              <small title={c.criterion}>{peopleCriterionLabel(c.criterion)}</small>
+                              <small title={peopleCriterionLabel(c.criterion)}>
+                                {peopleCriterionLabel(c.criterion)}
+                              </small>
                             </div>
                           ))}
                         </td>

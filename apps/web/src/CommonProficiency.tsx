@@ -11,7 +11,6 @@ export function CommonProficiency() {
       <div className="catalogue-framework-grid">
         {commonLevels().map(level => (
           <article key={level.rank}>
-            <span className="catalogue-level">L{level.rank}</span>
             <h4>{level.name}</h4>
             <p>{level.description}</p>
           </article>

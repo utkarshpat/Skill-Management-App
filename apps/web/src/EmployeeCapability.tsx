@@ -417,8 +417,7 @@ export function EmployeeCapability({
                                   <span className="review-subtext">{s.category}</span>
                                 </td>
                                 <td>
-                                  <span className="employee-level">L{s.rank}</span>
-                                  <span className="review-subtext">
+                                  <span className="employee-level">
                                     {displayProficiencyName(s.rank, s.levelName)}
                                     {s.status === 'SUBMITTED' ? ' · Claimed' : ''}
                                   </span>
@@ -463,8 +462,9 @@ export function EmployeeCapability({
                                 <span className="review-subtext">{c.category}</span>
                               </td>
                               <td>
-                                <span className="employee-level">L{c.rank}</span>
-                                <span className="review-subtext">{displayProficiencyName(c.rank, c.levelName)}</span>
+                                <span className="employee-level">
+                                  {displayProficiencyName(c.rank, c.levelName)}
+                                </span>
                               </td>
                               <td>
                                 <span className={'review-status ' + c.status.toLowerCase()}>

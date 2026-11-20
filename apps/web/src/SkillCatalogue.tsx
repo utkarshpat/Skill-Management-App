@@ -639,10 +639,9 @@ function SkillDefinitions({
                       ),
                     },
                     ...draft.levels.map(level => ({
-                      label: 'Level ' + level.rank,
+                      label: displayProficiencyName(level.rank, level.name),
                       content: (
                         <>
-                          <h3>{displayProficiencyName(level.rank, level.name)}</h3>
                           <p>{level.description}</p>
                         </>
                       ),

@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import type { TeamReportAnalytics } from './team-reports';
 import {
   LEVELS,
@@ -41,12 +42,12 @@ function donut(reviewed: number, pending: number) {
 function levelColumns(analytics: TeamReportAnalytics) {
   const counts = LEVELS.map(rank => analytics.levels.find(l => l.rank === rank)?.count ?? 0);
   const max = Math.max(1, ...counts);
-  return `<svg viewBox="0 0 300 170" role="img" aria-label="${escapeHtml('Approved claims by level: ' + counts.map((c, i) => `L${i + 1} ${c}`).join(', '))}">
+  return `<svg viewBox="0 0 300 170" role="img" aria-label="${escapeHtml('Approved claims by level: ' + counts.map((c, i) => `${displayProficiencyName(i + 1)}: ${c}`).join(', '))}">
   ${counts
     .map((count, i) => {
       const h = Math.round((count / max) * 120),
-        x = 18 + i * 56;
-      return `<g><rect x="${x}" y="${140 - h}" width="38" height="${h}" rx="4" fill="${LEVEL_COLORS[i]}"><title>L${i + 1}: ${count} claims</title></rect><text x="${x + 19}" y="${134 - h}" text-anchor="middle" class="axis strong">${count}</text><text x="${x + 19}" y="160" text-anchor="middle" class="axis">L${i + 1}</text></g>`;
+        x = 18 + i * 75;
+      return `<g><rect x="${x}" y="${140 - h}" width="38" height="${h}" rx="4" fill="${LEVEL_COLORS[i]}"><title>${displayProficiencyName(i + 1)}: ${count} claims</title></rect><text x="${x + 19}" y="${134 - h}" text-anchor="middle" class="axis strong">${count}</text><text x="${x + 19}" y="160" text-anchor="middle" class="axis">${displayProficiencyName(i + 1)}</text></g>`;
     })
     .join('')}
   <line x1="10" y1="140" x2="290" y2="140" class="rule"/></svg>`;
@@ -87,7 +88,7 @@ function radar(profiles: SkillProfile[]) {
   ${skills
     .map((s, i) => {
       const [x, y] = point(i, s.average);
-      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="dot"><title>${escapeHtml(`${s.skill}: holder average ${s.average} across ${s.holders} holders (L4)`)}</title></circle>`;
+      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4" class="dot"><title>${escapeHtml(`${s.skill}: holder average ${s.average} across ${s.holders} holders`)}</title></circle>`;
     })
     .join('')}</svg>`;
 }
@@ -95,8 +96,8 @@ function radar(profiles: SkillProfile[]) {
 function levelMix(profiles: SkillProfile[]) {
   const skills = profiles.slice(0, 10);
   if (!skills.length) return '<p class="empty">No approved skills yet.</p>';
-  return `<div class="mix">${skills.map(s => `<div class="mix-row"><span title="${escapeHtml(s.skill)}">${escapeHtml(s.skill)}</span><div class="mix-track" role="img" aria-label="${escapeHtml(`${s.skill}: ${s.atLevel.map((n, i) => `L${i + 1} ${n}`).join(', ')}`)}">${s.atLevel.map((n, i) => (n ? `<i style="flex:${n};background:${LEVEL_COLORS[i]}" title="L${i + 1}: ${n}"></i>` : '')).join('')}</div><b>${s.holders}</b></div>`).join('')}</div>
-  <p class="legend">${LEVELS.map((l, i) => `<span><i style="background:${LEVEL_COLORS[i]}"></i>L${l}$</span>`).join('')}</p>`;
+  return `<div class="mix">${skills.map(s => `<div class="mix-row"><span title="${escapeHtml(s.skill)}">${escapeHtml(s.skill)}</span><div class="mix-track" role="img" aria-label="${escapeHtml(`${s.skill}: ${s.atLevel.map((n, i) => `${displayProficiencyName(i + 1)}: ${n}`).join(', ')}`)}">${s.atLevel.map((n, i) => (n ? `<i style="flex:${n};background:${LEVEL_COLORS[i]}" title="${displayProficiencyName(i + 1)}: ${n}"></i>` : '')).join('')}</div><b>${s.holders}</b></div>`).join('')}</div>
+  <p class="legend">${LEVELS.map((l, i) => `<span><i style="background:${LEVEL_COLORS[i]}"></i>${displayProficiencyName(l)}</span>`).join('')}</p>`;
 }
 
 function categories(analytics: TeamReportAnalytics) {
@@ -131,7 +132,7 @@ export function teamReportHtml(analytics: TeamReportAnalytics, query: string, at
     ['Approved skills', profiles.length, 'Distinct skills with a approved record'],
     [
       'Average approved level',
-      teamAverageLevel(analytics) ? 'L' + teamAverageLevel(analytics) : '—',
+      teamAverageLevel(analytics) ? teamAverageLevel(analytics) : '—',
       'Current four-level framework; not equivalence across frameworks',
     ],
     ['Without four-level skill coverage', without, 'Members with no approved four-level claim'],
@@ -172,13 +173,13 @@ footer{margin-top:24px;color:var(--muted);font-size:.8rem;max-width:75ch}
 <section class="kpis">${kpis.map(([label, value, note]) => `<div class="kpi"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span><small>${escapeHtml(note)}</small></div>`).join('')}</section>
 <div class="grid">
 <section class="panel span-12"><h2>Coverage and recorded gaps</h2><p class="sub">Members with a approved claim at or above the chosen level. Amber is missing recorded coverage, not a proven deficiency.</p>
-<div class="controls"><label>Minimum level <select id="level">${LEVELS.map(l => `<option value="${l}"${l === 3 ? ' selected' : ''}>L${l} and above</option>`).join('')}</select></label><label>Find skill <input id="search" type="search" placeholder="e.g. Azure"></label><label>Show <select id="show"><option value="all">All skills</option><option value="gaps">Only gaps</option></select></label></div>
+<div class="controls"><label>Minimum level <select id="level">${LEVELS.map(l => `<option value="${l}"${l === 3 ? ' selected' : ''}>${displayProficiencyName(l)} and above</option>`).join('')}</select></label><label>Find skill <input id="search" type="search" placeholder="e.g. Azure"></label><label>Show <select id="show"><option value="all">All skills</option><option value="gaps">Only gaps</option></select></label></div>
 <div class="bars" id="bars"></div>
 <table><thead><tr><th><button data-sort="skill">Skill</button></th><th class="num"><button data-sort="holders">Approved holders</button></th><th class="num"><button data-sort="missing">Without coverage</button></th><th class="num"><button data-sort="percent">Coverage</button></th></tr></thead><tbody id="rows"></tbody></table>
 <p class="empty" id="none" hidden>No skills match these filters.</p></section>
 <section class="panel span-4"><h2>Claim status</h2><p class="sub">Approved claims against your assigned pending approvals.</p><div class="donut-wrap">${donut(analytics.reviewed, analytics.pending)}<p class="legend"><span><i style="background:#008595"></i>Reviewed ${analytics.reviewed}</span><span><i style="background:#e7c58a"></i>Pending ${analytics.pending}</span></p></div></section>
 <section class="panel span-4"><h2>Level distribution</h2><p class="sub">All approved claims by proficiency level.</p>${levelColumns(analytics)}</section>
-<section class="panel span-4"><h2>Skill radar</h2><p class="sub">Holder averages on L1–L4, top skills. Historical frameworks are excluded. Recorded-rank summaries do not establish equivalence across frameworks.</p>${radar(profiles)}</section>
+<section class="panel span-4"><h2>Skill radar</h2><p class="sub">Average proficiency scores for the top skills. Historical frameworks are excluded. Recorded-rank summaries do not establish equivalence across frameworks.</p>${radar(profiles)}</section>
 <section class="panel span-7"><h2>Level mix by skill</h2><p class="sub">How approved holders spread across levels. Historical frameworks are excluded.</p>${levelMix(profiles)}</section>
 <section class="panel span-5"><h2>Category share</h2><p class="sub">Approved claims by skill category.</p>${categories(analytics)}</section>
 </div>

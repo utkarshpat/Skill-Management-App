@@ -104,5 +104,8 @@ test('executive report scripts run and CSV preserves visible sort, real rows and
   nodes.get('hubLevel')!.value = '4';
   vm.runInContext('exportFilteredCsv()', sandbox);
   assert.ok(!(await exported!.text()).includes('Zulu'));
+  assert.match(nodes.get('activeFilterTags')!.innerHTML, /Minimum proficiency: Expert/);
+  assert.match(nodes.get('skillsTableBody')!.innerHTML, /Expert/);
+  assert.doesNotMatch(html, /\bL[1-4]\b/);
   assert.equal(vm.runInContext('csvEscape(" =SUM(1)")', sandbox), '"\' =SUM(1)"');
 });

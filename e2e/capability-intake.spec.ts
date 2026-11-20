@@ -36,7 +36,7 @@ test('intake: proficiency and date validation keep drafts editable; discard requ
   const skill = await intake(page);
   await skill.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(skill).toContainText('Choose your proficiency.');
-  await skill.getByRole('radio', { name: 'L3 Experienced', exact: true }).check();
+  await skill.getByRole('radio', { name: 'Experienced', exact: true }).check();
   await skill.getByLabel('Last used', { exact: true }).fill('2027-01-01');
   await skill.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(skill).toContainText(/today|future/i);
@@ -105,7 +105,7 @@ test('intake: one skill submission carries exact revisions and follows save befo
       json: { id: body.id, revision: 2, status: 'SUBMITTED', skills: [], certifications: [] },
     });
   });
-  await skill.getByRole('radio', { name: 'L2 Autonomous', exact: true }).check();
+  await skill.getByRole('radio', { name: 'Autonomous', exact: true }).check();
   await skill.getByLabel('Experience in months', { exact: false }).fill('12');
   expect(catalogueReads).toEqual(['25']);
   await skill.getByRole('button', { name: 'Done', exact: true }).click();

@@ -1,3 +1,4 @@
+import { displayProficiencyName } from '../proficiency';
 export function peopleSearchPrompt(
   scope?: { id: string; label: string },
   hierarchy?: { id: string; name: string },
@@ -15,9 +16,8 @@ export function peopleSearchUserText(content: string) {
   return content.split('. First ask')[0];
 }
 export function peopleCriterionLabel(criterion: string) {
-  const level = criterion.match(/proficiency L([1-4]) or above/);
-  if (level)
-    return `${['Beginner', 'Autonomous', 'Experienced', 'Expert'][Number(level[1]) - 1]}+`;
+  const level = criterion.match(/\b(?:proficiency\s+)?(?:L|level\s+)([1-4])\s+or above\b/i);
+  if (level) return `${displayProficiencyName(Number(level[1]))}+`;
   if (criterion.startsWith('Current approved credential')) return 'Current approved certificate';
   return criterion;
 }

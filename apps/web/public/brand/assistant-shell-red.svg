@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <filter id="shell-red" color-interpolation-filters="sRGB">
+    <!-- Mask the blue shell so neutral highlights, gloves and the chest are preserved. -->
+    <feColorMatrix in="SourceGraphic" type="matrix" values="
+      0 0 0 0 0
+      0 0 0 0 0
+      0 0 0 0 0
+      -2 0 2 0 -0.2" result="shell-mask"/>
+    <feColorMatrix in="SourceGraphic" type="matrix" values="
+      0 .65 .35 0 0
+      0 .65 .35 0 0
+      0 .65 .35 0 0
+      0 0 0 1 0"/>
+    <!-- Match the logo's #de1823 red at the shell's dominant midtone. -->
+    <feComponentTransfer>
+      <feFuncR type="table" tableValues="0 .18 .34 .51 .69 .8706 .95 1 1"/>
+      <feFuncG type="table" tableValues="0 .015 .025 .035 .055 .0941 .22 .48 .86"/>
+      <feFuncB type="table" tableValues="0 .035 .055 .075 .105 .1373 .26 .52 .88"/>
+    </feComponentTransfer>
+    <feComposite in2="shell-mask" operator="in"/>
+    <feComposite in2="SourceGraphic" operator="atop"/>
+  </filter>
+</svg>

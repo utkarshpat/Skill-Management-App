@@ -210,7 +210,7 @@ export function Recommendations({
               <h4>
                 {item.skillName}
                 <span className="recommendation-level">
-                  L{item.rank} · {displayProficiencyName(item.rank, item.levelName)}
+                  {displayProficiencyName(item.rank, item.levelName)}
                 </span>
               </h4>
               <p>
@@ -535,7 +535,7 @@ function RecommendSkill({ onClose, onSaved }: { onClose: () => void; onSaved: ()
                   <select value={rank} onChange={e => setRank(Number(e.target.value))}>
                     {skill.levels.map(l => (
                       <option key={l.rank} value={l.rank}>
-                        L{l.rank} · {l.name}
+                        {displayProficiencyName(l.rank, l.name)}
                       </option>
                     ))}
                   </select>
@@ -584,7 +584,8 @@ function RecommendSkill({ onClose, onSaved }: { onClose: () => void; onSaved: ()
                 For <strong>{person?.name}</strong> · {person?.employeeCode}
               </p>
               <p>
-                Target: L{rank} · {skill?.levels.find(l => l.rank === rank)?.name}
+                Target:{' '}
+                {displayProficiencyName(rank, skill?.levels.find(l => l.rank === rank)?.name)}
               </p>
               <p className="recommendation-reason">{reason}</p>
               {resource && (
@@ -652,7 +653,7 @@ function RecommendationDetail({
       `Review ${item.skillName} fundamentals\nPractice ${item.skillName} with a small exercise\nBuild and document a ${item.skillName} example`,
     ),
     [goal, setGoal] = useState(
-      `Develop ${item.skillName} toward ${displayProficiencyName(item.rank, item.levelName)} (L${item.rank}). ${item.reason}`.slice(
+      `Develop ${item.skillName} toward ${displayProficiencyName(item.rank, item.levelName)}. ${item.reason}`.slice(
         0,
         2000,
       ),
@@ -793,7 +794,7 @@ function RecommendationDetail({
           {statusName[item.status]}
         </span>
         <h3>
-          {item.skillName} · L{item.rank} {displayProficiencyName(item.rank, item.levelName)}
+          {item.skillName} · {displayProficiencyName(item.rank, item.levelName)}
         </h3>
         <p>
           {item.senderName} recommended this for {item.personName}.

@@ -264,7 +264,7 @@ export function SkillsProfileView({
               <option value="">All levels</option>
               {levels.map(value => (
                 <option key={value} value={value}>
-                  Level {value}
+                  {displayProficiencyName(value)}
                 </option>
               ))}
             </select>
@@ -329,8 +329,9 @@ export function SkillsProfileView({
                       <div className="skills-item-right">
                         <div className="skills-item-proficiency">
                           <div className="skills-level-header">
-                            <strong className="skills-level-label">Level {claim.rank}</strong>
-                            <span className="skills-level-name">{displayProficiencyName(claim.rank, claim.levelName)}</span>
+                            <strong className="skills-level-label">
+                              {displayProficiencyName(claim.rank, claim.levelName)}
+                            </strong>
                           </div>
                           <span className="skills-rank-bars" aria-hidden="true">
                             {Array.from({ length: 4 }, (_, i) => (

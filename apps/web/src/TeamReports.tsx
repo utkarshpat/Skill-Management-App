@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { useEffect, useId, useRef, useState } from 'react';
 import { BarChart3, ChevronDown, Download, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { authenticatedFetch } from './auth';
@@ -156,7 +157,7 @@ export function TeamReports({
             <select value={rank} disabled={!!busy} onChange={e => setRank(Number(e.target.value))}>
               {[1, 2, 3, 4].map(n => (
                 <option key={n} value={n}>
-                  L{n} and above
+                  {displayProficiencyName(n)} and above
                 </option>
               ))}
             </select>
@@ -173,8 +174,10 @@ export function TeamReports({
               <span>
                 <strong>{reportLabels[kind]}</strong>
                 <small>
-                  {kind === 'summary' ? 'Totals, categories, levels' : `Per skill at L${rank}+`} ·
-                  .csv
+                  {kind === 'summary'
+                    ? 'Totals, categories, levels'
+                    : `Per skill at ${displayProficiencyName(rank)} or above`}{' '}
+                  · .csv
                 </small>
               </span>
             </button>

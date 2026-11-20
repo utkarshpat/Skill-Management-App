@@ -394,8 +394,7 @@ export function SkillClaimWizard({
                         checked={item.rank === draft.rank}
                         onChange={() => onDraft({ ...draft, rank: item.rank })}
                       />
-                      <span>L{item.rank}</span>
-                      <strong>{item.name}</strong>
+                      <strong>{displayProficiencyName(item.rank, item.name)}</strong>
                     </label>
                   ))}
                 </fieldset>
@@ -404,7 +403,7 @@ export function SkillClaimWizard({
                   <div>
                     <h3>
                       {level
-                        ? 'Level ' + level.rank + ' · ' + displayProficiencyName(level.rank, level.name)
+                        ? displayProficiencyName(level.rank, level.name)
                         : 'Choose your proficiency'}
                     </h3>
                     <p>
@@ -509,9 +508,7 @@ export function SkillClaimWizard({
                 <div className="skill-review-facts">
                   <div>
                     <span>Proficiency</span>
-                    <strong>
-                      L{draft.rank} · {level?.name}
-                    </strong>
+                    <strong>{level && displayProficiencyName(level.rank, level.name)}</strong>
                   </div>
                   <div>
                     <span>Experience</span>
@@ -532,8 +529,7 @@ export function SkillClaimWizard({
                     <span className="claim-status">Self-assessed</span>
                   </div>
                   <p>{selected?.category}</p>
-                  <strong>{level?.name}</strong>
-                  <span>Level {draft.rank}</span>
+                  <strong>{level && displayProficiencyName(level.rank, level.name)}</strong>
                   <div className="skill-progress" aria-hidden="true">
                     {selected?.levels.map(item => (
                       <span className={item.rank <= draft.rank ? 'filled' : ''} key={item.rank} />

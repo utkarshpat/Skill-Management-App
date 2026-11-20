@@ -371,7 +371,7 @@ test('analytics drill-through, pagination and assistant handoff preserve narrowi
     assert.match(prompts[0].prompt, /Financial Services/);
     assert.match(prompts[1].prompt, /authorized analytics/);
     await click('Skill coverage', document.querySelector('[aria-label="Analytics views"]')!);
-    await click('SQL, level 3: 1 approved holders; drill-through level 3');
+    await click('SQL, Experienced: 1 approved holders');
     assert.equal(current().get('dataset'), 'skills');
     assert.equal(current().get('minRank'), '3');
     assert.equal(current().get('maxRank'), '3');
@@ -476,7 +476,7 @@ test('overview cards, issuer donut and renewal windows drill into matching recor
   assert.equal(current().has('issuer'), false);
   assert.equal(current().has('category'), false);
   await click('Overview', document.querySelector('[aria-label="Analytics views"]')!);
-  await click('SQL, level 2: 1 approved holders');
+  await click('SQL, Autonomous: 1 approved holders');
   assert.equal(current().get('minRank'), '2');
   assert.equal(current().get('maxRank'), '2');
   await click('Overview', document.querySelector('[aria-label="Analytics views"]')!);

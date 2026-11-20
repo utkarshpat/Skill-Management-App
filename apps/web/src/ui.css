@@ -1142,7 +1142,7 @@ html[data-theme] .assistant-mascot img {
 }
 .assistant-mascot-body,
 .assistant-mascot-shell {
-  filter: hue-rotate(145deg);
+  filter: url('/brand/assistant-shell-red.svg#shell-red');
 }
 /* Two crops of the same sprite overlap slightly beneath the head along the neck. */
 .assistant-mascot-body {

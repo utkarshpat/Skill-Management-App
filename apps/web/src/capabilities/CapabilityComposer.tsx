@@ -1622,9 +1622,6 @@ export function CapabilityComposer({
                             >
                               <div className="cap-skill-card-header">
                                 <div className="cap-skill-card-info">
-                                  <span className="cap-skill-rank-badge">
-                                    {s.rank ? `L${s.rank}` : '?'}
-                                  </span>
                                   <div className="cap-skill-card-meta">
                                     <div className="cap-skill-title-row">
                                       <button
@@ -1643,7 +1640,7 @@ export function CapabilityComposer({
                                           <Check size={12} />{' '}
                                           {s.reuse
                                             ? 'Approved'
-                                            : `L${s.rank} · ${s.experienceMonths} mos`}
+                                            : `${displayProficiencyName(s.rank, s.choice.levels.find(level => level.rank === s.rank)?.name)} · ${s.experienceMonths} mos`}
                                         </span>
                                       ) : (
                                         <span className="cap-status-badge incomplete">
@@ -1724,7 +1721,7 @@ export function CapabilityComposer({
                         <span>
                           {s.reuse
                             ? 'Existing approved skill'
-                            : `L${s.rank} · ${s.experienceMonths} months`}
+                            : `${displayProficiencyName(s.rank, s.choice.levels.find(level => level.rank === s.rank)?.name)} · ${s.experienceMonths} months`}
                         </span>
                         <p>{s.description}</p>
                       </div>
@@ -1952,7 +1949,6 @@ export function CapabilityComposer({
                             required
                             onChange={() => patchSkill(s.id, { rank: level.rank })}
                           />
-                          <span>L{level.rank}</span>
                           <strong>{displayProficiencyName(level.rank, level.name)}</strong>
                         </label>
                       ))}
@@ -1967,9 +1963,7 @@ export function CapabilityComposer({
                         >
                           <Info size={20} aria-hidden="true" />
                           <div>
-                            <strong>
-                              Level {level.rank} · {displayProficiencyName(level.rank, level.name)}
-                            </strong>
+                            <strong>{displayProficiencyName(level.rank, level.name)}</strong>
                             <p>{level.description}</p>
                           </div>
                         </div>

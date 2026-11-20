@@ -1,3 +1,4 @@
+import { displayProficiencyName } from '../proficiency';
 import { credentialValidity } from '../certifications/certification-model';
 import { useEffect, useRef, useState } from 'react';
 import { FormDialog } from '../FormDialog';
@@ -282,8 +283,7 @@ export function CapabilityReview({
                     {isSkill ? (
                       <>
                         <span className="cap-meta-pill highlight">
-                          Level {row.rank}
-                          {levelName ? ` · ${levelName}` : ''}
+                          {levelName || displayProficiencyName(row.rank)}
                         </span>
                         <span className="cap-meta-pill">{expLabel}</span>
                       </>

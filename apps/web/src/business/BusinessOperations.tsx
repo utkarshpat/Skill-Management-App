@@ -1,3 +1,4 @@
+import { displayProficiencyName } from '../proficiency';
 import { useEffect, useRef, useState } from 'react';
 import { organizationKindLabel } from '../organization-labels';
 import { Navigate, useSearchParams } from 'react-router';
@@ -803,17 +804,18 @@ function Insights({ context }: { context: BusinessContext }) {
                     }}
                     className="bo-select"
                   >
-                    <option value="">All supported ranks (L1–L4)</option>
-                    <option value="1_1">L1</option>
-                    <option value="2_2">L2</option>
-                    <option value="3_3">L3</option>
-                    <option value="4_4">L4</option>
+                    <option value="">All levels</option>
+                    <option value="1_1">{displayProficiencyName(1)}</option>
+                    <option value="2_2">{displayProficiencyName(2)}</option>
+                    <option value="3_3">{displayProficiencyName(3)}</option>
+                    <option value="4_4">{displayProficiencyName(4)}</option>
                     {(params.has('minRank') || params.has('maxRank')) &&
                       params.get('minRank') !== params.get('maxRank') && (
                         <option
                           value={`${params.get('minRank') ?? '1'}_${params.get('maxRank') ?? '4'}`}
                         >
-                          Ranks L{params.get('minRank') ?? '1'}–L{params.get('maxRank') ?? '4'}
+                          {displayProficiencyName(Number(params.get('minRank') ?? 1))} to{' '}
+                          {displayProficiencyName(Number(params.get('maxRank') ?? 4))}
                         </option>
                       )}
                   </select>
@@ -938,7 +940,7 @@ function Insights({ context }: { context: BusinessContext }) {
                         hierarchyId: 'Organization hierarchy',
                         skillId: 'Skill',
                         maxRank: 'Proficiency',
-                        minRank: 'Minimum rank',
+                        minRank: 'Minimum proficiency',
                         status: 'Status',
                         validity: 'Validity',
                         from: 'From',
@@ -959,8 +961,12 @@ function Insights({ context }: { context: BusinessContext }) {
                         : k === 'skillId'
                           ? (loaded?.data.coverage.find(c => c.id === v)?.label ?? 'Selected skill')
                           : k === 'maxRank'
-                            ? `L${params.get('minRank') ?? '1'}–L${v}`
-                            : v.replaceAll('_', ' ')}
+                            ? params.get('minRank') === v
+                              ? displayProficiencyName(Number(v))
+                              : `${displayProficiencyName(Number(params.get('minRank') ?? 1))} to ${displayProficiencyName(Number(v))}`
+                            : k === 'minRank'
+                              ? displayProficiencyName(Number(v))
+                              : v.replaceAll('_', ' ')}
                   </span>
                   <X size={12} aria-hidden="true" />
                 </button>
@@ -1111,16 +1117,16 @@ function Insights({ context }: { context: BusinessContext }) {
                 </div>
                 <div className="bo-level-legend">
                   <span>
-                    <i className="bo-l-dot l1" /> L1
+                    <i className="bo-l-dot l1" /> {displayProficiencyName(1)}
                   </span>
                   <span>
-                    <i className="bo-l-dot l2" /> L2
+                    <i className="bo-l-dot l2" /> {displayProficiencyName(2)}
                   </span>
                   <span>
-                    <i className="bo-l-dot l3" /> L3
+                    <i className="bo-l-dot l3" /> {displayProficiencyName(3)}
                   </span>
                   <span>
-                    <i className="bo-l-dot l4" /> L4
+                    <i className="bo-l-dot l4" /> {displayProficiencyName(4)}
                   </span>
                 </div>
               </div>
@@ -1190,9 +1196,11 @@ function Insights({ context }: { context: BusinessContext }) {
                                   issuer: '',
                                 })
                               }
-                              aria-label={`${label}, level ${rank}: ${holders} approved holders; drill-through level ${rank}`}
+                              aria-label={`${label}, ${displayProficiencyName(rank)}: ${holders} approved holders`}
                             >
-                              <span className="bo-cell-rank-tag">L{rank}</span>
+                              <span className="bo-cell-rank-tag">
+                                {displayProficiencyName(rank)}
+                              </span>
                               <strong className="bo-cell-val">{holders}</strong>
                             </button>
                           );

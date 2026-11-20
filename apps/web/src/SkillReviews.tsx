@@ -553,7 +553,6 @@ export function SkillReviews({
                           </span>
                         </td>
                         <td>
-                          <span className="review-level">L{item.rank}</span>
                           <span className="review-subtext">
                             {displayProficiencyName(item.rank, item.levelName)}
                           </span>

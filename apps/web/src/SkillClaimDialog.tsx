@@ -151,16 +151,13 @@ export function SkillClaimDialog({
           <div className="claim-review-facts">
             <div className="claim-fact-level-card">
               <div className="claim-fact-level-header">
-                <strong>Level {claim.rank}</strong>
+                <strong>{displayProficiencyName(claim.rank, claim.levelName)}</strong>
                 <div className="claim-fact-bars" aria-hidden="true">
                   {Array.from({ length: 4 }, (_, i) => (
                     <i key={i} className={i < claim.rank ? 'filled' : 'empty'} />
                   ))}
                 </div>
               </div>
-              <span className="claim-fact-level-name">
-                {displayProficiencyName(claim.rank, claim.levelName)}
-              </span>
               {claim.levelDescription && (
                 <p className="claim-fact-desc">{claim.levelDescription}</p>
               )}

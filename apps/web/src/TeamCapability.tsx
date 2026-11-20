@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
@@ -295,7 +296,7 @@ export function TeamCapability({
                   >
                     {[1, 2, 3, 4].map(rank => (
                       <option key={rank} value={rank}>
-                        L{rank} and above
+                        {displayProficiencyName(rank)} and above
                       </option>
                     ))}
                   </select>
@@ -448,7 +449,7 @@ export function TeamCapability({
                             <span className="team-level-track">
                               <span style={{ height: (count / max) * 100 + '%' }} />
                             </span>
-                            <span>L{rank}</span>
+                            <span>{displayProficiencyName(rank)}</span>
                           </button>
                         );
                       })}
@@ -543,8 +544,9 @@ export function TeamCapability({
               </header>
               {skillFilter || levelFilter ? (
                 <p className="team-chart-caption">
-                  Showing members on this page with approved {skillFilter || `L${levelFilter}`}{' '}
-                  claims{skillFilter ? ` at L${minimumRank} or above` : ''}.
+                  Showing members on this page with approved{' '}
+                  {skillFilter || displayProficiencyName(Number(levelFilter))} claims
+                  {skillFilter ? ` at ${displayProficiencyName(minimumRank)} or above` : ''}.
                 </p>
               ) : null}
               {!visiblePeople.length ? (

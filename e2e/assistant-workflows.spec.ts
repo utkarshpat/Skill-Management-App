@@ -158,7 +158,7 @@ test('red mascot stays transparent in both admin themes', async ({ page }, info)
     for (const layer of ['body', 'shell']) {
       await expect(launcher.locator('.assistant-mascot-' + layer)).toHaveCSS(
         'filter',
-        'hue-rotate(145deg)',
+        /url\(["']?[^"')]*\/brand\/assistant-shell-red\.svg#shell-red["']?\)/,
       );
     }
     await expect(launcher.locator('.assistant-mascot-face')).toHaveCSS('filter', 'none');

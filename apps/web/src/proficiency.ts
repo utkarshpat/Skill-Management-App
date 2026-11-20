@@ -1,6 +1,9 @@
 export const proficiencyNames = ['Beginner', 'Autonomous', 'Experienced', 'Expert'] as const;
 
-export function displayProficiencyName(rank: number, name: string) {
+export function displayProficiencyName(
+  rank: number,
+  name: string = proficiencyNames[rank - 1] ?? '',
+) {
   return rank === 1 && name === 'Foundation' ? proficiencyNames[0] : name;
 }
 export const proficiencyCriteria = [

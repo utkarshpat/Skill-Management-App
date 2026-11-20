@@ -1,3 +1,4 @@
+import { displayProficiencyName } from './proficiency';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowRight, BookOpen, CheckCircle2, Clock3, Sparkles, Target } from 'lucide-react';
@@ -161,7 +162,8 @@ export function SkillGrowthJourney({ plans, canManage, onContinue, onResume }: P
                   <div>
                     <strong>{item.skillName}</strong>
                     <p>
-                      {statuses[item.status]} · {item.senderName} · Target L{item.rank}
+                      {statuses[item.status]} · {item.senderName} · Target{' '}
+                      {displayProficiencyName(item.rank)}
                     </p>
                   </div>
                   <Link

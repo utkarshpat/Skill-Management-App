@@ -4,6 +4,7 @@ import { transform } from 'rolldown/experimental';
 import * as jsx from 'react/jsx-runtime';
 import { readApiResponse } from '../../src/api-response.ts';
 import * as organizationLabels from '../../src/organization-labels.ts';
+import * as proficiency from '../../src/proficiency.ts';
 let slots = [],
   cursor = 0,
   effects = [],
@@ -87,6 +88,7 @@ globalThis.__probe = {
   jsx,
   icons,
   organizationLabels,
+  proficiency,
   model,
   auth: {
     authenticatedFetch: async (url, options) => {
@@ -130,6 +132,7 @@ const sources = {
   '../auth': 'auth',
   '../api-response': 'response',
   '../organization-labels': 'organizationLabels',
+  '../proficiency': 'proficiency',
   './business-model': 'model',
   './business-report-document': 'reportDocument',
   './BusinessAdministration': 'administration',
@@ -217,7 +220,7 @@ assert.ok(!section(tree), 'Overview is compact and records are a separate view')
 button(tree, 'People & records').props.onClick();
 tree = render();
 assert.ok(section(tree));
-assert.ok(!text(tree).includes('L2 · Working'));
+assert.ok(!text(tree).includes('Working'));
 
 dataset(tree).props.onChange({ target: { value: 'certifications' } });
 tree = render();
@@ -256,7 +259,10 @@ tree = render();
 await tick();
 const rankSelector = nodes(tree).find(n => n.type === 'select' && n.props.value === '2_4');
 assert.ok(rankSelector, 'Minimum-only rank links keep their selected range visible');
-assert.ok(text(tree).includes('Minimum rank'), 'Minimum-only filters retain a removable chip');
+assert.ok(
+  text(tree).includes('Minimum proficiency'),
+  'Minimum-only filters retain a removable chip',
+);
 const upperValidity = nodes(tree).find(
   n =>
     n.type === 'select' &&

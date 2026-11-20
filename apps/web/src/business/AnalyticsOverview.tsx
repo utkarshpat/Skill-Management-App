@@ -1,3 +1,4 @@
+import { displayProficiencyName } from '../proficiency';
 import { Award, ArrowRight, Clock3, ShieldCheck, TrendingUp, Users, Eye } from 'lucide-react';
 import { businessCoverageRows, type BusinessDashboard } from './business-model';
 import { BusinessRecordDate } from './BusinessRecordDate';
@@ -227,7 +228,7 @@ export function AnalyticsOverview({
                               maxRank: String(rank),
                             })
                           }
-                          aria-label={`${row.label}, level ${rank}: ${row.cells.get(rank)?.holders ?? 0} approved holders`}
+                          aria-label={`${row.label}, ${displayProficiencyName(rank)}: ${row.cells.get(rank)?.holders ?? 0} approved holders`}
                         >
                           {row.cells.get(rank)?.holders ?? 0}
                         </button>
