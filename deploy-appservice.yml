@@ -1,0 +1,83 @@
+parameters:
+  - name: target
+    type: string
+  - name: serviceConnection
+    type: string
+  - name: resourceGroup
+    type: string
+  - name: appName
+    type: string
+  - name: appUrl
+    type: string
+
+jobs:
+  - job: ApproveDeployment
+    displayName: Approve deployment to ${{ parameters.target }}
+    pool: server
+    timeoutInMinutes: 1500
+    steps:
+      - task: ManualValidation@1
+        timeoutInMinutes: 1440
+        inputs:
+          notifyUsers: ''
+          instructions: Verify the commit, test results and database migration readiness before deploying this run to ${{ parameters.target }}.
+          onTimeout: reject
+
+  - job: DeployApp
+    displayName: Deploy the tested runtime to ${{ parameters.target }}
+    dependsOn: ApproveDeployment
+    steps:
+      - checkout: none
+      - download: current
+        artifact: skill-management-release
+        patterns: skill-management-runtime.zip
+
+      - task: AzureCLI@2
+        displayName: Verify the App Service deployment source and build settings
+        inputs:
+          azureSubscription: ${{ parameters.serviceConnection }}
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            set -euo pipefail
+            source_repo=$(az webapp deployment source show --resource-group "$APP_RESOURCE_GROUP" --name "$APP_NAME" --query repoUrl -o tsv)
+            if [[ -n "$source_repo" && "$source_repo" != None ]]; then
+              echo 'Disconnect the App Service Git deployment in Deployment Center before enabling pipeline deployment.' >&2
+              exit 1
+            fi
+            remote_build=$(az webapp config appsettings list --resource-group "$APP_RESOURCE_GROUP" --name "$APP_NAME" --query "[?name=='SCM_DO_BUILD_DURING_DEPLOYMENT' || name=='ENABLE_ORYX_BUILD'].value" -o tsv)
+            if grep -Eiq '^(true|1)$' <<< "$remote_build"; then
+              echo 'Disable App Service remote build before deploying the compiled runtime.' >&2
+              exit 1
+            fi
+        env:
+          APP_RESOURCE_GROUP: ${{ parameters.resourceGroup }}
+          APP_NAME: ${{ parameters.appName }}
+
+      - task: AzureWebApp@1
+        displayName: ZIP deploy to ${{ parameters.target }}
+        inputs:
+          azureSubscription: ${{ parameters.serviceConnection }}
+          appType: webAppLinux
+          appName: ${{ parameters.appName }}
+          package: '$(Pipeline.Workspace)/skill-management-release/skill-management-runtime.zip'
+
+      - bash: |
+          set -euo pipefail
+          archive="$(Pipeline.Workspace)/skill-management-release/skill-management-runtime.zip"
+          expected=$(unzip -p "$archive" apps/web/dist/index.html | grep -oE '/assets/index-[^"[:space:]]+\.js')
+          for attempt in {1..18}; do
+            if landing=$(curl --fail --silent --show-error --max-time 10 "$APP_URL/?release=$BUILD_SOURCEVERSION") &&
+              [[ "$landing" == *"$expected"* ]] &&
+              health=$(curl --fail --silent --show-error --max-time 10 "$APP_URL/api/health") &&
+              grep -Eq '"status"[[:space:]]*:[[:space:]]*"ok"' <<< "$health"; then
+              echo "Release $BUILD_SOURCEVERSION is serving its frontend and health endpoint."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "App Service did not serve the expected release frontend and health endpoint." >&2
+          exit 1
+        displayName: Verify the deployed frontend and API health
+        env:
+          APP_URL: ${{ parameters.appUrl }}
