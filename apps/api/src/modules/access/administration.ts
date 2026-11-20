@@ -31,7 +31,7 @@ export interface DirectoryPage {
 }
 export interface PersonAdministration {
   revision: number;
-  person: LocalPerson;
+  person: LocalPerson & { workEmail?: string | null; workLocation?: string | null };
   roles: CustomRole[];
   organization: {
     nodes: { id: string; kind: string; name: string; parentId: string | null; active: boolean }[];

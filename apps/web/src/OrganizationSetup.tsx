@@ -243,9 +243,39 @@ export function OrganizationSetup({
     organizationPathValid(state.nodes, placement.id),
   );
   const visible = state.nodes.filter(node => archived || node.active);
-  const matches = (node: OrgNode): boolean =>
-    node.name.toLowerCase().includes(query) ||
-    visible.filter(child => child.parentId === node.id).some(matches);
+  const visibleById = new Map(visible.map(node => [node.id, node]));
+  const peopleById = new Map(state.people.map(person => [person.id, person]));
+  const assignedPeople = new Map<string, string[]>();
+  const placedPeople = new Set<string>();
+  const matchingPeople = new Set(
+    state.people
+      .filter(person =>
+        `${person.displayName} ${person.employeeCode}`.toLowerCase().includes(query),
+      )
+      .map(person => person.id),
+  );
+  const matchingNodes = new Set<string>();
+  const includeAncestors = (id: string) => {
+    let current = visibleById.get(id);
+    while (current && !matchingNodes.has(current.id)) {
+      matchingNodes.add(current.id);
+      current = current.parentId ? visibleById.get(current.parentId) : undefined;
+    }
+  };
+  for (const node of visible) {
+    if (node.name.toLowerCase().includes(query)) includeAncestors(node.id);
+  }
+  for (const assignment of state.assignments) {
+    const id = assignment.teamId || assignment.departmentId;
+    if (!id || !peopleById.has(assignment.personId)) continue;
+    placedPeople.add(assignment.personId);
+    if (!visibleById.has(id)) continue;
+    const people = assignedPeople.get(id) ?? [];
+    people.push(assignment.personId);
+    assignedPeople.set(id, people);
+    if (matchingPeople.has(assignment.personId)) includeAncestors(id);
+  }
+  const matches = (node: OrgNode) => matchingNodes.has(node.id);
   const teamPath = (id: string) => {
     const names: string[] = [];
     let node = state.nodes.find(item => item.id === id);
@@ -293,9 +323,9 @@ export function OrganizationSetup({
                     .filter(child => child.parentId === node.id)
                     .filter(matches)
                     .map(child => child.id),
-                  ...state.assignments
-                    .filter(item => item.teamId === node.id || item.departmentId === node.id)
-                    .map(item => item.personId),
+                  ...(assignedPeople.get(node.id) ?? []).filter(
+                    id => node.name.toLowerCase().includes(query) || matchingPeople.has(id),
+                  ),
                 ],
         }))
       : state.people
@@ -312,11 +342,10 @@ export function OrganizationSetup({
                     .filter(child => personMatches(child))
                     .map(child => child.id),
           }));
+  const unplacedMatches = query ? [...matchingPeople].filter(id => !placedPeople.has(id)) : [];
   if (mode === 'organization')
-    for (const person of state.people.filter(person =>
-      state.assignments.some(
-        item => item.personId === person.id && (item.departmentId || item.teamId),
-      ),
+    for (const person of state.people.filter(
+      person => placedPeople.has(person.id) || unplacedMatches.includes(person.id),
     ))
       graphItems.push({
         id: person.id,
@@ -327,10 +356,13 @@ export function OrganizationSetup({
       });
   const roots =
     mode === 'organization'
-      ? visible
-          .filter(node => !node.parentId)
-          .filter(matches)
-          .map(node => node.id)
+      ? [
+          ...visible
+            .filter(node => !node.parentId)
+            .filter(matches)
+            .map(node => node.id),
+          ...unplacedMatches,
+        ]
       : state.people
           .filter(person => !state.assignments.find(item => item.personId === person.id)?.managerId)
           .filter(person => personMatches(person))
@@ -488,7 +520,7 @@ export function OrganizationSetup({
               aria-label="Search hierarchy"
               placeholder={
                 mode === 'organization'
-                  ? 'Find a unit, portfolio/division, account/client or project'
+                  ? 'Find a person, employee ID, or organization unit'
                   : 'Find a person or employee ID'
               }
               value={search}
@@ -524,6 +556,7 @@ export function OrganizationSetup({
             items={graphItems}
             roots={roots}
             selected={mode === 'organization' ? selected : personId}
+            fitOnSearch={query}
             onSelect={selectGraph}
             onEdit={editGraph}
           />

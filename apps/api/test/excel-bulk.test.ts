@@ -75,12 +75,15 @@ test('Excel import requires current access and a preview for the exact workbook'
   });
   let canImport = false;
   const operations: string[] = [];
+  let employeeRows: unknown;
   const execute: SqlExcelBulkData['execute'] = async <T>(
     _actor: string,
-    _kind: unknown,
+    kind: unknown,
     operation: string,
+    payload?: object,
   ) => {
     operations.push(operation);
+    if (kind === 'employees' && operation === 'IMPORT') employeeRows = payload;
     return (
       operation === 'ACCESS'
         ? { canImport }
@@ -171,4 +174,70 @@ test('Excel import requires current access and a preview for the exact workbook'
   });
   assert.equal(result.status, 200);
   assert.equal((await result.json()).added, 1);
+
+  const employees = host + '/api/excel/employees';
+  const employeeTemplate = await fetch(employees + '/template', { headers: { Cookie: cookie } });
+  assert.equal(employeeTemplate.status, 200);
+  const employeeWorkbook = new ExcelJS.Workbook();
+  await employeeWorkbook.xlsx.load(
+    (await employeeTemplate.arrayBuffer()) as unknown as ExcelJS.Buffer,
+  );
+  const employeeSheet = employeeWorkbook.getWorksheet('Employees')!;
+  assert.equal(employeeSheet.getColumn(1).numFmt, '@');
+  employeeSheet.addRow([
+    '007012',
+    'Sample Employee',
+    'SAMPLE@EXAMPLE.TEST',
+    'Noida Campus',
+    'Engineer',
+    'G2',
+    'SQL',
+    'DU UK',
+    'UK Portfolio',
+    'NHS SBS IT',
+    'NHS Project',
+    '001000',
+  ]);
+  const employeeUpload = new Uint8Array(await employeeWorkbook.xlsx.writeBuffer());
+  const submitEmployee = (action: string, body: Uint8Array<ArrayBuffer>, receipt?: string) =>
+    fetch(employees + '/' + action, {
+      method: 'POST',
+      headers: {
+        Cookie: cookie,
+        Origin: origin,
+        'Content-Type': excelMime,
+        ...(receipt ? { 'X-Workbook-Preview': receipt } : {}),
+      },
+      body,
+    });
+  const approvedEmployeePreview = await submitEmployee('preview', employeeUpload);
+  assert.equal(approvedEmployeePreview.status, 200);
+  const employeeReceipt = (await approvedEmployeePreview.json()).preview;
+  assert.equal((await submitEmployee('import', employeeUpload, employeeReceipt)).status, 200);
+  assert.deepEqual(employeeRows, {
+    rows: [
+      {
+        row: 2,
+        section: 'Employees',
+        employee: '007012',
+        name: 'Sample Employee',
+        workEmail: 'sample@example.test',
+        workLocation: 'Noida Campus',
+        jobTitle: 'Engineer',
+        grade: 'G2',
+        primarySkill: 'SQL',
+        deliveryUnit: 'DU UK',
+        portfolio: 'UK Portfolio',
+        client: 'NHS SBS IT',
+        project: 'NHS Project',
+        manager: '001000',
+      },
+    ],
+  });
+  employeeSheet.addRow(['007012', 'Duplicate Employee']);
+  const duplicateUpload = new Uint8Array(await employeeWorkbook.xlsx.writeBuffer());
+  const duplicate = await submitEmployee('preview', duplicateUpload);
+  assert.equal(duplicate.status, 400);
+  assert.match((await duplicate.json()).error.message, /row 3.*Duplicate employee code/);
+  assert.equal((await submitEmployee('import', duplicateUpload, employeeReceipt)).status, 409);
 });

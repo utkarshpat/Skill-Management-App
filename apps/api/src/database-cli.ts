@@ -148,6 +148,8 @@ if (command !== 'check' && command !== 'migrate') {
           [113, '113_shared_company_auth.sql'],
           [114, '114_approval_queue_exports_response_versions.sql'],
           [115, '115_optional_approval_feedback.sql'],
+          [116, '116_readable_activity_records.sql'],
+          [117, '117_employee_excel_import.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

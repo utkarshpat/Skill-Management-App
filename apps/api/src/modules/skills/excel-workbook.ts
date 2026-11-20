@@ -34,9 +34,15 @@ export async function writeExcel(
     sheet.columns.forEach((column, index) => {
       worksheet.getColumn(index + 1).width = Math.max(18, column.length + 3);
       if (
-        ['ID', 'Employee Code', 'Source ID', 'Credential ID', 'Issue Date', 'Expiry Date'].includes(
-          column,
-        )
+        [
+          'ID',
+          'Employee Code',
+          'Manager Employee Code',
+          'Source ID',
+          'Credential ID',
+          'Issue Date',
+          'Expiry Date',
+        ].includes(column)
       )
         worksheet.getColumn(index + 1).numFmt = '@';
     });

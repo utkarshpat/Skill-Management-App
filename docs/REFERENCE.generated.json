@@ -1,6 +1,6 @@
 {
   "version": "2026-11-20",
-  "revision": "45133922c2bf4570",
+  "revision": "4f2ebb6f8e715359",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -117,7 +117,9 @@
       "112_business_issuer_coverage.sql",
       "113_shared_company_auth.sql",
       "114_approval_queue_exports_response_versions.sql",
-      "115_optional_approval_feedback.sql"
+      "115_optional_approval_feedback.sql",
+      "116_readable_activity_records.sql",
+      "117_employee_excel_import.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -1481,6 +1483,18 @@
             "nullable": true,
             "declaration": "primary_capability_id uniqueidentifier NULL",
             "source": "052_primary_capability.sql"
+          },
+          "work_email": {
+            "type": "nvarchar(254)",
+            "nullable": true,
+            "declaration": "work_email nvarchar(254) NULL",
+            "source": "117_employee_excel_import.sql"
+          },
+          "work_location": {
+            "type": "nvarchar(100)",
+            "nullable": true,
+            "declaration": "work_location nvarchar(100) NULL",
+            "source": "117_employee_excel_import.sql"
           }
         },
         "pk": [
@@ -1541,6 +1555,16 @@
             ],
             "filter": "WHERE entra_object_id IS NOT NULL",
             "source": "003_custom_access.sql"
+          },
+          {
+            "name": "UX_AccessPerson_WorkEmail",
+            "unique": true,
+            "columns": [
+              "account_id",
+              "work_email"
+            ],
+            "filter": "WHERE work_email IS NOT NULL",
+            "source": "117_employee_excel_import.sql"
           }
         ],
         "domain": "Access & organization"
@@ -8194,7 +8218,7 @@
       "name": "ReadAccessAuditPage",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@before int=NULL,@person_id uniqueidentifier=NULL,\n @query nvarchar(100)=N'',@page_size int=25,@include_details bit=0",
-      "source": "database/migrations/068_business_access_audit_subjects.sql"
+      "source": "database/migrations/116_readable_activity_records.sql"
     },
     {
       "name": "SkillEvidence",
@@ -8506,7 +8530,7 @@
       "name": "ReadPeopleAdministration",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@mode varchar(12),@person_id uniqueidentifier=NULL,\n @kind varchar(12)=NULL,@query nvarchar(100)=N'',@page int=1,@node_kind varchar(20)=NULL,@parent_id uniqueidentifier=NULL",
-      "source": "database/migrations/091_search_people_administration.sql"
+      "source": "database/migrations/117_employee_excel_import.sql"
     },
     {
       "name": "GenerateCertificationExpiryReminders",
@@ -8657,6 +8681,12 @@
       "kind": "PROCEDURE",
       "signature": "@kind varchar(7), @operation varchar(6), @entry_hash binary(32),\n @expires_at datetime2(3)=NULL, @payload nvarchar(max)=NULL",
       "source": "database/migrations/113_shared_company_auth.sql"
+    },
+    {
+      "name": "ExcelEmployeeBulkData",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@kind varchar(20),\n @operation varchar(12),@payload nvarchar(max)=N'{}',@revision int=NULL",
+      "source": "database/migrations/117_employee_excel_import.sql"
     }
   ],
   "groups": {

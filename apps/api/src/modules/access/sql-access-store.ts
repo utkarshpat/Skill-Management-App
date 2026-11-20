@@ -286,10 +286,12 @@ export class SqlAccessStore implements AccessStore {
           .execute('dbo.ReadAccessAuditPage');
         const sets = result.recordsets as unknown as [
           { revision: number }[],
-          (Omit<AuditItem, 'at' | 'before' | 'after'> & {
+          (Omit<AuditItem, 'at' | 'before' | 'after' | 'decisionItems' | 'referenceNames'> & {
             at: Date;
             before: string | null;
             after: string | null;
+            decisionItems?: string | null;
+            referenceNames?: string | null;
           })[],
         ];
         const hasMore = sets[1].length > query.pageSize,
@@ -300,6 +302,8 @@ export class SqlAccessStore implements AccessStore {
             at: e.at.toISOString(),
             before: e.before ? JSON.parse(e.before) : undefined,
             after: e.after ? JSON.parse(e.after) : undefined,
+            decisionItems: e.decisionItems ? JSON.parse(e.decisionItems) : undefined,
+            referenceNames: e.referenceNames ? JSON.parse(e.referenceNames) : undefined,
           }));
         return {
           items,

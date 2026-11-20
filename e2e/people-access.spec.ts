@@ -1,5 +1,95 @@
 import { expect, fixture, ids, test } from './browser-fixture';
 
+test('recent activity identifies the affected record and keeps raw IDs out of the table', async ({
+  page,
+}, testInfo) => {
+  await fixture(page, { role: 'admin', businessAdministration: true });
+  await page.route('**/api/access/organization', route =>
+    route.fulfill({ json: { revision: 1, nodes: [], assignments: [], people: [] } }),
+  );
+  const targetId = '88888888-8888-4888-8888-000000000002';
+  const entries = [
+    {
+      revision: 12,
+      action: 'claim.approved',
+      at: '2026-11-19T08:02:46Z',
+      actorId: ids.person,
+      targetId,
+      actorName: 'Rohan Mehta',
+      targetName: 'SQL · Aditi Menon',
+    },
+    {
+      revision: 11,
+      action: 'capability.decide',
+      at: '2026-11-19T08:00:59Z',
+      actorId: ids.person,
+      targetId,
+    },
+  ];
+  const detailsRequested: string[] = [];
+  await page.route('**/api/access/audit?**', route => {
+    const params = new URL(route.request().url()).searchParams;
+    const before = params.get('before');
+    const isDetail = params.get('details') === 'true';
+    if (isDetail && before) detailsRequested.push(before);
+    return route.fulfill({
+      json: {
+        items: !isDetail
+          ? entries
+          : before === '13'
+            ? [
+                {
+                  ...entries[0],
+                  before: { status: 'SUBMITTED', blob_name: 'private-storage-path' },
+                  after: { status: 'APPROVED', feedback: 'Evidence verified.' },
+                },
+              ]
+            : [
+                {
+                  ...entries[1],
+                  decisionItems: [
+                    {
+                      kind: 'SKILL',
+                      name: 'SQL',
+                      status: 'APPROVED',
+                      feedback: 'Confirmed proficiency.',
+                    },
+                  ],
+                },
+              ],
+        nextCursor: null,
+        hasMore: false,
+      },
+    });
+  });
+  await page.goto('/access?view=overview');
+  const table = page.locator('.overview-activity').getByRole('table');
+  await expect(table.getByRole('columnheader', { name: 'Affected record' })).toBeVisible();
+  const approved = table.getByRole('row').filter({ hasText: 'Skill claim approved' });
+  await expect(approved).toContainText('SQL · Aditi Menon');
+  await expect(approved).toContainText('Rohan Mehta');
+  await expect(
+    table.getByRole('cell', { name: 'Capability submission', exact: true }),
+  ).toBeVisible();
+  await expect(table).not.toContainText(targetId);
+  await expect(table).not.toContainText(ids.person);
+  expect(detailsRequested).toEqual([]);
+  await approved.getByRole('button', { name: 'Skill claim approved' }).click();
+  const details = page.getByRole('dialog', { name: 'Activity details' });
+  await expect(
+    details.getByRole('row', { name: 'Status Pending approval Approved' }),
+  ).toBeVisible();
+  await expect(details.getByText('Evidence verified.')).toBeVisible();
+  await expect(details).not.toContainText('private-storage-path');
+  await details.getByRole('button', { name: 'Close Activity details' }).click();
+  if (testInfo.project.name === 'mobile')
+    await table.getByRole('button', { name: 'Submission decision recorded' }).click();
+  else await table.getByRole('cell', { name: 'Capability submission', exact: true }).click();
+  await expect(details.getByRole('heading', { name: 'Recorded decisions' })).toBeVisible();
+  await expect(details.getByText('Confirmed proficiency.')).toBeVisible();
+  expect(detailsRequested).toEqual(['13', '12']);
+});
+
 test('People & Access searches on demand and reviews template assignment and removal', async ({
   page,
 }) => {
@@ -307,6 +397,8 @@ test('fresh personal route skips /api/access while preserving Organization, Acti
   expect(accessRequests).toEqual(['/api/access?summary=1']);
 
   await tabs.getByRole('button', { name: 'Templates' }).click();
-  await expect(page.getByRole('button', { name: 'Edit template Delivery Support', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Edit template Delivery Support', exact: true }),
+  ).toBeVisible();
   expect(accessRequests).toContain('/api/access');
 });

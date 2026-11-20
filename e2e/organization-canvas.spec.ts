@@ -15,9 +15,9 @@ test('organization canvas fits a tall tree and supports pan and anchored zoom', 
     employeeCode: `E-${index}`,
     active: true,
   }));
-  const assignments = people.map(person => ({
+  const assignments = people.map((person, index) => ({
     personId: person.id,
-    managerId: null,
+    managerId: index === 22 ? people[0].id : null,
     teamId: null,
     departmentId: 'client',
   }));
@@ -89,4 +89,18 @@ test('organization canvas fits a tall tree and supports pan and anchored zoom', 
   await expect(
     viewport.getByRole('button', { name: 'Delivery Unit', pressed: true }),
   ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Collapse all' }).click();
+  const search = page.getByRole('textbox', { name: 'Search hierarchy' });
+  await search.fill('E-23');
+  await expect(viewport.getByRole('button', { name: 'Employee 23' })).toBeVisible();
+  await expect(viewport.getByRole('button', { name: 'Portfolio' })).toBeVisible();
+  await expect(viewport.getByRole('button', { name: 'Client' })).toBeVisible();
+  await expect(viewport.getByRole('button', { name: 'Employee 0 E-0', exact: true })).toHaveCount(0);
+  await search.fill('Employee 22');
+  await expect(viewport.getByRole('button', { name: 'Employee 22' })).toBeVisible();
+  await expect(viewport.getByRole('button', { name: 'Employee 23' })).toHaveCount(0);
+  await viewport.getByRole('button', { name: 'Employee 22' }).click();
+  await expect(page.getByRole('heading', { name: 'Saved reporting chain' })).toBeVisible();
+  await expect(viewport.getByRole('button', { name: 'Employee 0 E-0', exact: true })).toBeVisible();
 });

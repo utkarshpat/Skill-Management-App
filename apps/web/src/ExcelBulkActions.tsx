@@ -21,7 +21,7 @@ export function ExcelBulkActions({
   filter = '',
   onImported,
 }: {
-  kind: 'catalogue' | 'certifications';
+  kind: 'catalogue' | 'certifications' | 'employees';
   showImport?: boolean;
   filter?: string;
   onImported?: () => void;
@@ -47,12 +47,14 @@ export function ExcelBulkActions({
       )
       .then(value => {
         if (!controller.signal.aborted) setCanImport(value.canImport);
+        if (!controller.signal.aborted && kind === 'employees' && !value.canImport)
+          setError('Employee import requires People & Access administration.');
       })
       .catch(reason => {
         if (!controller.signal.aborted) setError(reason.message);
       });
     return () => controller.abort();
-  }, [base, open, showImport]);
+  }, [base, kind, open, showImport]);
   const reset = () => {
     setOpen(false);
     setCanImport(false);
@@ -116,7 +118,11 @@ export function ExcelBulkActions({
           setPreview(undefined);
           setFile(undefined);
           if (input.current) input.current.value = '';
-          setNotice(`${result.changed} imported. ${result.duplicates} duplicates skipped.`);
+          setNotice(
+            kind === 'employees'
+              ? `${result.changed} ${result.changed === 1 ? 'employee' : 'employees'} added.`
+              : `${result.changed} imported. ${result.duplicates} duplicates skipped.`,
+          );
           onImported?.();
         }
       }
@@ -131,26 +137,38 @@ export function ExcelBulkActions({
     <>
       <button type="button" className="secondary-button" onClick={() => setOpen(true)}>
         {showImport ? <Upload size={15} /> : <Download size={15} />}
-        {showImport ? 'Bulk action' : 'Download Excel'}
+        {kind === 'employees'
+          ? 'Bulk add employees'
+          : showImport
+            ? 'Bulk action'
+            : 'Download Excel'}
       </button>
       {open && (
         <FormDialog
-          title={kind === 'catalogue' ? 'Catalogue Excel' : 'Employee certifications Excel'}
+          title={
+            kind === 'employees'
+              ? 'Bulk add employees'
+              : kind === 'catalogue'
+                ? 'Catalogue Excel'
+                : 'Employee certifications Excel'
+          }
           onClose={reset}
           busy={busy}
           className="excel-bulk-dialog"
         >
           <div className="excel-bulk-content">
             <div className="excel-bulk-downloads">
-              <button
-                type="button"
-                className="secondary-button"
-                disabled={busy}
-                onClick={() => void run('export')}
-              >
-                <Download size={16} />
-                Download current data (.xlsx)
-              </button>
+              {kind !== 'employees' && (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={busy}
+                  onClick={() => void run('export')}
+                >
+                  <Download size={16} />
+                  Download current data (.xlsx)
+                </button>
+              )}
               {importAvailable && (
                 <button
                   type="button"
@@ -169,7 +187,9 @@ export function ExcelBulkActions({
                 <p>
                   {kind === 'catalogue'
                     ? 'Keep the ID when renaming an existing entry. Rows without an ID are matched by name and issuer where applicable.'
-                    : 'Import approved history using the employee code and a unique record ID from the source system.'}
+                    : kind === 'employees'
+                      ? 'Enter an employee code and full name for each new record. Use existing organization and skill names. Work email is saved as a profile detail. Microsoft sign-in requires a verified directory binding.'
+                      : 'Import approved history using the employee code and a unique record ID from the source system.'}
                 </p>
                 <div
                   className={`excel-bulk-drop${dragging ? ' is-dragging' : ''}`}
@@ -231,10 +251,12 @@ export function ExcelBulkActions({
                     <p role="status">
                       {kind === 'catalogue'
                         ? `${preview.added ?? 0} to add · ${preview.updated ?? 0} to update · ${preview.unchanged ?? 0} unchanged`
-                        : `${preview.changed} ${preview.changed === 1 ? 'row' : 'rows'} to import. ${preview.duplicates} duplicates will be skipped.`}
+                        : kind === 'employees'
+                          ? `${preview.changed} ${preview.changed === 1 ? 'employee' : 'employees'} to add.`
+                          : `${preview.changed} ${preview.changed === 1 ? 'row' : 'rows'} to import. ${preview.duplicates} duplicates will be skipped.`}
                     </p>
                     {Boolean(preview.examples?.length) && (
-                      <details>
+                      <details open={kind === 'employees' || undefined}>
                         <summary>Preview rows (up to 20)</summary>
                         <ul>
                           {preview.examples?.map(row => (

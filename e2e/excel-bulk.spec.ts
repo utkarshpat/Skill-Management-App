@@ -1,5 +1,45 @@
 import { test, expect, fixture } from './browser-fixture';
 
+test('People & Access previews new employees and confirms the reviewed workbook', async ({
+  page,
+}) => {
+  await fixture(page, { role: 'admin', businessAdministration: true });
+  const base = '**/api/excel/employees/';
+  let imported = 0;
+  await page.route(base + 'access', route => route.fulfill({ json: { canImport: true } }));
+  await page.route(base + 'preview', route =>
+    route.fulfill({
+      json: {
+        changed: 1,
+        duplicates: 0,
+        preview: 'employees-receipt',
+        examples: [{ row: 2, section: 'Employees', label: '0071 — Aditi Rao · UK → NHS SBS IT' }],
+      },
+    }),
+  );
+  await page.route(base + 'import', route => {
+    expect(route.request().headers()['x-workbook-preview']).toBe('employees-receipt');
+    imported++;
+    return route.fulfill({ json: { changed: 1, duplicates: 0 } });
+  });
+  await page.goto('/access?view=people');
+  await page.getByRole('button', { name: 'Bulk add employees', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Bulk add employees' });
+  await expect(dialog.getByRole('button', { name: /Download blank template/ })).toBeVisible();
+  await dialog.locator('input[type=file]').setInputFiles({
+    name: 'employees.xlsx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    buffer: Buffer.from('fixture workbook'),
+  });
+  await expect(dialog.getByRole('button', { name: 'Confirm import' })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Preview import' }).click();
+  await expect(dialog.getByText(/Aditi Rao/)).toBeVisible();
+  expect(imported).toBe(0);
+  await dialog.getByRole('button', { name: 'Confirm import' }).click();
+  await expect(dialog.getByText('1 employee added.')).toBeVisible();
+  expect(imported).toBe(1);
+});
+
 test('catalogue bulk upload previews the file before confirmation and exports Excel', async ({
   page,
 }) => {

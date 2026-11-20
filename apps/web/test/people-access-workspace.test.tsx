@@ -684,7 +684,8 @@ test('person history stays scoped to the selected identity and can recover from 
     if (!url.pathname.endsWith('/audit')) return;
     audits++;
     assert.equal(url.searchParams.get('personId'), id);
-    assert.equal(url.searchParams.get('details'), 'true');
+    const includeDetails = url.searchParams.get('details') === 'true';
+    assert.equal(url.searchParams.get('before'), includeDetails ? '8' : null);
     return revoked
       ? Response.json({}, { status: 403 })
       : Response.json({
@@ -697,8 +698,7 @@ test('person history stays scoped to the selected identity and can recover from 
               actorName: 'Neha Rao',
               targetId: id,
               targetName: 'Aditi Menon',
-              before: { grade: 'G2' },
-              after: { grade: 'G3' },
+              ...(includeDetails && { before: { grade: 'G2' }, after: { grade: 'G3' } }),
             },
           ],
           nextCursor: null,
@@ -724,7 +724,11 @@ test('person history stays scoped to the selected identity and can recover from 
   await waitForAudit();
   const history = document.querySelector('.audit-scroll')!;
   assert.match(history.textContent!, /Neha Rao.*Aditi Menon/s);
-  assert.match(history.querySelector('pre')!.textContent!, /"before".*G2.*"after".*G3/s);
   assert.equal(audits, 2);
+  assert.doesNotMatch(history.textContent!, /G2|G3/);
+  await click(history.querySelector('button')!.textContent!.trim());
+  await waitForAudit();
+  assert.match(document.querySelector('dialog .activity-changes')!.textContent!, /Grade.*G2.*G3/s);
+  assert.equal(audits, 3);
   assert.equal(writes.length, 0);
 });

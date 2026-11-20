@@ -179,6 +179,7 @@ export function AccessAdmin({
     setEditor(undefined);
   }, [personalPath]);
   const [pageActions, setPageActions] = useState<HTMLDivElement | null>(null);
+  const [peopleImportVersion, setPeopleImportVersion] = useState(0);
   const [organization, setOrganization] = useState<OrganizationSummary>();
   const [organizationError, setOrganizationError] = useState('');
   const [organizationAttempt, setOrganizationAttempt] = useState(0);
@@ -528,6 +529,16 @@ export function AccessAdmin({
             </h1>
           </div>
           <div className="page-actions" role="group" aria-label="Page actions" ref={setPageActions}>
+            {readyState?.canManageUsers && readyState.canViewAudit && tab === 'people' && (
+              <ExcelBulkActions
+                kind="employees"
+                showImport
+                onImported={() => {
+                  setPeopleImportVersion(version => version + 1);
+                  void load().catch(err => setError(err.message));
+                }}
+              />
+            )}
             {readyState && tab === 'overview' && (
               <>
                 <button className="secondary-button" onClick={createTemplate}>
@@ -783,7 +794,7 @@ export function AccessAdmin({
                   {state.canManageUsers && (
                     <Suspense fallback={<p role="status">Opening people search…</p>}>
                       <PeopleAccessWorkspace
-                        key={initialPersonId ?? 'search'}
+                        key={`${initialPersonId ?? 'search'}:${peopleImportVersion}`}
                         initialPersonId={initialPersonId}
                         endpoint={endpoint}
                         catalogue={state.catalogue}
@@ -1024,3 +1035,4 @@ export function AccessAdmin({
     </div>
   );
 }
+import { ExcelBulkActions } from './ExcelBulkActions';

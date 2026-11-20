@@ -12,6 +12,7 @@ interface Props {
   items: TreeItem[];
   roots: string[];
   selected?: string;
+  fitOnSearch?: string;
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
 }
@@ -68,12 +69,13 @@ function viewSize(element: HTMLDivElement): Size {
   return { width: element.clientWidth, height: element.clientHeight };
 }
 
-export function VisualTree({ items, roots, selected, onSelect, onEdit }: Props) {
+export function VisualTree({ items, roots, selected, onSelect, onEdit, fitOnSearch }: Props) {
   const viewport = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<Size>();
   const [camera, setCamera] = useState(initialCamera);
   const [dragging, setDragging] = useState(false);
   const gesture = useRef({ points: new Map<number, Point>(), active: false });
+  const lastSearch = useRef('');
   const diagram = useMemo(() => {
     const lookup = new Map(items.map(item => [item.id, item]));
     const seen = new Set<string>();
@@ -173,6 +175,13 @@ export function VisualTree({ items, roots, selected, onSelect, onEdit }: Props) 
       zoom,
     });
   }
+
+  useEffect(() => {
+    if (lastSearch.current === (fitOnSearch ?? '')) return;
+    lastSearch.current = fitOnSearch ?? '';
+    if (fitOnSearch) fit();
+    else setCamera(initialCamera);
+  }, [fitOnSearch, diagram]);
 
   function pointerMove(event: PointerEvent<HTMLDivElement>) {
     const { points, active } = gesture.current;

@@ -1,0 +1,54 @@
+.activity-entry {
+  cursor: pointer;
+}
+.activity-open {
+  text-align: left;
+}
+.activity-open:focus-visible {
+  text-decoration: underline;
+}
+.activity-dialog {
+  width: min(720px, calc(100% - 24px));
+}
+.activity-metadata {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 16px;
+  margin: 0 0 22px;
+}
+.activity-metadata dt {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.activity-metadata dd {
+  margin: 4px 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.activity-decisions ul {
+  margin: 10px 0 20px;
+  padding-inline-start: 22px;
+}
+.activity-decisions li {
+  margin-block: 8px;
+}
+.activity-decisions p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.activity-changes table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.activity-changes :is(th, td) {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.activity-changes thead {
+  background: var(--raised);
+}

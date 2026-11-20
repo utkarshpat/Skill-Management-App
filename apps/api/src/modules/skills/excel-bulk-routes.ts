@@ -57,6 +57,30 @@ const certificateSheets = [
     ],
   },
 ];
+const employeeSheets = [
+  {
+    name: 'Employees',
+    columns: [
+      'Employee Code',
+      'Full Name',
+      'Work Email',
+      'Work Location',
+      'Job Title',
+      'Grade',
+      'Primary Skill',
+      'Delivery Unit',
+      'Portfolio',
+      'Account/Client',
+      'Project',
+      'Manager Employee Code',
+    ],
+  },
+];
+const sheetsByKind = {
+  catalogue: catalogueSheets,
+  certifications: certificateSheets,
+  employees: employeeSheets,
+};
 const receiptKey = process.env.ENTRA_WEB_CLIENT_SECRET || randomBytes(32);
 function previewSignature(
   actor: string,
@@ -69,7 +93,7 @@ function previewSignature(
     .update(JSON.stringify(['excel-preview-v2', actor, kind, digest, revision, expires]))
     .digest();
 }
-type Kind = 'catalogue' | 'certifications';
+type Kind = keyof typeof sheetsByKind;
 type Operation = 'ACCESS' | 'EXPORT' | 'PREVIEW' | 'IMPORT';
 
 interface BulkDependencies {
@@ -98,7 +122,7 @@ export class SqlExcelBulkData {
           .input('operation', sql.VarChar(12), operation)
           .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload))
           .input('revision', sql.Int, revision ?? null)
-          .execute('dbo.ExcelBulkData');
+          .execute(kind === 'employees' ? 'dbo.ExcelEmployeeBulkData' : 'dbo.ExcelBulkData');
         const sets = result.recordsets as sql.IRecordSet<{ json: string }>[];
         const json = sets.at(-1)?.[0]?.json;
         if (typeof json !== 'string') throw new Error('Workbook result was missing.');
@@ -111,6 +135,8 @@ export class SqlExcelBulkData {
       if (number === 51009)
         throw new AccessError(409, 'Workspace changed. Preview the workbook again.');
       if (number === 51000) throw new AccessError(400, (error as Error).message);
+      if (number === 2812 && kind === 'employees')
+        throw new AccessError(503, 'Bulk employee import requires database migration 117.');
       throw error;
     }
   }
@@ -122,12 +148,23 @@ function normalize(kind: Kind, parsed: Awaited<ReturnType<typeof readExcel>>) {
   const targets = new Set<string>();
   const sources = new Set<string>();
   const ordered =
-    kind === 'catalogue' ? ['Issuers', 'Skills', 'Certifications'] : ['Employee Certifications'];
+    kind === 'catalogue'
+      ? ['Issuers', 'Skills', 'Certifications']
+      : sheetsByKind[kind].map(s => s.name);
   for (const sheet of ordered) {
     for (const row of parsed[sheet] ?? []) {
       try {
         const value = normalizeRow(kind, sheet, row);
         if (!value) continue;
+        if (kind === 'employees') {
+          const keys = [
+            'employee:' + value.employee?.toLowerCase(),
+            ...(value.workEmail ? ['email:' + value.workEmail] : []),
+          ];
+          if (keys.some(key => targets.has(key)))
+            throw Error('Duplicate employee code or work email.');
+          keys.forEach(key => targets.add(key));
+        }
         if ('targetId' in value && value.targetId) {
           const key = sheet + ':' + value.targetId;
           if (targets.has(key)) throw Error('ID occurs more than once.');
@@ -150,7 +187,7 @@ function normalize(kind: Kind, parsed: Awaited<ReturnType<typeof readExcel>>) {
       400,
       kind === 'catalogue'
         ? 'This workbook has no catalogue rows. Add data beneath the headers and select it again.'
-        : 'This workbook has no certification rows. Add the approved records beneath the headers and select it again.',
+        : 'This workbook has no import rows. Add data beneath the headers and select it again.',
     );
   if (rows.length > 1000)
     throw new AccessError(
@@ -178,6 +215,35 @@ function normalizeRow(kind: Kind, sheet: string, { row, values }: ExcelRow) {
       throw Error(`Use YYYY-MM-DD for ${field}.`);
     return value;
   };
+  if (kind === 'employees') {
+    const workEmail = text('Work Email', 254).toLowerCase();
+    if (workEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(workEmail))
+      throw Error('Check Work Email.');
+    const deliveryUnit = text('Delivery Unit', 100);
+    const portfolio = text('Portfolio', 100);
+    const client = text('Account/Client', 100);
+    const project = text('Project', 100);
+    if ((deliveryUnit || portfolio || client || project) && !(deliveryUnit && portfolio && client))
+      throw Error(
+        'Enter Delivery Unit, Portfolio and Account/Client for an organization placement.',
+      );
+    return {
+      row,
+      section: sheet,
+      employee: text('Employee Code', 40, true),
+      name: text('Full Name', 100, true),
+      workEmail,
+      workLocation: text('Work Location', 100),
+      jobTitle: text('Job Title', 100),
+      grade: text('Grade', 40),
+      primarySkill: text('Primary Skill', 100),
+      deliveryUnit,
+      portfolio,
+      client,
+      project,
+      manager: text('Manager Employee Code', 40),
+    };
+  }
   if (kind === 'certifications') {
     const status = text('Status', 20, true).toUpperCase();
     if (status !== 'APPROVED') throw Error('Only approved history can be imported.');
@@ -269,7 +335,7 @@ export function registerExcelBulkRoutes(app: Express, dependencies?: BulkDepende
   app.use('/api/excel/:kind', async (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     const kind = req.params.kind;
-    if (kind !== 'catalogue' && kind !== 'certifications')
+    if (kind !== 'catalogue' && kind !== 'certifications' && kind !== 'employees')
       return next(new AccessError(404, 'Workbook unavailable.'));
     let identity: Identity;
     try {
@@ -288,7 +354,9 @@ export function registerExcelBulkRoutes(app: Express, dependencies?: BulkDepende
   app.get('/api/excel/:kind/:file', async (req, res, next) => {
     const kind = req.params.kind as Kind;
     const actor = res.locals.excelActor as string;
-    const sheets = kind === 'catalogue' ? catalogueSheets : certificateSheets;
+    const sheets = sheetsByKind[kind];
+    if (kind === 'employees' && req.params.file === 'export')
+      return next(new AccessError(404, 'Workbook unavailable.'));
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
     const scope = req.query.scope;
     const hierarchy = req.query.hierarchy;
@@ -390,15 +458,13 @@ export function registerExcelBulkRoutes(app: Express, dependencies?: BulkDepende
           ))
       )
         return next(new AccessError(409, 'Preview this workbook before importing.'));
-      const payload = normalize(
-        kind,
-        await readExcel(req.body, kind === 'catalogue' ? catalogueSheets : certificateSheets),
-      );
+      const payload = normalize(kind, await readExcel(req.body, sheetsByKind[kind]));
       const result = await store.execute<{
         revision: number;
         changed: number;
         duplicates: number;
         unchanged?: number;
+        examples?: { row: number; section: string; label: string }[];
       }>(actor, kind, importing ? 'IMPORT' : 'PREVIEW', payload, importing ? revision : undefined);
       if (!importing && kind === 'catalogue' && result.unchanged === undefined)
         return next(
@@ -410,11 +476,12 @@ export function registerExcelBulkRoutes(app: Express, dependencies?: BulkDepende
         : `${result.revision}.${previewExpires}.${previewSignature(actor, kind, digest, result.revision, previewExpires).toString('hex')}`;
       const examples = importing
         ? undefined
-        : payload.rows.slice(0, 20).map(row => ({
+        : (result.examples ??
+          payload.rows.slice(0, 20).map(row => ({
             row: row.row,
             section: row.section,
             label: row.definition?.name ?? `${row.employee} · ${row.name}`,
-          }));
+          })));
       res.json({ ...result, preview, examples });
     },
   );

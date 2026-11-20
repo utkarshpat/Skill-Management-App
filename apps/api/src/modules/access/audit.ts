@@ -18,6 +18,8 @@ export interface AuditItem {
   targetName?: string;
   before?: unknown;
   after?: unknown;
+  decisionItems?: { kind: string; name?: string; status?: string; feedback?: string }[];
+  referenceNames?: { kind: string; id: string; name: string }[];
 }
 export interface AuditPage {
   items: AuditItem[];

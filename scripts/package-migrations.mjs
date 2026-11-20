@@ -36,6 +36,8 @@ const migrations = [
   [113, '113_shared_company_auth.sql'],
   [114, '114_approval_queue_exports_response_versions.sql'],
   [115, '115_optional_approval_feedback.sql'],
+  [116, '116_readable_activity_records.sql'],
+  [117, '117_employee_excel_import.sql'],
 ];
 const literal = value => "N'" + value.replaceAll("'", "''") + "'";
 export function transactionMigration(
@@ -141,7 +143,9 @@ complete, run 04_091_search_people_administration.sql first.
 26. Apply 26_113_shared_company_auth.sql after 112 before deploying the matching app. It moves hosted company sign-in state and sessions into shared SQL storage.
 27. Apply 27_114_approval_queue_exports_response_versions.sql after 113 before deploying the matching app. It versions responses, pages the approvals queue, and tightens Excel export and import checks.
 28. Apply 28_115_optional_approval_feedback.sql after 114 before deploying the matching app. Approval comments become optional. Rejection and change requests still require feedback.
-29. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
+29. Apply 29_116_readable_activity_records.sql after 115 to show readable record names in the authorized Activity log.
+30. Apply 30_117_employee_excel_import.sql after 116 before using employee workbook imports.
+31. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
    request topic/recipient discovery, current assigned-manager review and People & Access search.
 
 Publishing follows existing effective Business Analytics or Admin assignments. Select an eligible concrete audience when publishing.

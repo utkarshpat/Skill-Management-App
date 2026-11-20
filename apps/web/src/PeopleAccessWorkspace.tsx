@@ -38,6 +38,8 @@ interface Person extends Employment {
   id: string;
   displayName: string;
   employeeCode: string;
+  workEmail?: string | null;
+  workLocation?: string | null;
   active: boolean;
   roleIds: string[];
   overrides: Grant[];
@@ -770,6 +772,18 @@ function PersonEditor({
               />
             </label>
             <EmploymentFields value={person} onChange={v => setPerson({ ...person, ...v })} />
+            {person.workEmail && (
+              <label>
+                Work email
+                <input readOnly value={person.workEmail} />
+              </label>
+            )}
+            {person.workLocation && (
+              <label>
+                Work location
+                <input readOnly value={person.workLocation} />
+              </label>
+            )}
             <PrimaryCapabilityFields
               endpoint={endpoint}
               value={person}
