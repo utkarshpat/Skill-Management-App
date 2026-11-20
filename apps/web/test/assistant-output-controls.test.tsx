@@ -22,29 +22,25 @@ afterEach(async () => {
 });
 after(closeBrowser);
 
-test('assistant draft editing hands off only the reviewed text and creates no record automatically', async () => {
-  const reviews: string[] = [],
+test('skill draft hands off text with either save or submit intent', async () => {
+  const reviews: [string, string][] = [],
     documents: string[] = [];
   view = await render(
     <AssistantOutput
       artifact={draft('skill_draft')}
-      onReview={text => reviews.push(text)}
+      onReview={(text, intent) => reviews.push([text, intent])}
       onDocument={text => documents.push(text)}
     />,
   );
   assert.equal(reviews.length, 0);
-  await click('Edit draft');
-  await change(
-    document.querySelector<HTMLTextAreaElement>('[aria-label="Draft text"]')!,
-    'Reviewed SQL reporting evidence',
-  );
-  await click('Preview draft');
-  await click('Preview skill draft');
-  assert.deepEqual(reviews, ['Reviewed SQL reporting evidence']);
-  await click('Open draft document');
-  assert.match(documents[0], /^# Client reporting workflow/);
-  assert.match(documents[0], /Reviewed SQL reporting evidence/);
-  assert.match(documents[0], /1\. Check scope\n2\. Confirm with manager/);
+  await click('Save as draft');
+  await click('Review and submit');
+  assert.deepEqual(reviews, [
+    ['Please review my reporting assignment.', 'draft'],
+    ['Please review my reporting assignment.', 'submit'],
+  ]);
+  assert.equal(documents.length, 0);
+  assert.doesNotMatch(document.body.textContent!, /Edit draft|Open draft document|Copy draft/);
   assert.match(document.body.textContent!, /No records have been changed/);
 });
 

@@ -93,7 +93,7 @@ export function openDashboardAssistant(card: Card['id']) {
     learning:
       'Help me choose the next task in my own learning plans. Check my current progress and backlog first.',
     capability:
-      'Help me improve my skill profile. Check my own reviewed, pending and draft claims; explain what I can update.',
+      'Help me plan my next skill claim in Skill Management App. Check my own claims and search the published skill catalogue. Suggest one related skill to try and one way to deepen an approved skill. Explain why each fits and give one practical first step. Treat unapproved claims as unverified. If I have no skills, ask what I work on. If you cannot verify a match, say so. Give advice only; do not save or submit anything.',
     requests:
       'Help me check my own requests and their latest status. Retrieve current records and suggest permitted next steps.',
   };
@@ -318,6 +318,16 @@ function DashboardCard({
           <h3>{card.title}</h3>
           <p>{card.description}</p>
         </div>
+        {ai && card.id === 'capability' && data && (
+          <button
+            type="button"
+            className="dashboard-ai dashboard-skill-suggestions"
+            onClick={() => openDashboardAssistant('capability')}
+          >
+            <Sparkles size={15} />
+            Suggest my next skill
+          </button>
+        )}
       </header>
       {refreshing && data && <small role="status">Refreshing...</small>}
       {error && (
@@ -417,14 +427,10 @@ function DashboardCard({
                 <ArrowUpRight size={15} />
               </Link>
             )}
-            {ai && card.id !== 'learning' && (
+            {ai && (card.id === 'attention' || card.id === 'requests') && (
               <button className="dashboard-ai" onClick={() => openDashboardAssistant(card.id)}>
                 <Sparkles size={15} />
-                {card.id === 'attention'
-                  ? 'Help me prioritize'
-                  : card.id === 'capability'
-                    ? 'Help improve my profile'
-                    : 'Help with my requests'}
+                {card.id === 'attention' ? 'Help me prioritize' : 'Help with my requests'}
               </button>
             )}
           </footer>

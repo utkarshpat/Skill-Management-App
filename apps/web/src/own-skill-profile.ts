@@ -10,8 +10,7 @@ export interface OwnSkillProfile {
 }
 type Fetcher = (path: string, init?: RequestInit) => Promise<Response>;
 
-export function notifySkillSubmitted(id: string) {
-  window.dispatchEvent(new CustomEvent('own-skill-submitted', { detail: { id } }));
+export function notifySkillSubmitted() {
   window.dispatchEvent(new Event('notifications-updated'));
 }
 export class LatestProfileRequest {

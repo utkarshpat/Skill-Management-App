@@ -93,7 +93,6 @@ export function SkillClaimWizard({
   onResultsPage,
   onSave,
   onClose,
-  aiDraft = false,
   onUseAsCertificate,
 }: {
   draft: SkillDraft;
@@ -113,7 +112,6 @@ export function SkillClaimWizard({
   onResultsPage: (page: number) => void;
   onSave: (submit: boolean) => void;
   onClose: () => void;
-  aiDraft?: boolean;
   onUseAsCertificate?: (file: File) => void;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -203,7 +201,7 @@ export function SkillClaimWizard({
   );
   return (
     <FormDialog
-      title={aiDraft ? 'Preview AI skill draft' : draft.revision ? 'Edit skill' : 'Add skill'}
+      title={draft.revision ? 'Edit skill' : 'Add skill'}
       className="skill-wizard"
       subtitle={
         page === 0

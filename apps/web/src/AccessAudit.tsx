@@ -48,7 +48,7 @@ function actionName(item: Entry) {
 }
 
 function recordName(item: Entry) {
-  if (item.targetName?.trim()) return item.targetName;
+  if (item.targetName?.trim()) return item.targetName.replaceAll(' \u00c2\u00b7 ', ' · ');
   if (item.action.startsWith('capability.')) return 'Capability submission';
   if (item.action.startsWith('claim.')) return 'Skill claim';
   if (item.action.startsWith('certification.')) return 'Certificate record';

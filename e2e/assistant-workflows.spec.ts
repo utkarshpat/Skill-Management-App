@@ -1,6 +1,7 @@
 import { test, expect, fixture, ids } from './browser-fixture';
 import { workflowChatShortcut } from '../apps/api/src/modules/ai/workflow-chat-policy';
 import type { Page } from '@playwright/test';
+import { commonLevels } from '../apps/web/src/proficiency';
 async function assistant(page: Page, role: 'employee' | 'admin' = 'employee') {
   await fixture(page, { role, realistic: true });
   await page.route('**/api/announcements/feed*', route =>
@@ -21,7 +22,9 @@ async function assistant(page: Page, role: 'employee' | 'admin' = 'employee') {
         canReviewOwnSkill: true,
         canManageLearning: true,
         status: { configured: true, provider: 'azure' },
-        suggestions: [],
+        suggestions: [
+          { label: 'What can I do?', prompt: 'Explain my permissions.', destination: '/workspace' },
+        ],
       },
     }),
   );
@@ -77,21 +80,40 @@ test('Skill Genie peeks around the sidebar, thinks, and reveals a reply at its s
     await expect(mascot).toBeHidden();
   }
   await expect(panel.getByRole('button', { name: 'Close AI assistant' })).toBeInViewport();
+  const shortcut = panel.getByRole('button', { name: 'What can I do?', exact: true });
+  await expect(shortcut).toHaveCount(1);
+  await expect(
+    panel.getByRole('navigation', { name: 'AI help shortcuts' }).getByRole('button', {
+      name: 'What can I do?',
+    }),
+  ).toBeVisible();
 
-  await panel.getByPlaceholder('Ask about this workspace…').fill('Help me with a skill claim');
+  const composer = panel.getByRole('textbox', { name: 'Message AI assistant' });
+  await expect(composer).toBeFocused();
+  await composer.fill('Help me with a skill claim');
   await panel.getByRole('button', { name: 'Send AI message' }).click();
   try {
     await expect(panel.getByRole('status')).toHaveText('Thinking…');
+    await expect(composer).toBeFocused();
+    await expect(composer).not.toBeEditable();
+    const [logBox, greetingBox, userBox] = await Promise.all([
+      panel.getByRole('log').boundingBox(),
+      panel.getByText('Hello, I’m Skill Genie. How can I help you?').boundingBox(),
+      panel.getByText('Help me with a skill claim', { exact: true }).boundingBox(),
+    ]);
+    expect(greetingBox!.x - logBox!.x).toBeCloseTo(16, 0);
+    const userEndInset = logBox!.x + logBox!.width - userBox!.x - userBox!.width;
+    expect(userEndInset).toBeGreaterThanOrEqual(16);
+    expect(userEndInset).toBeLessThanOrEqual(34);
+    expect(userBox!.x).toBeGreaterThan(greetingBox!.x);
     await expect(mascot).toHaveAttribute('data-state', 'thinking');
-    await expect(mascot.locator('.assistant-side-genie')).toHaveCSS(
-      'animation-name',
-      'assistant-genie-thinking',
-    );
+    await expect(mascot.locator('.assistant-side-genie')).toHaveCSS('animation-name', 'none');
     if (showMascot) {
       await expect(cloud).toBeVisible();
       await expect(cloud.locator('.assistant-thinking-dots > span')).toHaveCount(3);
       await expect(thinkingPose).toHaveCSS('opacity', '1');
-      await expect(chatPose).toHaveCSS('opacity', '0');
+      await expect(chatPose).toHaveCSS('opacity', '1');
+      await expect(thinkingPose).toHaveCSS('clip-path', /^polygon\(/);
       await expect
         .poll(() => thinkingPose.evaluate((img: HTMLImageElement) => img.naturalWidth))
         .toBeGreaterThan(0);
@@ -113,6 +135,8 @@ test('Skill Genie peeks around the sidebar, thinks, and reveals a reply at its s
 
   await expect(mascot).toHaveAttribute('data-state', 'reply');
   await expect(panel.getByRole('status')).toBeHidden();
+  await expect(composer).toBeFocused();
+  await expect(composer).toBeEditable();
   await expect(cloud).toBeHidden();
   await expect(thinkingPose).toHaveCSS('opacity', '0');
   await expect(
@@ -126,6 +150,93 @@ test('Skill Genie peeks around the sidebar, thinks, and reveals a reply at its s
       await page.screenshot({ path: info.outputPath('genie-chat-' + theme + '.png') });
     }
   }
+});
+test('AI skill actions open Add skill with the published skill and experience prefilled', async ({
+  page,
+}) => {
+  await assistant(page);
+  const git = {
+    id: '11111111-1111-4111-8111-000000000098',
+    name: 'Git',
+    category: 'DevOps',
+    definitionRevision: 1,
+    levels: commonLevels(),
+  };
+  const description = 'I reviewed pull requests and resolved merge conflicts with my team.';
+  let writes = 0;
+  await page.route('**/api/assistant/navigation', route =>
+    route.request().method() === 'POST'
+      ? route.fulfill({ json: { destination: '/my-skills' } })
+      : route.fallback(),
+  );
+  await page.route('**/api/assistant', route =>
+    route.fulfill({
+      json: {
+        conversationId: ids.person,
+        reply: 'Here is your draft.',
+        artifact: {
+          kind: 'skill_draft',
+          title: 'Git',
+          summary: 'Draft for review',
+          body: description,
+          steps: [],
+          questions: [],
+          skill: { id: git.id, name: git.name },
+        },
+      },
+    }),
+  );
+  await page.route('**/api/capability-submissions/availability', route =>
+    route.fulfill({ json: { aiAvailable: false, fileAvailable: true } }),
+  );
+  await page.route('**/api/capability-submissions/options', route =>
+    route.fulfill({ json: { claims: [], certifications: [], definitions: [] } }),
+  );
+  await page.route('**/api/capability-submissions', route => {
+    if (route.request().method() !== 'GET') writes++;
+    return route.fulfill({ json: {} });
+  });
+  await page.route('**/api/my-skills/catalogue?**', route =>
+    route.fulfill({ json: { skills: [git], total: 1, page: 1, pageSize: 25 } }),
+  );
+  await page.goto('/profile');
+  await page.getByRole('button', { name: 'Open AI assistant' }).click();
+  const panel = page.getByRole('dialog', { name: 'AI assistant' });
+  await panel
+    .getByRole('textbox', { name: 'Message AI assistant' })
+    .fill('Draft my Git skill claim');
+  await panel.getByRole('button', { name: 'Send AI message' }).click();
+  const card = panel.getByRole('region', { name: 'Git', exact: true });
+  await expect(card.getByRole('button')).toHaveCount(2);
+  for (const action of ['Save as draft', 'Review and submit']) {
+    await card.getByRole('button', { name: action, exact: true }).click();
+    const skill = page.getByRole('dialog', { name: 'Git', exact: true });
+    await expect(skill.getByLabel('Describe your experience')).toHaveValue(description);
+    await expect(skill.getByRole('radio', { checked: true })).toHaveCount(0);
+    await skill.getByRole('button', { name: 'Close Git', exact: true }).click();
+    const composer = page.getByRole('dialog', { name: 'Add skill', exact: true });
+    if (action === 'Save as draft')
+      await expect(
+        composer.getByRole('button', { name: 'Save as draft', exact: true }),
+      ).toBeVisible();
+    else {
+      await expect(
+        composer
+          .locator('.form-dialog-footer')
+          .getByRole('button', { name: 'Preview', exact: true }),
+      ).toBeVisible();
+      await expect(composer.getByRole('button', { name: 'Save draft', exact: true })).toHaveCount(
+        0,
+      );
+    }
+    await composer.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page
+      .getByRole('dialog', { name: 'Discard unsaved changes?' })
+      .getByRole('button', { name: 'Discard', exact: true })
+      .click();
+    await expect(composer).toBeHidden();
+  }
+  expect(writes).toBe(0);
 });
 test('company sign-in recovery keeps an unsent draft in the original tab', async ({ page }) => {
   await assistant(page);
@@ -340,11 +451,13 @@ test('assistant: quota errors preserve the user message and allow a later workfl
   await panel.getByRole('button', { name: 'Send AI message' }).click();
   await expect(panel).toContainText('Azure AI quota is exhausted');
   await expect(panel).toContainText('Help me submit a learning request');
-  await expect(input).toBeEnabled();
+  await expect(input).toBeFocused();
+  await expect(input).toBeEditable();
   fail = false;
   await input.fill('How do I submit my request?');
-  await panel.getByRole('button', { name: 'Send AI message' }).click();
+  await input.press('Enter');
   await expect(panel).toContainText('Open Requests and choose New request');
+  await expect(input).toBeFocused();
   await panel.getByRole('button', { name: 'Close AI assistant', exact: true }).click();
   await expect(panel).not.toBeVisible();
 });

@@ -4,9 +4,8 @@ import { phaseTwoVisible } from './release-features';
 import { AssistantSession } from './assistant-session';
 import { assistantContextPrompt } from './assistant-context';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { requestRead, type RequestOptions } from './request-model';
-import type { SkillSaveResult } from './MySkills';
 import { assistantNavigationTargets, type AssistantPage } from './assistant-actions';
 import { Bot, X, Send, RotateCw, History, Trash2, ChevronRight } from 'lucide-react';
 import { authenticatedFetch } from './auth';
@@ -16,7 +15,11 @@ import { AssistantDocument, type AiDocument } from './AssistantDocument';
 import { AssistantPeopleResults, type PeopleQuery } from './business/AssistantPeopleResults';
 import { peopleSearchUserText } from './business/people-search-prompt';
 // Draft editors are needed only after the employee chooses to review a draft.
-const MySkills = lazy(() => import('./MySkills').then(module => ({ default: module.MySkills })));
+const CapabilityComposer = lazy(() =>
+  import('./capabilities/CapabilityComposer').then(module => ({
+    default: module.CapabilityComposer,
+  })),
+);
 const RequestComposer = lazy(() =>
   import('./RequestComposer').then(module => ({ default: module.RequestComposer })),
 );
@@ -27,6 +30,7 @@ interface ChatMessage {
   artifact?: Artifact;
   peopleSearch?: { query: PeopleQuery };
 }
+type SkillHandoff = { id?: string; name: string; description: string; intent: 'draft' | 'submit' };
 export function AssistantWidget() {
   const navigate = useNavigate(),
     location = useLocation();
@@ -146,30 +150,8 @@ export function AssistantWidget() {
     }
   }
   const [actionBusy, setActionBusy] = useState(false),
-    [reviewDescription, setReviewDescription] = useState<string>(),
+    [reviewSkill, setReviewSkill] = useState<SkillHandoff>(),
     [actionNotice, setActionNotice] = useState('');
-  const [skillSubmissionFailure, setSkillSubmissionFailure] =
-    useState<Extract<SkillSaveResult, { status: 'SUBMISSION_FAILED' }>>();
-  function skillSaved(result: SkillSaveResult) {
-    setReviewDescription(undefined);
-    if (result.status === 'SUBMISSION_FAILED') {
-      setSkillSubmissionFailure(result);
-      setActionNotice('');
-    } else
-      setActionNotice(
-        result.status === 'SUBMITTED'
-          ? 'Skill submitted to your assigned reporting manager.'
-          : 'Skill draft saved. It remains unverified.',
-      );
-  }
-  useEffect(() => {
-    const submitted = (event: Event) => {
-      const id = (event as CustomEvent<{ id?: string }>).detail?.id;
-      setSkillSubmissionFailure(current => (current?.id === id ? undefined : current));
-    };
-    window.addEventListener('own-skill-submitted', submitted);
-    return () => window.removeEventListener('own-skill-submitted', submitted);
-  }, []);
   const [open, setOpen] = useState(false),
     [messages, setMessages] = useState<ChatMessage[]>([]),
     [text, setText] = useState(''),
@@ -280,7 +262,7 @@ export function AssistantWidget() {
       if (
         event.key === 'Escape' &&
         !document &&
-        reviewDescription === undefined &&
+        reviewSkill === undefined &&
         !requestDraft &&
         !window.document.querySelector('dialog[open]')
       ) {
@@ -290,7 +272,7 @@ export function AssistantWidget() {
     };
     window.document.addEventListener('keydown', escape);
     return () => window.document.removeEventListener('keydown', escape);
-  }, [open, document, messages, reviewDescription, requestDraft]);
+  }, [open, document, messages, reviewSkill, requestDraft]);
   const isReplyArriving = Boolean(arrivingReply && messages.at(-1) === arrivingReply && !busy);
   useEffect(() => {
     if (!open || !arrivingReply) return;
@@ -332,7 +314,7 @@ export function AssistantWidget() {
   async function action(
     destination: string,
     kind: 'open_page' | 'review_own_skill',
-    description?: string,
+    skill?: SkillHandoff,
   ) {
     if (actionBusy || busy || historyBusy) return;
     setActionBusy(true);
@@ -350,7 +332,7 @@ export function AssistantWidget() {
       const body = await response.json().catch(() => undefined);
       if (pending.signal.aborted) return;
       if (!response.ok) throw Error(body?.error?.message ?? 'Assistant action is unavailable.');
-      if (kind === 'review_own_skill') setReviewDescription(description);
+      if (kind === 'review_own_skill') setReviewSkill(skill);
       else {
         navigate(body.destination);
         setActionNotice('Opened ' + body.label + '. Your chat stays here.');
@@ -474,6 +456,7 @@ export function AssistantWidget() {
       setError('This matching request is too long. Shorten it before sending.');
       return;
     }
+    input.current?.focus({ preventScroll: true });
     const next: ChatMessage[] = [...messages, { role: 'user', content: (prompt ?? text).trim() }];
     setPendingContext(undefined);
     setMessages(current => [...current, next.at(-1)!]);
@@ -686,29 +669,6 @@ export function AssistantWidget() {
                 <p>Hello, I’m Skill Genie. How can I help you?</p>
               </div>
             )}
-            {status?.configured && !messages.length && (
-              <div className="assistant-empty">
-                <div className="assistant-output-actions">
-                  {navigation.suggestions
-                    ?.filter(
-                      s =>
-                        s.destination === '/workspace' ||
-                        s.destination === location.pathname + location.search ||
-                        s.destination === location.pathname,
-                    )
-                    .map(s => (
-                      <button
-                        key={s.label}
-                        className="secondary-button"
-                        disabled={busy || actionBusy || historyBusy}
-                        onClick={() => prepareContext(s.prompt)}
-                      >
-                        {s.label}
-                      </button>
-                    ))}
-                </div>
-              </div>
-            )}
             {messages.map((message, index) => (
               <div
                 key={index}
@@ -730,7 +690,24 @@ export function AssistantWidget() {
                     artifact={message.artifact}
                     onReview={
                       navigation.canReviewOwnSkill
-                        ? description => void action('/my-skills', 'review_own_skill', description)
+                        ? (description, intent) => {
+                            const artifact = message.artifact!;
+                            // Older conversation cards included the suggested proficiency in the title.
+                            const name =
+                              artifact.skill?.name ??
+                              artifact.title
+                                .replace(
+                                  /\s+[—–-]\s+(?:beginner|foundation|autonomous|experienced|expert|level\s+\d)\b.*$/i,
+                                  '',
+                                )
+                                .trim();
+                            void action('/my-skills', 'review_own_skill', {
+                              id: artifact.skill?.id,
+                              name,
+                              description,
+                              intent,
+                            });
+                          }
                         : undefined
                     }
                     onReviewBusiness={
@@ -828,24 +805,6 @@ export function AssistantWidget() {
               {error}
             </p>
           )}
-          {skillSubmissionFailure && (
-            <div className="assistant-error" role="alert">
-              <p>{skillSubmissionFailure.message}</p>
-              <Link
-                className="secondary-button"
-                to={'/my-skills?submitClaim=' + encodeURIComponent(skillSubmissionFailure.id)}
-                onClick={collapse}
-              >
-                Check saved draft and retry submission
-              </Link>
-              <button
-                className="secondary-button"
-                onClick={() => setSkillSubmissionFailure(undefined)}
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
           {Boolean(navigation.suggestions?.length) && (
             <nav className="assistant-faq" aria-label="AI help shortcuts">
               {navigation.suggestions!.map(s => (
@@ -879,7 +838,8 @@ export function AssistantWidget() {
               maxLength={2000}
               rows={2}
               placeholder="Ask about this workspace…"
-              disabled={!status?.configured || busy || historyBusy || actionBusy}
+              disabled={!status?.configured || historyBusy || actionBusy}
+              readOnly={busy}
               onChange={event => setText(event.target.value)}
               onKeyDown={event => {
                 if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -909,14 +869,12 @@ export function AssistantWidget() {
         </button>
       </div>
       {document && <AssistantDocument document={document} onClose={() => setDocument(undefined)} />}{' '}
-      {reviewDescription !== undefined && (
-        <Suspense fallback={<div role="status">Opening skill approval…</div>}>
-          <MySkills
-            reviewRequest={{
-              description: reviewDescription,
-              onClose: () => setReviewDescription(undefined),
-              onSaved: skillSaved,
-            }}
+      {reviewSkill && (
+        <Suspense fallback={<div role="status">Opening Add skill…</div>}>
+          <CapabilityComposer
+            initialSkill={reviewSkill}
+            onClose={() => setReviewSkill(undefined)}
+            onSaved={() => setReviewSkill(undefined)}
           />
         </Suspense>
       )}{' '}

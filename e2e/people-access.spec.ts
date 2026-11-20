@@ -16,7 +16,7 @@ test('recent activity identifies the affected record and keeps raw IDs out of th
       actorId: ids.person,
       targetId,
       actorName: 'Rohan Mehta',
-      targetName: 'SQL · Aditi Menon',
+      targetName: 'SQL Â· Aditi Menon',
     },
     {
       revision: 11,
@@ -80,6 +80,7 @@ test('recent activity identifies the affected record and keeps raw IDs out of th
     details.getByRole('row', { name: 'Status Pending approval Approved' }),
   ).toBeVisible();
   await expect(details.getByText('Evidence verified.')).toBeVisible();
+  await expect(details.getByText('SQL · Aditi Menon', { exact: true })).toBeVisible();
   await expect(details).not.toContainText('private-storage-path');
   await details.getByRole('button', { name: 'Close Activity details' }).click();
   if (testInfo.project.name === 'mobile')

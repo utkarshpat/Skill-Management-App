@@ -225,6 +225,11 @@ test('dashboard combines current cards, correct deep links, request status filte
     await click('Help with this task');
     assert.match(events[0].detail.prompt, /planId reporting-plan and taskId sql-joins/);
     assert.match(events[0].detail.prompt, /Do not complete or reschedule/);
+    await click('Suggest my next skill');
+    assert.match(events[1].detail.prompt, /own claims and search the published skill catalogue/);
+    assert.match(events[1].detail.prompt, /related skill to try.*practical first step/);
+    assert.match(events[1].detail.prompt, /If I have no skills, ask what I work on/);
+    assert.ok(events[1].detail.prompt.length <= 500);
   } finally {
     window.removeEventListener('assistant-context-request', listener);
   }

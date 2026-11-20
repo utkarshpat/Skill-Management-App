@@ -11,6 +11,7 @@ export interface Presentation {
     | 'demand_draft'
     | 'practice_quiz';
   title: string;
+  skill?: { id: string; name: string };
   summary: string;
   body: string;
   steps: string[];

@@ -1333,8 +1333,9 @@ html[data-theme] :is(.assistant-mascot, .assistant-side-genie) img {
   height: 126px;
   color-scheme: only light;
 }
-.assistant-side-thinking,
-.assistant-side-mascot[data-state='thinking'] img:first-child {
+.assistant-side-thinking {
+  /* Overlay the matching eye pose while the helmet and gripping hands stay fixed. */
+  clip-path: polygon(27% 46%, 57% 45%, 61% 37%, 87% 37%, 89% 55%, 59% 57%, 55% 64%, 28% 64%);
   opacity: 0;
 }
 .assistant-side-mascot[data-state='thinking'] .assistant-side-thinking {
@@ -1377,9 +1378,6 @@ html[data-theme] :is(.assistant-mascot, .assistant-side-genie) img {
 .assistant-panel.is-open .assistant-side-peek {
   animation: assistant-genie-peek 520ms 240ms cubic-bezier(0.21, 0.76, 0.32, 1) both;
 }
-.assistant-side-mascot[data-state='thinking'] .assistant-side-genie {
-  animation: assistant-genie-thinking 1800ms ease-in-out infinite;
-}
 .assistant-side-mascot[data-state='reply'] .assistant-side-genie {
   animation: assistant-genie-reply 540ms ease-in-out;
 }
@@ -1392,12 +1390,6 @@ html[data-theme] :is(.assistant-mascot, .assistant-side-genie) img {
   }
   to {
     transform: none;
-  }
-}
-@keyframes assistant-genie-thinking {
-  25%,
-  65% {
-    transform: translateX(2px) rotate(-6deg);
   }
 }
 @keyframes assistant-genie-reply {
@@ -1445,9 +1437,20 @@ html[data-theme] :is(.assistant-mascot, .assistant-side-genie) img {
   font-size: 15px;
 }
 .assistant-message {
+  width: fit-content;
+  max-width: 92%;
+  margin-inline-end: auto;
   margin-bottom: 16px;
   font-size: 13px;
   overflow-wrap: anywhere;
+}
+.assistant-message.user {
+  max-width: 84%;
+  margin-inline: auto 0;
+}
+.assistant-message.user > small {
+  display: block;
+  text-align: end;
 }
 .assistant-message.is-arriving {
   animation: assistant-reply-enter 260ms ease-out both;

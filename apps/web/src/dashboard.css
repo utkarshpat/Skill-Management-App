@@ -297,6 +297,16 @@
 .dashboard-link:hover {
   text-decoration: underline;
 }
+.dashboard-capability header {
+  flex-wrap: wrap;
+}
+.dashboard-skill-suggestions {
+  margin-inline-start: auto;
+  min-height: 36px;
+  padding-inline: 10px;
+  border-radius: 8px;
+  background: var(--ai-soft);
+}
 .dashboard-empty {
   display: flex;
   gap: 13px;

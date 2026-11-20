@@ -7,7 +7,6 @@ import { Plus } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { SkillClaimDialog } from './SkillClaimDialog';
-import { FormDialog } from './FormDialog';
 import { ExcelBulkActions } from './ExcelBulkActions';
 import { SkillsProfileView } from './SkillsProfileView';
 import './skills-profile.css';
@@ -53,9 +52,6 @@ export interface Claim {
 }
 type Option = SkillChoice;
 type State = OwnSkillProfile;
-export type SkillSaveResult =
-  | { status: 'DRAFT_SAVED' | 'SUBMITTED'; id: string }
-  | { status: 'SUBMISSION_FAILED'; id: string; message: string };
 type Options = SkillChoices;
 interface OptionResult {
   draftId: string;
@@ -65,15 +61,6 @@ interface OptionResult {
   value: Options;
 }
 type Draft = SkillDraft;
-const emptyDraft = (): Draft => ({
-  id: crypto.randomUUID(),
-  revision: 0,
-  skillId: '',
-  definitionRevision: 0,
-  rank: 0,
-  experienceMonths: 0,
-  description: '',
-});
 async function body<T>(response: Response): Promise<T> {
   return readApiResponse<T>(
     response,
@@ -86,16 +73,10 @@ async function body<T>(response: Response): Promise<T> {
 }
 export function MySkills({
   actionsContainer,
-  reviewRequest,
   canImportCertificates = false,
 }: {
   actionsContainer?: HTMLElement | null;
   canImportCertificates?: boolean;
-  reviewRequest?: {
-    description: string;
-    onClose: () => void;
-    onSaved: (result: SkillSaveResult) => void;
-  };
 }) {
   const certificateContext = useOwnCertificates();
   const location = useLocation(),
@@ -131,7 +112,6 @@ export function MySkills({
     optionResult?.page === optionPage
       ? optionResult.value
       : undefined;
-  const [suggestedSkillName, setSuggestedSkillName] = useState('');
   const profileRequests = useRef(new LatestProfileRequest());
   const recoveryRequest = useRef<string | undefined>(undefined);
   const [recoveryRetry, setRecoveryRetry] = useState(0);
@@ -177,52 +157,6 @@ export function MySkills({
     };
   }, []);
   useEffect(() => {
-    if (!reviewRequest || !state) return;
-    if (!state.canClaim) {
-      setError('Your account does not have permission to add a skill draft.');
-      return;
-    }
-    if (!reviewRequest.description.trim() || reviewRequest.description.length > 2000) {
-      setError('The suggested experience text is invalid.');
-      return;
-    }
-    setOptionResult(undefined);
-    setPicked(undefined);
-    setSuggestedSkillName('');
-    setCategory('');
-    setSearch('');
-    setOptionPage(1);
-    setDraft({ ...emptyDraft(), description: reviewRequest.description });
-    setFormPage(0);
-    setFormError('');
-  }, [reviewRequest?.description, state?.canClaim]);
-  useEffect(() => {
-    const suggested = location.state?.aiDraft?.description;
-    if (reviewRequest) return;
-    if (typeof suggested !== 'string' || !state) return;
-    navigate(location.pathname + location.search, { replace: true, state: null });
-    if (!state.canClaim) {
-      setError('Your account does not have permission to add a skill draft.');
-      return;
-    }
-    if (!suggested.trim() || suggested.length > 2000) {
-      setError('The suggested experience text is invalid.');
-      return;
-    }
-    setOptionResult(undefined);
-    setPicked(undefined);
-    setSuggestedSkillName('');
-    setCategory('');
-    setDraft({ ...emptyDraft(), description: suggested });
-    setFormPage(0);
-    setSearch('');
-    setOptionPage(1);
-    setFormError('');
-    toast.info(
-      'AI suggestion loaded. Review the skill, proficiency, experience and description before saving.',
-    );
-  }, [location.key, state?.canClaim]);
-  useEffect(() => {
     if (!draft) return;
     const controller = new AbortController();
     setOptionResult(undefined);
@@ -257,53 +191,31 @@ export function MySkills({
     const current = options?.skills.find(item => item.id === draft?.skillId);
     if (current) setPicked(current);
   }, [options, draft?.skillId]);
-  useEffect(() => {
-    if (optionsLoading || !options || !suggestedSkillName || draft?.skillId) return;
-    const matches = options.skills.filter(
-      skill =>
-        skill.name.localeCompare(suggestedSkillName, undefined, { sensitivity: 'accent' }) === 0,
-    );
-    setSuggestedSkillName('');
-    if (matches.length === 1) {
-      const [match] = matches;
-      setPicked(match);
-      setDraft(current =>
-        current && !current.skillId
-          ? { ...current, skillId: match.id, definitionRevision: match.definitionRevision }
-          : current,
-      );
-    }
-  }, [options, optionsLoading, suggestedSkillName, draft?.skillId]);
-  function edit(claim?: Claim) {
-    if (claim?.activeSubmissionId) {
+  function edit(claim: Claim) {
+    if (claim.activeSubmissionId) {
       setCombinedId(claim.activeSubmissionId);
       setCombined(true);
       return;
     }
     setOptionResult(undefined);
     setPicked(undefined);
-    setSuggestedSkillName('');
     setCategory('');
     setFormError('');
     setFormPage(0);
     setOptionPage(1);
-    setSearch(claim?.skillName ?? '');
-    setDraft(
-      claim
-        ? {
-            id: claim.id,
-            revision: claim.revision,
-            skillId: claim.skillId,
-            definitionRevision: claim.definitionRevision,
-            rank: claim.rank,
-            experienceMonths: claim.experienceMonths,
-            lastUsedOn: claim.lastUsedOn ?? null,
-            description: claim.description,
-            projects: claim.projects ?? '',
-            evidence: claim.evidence ?? '',
-          }
-        : emptyDraft(),
-    );
+    setSearch(claim.skillName);
+    setDraft({
+      id: claim.id,
+      revision: claim.revision,
+      skillId: claim.skillId,
+      definitionRevision: claim.definitionRevision,
+      rank: claim.rank,
+      experienceMonths: claim.experienceMonths,
+      lastUsedOn: claim.lastUsedOn ?? null,
+      description: claim.description,
+      projects: claim.projects ?? '',
+      evidence: claim.evidence ?? '',
+    });
   }
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -459,7 +371,7 @@ export function MySkills({
             }),
           );
           message = 'Skill submitted to your assigned reporting manager for approval.';
-          notifySkillSubmitted(draft.id);
+          notifySkillSubmitted();
         } catch (error) {
           submissionFailed = true;
           message =
@@ -475,13 +387,8 @@ export function MySkills({
         setSubmissionFailure(undefined);
         toast.success(message);
       }
-      reviewRequest?.onSaved(
-        submissionFailed
-          ? { status: 'SUBMISSION_FAILED', id: draft.id, message }
-          : { status: submit ? 'SUBMITTED' : 'DRAFT_SAVED', id: draft.id },
-      );
       window.dispatchEvent(new Event('own-skills-updated'));
-      if (!submit && !reviewRequest) {
+      if (!submit) {
         setInspecting({
           ...draft,
           revision: draft.revision + 1,
@@ -519,33 +426,10 @@ export function MySkills({
   );
   function closeDraft() {
     setDraft(undefined);
-    reviewRequest?.onClose();
   }
-  if (reviewRequest && !draft)
-    return (
-      <FormDialog
-        title="Preview skill draft"
-        onClose={reviewRequest.onClose}
-        pages={[
-          {
-            label: 'Prepare',
-            content: (
-              <p role={error ? 'alert' : 'status'}>
-                {error || 'Checking your current skill access…'}
-              </p>
-            ),
-          },
-        ]}
-        footer={
-          <button type="button" className="secondary-button" onClick={reviewRequest.onClose}>
-            Cancel
-          </button>
-        }
-      />
-    );
   return (
     <>
-      {!reviewRequest && <CapabilitySubmissions onUpdated={() => void load()} />}
+      <CapabilitySubmissions onUpdated={() => void load()} />
       {combined && (
         <CapabilityComposer
           submissionId={combinedId}
@@ -566,74 +450,72 @@ export function MySkills({
           }}
         />
       )}
-      {!reviewRequest && (
-        <>
-          {submissionFailure && (
-            <div className="access-message" role="alert">
-              <p>{submissionFailure.message}</p>
-              <Link
-                className="secondary-button"
-                to={'/my-skills?submitClaim=' + encodeURIComponent(submissionFailure.id)}
-              >
-                Check saved draft and retry submission
-              </Link>
-              <button className="secondary-button" onClick={() => setSubmissionFailure(undefined)}>
-                Dismiss
-              </button>
-            </div>
-          )}
-          {actionsContainer
-            ? createPortal(actions, actionsContainer)
-            : actions && <div className="my-skills-actions">{actions}</div>}
-          {error && (
-            <div className="access-message" role="alert">
-              {error}
-              <button
-                className="secondary-button"
-                disabled={loading}
-                onClick={() => {
-                  if (recoveryId) setRecoveryRetry(value => value + 1);
-                  else void load();
-                }}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-          {loading && !state ? (
-            <section className="profile-panel" role="status">
-              Loading your skills…
-            </section>
-          ) : (
-            state && (
-              <SkillsProfileView
-                initialStatus={new URLSearchParams(location.search).get('status') ?? ''}
-                onAdd={() => setCombined(true)}
-                claims={state.claims}
-                certificates={certificateContext?.data?.records}
-                onCertificate={certificateContext?.open}
-                extraInsights={<CertificateRenewalSummary />}
-                canClaim={state.canClaim}
-                loading={loading || busy}
-                onView={claim => {
-                  setInspecting(claim);
-                  setSubmitting(false);
-                }}
-                onEdit={edit}
-                onSubmit={claim => {
-                  if (claim.activeSubmissionId) {
-                    setCombinedId(claim.activeSubmissionId);
-                    setCombined(true);
-                    return;
-                  }
-                  setInspecting(claim);
-                  setSubmitting(true);
-                }}
-              />
-            )
-          )}
-        </>
-      )}
+      <>
+        {submissionFailure && (
+          <div className="access-message" role="alert">
+            <p>{submissionFailure.message}</p>
+            <Link
+              className="secondary-button"
+              to={'/my-skills?submitClaim=' + encodeURIComponent(submissionFailure.id)}
+            >
+              Check saved draft and retry submission
+            </Link>
+            <button className="secondary-button" onClick={() => setSubmissionFailure(undefined)}>
+              Dismiss
+            </button>
+          </div>
+        )}
+        {actionsContainer
+          ? createPortal(actions, actionsContainer)
+          : actions && <div className="my-skills-actions">{actions}</div>}
+        {error && (
+          <div className="access-message" role="alert">
+            {error}
+            <button
+              className="secondary-button"
+              disabled={loading}
+              onClick={() => {
+                if (recoveryId) setRecoveryRetry(value => value + 1);
+                else void load();
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {loading && !state ? (
+          <section className="profile-panel" role="status">
+            Loading your skills…
+          </section>
+        ) : (
+          state && (
+            <SkillsProfileView
+              initialStatus={new URLSearchParams(location.search).get('status') ?? ''}
+              onAdd={() => setCombined(true)}
+              claims={state.claims}
+              certificates={certificateContext?.data?.records}
+              onCertificate={certificateContext?.open}
+              extraInsights={<CertificateRenewalSummary />}
+              canClaim={state.canClaim}
+              loading={loading || busy}
+              onView={claim => {
+                setInspecting(claim);
+                setSubmitting(false);
+              }}
+              onEdit={edit}
+              onSubmit={claim => {
+                if (claim.activeSubmissionId) {
+                  setCombinedId(claim.activeSubmissionId);
+                  setCombined(true);
+                  return;
+                }
+                setInspecting(claim);
+                setSubmitting(true);
+              }}
+            />
+          )
+        )}
+      </>
       {inspecting && (
         <SkillClaimDialog
           claim={inspecting}
@@ -641,7 +523,7 @@ export function MySkills({
           onClose={() => setInspecting(undefined)}
           onSaved={action => {
             if (action === 'submitted') {
-              notifySkillSubmitted(inspecting.id);
+              notifySkillSubmitted();
               setSubmissionFailure(undefined);
             }
             setInspecting(undefined);
@@ -687,7 +569,6 @@ export function MySkills({
               : undefined
           }
           onSelect={skill => {
-            setSuggestedSkillName('');
             setPicked(skill);
             const switching = Boolean(draft.skillId) && skill.id !== draft.skillId;
             setDraft({
@@ -714,14 +595,12 @@ export function MySkills({
           onPage={setFormPage}
           search={search}
           onSearch={value => {
-            setSuggestedSkillName('');
             setSearch(value);
             setOptionPage(1);
             setFormError('');
           }}
           category={category}
           onCategory={value => {
-            setSuggestedSkillName('');
             setCategory(value);
             setOptionPage(1);
             setFormError('');
@@ -729,7 +608,6 @@ export function MySkills({
           onResultsPage={setOptionPage}
           onSave={submit => void save(submit)}
           onClose={closeDraft}
-          aiDraft={!!reviewRequest}
         />
       )}
     </>

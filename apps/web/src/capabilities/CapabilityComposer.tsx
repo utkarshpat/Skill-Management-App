@@ -201,7 +201,12 @@ export function CapabilityComposer({
   onSaved,
 }: {
   initialCertificate?: boolean;
-  initialSkill?: { id?: string; name?: string };
+  initialSkill?: {
+    id?: string;
+    name?: string;
+    description?: string;
+    intent?: 'draft' | 'submit';
+  };
   initialSkillDraft?: SelectedSkill;
   initialEvidenceFile?: File;
   submissionId?: string;
@@ -217,6 +222,8 @@ export function CapabilityComposer({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const draftOnly = initialSkill?.intent === 'draft';
+  const submitOnly = initialSkill?.intent === 'submit';
   const id = useRef(submissionId ?? crypto.randomUUID()),
     version = useRef(0),
     lock = useRef(false),
@@ -632,7 +639,7 @@ export function CapabilityComposer({
                   reuse: own?.status === 'APPROVED',
                   rank: own?.rank ?? 0,
                   experienceMonths: own?.experienceMonths ?? 0,
-                  description: own?.description ?? '',
+                  description: own?.description || initialSkill.description || '',
                   projects: own?.projects ?? '',
                   evidence: own?.evidence ?? '',
                   lastUsedOn: own?.lastUsedOn?.slice(0, 10) ?? '',
@@ -1811,67 +1818,75 @@ export function CapabilityComposer({
             )}
             {page < 2 ? (
               <>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={working || recovery || (!skills.length && !certs.length)}
-                  onClick={() => void save(false)}
-                >
-                  Save draft
-                </button>
-                <button
-                  type="button"
-                  className="admin-primary"
-                  disabled={working || (page === 0 && isRenewal && !hasUploadedCertificate)}
-                  onClick={() => {
-                    if (page === 0 && hasUploadedCertificate && !checkCertificates()) return;
-                    const invalid = page === 1 ? validate() : '';
-                    if (invalid) {
-                      setError(invalid);
-                      const incomplete = skills.find(s => !s.reuse && skillDetailsError(s));
-                      if (incomplete) {
-                        setSkillDialogError(skillDetailsError(incomplete));
-                        setEditingSkill(incomplete.choice.id);
+                {!submitOnly && (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={working || recovery || (!skills.length && !certs.length)}
+                    onClick={() => void save(false)}
+                  >
+                    {draftOnly ? 'Save as draft' : 'Save draft'}
+                  </button>
+                )}
+                {(!draftOnly || page === 0) && (
+                  <button
+                    type="button"
+                    className="admin-primary"
+                    disabled={working || (page === 0 && isRenewal && !hasUploadedCertificate)}
+                    onClick={() => {
+                      if (page === 0 && hasUploadedCertificate && !checkCertificates()) return;
+                      const invalid = page === 1 ? validate() : '';
+                      if (invalid) {
+                        setError(invalid);
+                        const incomplete = skills.find(s => !s.reuse && skillDetailsError(s));
+                        if (incomplete) {
+                          setSkillDialogError(skillDetailsError(incomplete));
+                          setEditingSkill(incomplete.choice.id);
+                        }
+                        return;
                       }
-                      return;
-                    }
-                    if (page === 0 && !hasUploadedCertificate && !isRenewal) {
-                      setCerts([]);
-                      setHasCertificate(false);
-                      setError('');
-                    }
-                    setPage(p => p + 1);
-                  }}
-                >
-                  {page === 1
-                    ? 'Preview'
-                    : hasUploadedCertificate || isRenewal
-                      ? 'Continue'
-                      : 'Continue without certificate'}
-                  <ArrowRight size={16} />
-                </button>
+                      if (page === 0 && !hasUploadedCertificate && !isRenewal) {
+                        setCerts([]);
+                        setHasCertificate(false);
+                        setError('');
+                      }
+                      setPage(p => p + 1);
+                    }}
+                  >
+                    {page === 1
+                      ? 'Preview'
+                      : hasUploadedCertificate || isRenewal
+                        ? 'Continue'
+                        : 'Continue without certificate'}
+                    <ArrowRight size={16} />
+                  </button>
+                )}
               </>
             ) : (
               <>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={working || recovery}
-                  onClick={() => void save(false)}
-                >
-                  Save drafts
-                </button>
-                <button
-                  type="button"
-                  className="admin-primary"
-                  disabled={working || recovery}
-                  onClick={() => void save(true)}
-                >
-                  <Send size={16} />{' '}
-                  {skills.every(s => s.reuse) && certs.every(c => c.reuse)
-                    ? 'Save links'
-                    : 'Submit for approval'}
-                </button>
+                {!submitOnly && (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={working || recovery}
+                    onClick={() => void save(false)}
+                  >
+                    {draftOnly ? 'Save as draft' : 'Save drafts'}
+                  </button>
+                )}
+                {!draftOnly && (
+                  <button
+                    type="button"
+                    className="admin-primary"
+                    disabled={working || recovery}
+                    onClick={() => void save(true)}
+                  >
+                    <Send size={16} />{' '}
+                    {skills.every(s => s.reuse) && certs.every(c => c.reuse)
+                      ? 'Save links'
+                      : 'Submit for approval'}
+                  </button>
+                )}
               </>
             )}
             {recovery && (

@@ -38,10 +38,10 @@ test('skill output offers an in-place review only when the authorized review han
     questions: [],
   };
   const blocked = renderToStaticMarkup(<AssistantOutput artifact={artifact} />);
-  assert.doesNotMatch(blocked, /Preview skill draft|href=|Review in My Skills/);
+  assert.doesNotMatch(blocked, /Save as draft|Review and submit|href=/);
   const allowed = renderToStaticMarkup(<AssistantOutput artifact={artifact} onReview={() => {}} />);
-  assert.match(allowed, /Preview skill draft/);
-  assert.doesNotMatch(allowed, /href=|Review in My Skills/);
+  assert.match(allowed, /Save as draft.*Review and submit/);
+  assert.doesNotMatch(allowed, /href=|Edit draft|Copy draft/);
 });
 
 test('learning AI navigation requires the exact currently permitted page', () => {

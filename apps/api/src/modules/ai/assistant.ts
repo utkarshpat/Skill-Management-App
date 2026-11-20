@@ -751,6 +751,7 @@ export class AssistantService {
       ...history,
     ];
     const sources: { label: string; url: string }[] = [];
+    const skillChoices = new Map<string, { id: string; name: string }>();
     let peopleSearch: { query: import('../business/index.js').PeopleSearchQuery } | undefined;
     let executions = 0;
     const recheck = async (name: string) => {
@@ -877,6 +878,24 @@ export class AssistantService {
           const safe = workflowChatReply(body);
           if (safe !== body) return { reply: safe, sources: [], mode: 'read-only' };
         }
+        if (artifact.kind === 'skill_draft') {
+          const matches = [...skillChoices.values()].filter(
+            skill => skill.name.toLowerCase() === artifact.title.toLowerCase(),
+          );
+          if (matches.length !== 1 || !artifact.body)
+            return {
+              reply:
+                'I couldn’t verify a published skill for this draft. Tell me which catalogue skill you want to claim and describe your experience with it.',
+              sources,
+              mode: 'read-only',
+            };
+          return {
+            reply: artifact.summary,
+            sources,
+            mode: 'read-only',
+            artifact: { ...artifact, skill: matches[0] },
+          };
+        }
         return { reply: artifact.summary, sources, mode: 'read-only', artifact };
       }
       messages.push({
@@ -901,6 +920,10 @@ export class AssistantService {
           args,
           signal,
         );
+        if (call.function.name === 'skill_claim_options') {
+          const { skills } = data as { skills: { id: string; name: string }[] };
+          for (const { id, name } of skills) skillChoices.set(id, { id, name });
+        }
         if (call.function.name === 'business_people_search') {
           const result = data as import('../business/index.js').PeopleSearchResult;
           await recheck('business_people_search');

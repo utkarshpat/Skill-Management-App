@@ -254,3 +254,77 @@ test('assistant catalogue discovery and selected proficiency retrieval continue 
   assert.equal(result.usage.modelCalls, 3);
   assert.equal(result.mode, 'read-only');
 });
+
+test('skill draft actions are grounded in an authorized published choice', async () => {
+  const access = await LocalAccessStore.open();
+  const state = access.snapshot();
+  const actor = state.people[0].id;
+  state.roles[0].permissions = structuredClone(rolePresets[0].permissions);
+  access.snapshot = () => structuredClone(state);
+  for (const title of [option.name, 'Missing catalogue skill']) {
+    let round = 0;
+    const service = new AssistantService(
+      access,
+      undefined,
+      {
+        name: 'fixture',
+        complete: async () =>
+          round++ === 0
+            ? {
+                content: '',
+                calls: [
+                  {
+                    id: 'options',
+                    type: 'function',
+                    function: {
+                      name: 'skill_claim_options',
+                      arguments: JSON.stringify({ search: title }),
+                    },
+                  },
+                ],
+              }
+            : {
+                content: '',
+                calls: [
+                  {
+                    id: 'draft',
+                    type: 'function',
+                    function: {
+                      name: 'present_output',
+                      arguments: JSON.stringify({
+                        kind: 'skill_draft',
+                        title,
+                        summary: 'Draft for review',
+                        body: 'I reviewed changes with my team.',
+                        steps: [],
+                        questions: [],
+                      }),
+                    },
+                  },
+                ],
+              },
+      },
+      {
+        read: async () => {
+          throw Error('Unexpected read');
+        },
+        options: async () => ({ skills: [option], total: 1, page: 1, pageSize: 5 }),
+        save: async () => {
+          throw Error('Unexpected write');
+        },
+      },
+    );
+    const result = await service.chat(actor, {
+      message: 'Draft my skill claim in Skill Management App',
+    });
+    if (title === option.name) {
+      assert.deepEqual('artifact' in result && result.artifact?.skill, {
+        id: option.id,
+        name: option.name,
+      });
+    } else {
+      assert.ok(!result.artifact);
+      assert.match(result.reply, /couldn’t verify a published skill/);
+    }
+  }
+});

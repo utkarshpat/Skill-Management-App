@@ -290,45 +290,6 @@ test('submitting an existing draft from the skill list rechecks the loaded revis
   assert.deepEqual(writes, [{ id: original.id, revision: 5, action: 'SUBMIT', feedback: '' }]);
 });
 
-test('AI skill draft stays unsaved while choosing a published definition and closing the wizard', async () => {
-  let closed = 0;
-  view = await render(
-    <MemoryRouter>
-      <MySkills
-        reviewRequest={{
-          description: 'Validated customer reporting totals.',
-          onClose: () => closed++,
-          onSaved: () => assert.fail('Draft should remain unsaved'),
-        }}
-      />
-    </MemoryRouter>,
-  );
-  await settle();
-  await debounce();
-  const wizard = document.querySelector('.form-dialog')!;
-  const search = wizard.querySelector<HTMLInputElement>('[aria-label="Search published skills"]')!;
-  await change(search, 'SQL');
-  await debounce();
-  assert.ok(
-    reads.some(
-      url =>
-        url.includes('/catalogue?') &&
-        new URL(url, 'http://localhost').searchParams.get('search') === 'SQL',
-    ),
-  );
-  await click('SQL reporting', wizard);
-  assert.match(wizard.textContent!, /SQL reporting/);
-  await click('Cancel', wizard);
-  const discard = wizard.querySelector('[role="alertdialog"]');
-  assert.ok(discard);
-  await click('Keep editing', discard);
-  assert.equal(closed, 0);
-  await click('Cancel', wizard);
-  await click('Discard', wizard.querySelector('[role="alertdialog"]')!);
-  assert.equal(closed, 1);
-  assert.equal(writes.length, 0);
-});
-
 test('skill profile rank and status filters reset pagination and category insights replace prior filters', async () => {
   claims = Array.from({ length: 12 }, (_, index) => ({
     ...original,

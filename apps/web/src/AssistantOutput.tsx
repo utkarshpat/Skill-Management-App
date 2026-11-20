@@ -10,6 +10,7 @@ export interface Artifact {
     | 'demand_draft'
     | 'practice_quiz';
   title: string;
+  skill?: { id: string; name: string };
   summary: string;
   body: string;
   steps: string[];
@@ -30,7 +31,7 @@ export function AssistantOutput({
     body: string;
     summary: string;
   }) => void;
-  onReview?: (description: string) => void;
+  onReview?: (description: string, intent: 'draft' | 'submit') => void;
   onDocument?: (content: string) => void;
   onReviewRequest?: (draft: {
     kind: 'REQUEST' | 'INCIDENT';
@@ -167,9 +168,11 @@ export function AssistantOutput({
               ) : (
                 <AssistantRichText>{body}</AssistantRichText>
               )}
-              <button className="assistant-document-button" onClick={() => setEditing(!editing)}>
-                {editing ? 'Preview draft' : 'Edit draft'}
-              </button>
+              {artifact.kind !== 'skill_draft' && (
+                <button className="assistant-document-button" onClick={() => setEditing(!editing)}>
+                  {editing ? 'Preview draft' : 'Edit draft'}
+                </button>
+              )}
             </>
           )}
           {artifact.steps.length > 0 && (
@@ -177,7 +180,7 @@ export function AssistantOutput({
               {artifact.steps.map((step, index) => `${index + 1}. ${step}`).join('\n')}
             </AssistantRichText>
           )}
-          {onDocument && (
+          {onDocument && artifact.kind !== 'skill_draft' && (
             <button
               className="assistant-document-button"
               onClick={() =>
@@ -236,26 +239,41 @@ export function AssistantOutput({
             </button>
           )}
           {artifact.kind === 'skill_draft' && onReview && (
-            <button className="admin-primary" onClick={() => onReview(body)}>
-              Preview skill draft
+            <>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => onReview(body, 'draft')}
+              >
+                Save as draft
+              </button>
+              <button
+                type="button"
+                className="admin-primary"
+                onClick={() => onReview(body, 'submit')}
+              >
+                Review and submit
+              </button>
+            </>
+          )}
+          {artifact.kind !== 'skill_draft' && (
+            <button
+              className="secondary-button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    [artifact.title, body, ...artifact.steps].filter(Boolean).join('\n'),
+                  );
+                  setCopied(true);
+                  setCopyError(false);
+                } catch {
+                  setCopyError(true);
+                }
+              }}
+            >
+              {copied ? 'Copied' : 'Copy draft'}
             </button>
           )}
-          <button
-            className="secondary-button"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(
-                  [artifact.title, body, ...artifact.steps].filter(Boolean).join('\n'),
-                );
-                setCopied(true);
-                setCopyError(false);
-              } catch {
-                setCopyError(true);
-              }
-            }}
-          >
-            {copied ? 'Copied' : 'Copy draft'}
-          </button>
           {copyError && <p role="alert">Copy is unavailable. Select and copy the draft text.</p>}
           <p>Check this suggestion before using it. No records have been changed.</p>
         </>
