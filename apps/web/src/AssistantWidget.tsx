@@ -30,6 +30,7 @@ interface ChatMessage {
 export function AssistantWidget() {
   const navigate = useNavigate(),
     location = useLocation();
+  const [arrivingReply, setArrivingReply] = useState<ChatMessage>();
   const [requestDraft, setRequestDraft] = useState<{
     kind: 'REQUEST' | 'INCIDENT';
     title: string;
@@ -213,6 +214,7 @@ export function AssistantWidget() {
   }
   function collapse() {
     session.current.collapse();
+    setArrivingReply(undefined);
     setOpen(false);
     requestAnimationFrame(() => launcher.current?.focus());
   }
@@ -221,7 +223,8 @@ export function AssistantWidget() {
   const controller = useRef<AbortController | null>(null),
     input = useRef<HTMLTextAreaElement>(null),
     launcher = useRef<HTMLButtonElement>(null),
-    latest = useRef<HTMLDivElement>(null),
+    messageLog = useRef<HTMLDivElement>(null),
+    replyStart = useRef<HTMLDivElement>(null),
     closeButton = useRef<HTMLButtonElement>(null);
   useEffect(
     () => () => {
@@ -288,9 +291,23 @@ export function AssistantWidget() {
     window.document.addEventListener('keydown', escape);
     return () => window.document.removeEventListener('keydown', escape);
   }, [open, document, messages, reviewDescription, requestDraft]);
+  const isReplyArriving = Boolean(arrivingReply && messages.at(-1) === arrivingReply && !busy);
   useEffect(() => {
-    if (open) latest.current?.scrollIntoView({ block: 'nearest' });
-  }, [messages, busy, open]);
+    if (!open || !arrivingReply) return;
+    const timer = window.setTimeout(() => setArrivingReply(undefined), 650);
+    return () => window.clearTimeout(timer);
+  }, [open, arrivingReply]);
+  useEffect(() => {
+    const log = messageLog.current;
+    if (!open || !log) return;
+    const reply = replyStart.current;
+    if (reply) {
+      const top = reply.getBoundingClientRect().top - log.getBoundingClientRect().top;
+      log.scrollTop += top - 16;
+    } else {
+      log.scrollTop = log.scrollHeight;
+    }
+  }, [messages, busy, open, showHistory]);
   useEffect(() => {
     if (!open) return;
     const pending = new AbortController();
@@ -480,21 +497,21 @@ export function AssistantWidget() {
       if (!response.ok)
         throw new Error(body?.error?.message ?? 'AI could not reply. Please try again.');
       if (!pending.signal.aborted) {
-        if (session.current.completion(epoch).current) {
+        const completion = session.current.completion(epoch);
+        if (completion.current) {
           conversationId.current = body.conversationId;
           setShowHistory(false);
-          setMessages(current => [
-            ...current,
-            {
-              role: 'assistant',
-              content: body.reply,
-              sources: body.sources,
-              artifact: body.artifact,
-              peopleSearch: body.peopleSearch,
-            },
-          ]);
+          const reply: ChatMessage = {
+            role: 'assistant',
+            content: body.reply,
+            sources: body.sources,
+            artifact: body.artifact,
+            peopleSearch: body.peopleSearch,
+          };
+          setMessages(current => [...current, reply]);
+          if (!completion.notify) setArrivingReply(reply);
         }
-        if (session.current.completion(epoch).notify) setUnread(true);
+        if (completion.notify) setUnread(true);
       }
     } catch (err) {
       if (!pending.signal.aborted) {
@@ -553,9 +570,34 @@ export function AssistantWidget() {
           aria-hidden={!open}
           inert={!open}
         >
+          <span
+            className="assistant-side-mascot"
+            data-state={busy ? 'thinking' : open && isReplyArriving ? 'reply' : 'idle'}
+            aria-hidden="true"
+          >
+            <span className="assistant-side-peek">
+              <span className="assistant-side-genie">
+                <img src="/brand/assistant-side-peek.webp" alt="" />
+                <img
+                  className="assistant-side-thinking"
+                  src="/brand/assistant-side-thinking.webp"
+                  alt=""
+                />
+              </span>
+            </span>
+            {busy && (
+              <span className="assistant-thought-cloud">
+                <span className="assistant-thinking-dots">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              </span>
+            )}
+          </span>
           <header>
-            <Bot size={20} />
-            <div>
+            <Bot size={20} aria-hidden="true" />
+            <div className="assistant-header-title">
               <strong>Skill Genie</strong>
               <small>
                 {phaseTwoVisible
@@ -629,7 +671,7 @@ export function AssistantWidget() {
               ))}
             </section>
           )}
-          <div className="assistant-messages" role="log" aria-live="polite">
+          <div ref={messageLog} className="assistant-messages" role="log" aria-live="polite">
             {!status && !error && <p>Checking connection…</p>}
             {status && !status.configured && (
               <div className="assistant-empty">
@@ -668,7 +710,15 @@ export function AssistantWidget() {
               </div>
             )}
             {messages.map((message, index) => (
-              <div key={index} className={'assistant-message ' + message.role}>
+              <div
+                key={index}
+                ref={isReplyArriving && message === arrivingReply ? replyStart : undefined}
+                className={
+                  'assistant-message ' +
+                  message.role +
+                  (isReplyArriving && message === arrivingReply ? ' is-arriving' : '')
+                }
+              >
                 <small>{message.role === 'user' ? 'You' : 'Skill Genie'}</small>
                 {message.role === 'assistant' ? (
                   <AssistantRichText>{message.content}</AssistantRichText>
@@ -731,9 +781,15 @@ export function AssistantWidget() {
               </div>
             ))}
             {busy && (
-              <p role="status">{messages.length ? 'Thinking…' : 'Finishing your previous chat…'}</p>
+              <div className="assistant-thinking" role="status">
+                <span className="assistant-thinking-dots" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                {messages.length ? 'Thinking…' : 'Finishing your previous chat…'}
+              </div>
             )}
-            <div ref={latest} />
           </div>
           {pendingContext && (
             <section className="assistant-context-choice" aria-label="Keep your unsent message">

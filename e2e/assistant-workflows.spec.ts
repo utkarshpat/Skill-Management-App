@@ -26,6 +26,107 @@ async function assistant(page: Page, role: 'employee' | 'admin' = 'employee') {
     }),
   );
 }
+test('Skill Genie peeks around the sidebar, thinks, and reveals a reply at its start', async ({
+  page,
+}, info) => {
+  await assistant(page);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  const responseReady = Promise.withResolvers<void>();
+  await page.route('**/api/assistant', async route => {
+    await responseReady.promise;
+    await route.fulfill({
+      json: {
+        conversationId: 'genie-chat',
+        reply:
+          '**Here is your skill claim checklist.**\n\n' +
+          'Check your claim details.\n\n'.repeat(45),
+      },
+    });
+  });
+  await page.goto('/profile');
+  await page.getByRole('button', { name: 'Open AI assistant' }).click();
+  const panel = page.getByRole('dialog', { name: 'AI assistant' });
+  const mascot = panel.locator('.assistant-side-mascot');
+  const chatPose = mascot.locator('img').first();
+  const thinkingPose = mascot.locator('.assistant-side-thinking');
+  const cloud = mascot.locator('.assistant-thought-cloud');
+  const showMascot = info.project.name === 'desktop';
+  if (showMascot) {
+    await expect(mascot).toBeVisible();
+    const peek = mascot.locator('.assistant-side-peek');
+    await expect(peek).toHaveCSS('animation-name', 'assistant-genie-peek');
+    const peekStart = await peek.evaluate(element => {
+      const animation = element.getAnimations().find(item => item.effect instanceof KeyframeEffect);
+      return (animation?.effect as KeyframeEffect | undefined)?.getKeyframes()[0]?.transform;
+    });
+    expect(peekStart).toBe('translateX(100%)');
+    await expect(chatPose).toHaveCSS('height', '126px');
+    await expect(mascot.locator('.assistant-side-genie')).toHaveCSS('rotate', 'none');
+    await expect
+      .poll(() => chatPose.evaluate((img: HTMLImageElement) => img.naturalWidth))
+      .toBeGreaterThan(0);
+    const handle = page.getByRole('button', { name: 'Collapse AI assistant and resume later' });
+    const [mascotBox, panelBox, handleBox] = await Promise.all([
+      mascot.boundingBox(),
+      panel.boundingBox(),
+      handle.boundingBox(),
+    ]);
+    expect(mascotBox!.x).toBeLessThan(panelBox!.x);
+    expect(mascotBox!.y + mascotBox!.height).toBeCloseTo(handleBox!.y - 8, 0);
+  } else {
+    await expect(mascot).toBeHidden();
+  }
+  await expect(panel.getByRole('button', { name: 'Close AI assistant' })).toBeInViewport();
+
+  await panel.getByPlaceholder('Ask about this workspace…').fill('Help me with a skill claim');
+  await panel.getByRole('button', { name: 'Send AI message' }).click();
+  try {
+    await expect(panel.getByRole('status')).toHaveText('Thinking…');
+    await expect(mascot).toHaveAttribute('data-state', 'thinking');
+    await expect(mascot.locator('.assistant-side-genie')).toHaveCSS(
+      'animation-name',
+      'assistant-genie-thinking',
+    );
+    if (showMascot) {
+      await expect(cloud).toBeVisible();
+      await expect(cloud.locator('.assistant-thinking-dots > span')).toHaveCount(3);
+      await expect(thinkingPose).toHaveCSS('opacity', '1');
+      await expect(chatPose).toHaveCSS('opacity', '0');
+      await expect
+        .poll(() => thinkingPose.evaluate((img: HTMLImageElement) => img.naturalWidth))
+        .toBeGreaterThan(0);
+      await page.screenshot({
+        path: info.outputPath('genie-thinking.png'),
+        animations: 'disabled',
+      });
+    }
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(mascot.locator('.assistant-side-genie')).toHaveCSS('animation-name', 'none');
+    await expect(panel.locator('.assistant-thinking-dots span').first()).toHaveCSS(
+      'animation-name',
+      'none',
+    );
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+  } finally {
+    responseReady.resolve();
+  }
+
+  await expect(mascot).toHaveAttribute('data-state', 'reply');
+  await expect(panel.getByRole('status')).toBeHidden();
+  await expect(cloud).toBeHidden();
+  await expect(thinkingPose).toHaveCSS('opacity', '0');
+  await expect(
+    panel.getByText('Here is your skill claim checklist.', { exact: true }),
+  ).toBeInViewport();
+  await expect(mascot).toHaveAttribute('data-state', 'idle');
+  if (showMascot) {
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(theme => (document.documentElement.dataset.theme = theme), theme);
+      await expect(chatPose).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      await page.screenshot({ path: info.outputPath('genie-chat-' + theme + '.png') });
+    }
+  }
+});
 test('company sign-in recovery keeps an unsent draft in the original tab', async ({ page }) => {
   await assistant(page);
   let sessionActive = true;
