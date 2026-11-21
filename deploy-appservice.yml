@@ -69,15 +69,15 @@ jobs:
           for attempt in {1..18}; do
             if landing=$(curl --fail --silent --show-error --max-time 10 "$APP_URL/?release=$BUILD_SOURCEVERSION") &&
               [[ "$landing" == *"$expected"* ]] &&
-              health=$(curl --fail --silent --show-error --max-time 10 "$APP_URL/api/health") &&
-              grep -Eq '"status"[[:space:]]*:[[:space:]]*"ok"' <<< "$health"; then
-              echo "Release $BUILD_SOURCEVERSION is serving its frontend and health endpoint."
+              readiness=$(curl --fail --silent --show-error --max-time 10 "$APP_URL/api/ready") &&
+              grep -Eq '"status"[[:space:]]*:[[:space:]]*"ready"' <<< "$readiness"; then
+              echo "Release $BUILD_SOURCEVERSION is serving its frontend and can reach runtime SQL."
               exit 0
             fi
             sleep 10
           done
-          echo "App Service did not serve the expected release frontend and health endpoint." >&2
+          echo "App Service did not serve the expected frontend with a ready database." >&2
           exit 1
-        displayName: Verify the deployed frontend and API health
+        displayName: Verify the deployed frontend and database readiness
         env:
           APP_URL: ${{ parameters.appUrl }}

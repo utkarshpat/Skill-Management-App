@@ -61,6 +61,7 @@ export function EmployeeCapability({
   const [combined, setCombined] = useState<any[]>([]);
   const [combinedError, setCombinedError] = useState('');
   const [submission, setSubmission] = useState<string>();
+  const [genieSection, setGenieSection] = useState<'evidence' | 'feedback'>();
   useEffect(() => {
     const abort = new AbortController();
     setCombined([]);
@@ -553,7 +554,15 @@ export function EmployeeCapability({
         <CapabilityReview
           id={submission}
           employeeName={person.name}
-          onClose={() => setSubmission(undefined)}
+          onClose={() => {
+            setGenieSection(undefined);
+            setSubmission(undefined);
+          }}
+          initialSection={genieSection}
+          onReopen={section => {
+            setGenieSection(section);
+            setSubmission(submission);
+          }}
           onSaved={() => {
             setSubmission(undefined);
             setAttempt(n => n + 1);

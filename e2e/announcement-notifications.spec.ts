@@ -3,6 +3,54 @@ import { fileURLToPath } from 'node:url';
 const id = '33333333-3333-4333-8333-333333333333';
 const person = { name: 'Test Employee', email: 'employee@soprasteria.com', employeeId: '710904' };
 
+test('a stale announcement response keeps typed answers and retries against the refreshed revision', async ({
+  page,
+}) => {
+  await fixture(page, { role: 'employee' });
+  const writes: { revision: number; responseRevision: number; answers: Record<string, string> }[] =
+    [];
+  await page.route('**/api/announcements/feed*', route =>
+    route.fulfill({
+      json: {
+        person,
+        canPublish: false,
+        items: [
+          {
+            id,
+            revision: writes.length ? 2 : 1,
+            startsAt: '2000-01-01T00:00:00Z',
+            endsAt: '2099-01-01T00:00:00Z',
+            answered: false,
+            definition: {
+              kind: 'FORM',
+              title: 'Training registration',
+              message: 'Share your training plans',
+              cta: 'Register',
+              fields: [{ id: 'details', label: 'Training details', type: 'text', required: true }],
+            },
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(`**/api/announcements/${id}/respond`, route => {
+    writes.push(route.request().postDataJSON());
+    return writes.length === 1
+      ? route.fulfill({ status: 409, json: { error: { message: 'The announcement changed.' } } })
+      : route.fulfill({ json: { responseRevision: 1 } });
+  });
+  await page.goto(`/announcements?announcement=${id}`);
+  const dialog = page.getByRole('dialog', { name: 'Training registration' });
+  const answer = dialog.getByLabel('Training details');
+  await answer.fill('The Friday session works for me.');
+  await dialog.getByRole('button', { name: 'Register', exact: true }).click();
+  await expect(dialog.locator('p[role="alert"]')).toHaveText('The announcement changed.');
+  await expect(answer).toHaveValue('The Friday session works for me.');
+  await dialog.getByRole('button', { name: 'Register', exact: true }).click();
+  await expect.poll(() => writes.map(write => write.revision)).toEqual([1, 2]);
+  expect(writes[1].answers).toEqual({ details: 'The Friday session works for me.' });
+});
+
 for (const kind of ['FORM', 'POLL']) {
   test(
     'dismissed ' + kind + ' reopens from notifications without marquee and records one response',

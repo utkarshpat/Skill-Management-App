@@ -24,9 +24,11 @@ import {
 } from './workflow-chat-policy.js';
 import { presentation, presentationTool } from './output.js';
 import { assistantCapabilities, capabilityGreeting } from './capabilities.js';
+import { catalogueGuidance, catalogueGuidanceRequest } from './catalogue-guidance.js';
 import {
   ConversationMemory,
   coreInstructions,
+  catalogueGuidanceInstructions,
   businessInstructions,
   taskInstructions,
   conversationTaskSettings,
@@ -626,10 +628,40 @@ export class AssistantService {
       const shortcut = isPermissionsOverview(history.at(-1)!.content)
         ? capabilityGreeting(capabilities)
         : workflowChatShortcut(history, this.provider);
-      if (!shortcut) release = await this.budget.acquire(actorId);
-      const result = shortcut
-        ? { reply: shortcut, sources: [], mode: 'read-only' }
-        : await this.respond(actorId, request, signal, meter, prepared?.task);
+      const catalogueRequest = catalogueGuidanceRequest(history.at(-1)!.content);
+      const catalogueTool = (
+        catalogueRequest?.kind === 'skill'
+          ? ['catalogue_search', 'skill_claim_options']
+          : catalogueRequest
+            ? ['credential_catalogue_search', 'business_amendment_options']
+            : []
+      ).find(tool => this.registry.permits(quotaState, quotaPerson, tool));
+      if (!shortcut && !catalogueRequest) release = await this.budget.acquire(actorId);
+      const result = catalogueRequest
+        ? await catalogueGuidance(
+            catalogueRequest,
+            catalogueTool
+              ? async search => {
+                  const { data } = await this.registry.execute(
+                    actorId,
+                    catalogueTool,
+                    { search, page: 1 },
+                    signal,
+                  );
+                  if (catalogueTool !== 'business_amendment_options') return data;
+                  const entries = (
+                    data as {
+                      certifications?: { name: string; provider?: string; active?: boolean }[];
+                    }
+                  ).certifications;
+                  return { credentials: entries?.filter(entry => entry.active === true) };
+                }
+              : undefined,
+            capabilities,
+          )
+        : shortcut
+          ? { reply: shortcut, sources: [], mode: 'read-only' }
+          : await this.respond(actorId, request, signal, meter, prepared?.task);
       const recheckDelivery = async () => {
         signal.throwIfAborted();
         const fresh = await readActorAccess(this.store, actorId),
@@ -754,6 +786,9 @@ export class AssistantService {
           coreInstructions +
           ' ' +
           workflowOnlyInstructions +
+          (/\b(amendment|catalogue|catalog)\b/i.test(history.at(-1)!.content)
+            ? ' ' + catalogueGuidanceInstructions
+            : '') +
           (person.business?.view || person.business?.amend ? businessInstructions : '') +
           ' ' +
           taskInstructions(settings.kind) +

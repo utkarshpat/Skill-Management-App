@@ -320,6 +320,13 @@ export function CapabilityComposer({
     [definitions, setDefinitions] = useState<any[]>([]);
   const activeSuggestions = activeCertificateSuggestions(certs, definitions, suggestions);
   const hasUploadedCertificate = certs.some(c => Boolean(c.file || c.uploaded || c.reuse));
+  const hasCertificateDetails = certs.some(
+    c =>
+      c.revision > 0 ||
+      Object.values(c.fields).some(
+        value => value === null || (typeof value === 'string' && Boolean(value.trim())),
+      ),
+  );
   const working = busy || uploadBusy || initializing || !personalReady || recovery;
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) =>
@@ -831,7 +838,7 @@ export function CapabilityComposer({
     }
     return true;
   }
-  function validate() {
+  function validate(requireFiles = false) {
     if (!skills.length) return 'Select at least one published skill.';
     const invalidSkill = skills.find(skillDetailsError);
     if (invalidSkill) return `${invalidSkill.choice.name}: ${skillDetailsError(invalidSkill)}`;
@@ -842,6 +849,8 @@ export function CapabilityComposer({
         ? ''
         : certificationFieldError(c.fields, new Date().toISOString().slice(0, 10));
       if (invalid) return invalid;
+      if (requireFiles && !c.reuse && !c.file && !c.uploaded)
+        return 'Attach a file to every new certificate before continuing to preview.';
       if (
         !relatedSkillIds(
           c.skillIds,
@@ -1279,12 +1288,12 @@ export function CapabilityComposer({
             return;
           }
           if (page === 0 && next > 0 && hasUploadedCertificate && !checkCertificates()) return;
-          if (page === 0 && next === 1 && !hasUploadedCertificate) {
+          if (page === 0 && next === 1 && !hasUploadedCertificate && !hasCertificateDetails) {
             setCerts([]);
             setHasCertificate(false);
           }
           if (next === 2) {
-            const invalid = validate();
+            const invalid = validate(true);
             if (invalid) {
               setError(invalid);
               return;
@@ -1882,7 +1891,7 @@ export function CapabilityComposer({
                     disabled={working || (page === 0 && isRenewal && !hasUploadedCertificate)}
                     onClick={() => {
                       if (page === 0 && hasUploadedCertificate && !checkCertificates()) return;
-                      const invalid = page === 1 ? validate() : '';
+                      const invalid = page === 1 ? validate(true) : '';
                       if (invalid) {
                         setError(invalid);
                         const incomplete = skills.find(s => !s.reuse && skillDetailsError(s));
@@ -1892,7 +1901,12 @@ export function CapabilityComposer({
                         }
                         return;
                       }
-                      if (page === 0 && !hasUploadedCertificate && !isRenewal) {
+                      if (
+                        page === 0 &&
+                        !hasUploadedCertificate &&
+                        !hasCertificateDetails &&
+                        !isRenewal
+                      ) {
                         setCerts([]);
                         setHasCertificate(false);
                         setError('');
@@ -1902,7 +1916,7 @@ export function CapabilityComposer({
                   >
                     {page === 1
                       ? 'Preview'
-                      : hasUploadedCertificate || isRenewal
+                      : hasUploadedCertificate || hasCertificateDetails || isRenewal
                         ? 'Continue'
                         : 'Continue without certificate'}
                     <ArrowRight size={16} />

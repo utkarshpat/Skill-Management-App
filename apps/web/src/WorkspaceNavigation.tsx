@@ -4,7 +4,17 @@ import { isPhaseTwoPage, phaseTwoVisible } from './release-features';
 
 export const administrationShellFor = (pathname: string, administration: boolean) =>
   pathname === '/access' || administration;
-export const personalPageTitle = (pathname: string | undefined) =>
+export function personalPortfolioLabel(
+  capabilities?: Pick<PersonalNavigationCapabilities, 'ownSkills' | 'certifications'>,
+) {
+  if (!capabilities || (capabilities.ownSkills && capabilities.certifications))
+    return 'Skills & Certifications';
+  return capabilities.certifications ? 'Certifications' : 'Skills';
+}
+export const personalPageTitle = (
+  pathname: string | undefined,
+  capabilities?: Pick<PersonalNavigationCapabilities, 'ownSkills' | 'certifications'>,
+) =>
   pathname === '/announcements'
     ? 'Announcements'
     : pathname === '/business'
@@ -15,17 +25,15 @@ export const personalPageTitle = (pathname: string | undefined) =>
           ? 'Learning & development'
           : pathname === '/skill-reviews'
             ? 'Approvals'
-            : pathname === '/my-skills'
-              ? 'Skills'
-              : pathname === '/certifications'
-                ? 'Skills'
-                : pathname === '/profile'
-                  ? 'My profile'
-                  : pathname === '/skills'
-                    ? 'Skill catalogue'
-                    : pathname === '/workspace'
-                      ? 'My workspace'
-                      : undefined;
+            : pathname === '/my-skills' || pathname === '/certifications'
+              ? personalPortfolioLabel(capabilities)
+              : pathname === '/profile'
+                ? 'My profile'
+                : pathname === '/skills'
+                  ? 'Skill catalogue'
+                  : pathname === '/workspace'
+                    ? 'My workspace'
+                    : undefined;
 export const catalogueRouteAllowed = (capabilities: { catalogue?: boolean } | undefined) =>
   capabilities?.catalogue === true;
 export const catalogueNavigationVisible = (
@@ -99,7 +107,7 @@ export function personalNavigationItems(
       ? [
           {
             id: 'my-skills',
-            label: 'Skills',
+            label: personalPortfolioLabel(capabilities),
             href: capabilities.ownSkills ? '/my-skills' : '/certifications',
             icon: Compass,
           },

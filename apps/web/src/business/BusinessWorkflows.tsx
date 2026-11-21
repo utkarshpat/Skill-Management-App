@@ -16,6 +16,7 @@ import {
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
+import { AskCatalogueGenie } from '../AskCatalogueGenie';
 import { CommonProficiency } from '../CommonProficiency';
 import { commonLevels, displayProficiencyName } from '../proficiency';
 import {
@@ -694,9 +695,10 @@ export function BusinessWorkflows({
                   </tbody>
                 </table>
                 {!masters.certifications.length && (
-                  <p className="bo-empty">
-                    No matching certifications. Try another search or add a new entry.
-                  </p>
+                  <div className="bo-empty">
+                    <p>No matching certifications. Try another search or add a new entry.</p>
+                    <AskCatalogueGenie kind="certificate" search={masterTerm} />
+                  </div>
                 )}
               </div>
               <footer className="bo-pagination">

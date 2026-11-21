@@ -12,7 +12,11 @@ import { identityConfig } from './modules/identity/index.js';
 import { applicationDependencies } from './application-dependencies.js';
 import { privateStorageConfig } from './shared/private-files.js';
 import { ownProfile } from './modules/identity/index.js';
-import { closeRuntimeDatabase, warmRuntimeDatabase } from './shared/database.js';
+import {
+  closeRuntimeDatabase,
+  warmRuntimeDatabase,
+  withRuntimeDatabase,
+} from './shared/database.js';
 import { currentRequestId } from './shared/request-timing.js';
 import { errorType, logEvent } from './shared/logger.js';
 import { developmentLoginEnabled, hostedDemoConfig } from './modules/identity/index.js';
@@ -221,6 +225,13 @@ const app = createApp(
     developmentStore,
     hostedDemo,
     identityConfig: config,
+    probeReadiness:
+      access && config
+        ? () =>
+            withRuntimeDatabase(async pool => {
+              await pool.request().query('SELECT 1');
+            })
+        : undefined,
     companyOidcSecret: process.env.ENTRA_WEB_CLIENT_SECRET,
     sharedCompanyAuth: Boolean(process.env.ENTRA_WEB_CLIENT_SECRET),
     ...(config && process.env.SERVE_WEB === 'true' && process.env.PUBLIC_APP_ORIGIN

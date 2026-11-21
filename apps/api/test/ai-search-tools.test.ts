@@ -17,6 +17,51 @@ const option = {
 };
 const signal = () => AbortSignal.timeout(5000);
 
+test('catalogue guidance uses the authenticated published catalogue without a model call', async () => {
+  const access = await LocalAccessStore.open();
+  const state = access.snapshot();
+  state.roles[0].permissions = structuredClone(rolePresets[0].permissions);
+  access.snapshot = () => structuredClone(state);
+  const actor = state.people[0].id;
+  const catalogue: CatalogueStore = {
+    read: async (actorId, filter) => {
+      assert.equal(actorId, actor);
+      assert.equal(filter.status, 'PUBLISHED');
+      assert.equal(filter.search, 'TypeScript');
+      return {
+        revision: 4,
+        canManage: false,
+        total: 1,
+        page: 1,
+        pageSize: 25,
+        skills: [{ ...option, description: '', status: 'PUBLISHED' }],
+      };
+    },
+    save: async () => assert.fail('Guidance must be read only.'),
+  };
+  const service = new AssistantService(
+    access,
+    undefined,
+    {
+      name: 'fixture',
+      complete: async () => assert.fail('Guide uses published results directly.'),
+    },
+    undefined,
+    undefined,
+    catalogue,
+  );
+  const reply = await service.chat(
+    actor,
+    {
+      message:
+        'Check the published skill catalogue for this name and guide me if it is missing: TypeScript',
+    },
+    signal(),
+  );
+  assert.match(reply.reply, /TypeScript \(exact name\)/);
+  assert.equal(reply.usage.modelCalls, 0);
+});
+
 test('published catalogue search binds actor, projects compact fields and rejects foreign selectors', async () => {
   const access = await LocalAccessStore.open(),
     state = access.snapshot(),

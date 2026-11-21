@@ -175,6 +175,7 @@ export function AccessAudit({
           actionName={actionName(selected)}
           recordName={recordName(selected)}
           onClose={() => setSelected(undefined)}
+          onReopen={setSelected}
         />
       )}
       {!recent && (

@@ -19,14 +19,14 @@ Point Azure Pipelines at root `/azure-pipelines.yml` from **Azure Repos Git**. C
 
 The workflow runs documentation, architecture, type, regression and desktop/mobile browser checks and publishes test and coverage reports. A successful `main` run publishes `skill-management-release` with the compiled Linux runtime ZIP, App Service source ZIP and ordered SQL migration ZIP. The runtime ZIP contains the built API and web files and locked production dependencies. [Pipeline configuration](../azure-pipelines.yml)
 
-Once the Dev service connection is configured, approve the Dev deployment from the successful build's run page. The approval job runs without a build agent and expires after 24 hours. Batching holds subsequent push-triggered runs while an approval is pending. After approval, the deployment downloads that run's runtime ZIP and verifies its frontend bundle and API health on the target. [Manual validation in Azure Pipelines](https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/manual-validation-v1?view=azure-pipelines)
+Once the Dev service connection is configured, approve the Dev deployment from the successful build's run page. The approval job runs without a build agent and expires after 24 hours. Batching holds subsequent push-triggered runs while an approval is pending. After approval, the deployment downloads that run's runtime ZIP and verifies the expected frontend bundle and `/api/ready`. Readiness requires a successful query through the app's runtime SQL identity. `/api/health` continues to report process liveness. [Manual validation in Azure Pipelines](https://learn.microsoft.com/en-us/azure/devops/pipelines/tasks/reference/manual-validation-v1?view=azure-pipelines)
 
 ```mermaid
 flowchart LR
     A["Azure Repos main"] --> B["ADO tests and build"]
     B --> C["Publish release packages"]
     C --> D["Approve and deploy to Dev"]
-    D --> E["Verify expected bundle and API health"]
+    D --> E["Verify expected bundle and SQL readiness"]
     E --> F["Optional Production approval"]
     C -. "Same runtime ZIP" .-> F
     F --> G["Deploy and verify Production"]

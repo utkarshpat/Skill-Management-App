@@ -576,10 +576,79 @@ test('capability binds preview to actor, preserves full totals and strips claim 
   assert.equal(result.recentClaims.length, 3);
   assert.equal(result.canClaim, true);
   assert.equal(result.recentClaims[0].href, '/my-skills?claim=claim-0');
+  assert.equal(result.recentClaims[0].editHref, '/my-skills?editClaim=claim-0');
   assert.doesNotMatch(JSON.stringify(result), /Private evidence|Private description/);
   person.overrides = [{ ...own('skill.view'), effect: 'DENY' }];
   await assert.rejects(loadDashboardCard('capability', actor, state, person, s));
   assert.equal(reads, 1);
+});
+
+test('capability dashboard shows only current own certificates with authorized renewal actions', async () => {
+  const { state, person } = fixture([
+    own('profile.view'),
+    own('skill.view'),
+    own('skill.claim'),
+    { permission: 'skill.view', scope: 'ORGANIZATION', effect: 'ALLOW' },
+  ]);
+  const current = {
+    id: 'own-certificate',
+    personId: actor,
+    certificationName: 'Cloud Architect',
+    provider: 'Oracle',
+    status: 'APPROVED',
+    expiryDate: '2026-11-01',
+    activeRenewalId: 'renewal',
+    notes: 'Private notes',
+    credentialId: 'Private credential ID',
+  } as never;
+  const s: DashboardSources = {
+    ...sources,
+    certificationRenewalConfigured: true,
+    certifications: {
+      read: async (id, query) => {
+        assert.equal(id, actor);
+        assert.equal(query.view, 'mine');
+        return {
+          records: [
+            current,
+            {
+              ...(current as object),
+              id: 'historical',
+              supersededById: 'own-certificate',
+            } as never,
+          ],
+          total: 2,
+        };
+      },
+      get: async () => assert.fail('Dashboard reads only the own portfolio.'),
+      change: async () => assert.fail('Dashboard is read only.'),
+      notifications: async () => [],
+    },
+  };
+  const result = await loadDashboardCard(
+    'capability',
+    actor,
+    state,
+    person,
+    s,
+    new Date('2026-11-22T00:00:00Z'),
+  );
+  assert.ok('recentCertificates' in result);
+  assert.equal(result.recentCertificates?.length, 1);
+  assert.equal(result.recentCertificates?.[0].renewalHref, '/certifications?renew=own-certificate');
+  assert.equal(result.recentCertificates?.[0].activeRenewal, true);
+  assert.doesNotMatch(JSON.stringify(result), /Private notes|Private credential ID|historical/);
+  person.overrides.push({ ...own('skill.claim'), effect: 'DENY' });
+  const readOnly = await loadDashboardCard(
+    'capability',
+    actor,
+    state,
+    person,
+    s,
+    new Date('2026-11-22T00:00:00Z'),
+  );
+  assert.ok('recentCertificates' in readOnly);
+  assert.equal(readOnly.recentCertificates?.[0].renewalHref, undefined);
 });
 test('attention skips unauthorized sources and isolates a failed queue without inventing zero completion', async () => {
   const { state, person } = fixture([

@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router';
 import { BookOpen, LayoutDashboard, UserRound } from 'lucide-react';
 import { SidebarNavigation } from '../src/SidebarNavigation';
 import { workspaceFreshness, publishWorkspaceFreshness } from '../src/workspace-freshness';
-import { personalNavigationItems } from '../src/WorkspaceNavigation';
+import { personalNavigationItems, personalPageTitle } from '../src/WorkspaceNavigation';
 import {
   DEFAULT_SIDEBAR_ORDER,
   normalizeSidebarOrder,
@@ -73,11 +73,15 @@ test('defaults prioritize daily work across permission combinations and put prof
 });
 test('portfolio navigation combines both destinations without restoring denied tabs or reviews', () => {
   for (const pathname of ['/my-skills', '/certifications']) {
-    const items = personalNavigationItems(
-      { ownProfile: true, ownSkills: true, certifications: true, reviewSkills: true },
-      pathname,
-    );
-    assert.equal(items.filter(item => item.label === 'Skills').length, 1);
+    const capabilities = {
+      ownProfile: true,
+      ownSkills: true,
+      certifications: true,
+      reviewSkills: true,
+    };
+    const items = personalNavigationItems(capabilities, pathname);
+    assert.equal(items.filter(item => item.label === 'Skills & Certifications').length, 1);
+    assert.equal(personalPageTitle(pathname, capabilities), 'Skills & Certifications');
     assert.equal(
       items.some(item => item.id === 'certifications'),
       false,
@@ -90,6 +94,8 @@ test('portfolio navigation combines both destinations without restoring denied t
     '/certifications',
   );
   assert.equal(limited.find(item => item.id === 'my-skills')?.href, '/certifications');
+  assert.equal(limited.find(item => item.id === 'my-skills')?.label, 'Certifications');
+  assert.equal(personalPageTitle('/my-skills', { ownSkills: true }), 'Skills');
   assert.equal(
     limited.some(item => item.id === 'skill-reviews'),
     false,

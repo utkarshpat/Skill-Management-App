@@ -54,6 +54,7 @@ for (const [label, action] of [
       <CertificationReviewDialog
         certification={record}
         onClose={() => closed++}
+        onRefresh={() => assert.fail('An ordinary decision should not refresh the queue.')}
         onDecision={async (...args) => {
           decisions.push(args);
           await pending.promise;
@@ -92,6 +93,7 @@ test('failed certification decision preserves the note for retry and reports a r
     <CertificationReviewDialog
       certification={record}
       onClose={() => closed++}
+      onRefresh={() => assert.fail('An ordinary failure should be retryable.')}
       onDecision={async () => {
         if (++attempts === 1) throw Error('The current manager changed. Refresh this review.');
       }}
@@ -116,6 +118,7 @@ test('failed certification decision preserves the note for retry and reports a r
         reviewAccess: { allowed: false, reasonCode: 'NOT_CURRENT_MANAGER' },
       }}
       onClose={() => closed++}
+      onRefresh={() => assert.fail('The dialog already received revoked access.')}
       onDecision={async () => {
         throw Error('must not save');
       }}
@@ -130,4 +133,31 @@ test('failed certification decision preserves the note for retry and reports a r
   }
   await click('Cancel');
   assert.equal(closed, 2);
+});
+
+test('a stale certification blocks decision retries until the approver refreshes the queue', async () => {
+  let writes = 0;
+  let refreshes = 0;
+  view = await render(
+    <CertificationReviewDialog
+      certification={record}
+      onClose={() => {}}
+      onRefresh={() => refreshes++}
+      onDecision={async () => {
+        writes++;
+        throw Object.assign(Error('Certification changed.'), { status: 409 });
+      }}
+    />,
+  );
+  await fill('Decision note', 'Keep this until I refresh the queue.');
+  await click('Approve');
+  assert.equal(document.querySelector('textarea')?.value, 'Keep this until I refresh the queue.');
+  const button = [...document.querySelectorAll('button')].find(
+    b => b.textContent?.trim() === 'Approve',
+  );
+  assert.equal(button?.disabled, true);
+  button?.click();
+  assert.equal(writes, 1);
+  await click('Refresh approval queue');
+  assert.equal(refreshes, 1);
 });

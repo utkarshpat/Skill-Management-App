@@ -19,7 +19,11 @@ import { Sidebar } from './Sidebar';
 import { NavigationDrawer } from './NavigationDrawer';
 import { NavbarAccount } from './NavbarAccount';
 import { phaseTwoVisible } from './release-features';
-import { catalogueNavigationVisible, catalogueRouteAllowed } from './WorkspaceNavigation';
+import {
+  catalogueNavigationVisible,
+  catalogueRouteAllowed,
+  personalPortfolioLabel,
+} from './WorkspaceNavigation';
 const PersonalProfile = lazy(() =>
   import('./PersonalProfile').then(module => ({ default: module.PersonalProfile })),
 );
@@ -192,7 +196,7 @@ export function Workspace({
     },
     {
       id: 'my-skills',
-      label: 'Skills',
+      label: personalPortfolioLabel(state?.capabilities),
       href: state?.capabilities.ownSkills ? '/my-skills' : '/certifications',
       icon: Compass,
       visible: state?.capabilities.ownSkills || state?.capabilities.certifications,

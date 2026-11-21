@@ -4,6 +4,13 @@ import { Award, Eye } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
+import {
+  AskSkillGenie,
+  certificateContext,
+  certificateQuestion,
+  focusRecordSection,
+  readOwnCertificate,
+} from '../AskSkillGenie';
 import { CertificationImage } from '../certifications/CertificationImage';
 import { loadCertificationPortfolio } from '../certifications/certification-portfolio';
 import {
@@ -204,6 +211,28 @@ export function SkillCertificates({
           onClose={close}
           footer={
             <>
+              {viewing && (
+                <AskSkillGenie
+                  load={async signal => {
+                    const latest = await readOwnCertificate(viewing.id, signal);
+                    return {
+                      prompt: certificateQuestion(latest),
+                      record: certificateContext(
+                        latest,
+                        (record, action) => {
+                          if (action === 'renew') void open(record.id, true);
+                          else {
+                            setViewing(record);
+                            if (action === 'feedback') focusRecordSection('feedback');
+                          }
+                        },
+                        Boolean(data?.canManage && data.canUploadImage),
+                      ),
+                    };
+                  }}
+                  onOpen={close}
+                />
+              )}
               <button type="button" className="secondary-button" onClick={close}>
                 Close
               </button>
@@ -290,7 +319,11 @@ export function SkillCertificates({
                     </a>
                   )}
                   {viewing.notes && <p>{viewing.notes}</p>}
-                  {viewing.feedback && <p>Manager feedback: {viewing.feedback}</p>}
+                  {viewing.feedback && (
+                    <p tabIndex={-1} data-genie-section="feedback">
+                      Manager feedback: {viewing.feedback}
+                    </p>
+                  )}
                   <RelatedCapabilities kind="CERTIFICATION" id={viewing.id} />
                 </div>
                 {data?.canUploadImage && <CertificationImage id={viewing.id} />}
@@ -349,8 +382,10 @@ export function CertificateRenewalSummary() {
     );
   const history = uniqueCertificates(data.records).filter(c => c.supersededById);
   const records = uniqueCertificates(data.records).filter(c => !c.supersededById);
-  const attention = records.filter(c =>
-    ['Expired', 'Expires soon'].includes(credentialValidity(c.expiryDate, today)),
+  const attention = records.filter(
+    c =>
+      c.status === 'APPROVED' &&
+      ['Expired', 'Expires soon'].includes(credentialValidity(c.expiryDate, today)),
   );
   const unlinked = records.filter(c => !c.relatedSkills?.length);
   return (

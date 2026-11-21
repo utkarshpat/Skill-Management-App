@@ -1,8 +1,9 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, useLocation } from 'react-router';
+import { Link, Navigate, useLocation } from 'react-router';
 import { SkillCertificates } from './capabilities/SkillCertificates';
 import type { WorkspaceState } from './Workspace';
 import './capability-workspace.css';
+import './access-navigation.css';
 const MySkills = lazy(() => import('./MySkills').then(m => ({ default: m.MySkills })));
 const Certifications = lazy(() =>
   import('./certifications/Certifications').then(m => ({ default: m.Certifications })),
@@ -15,14 +16,32 @@ export function CapabilityPortfolio({
   actionsContainer?: HTMLDivElement | null;
 }) {
   const { pathname, search } = useLocation();
-  const certifications = pathname === '/certifications';
-  if (certifications && new URLSearchParams(search).get('tab') === 'queue')
-    return <Navigate to="/skill-reviews?type=certifications" replace />;
+  const params = new URLSearchParams(search);
+  const tab = params.get('tab');
+  const { ownSkills, certifications } = workspace.capabilities;
+  const certificateRoute = pathname === '/certifications';
+  const showCertifications =
+    !ownSkills || (certifications && (certificateRoute || tab === 'recommendations'));
+  if (certificateRoute && tab === 'queue') {
+    const target = new URLSearchParams({ type: 'certifications' });
+    const certification = params.get('certification');
+    if (certification) target.set('certification', certification);
+    return <Navigate to={`/skill-reviews?${target}`} replace />;
+  }
   return (
     <>
+      {ownSkills && certifications && (
+        <nav className="access-section-tabs" aria-label="Skills and certifications sections">
+          <Link to="/my-skills" aria-current={!showCertifications ? 'page' : undefined}>
+            Skills
+          </Link>
+          <Link to="/certifications" aria-current={showCertifications ? 'page' : undefined}>
+            Certifications
+          </Link>
+        </nav>
+      )}
       <Suspense fallback={<p role="status">Loading your portfolio…</p>}>
-        {!workspace.capabilities.ownSkills ||
-        new URLSearchParams(search).get('tab') === 'recommendations' ? (
+        {showCertifications ? (
           <Certifications actionsContainer={actionsContainer} personalOnly workspace={workspace} />
         ) : (
           <SkillCertificates enabled={Boolean(workspace.capabilities.certifications)}>
@@ -30,9 +49,9 @@ export function CapabilityPortfolio({
               actionsContainer={actionsContainer}
               canImportCertificates={Boolean(
                 workspace.capabilities.ownProfile &&
-                  workspace.capabilities.administration &&
-                  workspace.capabilities.manageUsers &&
-                  workspace.capabilities.viewAudit,
+                workspace.capabilities.administration &&
+                workspace.capabilities.manageUsers &&
+                workspace.capabilities.viewAudit,
               )}
             />
           </SkillCertificates>

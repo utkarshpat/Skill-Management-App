@@ -153,7 +153,7 @@ export function AccessAdmin({
   workspaceContext?: WorkspaceState;
 }) {
   const navigate = useNavigate();
-  const personalTitle = personalPageTitle(personalPath);
+  const personalTitle = personalPageTitle(personalPath, personalCapabilities);
   const [params, setParams] = useSearchParams();
   const tab = currentView(params);
   const compactPeople = !personalTitle && tab === 'people';

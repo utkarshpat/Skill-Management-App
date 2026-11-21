@@ -2,6 +2,8 @@ import { displayProficiencyName } from '../proficiency';
 import { credentialValidity } from '../certifications/certification-model';
 import { useEffect, useRef, useState } from 'react';
 import { FormDialog } from '../FormDialog';
+import { AskSkillGenie, focusRecordSection, recordQuestion } from '../AskSkillGenie';
+import type { AssistantRecordAction } from '../assistant-record';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { CapabilityEvidence } from './CapabilityEvidence';
@@ -30,6 +32,9 @@ export function CapabilityReview({
   readOnly = false,
   onClose,
   onSaved,
+  onRefresh,
+  onReopen,
+  initialSection,
 }: {
   id: string;
   employeeName?: string;
@@ -37,18 +42,25 @@ export function CapabilityReview({
   readOnly?: boolean;
   onClose: () => void;
   onSaved: () => void;
+  onRefresh?: () => void;
+  onReopen?: (section?: 'evidence' | 'feedback') => void;
+  initialSection?: 'evidence' | 'feedback';
 }) {
   const [data, setData] = useState<Submission>(),
     [error, setError] = useState(''),
     [decisions, setDecisions] = useState<Record<string, { action: string; feedback: string }>>({}),
     [busy, setBusy] = useState(false),
+    [needsRefresh, setNeedsRefresh] = useState(false),
+    request = useRef<AbortController>(undefined),
     lock = useRef(false);
 
   useEffect(() => {
     const abort = new AbortController();
+    request.current = abort;
     setData(undefined);
     setError('');
     setDecisions({});
+    setNeedsRefresh(false);
     authenticatedFetch('/api/capability-submissions/' + id, { signal: abort.signal })
       .then(r => readApiResponse<Submission>(r, 'Submission unavailable.'))
       .then(v => {
@@ -59,6 +71,18 @@ export function CapabilityReview({
       });
     return () => abort.abort();
   }, [id]);
+
+  useEffect(() => {
+    if (data && initialSection) focusRecordSection(initialSection);
+  }, [data?.id, initialSection]);
+
+  function readSubmission(signal: AbortSignal) {
+    return authenticatedFetch(`/api/capability-submissions/${encodeURIComponent(id)}`, {
+      signal,
+    }).then(response =>
+      readApiResponse<Submission>(response, 'This approval request could not be refreshed.'),
+    );
+  }
 
   const rows = data
     ? [
@@ -87,15 +111,89 @@ export function CapabilityReview({
     setDecisions(prev => {
       const merged = { ...initial };
       for (const [k, v] of Object.entries(prev)) {
-        if (v && v.feedback) merged[k] = v;
+        if (initial[k]) merged[k] = v;
       }
       return merged;
     });
   }, [data]);
 
+  async function refreshApproval(previous: Submission, message: string) {
+    setNeedsRefresh(true);
+    const signal = request.current?.signal;
+    try {
+      const latest = await readApiResponse<Submission>(
+        await authenticatedFetch('/api/capability-submissions/' + id, { signal }),
+        'Approval request could not be refreshed.',
+      );
+      if (signal?.aborted) return;
+      const unchanged = new Set([
+        ...latest.skills
+          .filter(
+            row =>
+              row.needsReview &&
+              previous.skills.some(old => old.id === row.id && old.revision === row.revision),
+          )
+          .map(row => 'SKILL' + row.id),
+        ...latest.certifications
+          .filter(
+            row =>
+              row.needsReview &&
+              previous.certifications.some(
+                old => old.id === row.id && old.revision === row.revision,
+              ),
+          )
+          .map(row => 'CERTIFICATION' + row.id),
+      ]);
+      setDecisions(current =>
+        Object.fromEntries(
+          [
+            ...latest.skills.filter(row => row.needsReview).map(row => 'SKILL' + row.id),
+            ...latest.certifications
+              .filter(row => row.needsReview)
+              .map(row => 'CERTIFICATION' + row.id),
+          ].map(key => [
+            key,
+            unchanged.has(key)
+              ? (current[key] ?? { action: 'APPROVE', feedback: '' })
+              : { action: '', feedback: '' },
+          ]),
+        ),
+      );
+      setData(latest);
+      const stillPending =
+        latest.status === 'SUBMITTED' &&
+        (readOnly ||
+          latest.skills.some(row => row.needsReview) ||
+          latest.certifications.some(row => row.needsReview));
+      const changed =
+        latest.revision !== previous.revision ||
+        latest.skills.some(row => row.needsReview && !unchanged.has('SKILL' + row.id)) ||
+        latest.certifications.some(
+          row => row.needsReview && !unchanged.has('CERTIFICATION' + row.id),
+        );
+      setNeedsRefresh(stillPending && !changed);
+      setError(
+        stillPending && changed ? `${message} Check the updated request before saving.` : message,
+      );
+      window.dispatchEvent(new Event('notifications-updated'));
+      onRefresh?.();
+    } catch (error) {
+      if (signal?.aborted) return;
+      const status = (error as { status?: number }).status;
+      if (status === 401 || status === 403 || status === 404) {
+        setData(undefined);
+        setDecisions({});
+        setNeedsRefresh(false);
+        onRefresh?.();
+      }
+      setError((error as Error).message);
+    }
+  }
+
   async function save() {
-    if (!data || readOnly || data.status !== 'SUBMITTED' || lock.current) return;
+    if (!data || readOnly || data.status !== 'SUBMITTED' || needsRefresh || lock.current) return;
     const pending = rows.filter(r => r.needsReview);
+    if (!pending.length || pending.some(row => decisions[row.kind + row.id]?.action === '')) return;
     if (
       pending.some(r => {
         const decision = decisions[r.kind + r.id];
@@ -131,6 +229,8 @@ export function CapabilityReview({
       onSaved();
     } catch (e) {
       setError((e as Error).message);
+      if ([403, 409].includes((e as { status?: number }).status ?? 0))
+        await refreshApproval(data, (e as Error).message);
     } finally {
       lock.current = false;
       setBusy(false);
@@ -138,7 +238,7 @@ export function CapabilityReview({
   }
 
   async function reroute() {
-    if (!data?.canReroute || lock.current) return;
+    if (!data?.canReroute || needsRefresh || lock.current) return;
     lock.current = true;
     setBusy(true);
     setError('');
@@ -160,6 +260,8 @@ export function CapabilityReview({
       onSaved();
     } catch (e) {
       setError((e as Error).message);
+      if ([403, 409].includes((e as { status?: number }).status ?? 0))
+        await refreshApproval(data, (e as Error).message);
     } finally {
       lock.current = false;
       setBusy(false);
@@ -168,6 +270,9 @@ export function CapabilityReview({
 
   const skillRows = rows.filter(r => r.kind === 'SKILL');
   const certRows = rows.filter(r => r.kind === 'CERTIFICATION');
+  const hasUnsavedDecision = Object.values(decisions).some(
+    decision => decision.action !== 'APPROVE' || decision.feedback.trim(),
+  );
   const {
     pendingCount,
     canDecide,
@@ -191,21 +296,45 @@ export function CapabilityReview({
           <button type="button" className="secondary-button" disabled={busy} onClick={onClose}>
             Close
           </button>
+          {needsRefresh && data && (
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={busy}
+              onClick={async () => {
+                if (lock.current) return;
+                lock.current = true;
+                setBusy(true);
+                try {
+                  await refreshApproval(data, error);
+                } finally {
+                  lock.current = false;
+                  setBusy(false);
+                }
+              }}
+            >
+              Refresh request
+            </button>
+          )}
           {readOnly && data?.canReroute && (
             <button
               type="button"
               className="admin-primary"
-              disabled={busy}
+              disabled={busy || needsRefresh}
               onClick={() => void reroute()}
             >
               Send to current manager
             </button>
           )}
-          {!readOnly && data?.status === 'SUBMITTED' && (
+          {canDecide && pendingCount > 0 && (
             <button
               type="button"
               className="admin-primary"
-              disabled={busy}
+              disabled={
+                busy ||
+                needsRefresh ||
+                rows.some(row => row.needsReview && decisions[row.kind + row.id]?.action === '')
+              }
               onClick={() => void save()}
             >
               {pendingCount > 0
@@ -217,6 +346,65 @@ export function CapabilityReview({
       }
     >
       <div className="cap-review-container">
+        {data && onReopen && !busy && !hasUnsavedDecision && (
+          <AskSkillGenie
+            onOpen={onClose}
+            load={async signal => {
+              const latest = await readSubmission(signal);
+              const prompt = recordQuestion(
+                'What evidence is recorded for this request and what should I check next?',
+                [
+                  `Skills: ${latest.skills.length}; certificates: ${latest.certifications.length}.`,
+                  ...latest.skills.map(
+                    skill =>
+                      `${String(skill.name).slice(0, 64)}: ${[skill.projects && 'project details', skill.evidence && 'supporting references', skill.description && 'experience description'].filter(Boolean).join(', ') || 'no written evidence shown'}.`,
+                  ),
+                  ...latest.certifications.map(
+                    cert =>
+                      `${String(cert.certificationName).slice(0, 64)}: ${submissionReviewState(String(cert.status), false, false)}.`,
+                  ),
+                ],
+              );
+              const hasFeedback = (submission: Submission) =>
+                [...submission.skills, ...submission.certifications].some(
+                  row => typeof row.feedback === 'string' && row.feedback.trim(),
+                );
+              const actions: AssistantRecordAction[] = [
+                {
+                  label: 'Back to this record',
+                  run: async signal => {
+                    await readSubmission(signal);
+                    if (!signal.aborted) onReopen();
+                  },
+                },
+              ];
+              if (latest.skills.length || latest.certifications.length)
+                actions.push({
+                  label: 'View evidence',
+                  run: async signal => {
+                    const current = await readSubmission(signal);
+                    if (!current.skills.length && !current.certifications.length)
+                      throw new Error('Evidence is no longer available for this request.');
+                    if (!signal.aborted) onReopen('evidence');
+                  },
+                });
+              if (hasFeedback(latest))
+                actions.push({
+                  label: 'Open feedback',
+                  run: async signal => {
+                    const current = await readSubmission(signal);
+                    if (!hasFeedback(current))
+                      throw new Error('Feedback is no longer available for this request.');
+                    if (!signal.aborted) onReopen('feedback');
+                  },
+                });
+              return {
+                prompt,
+                record: { label: submissionLabel || 'Skill approval request', actions },
+              };
+            }}
+          />
+        )}
         {!data && !error && <p role="status">Loading submitted capabilities…</p>}
         {data?.intake && (
           <p className="cap-callout">
@@ -347,7 +535,9 @@ export function CapabilityReview({
                         </div>
                       </div>
                     )}
-                    <CapabilityEvidence submissionId={id} recordId={row.id} hideIfEmpty />
+                    <div tabIndex={-1} data-genie-section="evidence">
+                      <CapabilityEvidence submissionId={id} recordId={row.id} hideIfEmpty />
+                    </div>
                   </>
                 )}
 
@@ -415,13 +605,19 @@ export function CapabilityReview({
                     )}
                     <div className="cap-cert-doc-preview">
                       <span className="cap-detail-label">Attached document:</span>
-                      <CapabilityEvidence submissionId={id} recordId={row.id} />
+                      <div tabIndex={-1} data-genie-section="evidence">
+                        <CapabilityEvidence submissionId={id} recordId={row.id} />
+                      </div>
                     </div>
                   </>
                 )}
 
                 {row.feedback && (
-                  <div className="cap-feedback-recorded">
+                  <div
+                    className="cap-feedback-recorded"
+                    tabIndex={-1}
+                    data-genie-section="feedback"
+                  >
                     <strong>Recorded feedback:</strong> {row.feedback}
                   </div>
                 )}
@@ -430,11 +626,34 @@ export function CapabilityReview({
               {canDecide && row.needsReview && (
                 <footer className="cap-review-decision-footer">
                   <div className="cap-decision-choice-row">
-                    <span className="cap-decision-legend">Record decision:</span>
+                    <span className="cap-decision-legend">
+                      {decision.action
+                        ? 'Record decision:'
+                        : 'Item changed. Select a new decision.'}
+                    </span>
                     <div
                       className="cap-decision-toggle-group"
                       role="radiogroup"
                       aria-label={`Decision for ${row.name}`}
+                      onKeyDown={event => {
+                        if (
+                          !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(
+                            event.key,
+                          ) ||
+                          busy
+                        )
+                          return;
+                        const options = Array.from(
+                          event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]'),
+                        );
+                        const current = options.indexOf(event.target as HTMLButtonElement);
+                        if (current < 0) return;
+                        event.preventDefault();
+                        const step = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
+                        const next = options[(current + step + options.length) % options.length];
+                        next.focus();
+                        next.click();
+                      }}
                     >
                       <button
                         type="button"
@@ -446,6 +665,7 @@ export function CapabilityReview({
                           }))
                         }
                         role="radio"
+                        tabIndex={!decision.action || decision.action === 'APPROVE' ? 0 : -1}
                         disabled={busy}
                         aria-checked={decision.action === 'APPROVE'}
                       >
@@ -461,6 +681,7 @@ export function CapabilityReview({
                           }))
                         }
                         role="radio"
+                        tabIndex={decision.action === 'REQUEST_CHANGES' ? 0 : -1}
                         disabled={busy}
                         aria-checked={decision.action === 'REQUEST_CHANGES'}
                       >
@@ -476,6 +697,7 @@ export function CapabilityReview({
                           }))
                         }
                         role="radio"
+                        tabIndex={decision.action === 'REJECT' ? 0 : -1}
                         disabled={busy}
                         aria-checked={decision.action === 'REJECT'}
                       >

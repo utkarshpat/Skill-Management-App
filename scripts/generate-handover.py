@@ -170,6 +170,9 @@ onboarding = (ROOT / 'docs/ORGANIZATION_ONBOARDING_AND_SSO_REQUIREMENTS.md').rea
 sections.append({'id':'organization-onboarding-sso','title':'Organization onboarding and SSO checklist','content':onboarding,'source':'docs/ORGANIZATION_ONBOARDING_AND_SSO_REQUIREMENTS.md'})
 storage = (ROOT / 'docs/PRIVATE_FILE_STORAGE_2026-10-17.md').read_text(encoding='utf-8-sig')
 sections.append({'id':'private-file-storage','title':'SQL and Azure Blob private file storage','content':storage,'source':'docs/PRIVATE_FILE_STORAGE_2026-10-17.md'})
+section_ids = [section['id'] for section in sections]
+if len(section_ids) != len(set(section_ids)):
+    raise ValueError('Handover section IDs must be unique to keep chapter links unambiguous.')
 routes=[]
 route_sources = sorted((ROOT/'apps/api/src/modules').rglob('*routes.ts')) + [ROOT/'apps/api/src/create-app.ts']
 for path in route_sources:

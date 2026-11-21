@@ -106,6 +106,7 @@ export function createApp(
     companySessionOrigin?: string;
     companyOidcSecret?: string;
     sharedCompanyAuth?: boolean;
+    probeReadiness?: () => Promise<void>;
     onRequestTiming?: (metric: {
       requestId: string;
       method: string;
@@ -381,7 +382,11 @@ export function createApp(
   registerDashboardRoutes(
     app,
     dependencies
-      ? { ...dependencies, aiConfigured: dependencies.assistant?.status().configured }
+      ? {
+          ...dependencies,
+          aiConfigured: dependencies.assistant?.status().configured,
+          certificationRenewalConfigured: Boolean(dependencies.certificationImages),
+        }
       : undefined,
     store,
     demo,
@@ -405,6 +410,34 @@ export function createApp(
   app.get('/api/health', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.json({ status: 'ok', service: 'capability-api', version: '0.1.0' });
+  });
+  let readinessCheck: Promise<void> | undefined;
+  app.get('/api/ready', async (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const probe = options.probeReadiness;
+    if (!probe) {
+      res.status(503).json({ status: 'unavailable' });
+      return;
+    }
+    readinessCheck ??= Promise.resolve()
+      .then(probe)
+      .finally(() => {
+        readinessCheck = undefined;
+      });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        readinessCheck,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(() => reject(new Error('Readiness check timed out.')), 5000);
+        }),
+      ]);
+      res.json({ status: 'ready' });
+    } catch {
+      res.status(503).json({ status: 'unavailable' });
+    } finally {
+      clearTimeout(timer);
+    }
   });
 
   // Other workflows remain closed until their authorization is implemented.

@@ -10,6 +10,54 @@ import { UsageMeter, responsesUsage } from '../src/modules/ai/usage.js';
 import { AssistantService } from '../src/modules/ai/assistant.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
 
+test('workspace questions route to guidance while explicit draft and practice requests retain their intent', () => {
+  for (const question of [
+    'How do I claim a skill?',
+    'Skill kaise claim karu?',
+    'How do I link an approved certificate to my skill claim?',
+    'What happens to my old skill level after I submit an update?',
+    'Can you answer questions about my access?',
+    'Does this app support test automation?',
+  ])
+    assert.equal(taskSettings(question).kind, 'answer', question);
+  assert.equal(taskSettings('Draft a skill claim for test automation').ownSkillDraft, true);
+  assert.equal(taskSettings('Generate 5 assessment questions about Oracle').questionCount, 5);
+  assert.equal(
+    conversationTaskSettings([
+      { role: 'user', content: 'Draft a skill claim for SQL' },
+      { role: 'assistant', content: 'What did you do with SQL?' },
+      { role: 'user', content: 'How do I see who approves it?' },
+    ]).kind,
+    'answer',
+  );
+});
+
+test('personal skill drafts keep their intent through test-related descriptions and long clarification replies', () => {
+  const original = 'Draft a skill claim for test automation.';
+  assert.equal(taskSettings(original).ownSkillDraft, true);
+  const history = [
+    { role: 'user' as const, content: original },
+    { role: 'assistant' as const, content: 'What relevant experience should the draft include?' },
+  ];
+  assert.equal(
+    conversationTaskSettings([
+      ...history,
+      {
+        role: 'user',
+        content: 'I maintain regression test suites and investigate failures. '.repeat(8),
+      },
+    ]).ownSkillDraft,
+    true,
+  );
+  assert.equal(
+    conversationTaskSettings([
+      ...history,
+      { role: 'user', content: 'Convert this skill draft into a five-question quiz.' },
+    ]).kind,
+    'quiz',
+  );
+});
+
 test('conversation memory is actor-bound, expires, rejects forged history and resets on policy change', () => {
   let now = 0;
   const memory = new ConversationMemory(() => now, 100, 2);

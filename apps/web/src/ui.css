@@ -2761,6 +2761,30 @@ html[data-theme] :is(.assistant-mascot, .assistant-side-genie) img {
   min-height: 40px;
 }
 
+.assistant-record-context {
+  padding-block: 8px;
+}
+
+.assistant-record-context details {
+  margin-bottom: 8px;
+}
+
+.assistant-record-context summary {
+  width: fit-content;
+  max-width: 100%;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.assistant-record-context p {
+  max-height: 8rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .assistant-collapse-handle {
   position: absolute;
   right: min(420px, 100%);

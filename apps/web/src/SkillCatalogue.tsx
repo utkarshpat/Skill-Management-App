@@ -5,6 +5,7 @@ import { Plus, Search, BookOpen } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { FormDialog } from './FormDialog';
 import { CommonProficiency } from './CommonProficiency';
+import { AskCatalogueGenie } from './AskCatalogueGenie';
 import {
   CatalogueCertificationPicker,
   type CatalogueCertification,
@@ -422,6 +423,7 @@ function SkillDefinitions({
                     ? 'Create a skill and define its proficiency levels.'
                     : 'Published skills will appear here.'}
               </p>
+              <AskCatalogueGenie kind="skill" search={search} />
             </div>
           )}
           {!!state?.skills.length && (

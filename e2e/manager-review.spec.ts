@@ -21,10 +21,40 @@ const submitted = {
     skillIds: [claims[0].skillId],
   })),
 };
-async function review(page: Page, state: { fail?: boolean }, mode = 'capability-review') {
+async function review(
+  page: Page,
+  state: { fail?: boolean; competitorWon?: boolean; changedPending?: boolean },
+  mode = 'capability-review',
+) {
   await fixture(page, { role: 'manager' });
   await page.route('**/api/capability-submissions/' + submission, r =>
-    r.fulfill({ json: submitted }),
+    r.fulfill({
+      json: state.competitorWon
+        ? {
+            ...submitted,
+            revision: 6,
+            status: 'REVIEWED',
+            skills: submitted.skills.map(row => ({
+              ...row,
+              status: 'APPROVED',
+              needsReview: false,
+            })),
+            certifications: submitted.certifications.map(row => ({
+              ...row,
+              status: 'APPROVED',
+              needsReview: false,
+            })),
+          }
+        : state.changedPending
+          ? {
+              ...submitted,
+              revision: submitted.revision + 1,
+              skills: submitted.skills.map(row =>
+                row.needsReview ? { ...row, revision: row.revision + 1 } : row,
+              ),
+            }
+          : submitted,
+    }),
   );
   await page.route('**/api/capability-submissions/' + submission + '/files/**', r =>
     r.fulfill({ json: { items: [] } }),
@@ -95,7 +125,92 @@ test('manager review: stale write shows conflict and retains notes without false
     'Query work needs one more example.',
   );
   await expect(page.getByText('Approval decision confirmed', { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Save approval decisions (2)', exact: true }),
+  ).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Refresh request', exact: true })).toBeEnabled();
   expect(writes).toHaveLength(1);
+});
+test('manager review: a concurrent winning decision is displayed after the stale save', async ({
+  page,
+}) => {
+  const state = { fail: true, competitorWon: false };
+  const writes = await review(page, state);
+  const save = page.getByRole('button', { name: 'Save approval decisions (2)' });
+  await expect(save).toBeEnabled();
+  state.competitorWon = true;
+  await save.click();
+  await expect(page.getByText('Decision recorded', { exact: true })).toBeVisible();
+  await expect(save).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: /Feedback notes/ })).toHaveCount(0);
+  expect(writes).toHaveLength(1);
+});
+test('manager review requires a fresh decision on a changed item while keeping untouched notes', async ({
+  page,
+}) => {
+  const state = { fail: true, changedPending: false };
+  const writes = await review(page, state);
+  const sql = page.getByRole('radiogroup', { name: 'Decision for SQL' });
+  await sql.getByRole('radio', { name: 'Approve', exact: true }).press('ArrowLeft');
+  await expect(sql.getByRole('radio', { name: 'Reject', exact: true })).toBeFocused();
+  const notes = page.getByRole('textbox', { name: /Feedback notes/ });
+  await notes.nth(0).fill('More evidence needed.');
+  await notes.nth(1).fill('Issuer details checked.');
+  state.changedPending = true;
+  const save = page.getByRole('button', { name: 'Save approval decisions (2)' });
+  await save.click();
+  await expect(sql.getByRole('radio', { checked: true })).toHaveCount(0);
+  await expect(save).toBeDisabled();
+  await expect(notes.nth(1)).toHaveValue('Issuer details checked.');
+  state.fail = false;
+  await sql.getByRole('radio', { name: 'Reject', exact: true }).check();
+  await notes.nth(0).fill('Updated evidence still insufficient.');
+  await save.click();
+  await expect
+    .poll(() => writes.map(write => [write.decisions[0].action, write.decisions[0].revision]))
+    .toEqual([
+      ['REJECT', 3],
+      ['REJECT', 4],
+    ]);
+});
+
+test('an exact legacy link opens the authorized certificate approval and a conflict refreshes the queue', async ({
+  page,
+}) => {
+  await fixture(page, { role: 'manager', realistic: true });
+  const record = { ...certificates(ids.person)[0], canReview: true, status: 'SUBMITTED' };
+  let revision = record.revision;
+  const writes: number[] = [];
+  await page.route('**/api/certifications?**', route =>
+    route.fulfill({
+      json: {
+        page: 1,
+        pageSize: 25,
+        total: 1,
+        records: [{ ...record, revision }],
+        canReview: true,
+      },
+    }),
+  );
+  await page.route('**/api/certifications', route => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    writes.push(route.request().postDataJSON().revision);
+    if (writes.length > 1) return route.fulfill({ json: { saved: true } });
+    revision++;
+    return route.fulfill({
+      status: 409,
+      json: { error: { message: 'Certification revision changed.' } },
+    });
+  });
+  await page.goto(`/certifications?tab=queue&certification=${record.id}`);
+  const dialog = page.getByRole('dialog', { name: 'Open certification approval' });
+  const approve = dialog.getByRole('button', { name: 'Approve', exact: true });
+  await approve.click();
+  await expect(approve).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Refresh approval queue' }).click();
+  await page.getByRole('button', { name: 'Open certification approval', exact: true }).click();
+  await approve.click();
+  await expect.poll(() => writes).toEqual([record.revision, record.revision + 1]);
 });
 test('employee history: view-only snapshots show saved proficiency and can reroute only the approved record set', async ({
   page,

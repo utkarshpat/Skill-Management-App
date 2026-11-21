@@ -16,6 +16,7 @@ test('health is public; profile, permissions and writes require identity', async
     assert.equal(health.status, 200);
     assert.equal((await health.json()).status, 'ok');
     assert.ok(health.headers.get('x-request-id'));
+    assert.equal((await fetch(`${base}/api/ready`)).status, 503);
     for (const [path, method] of [
       ['/api/me', 'GET'],
       ['/api/me/permissions', 'GET'],
@@ -32,6 +33,34 @@ test('health is public; profile, permissions and writes require identity', async
     });
     assert.equal(invalid.status, 400);
     assert.equal((await invalid.json()).error.code, 'VALIDATION');
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close(error => (error ? reject(error) : resolve())),
+    );
+  }
+});
+
+test('readiness reflects runtime dependency failure and recovery without exposing the cause', async () => {
+  let reachable = false;
+  const server = createApp(undefined, {
+    probeReadiness: async () => {
+      if (!reachable) throw new Error('private database details');
+    },
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  const base = `http://127.0.0.1:${address.port}`;
+  try {
+    const failed = await fetch(base + '/api/ready');
+    assert.equal(failed.status, 503);
+    assert.equal(failed.headers.get('cache-control'), 'no-store');
+    assert.deepEqual(await failed.json(), { status: 'unavailable' });
+    assert.equal((await fetch(base + '/api/health')).status, 200);
+    reachable = true;
+    const ready = await fetch(base + '/api/ready');
+    assert.equal(ready.status, 200);
+    assert.deepEqual(await ready.json(), { status: 'ready' });
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close(error => (error ? reject(error) : resolve())),

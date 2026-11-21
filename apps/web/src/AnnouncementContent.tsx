@@ -255,15 +255,20 @@ export function AnnouncementForm({
   onSubmit,
   busy,
   initialAnswers,
+  editing = Boolean(initialAnswers),
+  submitDisabled,
 }: {
   definition: Definition;
   person: Person;
   onSubmit: (answers: Record<string, string | boolean>) => void;
   busy?: boolean;
   initialAnswers?: Record<string, string | boolean>;
+  editing?: boolean;
+  submitDisabled?: boolean;
 }) {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (busy || submitDisabled) return;
     const data = new FormData(event.currentTarget);
     onSubmit(
       Object.fromEntries(
@@ -362,10 +367,10 @@ export function AnnouncementForm({
       <button
         type="submit"
         className="admin-primary"
-        disabled={busy || !person.email}
+        disabled={busy || submitDisabled || !person.email}
         aria-busy={busy}
       >
-        {busy ? 'Submitting…' : initialAnswers ? 'Save changes' : definition.cta}
+        {busy ? 'Submitting…' : editing ? 'Save changes' : definition.cta}
       </button>
     </form>
   );

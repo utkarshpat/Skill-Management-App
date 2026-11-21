@@ -96,8 +96,11 @@ export function CertificationProfileView({
       return `${item.color} ${start}% ${stop}%`;
     })
     .join(',');
-  const expired = records.filter(r => credentialValidity(r.expiryDate, today) === 'Expired').length;
-  const soon = records.filter(
+  const renewable = records.filter(r => r.status === 'APPROVED');
+  const expired = renewable.filter(
+    r => credentialValidity(r.expiryDate, today) === 'Expired',
+  ).length;
+  const soon = renewable.filter(
     r => credentialValidity(r.expiryDate, today) === 'Expires soon',
   ).length;
   return (
@@ -503,6 +506,7 @@ export function CertificationProfileView({
                   key={item.label}
                   onClick={() => {
                     reset();
+                    setStatus('APPROVED');
                     setValidity(item.label);
                   }}
                 >

@@ -26,6 +26,13 @@ import { loadCertificationPortfolio } from './certification-portfolio';
 import './certifications.css';
 import '../skills-profile.css';
 import { ExcelBulkActions } from '../ExcelBulkActions';
+import {
+  AskSkillGenie,
+  certificateContext,
+  certificateQuestion,
+  focusRecordSection,
+  readOwnCertificate,
+} from '../AskSkillGenie';
 
 export function Certifications({
   actionsContainer,
@@ -61,7 +68,6 @@ export function Certifications({
     [submitting, setSubmitting] = useState<CertificationRecord>();
   const [renewalSource, setRenewalSource] = useState<CertificationRecord>();
   const [renewalFields, setRenewalFields] = useState<CertificationFields>();
-  const renewalHandled = useRef<string | undefined>(undefined);
   const [submitError, setSubmitError] = useState(''),
     [busy, setBusy] = useState(false);
   const submissionLock = useRef(false);
@@ -92,7 +98,10 @@ export function Certifications({
       .catch(e => {
         if (!c.signal.aborted) {
           setData(undefined);
-          setViewing(undefined);
+          if (e.status === 401 || e.status === 403) {
+            setViewing(undefined);
+            setCombined(false);
+          }
           setError(e.message);
         }
       })
@@ -102,31 +111,69 @@ export function Certifications({
     return () => c.abort();
   }, [view, attempt]);
   const renewalId = certificationRenewalId(params.get('renew'));
+  const editRecordId = certificationRenewalId(params.get('editRecord'));
+  const recordId =
+    renewalId ??
+    editRecordId ??
+    certificationRenewalId(params.get('record') ?? params.get('certification'));
   useEffect(() => {
-    if (!renewalId) {
-      renewalHandled.current = undefined;
-      return;
+    if (!recordId || loading || !data) return;
+    const controller = new AbortController();
+    const loadRecord = async (id: string) => {
+      const result = await readApiResponse<{ record: CertificationRecord }>(
+        await authenticatedFetch(`/api/certifications/${id}`, { signal: controller.signal }),
+        'This certification could not be opened.',
+      );
+      return result.record;
+    };
+    async function openLinkedRecord() {
+      try {
+        if (renewalId && (!data?.canManage || !data.canUploadImage))
+          throw new Error(
+            'This credential is unavailable for renewal. Refresh your certifications.',
+          );
+        const record = await loadRecord(recordId!);
+        if (renewalId && record.activeRenewalId) {
+          const active = await loadRecord(record.activeRenewalId);
+          if (controller.signal.aborted) return;
+          if (active.canEdit) editCredential(active);
+          else setViewing(active);
+        } else if (!controller.signal.aborted) {
+          if (
+            renewalId &&
+            record.status === 'APPROVED' &&
+            record.expiryDate &&
+            !record.supersededById
+          ) {
+            setRenewalSource(record);
+            setRenewalFields(certificationRenewalFields(record, today));
+            setCombined(true);
+          } else if (editRecordId && data?.canManage && record.canEdit) editCredential(record);
+          else setViewing(record);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) toast.error((error as Error).message);
+      } finally {
+        if (!controller.signal.aborted) {
+          const next = new URLSearchParams(params);
+          for (const key of ['renew', 'record', 'certification', 'editRecord']) next.delete(key);
+          setParams(next, { replace: true });
+        }
+      }
     }
-    if (loading || !data || renewalHandled.current === renewalId) return;
-    renewalHandled.current = renewalId;
-    const next = new URLSearchParams(params);
-    next.delete('renew');
-    setParams(next, { replace: true });
-    const source = data.records.find(
-      record => record.id === renewalId && record.status === 'APPROVED' && record.expiryDate,
-    );
-    if (!data.canManage || !source) {
-      toast.error('This credential is unavailable for renewal. Refresh your certifications.');
-      return;
-    }
-    setRenewalSource(source);
-    setRenewalFields(certificationRenewalFields(source, today));
-    setCombined(true);
-  }, [params, renewalId, loading, data, setParams, today]);
+    void openLinkedRecord();
+    return () => controller.abort();
+  }, [params, recordId, renewalId, editRecordId, loading, data, setParams, today]);
   const changeView = (tab: string) => {
     const next = new URLSearchParams(params);
     next.set('tab', tab);
     setParams(next);
+  };
+  const startRenewal = (record: CertificationRecord) => {
+    setViewing(undefined);
+    const next = new URLSearchParams(params);
+    next.set('renew', record.id);
+    setParams(next, { replace: true });
   };
   async function mutate(payload: object, message: string) {
     await readApiResponse(
@@ -194,7 +241,11 @@ export function Certifications({
           }
           renewal={
             renewalSource && renewalFields
-              ? { id: renewalSource.id, fields: renewalFields }
+              ? {
+                  id: renewalSource.id,
+                  fields: renewalFields,
+                  skillIds: renewalSource.relatedSkills?.map(skill => skill.id),
+                }
               : undefined
           }
           onClose={() => {
@@ -270,11 +321,7 @@ export function Certifications({
           onAdd={() => setCombined(true)}
           onView={setViewing}
           onEdit={editCredential}
-          onRenew={record => {
-            setRenewalSource(record);
-            setRenewalFields(certificationRenewalFields(record, today));
-            setCombined(true);
-          }}
+          onRenew={startRenewal}
           onSubmit={record => {
             editCredential(record);
           }}
@@ -288,6 +335,26 @@ export function Certifications({
           onClose={() => setViewing(undefined)}
           footer={
             <>
+              <AskSkillGenie
+                load={async signal => {
+                  const latest = await readOwnCertificate(viewing.id, signal);
+                  return {
+                    prompt: certificateQuestion(latest),
+                    record: certificateContext(
+                      latest,
+                      (record, action) => {
+                        if (action === 'renew') startRenewal(record);
+                        else {
+                          setViewing(record);
+                          if (action === 'feedback') focusRecordSection('feedback');
+                        }
+                      },
+                      Boolean(data?.canManage && data.canUploadImage),
+                    ),
+                  };
+                }}
+                onOpen={() => setViewing(undefined)}
+              />
               <button className="secondary-button" onClick={() => setViewing(undefined)}>
                 Close
               </button>
@@ -305,17 +372,10 @@ export function Certifications({
               {data?.canManage &&
                 data.canUploadImage &&
                 viewing.status === 'APPROVED' &&
+                !viewing.supersededById &&
                 viewing.expiryDate && (
-                  <button
-                    className="primary-button"
-                    onClick={() => {
-                      setRenewalSource(viewing);
-                      setRenewalFields(certificationRenewalFields(viewing, today));
-                      setCombined(true);
-                      setViewing(undefined);
-                    }}
-                  >
-                    Record renewal
+                  <button className="primary-button" onClick={() => startRenewal(viewing)}>
+                    {viewing.activeRenewalId ? 'Continue renewal' : 'Record renewal'}
                   </button>
                 )}
             </>
@@ -353,7 +413,9 @@ export function Certifications({
           {viewing.feedback && (
             <section className="cert-feedback">
               <h3>Manager feedback</h3>
-              <p>{viewing.feedback}</p>
+              <p tabIndex={-1} data-genie-section="feedback">
+                {viewing.feedback}
+              </p>
               {viewing.reviewedBy && (
                 <small>
                   {viewing.reviewedBy}
@@ -372,6 +434,10 @@ export function Certifications({
         <CertificationReviewDialog
           certification={reviewing}
           onClose={() => setReviewing(undefined)}
+          onRefresh={() => {
+            setReviewing(undefined);
+            setAttempt(n => n + 1);
+          }}
           onDecision={(record, action, feedback) =>
             mutate(
               { action, id: record.id, revision: record.revision, feedback },

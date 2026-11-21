@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { readApiResponse } from './api-response';
 import { authenticatedFetch } from './auth';
 import { FormDialog } from './FormDialog';
+import { AskSkillGenie, recordQuestion } from './AskSkillGenie';
 import { displayProficiencyName } from './proficiency';
 import type { Entry } from './AccessAudit';
 
@@ -199,6 +200,7 @@ export function AccessAuditDetails({
   actionName,
   recordName,
   onClose,
+  onReopen,
 }: {
   endpoint: string;
   personId?: string;
@@ -206,28 +208,36 @@ export function AccessAuditDetails({
   actionName: string;
   recordName: string;
   onClose: () => void;
+  onReopen: (entry: Entry) => void;
 }) {
   const [entry, setEntry] = useState<Entry>();
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  async function readEntry(signal: AbortSignal) {
     const params = new URLSearchParams({ pageSize: '1', details: 'true' });
     if (selected.revision < 2147483647) params.set('before', String(selected.revision + 1));
     if (personId) params.set('personId', personId);
-    void authenticatedFetch(endpoint + '/audit?' + params, { signal: controller.signal })
-      .then(response =>
-        readApiResponse<{ items: Entry[] }>(response, 'Activity details could not be loaded.'),
-      )
-      .then(data => {
-        const item = data.items?.[0];
-        if (
-          item?.revision !== selected.revision ||
-          item.targetId !== selected.targetId ||
-          item.action !== selected.action
-        )
-          throw new Error('This activity entry is no longer available.');
+    const data = await readApiResponse<{ items: Entry[] }>(
+      await authenticatedFetch(endpoint + '/audit?' + params, { signal }),
+      'Activity details could not be loaded.',
+    );
+    const item = data.items?.[0];
+    if (
+      item?.revision !== selected.revision ||
+      item.targetId !== selected.targetId ||
+      item.action !== selected.action
+    )
+      throw Object.assign(new Error('This activity entry is no longer available.'), {
+        status: 404,
+      });
+    return item;
+  }
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void readEntry(controller.signal)
+      .then(item => {
         if (!controller.signal.aborted) setEntry(item);
       })
       .catch(reason => {
@@ -283,6 +293,40 @@ export function AccessAuditDetails({
         <p role="status">Loading activity details…</p>
       ) : (
         <>
+          <AskSkillGenie
+            onOpen={onClose}
+            load={async signal => {
+              const current = await readEntry(signal);
+              const summary = changes(current);
+              const status = summary.rows.find(row => row.label === 'Status');
+              const prompt = recordQuestion('What changed in this activity entry?', [
+                `Action: ${actionName}.`,
+                status ? `Status: ${status.before} → ${status.after}.` : '',
+                summary.rows.length
+                  ? `Recorded fields: ${summary.rows.map(row => row.label).join(', ')}.`
+                  : 'No field-level changes were saved.',
+                ...recordedDecisions(current).map(
+                  decision =>
+                    `Recorded ${decision.kind === 'SKILL' ? 'skill' : 'certificate'} decision: ${statusLabel(decision.status)}.`,
+                ),
+              ]);
+              return {
+                prompt,
+                record: {
+                  label: actionName,
+                  actions: [
+                    {
+                      label: 'Back to this record',
+                      run: async signal => {
+                        const latest = await readEntry(signal);
+                        if (!signal.aborted) onReopen(latest);
+                      },
+                    },
+                  ],
+                },
+              };
+            }}
+          />
           {decisions.length > 0 && (
             <section className="activity-decisions">
               <h3>Recorded decisions</h3>

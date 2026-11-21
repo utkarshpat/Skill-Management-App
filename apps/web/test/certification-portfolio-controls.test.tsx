@@ -75,6 +75,10 @@ beforeEach(async () => {
       return Response.json({ claims: [], certifications: records, definitions: [] });
     if (url.startsWith('/api/my-skills/catalogue?')) return Response.json({ skills: [], total: 0 });
     if (url.endsWith('/image')) return Response.json({ items: [] });
+    if (url.startsWith('/api/certifications/')) {
+      const match = records.find(item => url === `/api/certifications/${item.id}`);
+      return match ? Response.json({ record: match }) : new Response(null, { status: 404 });
+    }
     throw Error('Unexpected request ' + url);
   });
   await refreshDevelopmentLogin();
@@ -240,6 +244,21 @@ test('read-only portfolio cannot start renewal through a direct record link', as
   );
   assert.equal(document.querySelector('dialog'), null);
   assert.equal(requests.includes('/api/capability-submissions/options'), false);
+});
+
+test('dashboard edit deep link opens the editor only for a currently editable certificate', async () => {
+  canManage = true;
+  records[0] = { ...record, status: 'CHANGES_REQUESTED', canEdit: true };
+  await mount('/certifications?editRecord=' + record.id);
+  const editor = await waitForEditor('Add skill');
+  assert.match(editor.textContent!, /Azure Fundamentals/);
+  await click('Cancel', editor);
+  assert.equal(document.querySelector('dialog'), null);
+  await view?.unmount();
+  records[0] = { ...record, status: 'SUBMITTED', canEdit: false };
+  await mount('/certifications?editRecord=' + record.id);
+  assert.ok(document.querySelector('dialog[aria-label="Azure Fundamentals"]'));
+  assert.equal(document.querySelector('dialog[aria-label="Add skill"]'), null);
 });
 
 test('credential pagination, status tabs and renewal attention apply independent filters', async () => {

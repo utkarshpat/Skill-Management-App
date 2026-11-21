@@ -50,7 +50,10 @@ export function Announcements({
     form: boolean;
     editing?: boolean;
     responseRevision?: number;
+    retryAnswers?: Record<string, string | boolean>;
+    refreshedAfterConflict?: boolean;
   }>();
+  const conflictTarget = dialog?.retryAnswers ? dialog.item : undefined;
   const [view, setView] = useState<'announcements' | 'responses'>('announcements');
   const [feedError, setFeedError] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -77,9 +80,12 @@ export function Announcements({
       const signal = request.signal;
       setFeedLoading(true);
       const query = new URLSearchParams();
-      if (feedPage > 1 && !requestedId) query.set('page', String(feedPage));
-      if (requestedId) query.set('announcement', requestedId);
-      else query.set('pending', '1');
+      const target = conflictTarget ?? requestedId;
+      if (target) query.set('announcement', target);
+      else {
+        query.set('pending', '1');
+        if (feedPage > 1) query.set('page', String(feedPage));
+      }
       authenticatedFetch(endpoint + '/feed' + (query.size ? '?' + query : ''), { signal })
         .then(response => readApiResponse<Feed>(response, 'Announcements are unavailable.'))
         .then(value => {
@@ -89,6 +95,12 @@ export function Announcements({
             setFeedError('');
             setLoadedLink(requestedId);
             setNow(Date.now());
+            if (conflictTarget)
+              setDialog(current =>
+                current?.item === conflictTarget && current.retryAnswers
+                  ? { ...current, refreshedAfterConflict: true }
+                  : current,
+              );
           }
         })
         .catch(error => {
@@ -124,7 +136,7 @@ export function Announcements({
       window.removeEventListener('focus', refresh);
       window.removeEventListener('workspace-access-updated', refreshAccess);
     };
-  }, [requestedId, attempt, feedPage, onPublishAccess]);
+  }, [requestedId, conflictTarget, attempt, feedPage, onPublishAccess]);
   const items = feed?.items.filter(item => Date.parse(item.endsAt) > now) ?? [];
   const person = feed?.person;
   const bannerKey = (entry: LiveAnnouncement) =>
@@ -227,7 +239,11 @@ export function Announcements({
     setFeedback('');
   };
   const respond = async (entry: LiveAnnouncement, answers: Record<string, string | boolean>) => {
-    if (responseLock.current) return;
+    if (
+      responseLock.current ||
+      (conflictTarget === entry.id && (!dialog?.refreshedAfterConflict || feedLoading))
+    )
+      return;
     responseLock.current = true;
     setBusy(true);
     setFeedback('');
@@ -273,9 +289,7 @@ export function Announcements({
       setResponseError(true);
       setFeedback((error as Error).message);
       if ((error as { status?: number }).status === 409) {
-        setDialog(current =>
-          current?.item === entry.id ? { item: entry.id, form: false } : current,
-        );
+        setDialog({ item: entry.id, form: true, retryAnswers: answers });
         setAttempt(attempt => attempt + 1);
       }
     } finally {
@@ -496,7 +510,9 @@ export function Announcements({
             <AnnouncementCard
               key={open.id}
               definition={
-                open.answered ? { ...open.definition, design: undefined } : open.definition
+                open.answered || dialog?.retryAnswers
+                  ? { ...open.definition, design: undefined }
+                  : open.definition
               }
               person={person}
               busy={busy}
@@ -535,33 +551,50 @@ export function Announcements({
                       <button
                         type="button"
                         className="admin-primary"
-                        disabled={feedLoading}
+                        disabled={
+                          feedLoading ||
+                          Boolean(dialog?.retryAnswers && !dialog.refreshedAfterConflict)
+                        }
                         onClick={() =>
                           setDialog({
                             item: open.id,
                             form: true,
                             editing: true,
                             responseRevision: open.responseRevision,
+                            retryAnswers: dialog?.retryAnswers,
+                            refreshedAfterConflict: dialog?.refreshedAfterConflict,
                           })
                         }
                       >
-                        Edit response
+                        {dialog?.retryAnswers ? 'Edit using my unsaved response' : 'Edit response'}
                       </button>
                     )}
                   </div>
                 ) : open.definition.kind === 'POLL' ? (
                   <PollOptions
                     options={open.definition.options}
-                    disabled={busy}
+                    disabled={
+                      busy ||
+                      Boolean(
+                        dialog?.retryAnswers && (feedLoading || !dialog.refreshedAfterConflict),
+                      )
+                    }
                     selectedVote={open.savedAnswers?.vote}
                     onVote={vote => void respond(open, { vote })}
                   />
                 ) : dialog?.form ? (
                   <AnnouncementForm
+                    key={open.id}
                     definition={open.definition}
                     person={person}
                     busy={busy}
-                    initialAnswers={open.answered ? (open.savedAnswers ?? {}) : undefined}
+                    submitDisabled={Boolean(
+                      dialog.retryAnswers && (feedLoading || !dialog.refreshedAfterConflict),
+                    )}
+                    editing={Boolean(dialog.editing)}
+                    initialAnswers={
+                      dialog.retryAnswers ?? (open.answered ? (open.savedAnswers ?? {}) : undefined)
+                    }
                     onSubmit={answers => void respond(open, answers)}
                   />
                 ) : (
@@ -571,6 +604,16 @@ export function Announcements({
             />
           )}
           {feedback && <p role={responseError ? 'alert' : 'status'}>{feedback}</p>}
+          {dialog?.retryAnswers && !dialog.refreshedAfterConflict && feedError && (
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={feedLoading}
+              onClick={() => setAttempt(value => value + 1)}
+            >
+              Refresh announcement
+            </button>
+          )}
         </FormDialog>
       )}
     </>

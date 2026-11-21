@@ -17,6 +17,7 @@ export interface DashboardSources {
   claims?: ClaimsStore;
   capabilitySubmissions?: CapabilitySubmissionStore;
   certifications?: CertificationStore;
+  certificationRenewalConfigured?: boolean;
   learning?: LearningStore;
   workflows?: WorkflowStore;
   aiConfigured?: boolean;
@@ -284,10 +285,32 @@ export async function loadDashboardCard(
     return { ...learningSummary(data.plans, at), canManage: data.canManage };
   }
   if (id === 'capability') {
-    const [summary, recent] = await Promise.all([
+    const canEdit = can(state, person, 'skill.claim', true) && can(state, person, 'skill.view');
+    const [summary, recent, certificates, submissions] = await Promise.all([
       sources.claims!.summary!(actor),
       sources.claims!.read(actor, 1),
+      sources.certifications?.read(actor, { view: 'mine', page: 1, search: '' }).catch(() => null),
+      canEdit ? sources.capabilitySubmissions?.run(actor, 'MINE', {}).catch(() => null) : undefined,
     ]);
+    const canClaim = recent.canClaim && canEdit;
+    const drafts: { id: string; name: string; href: string }[] =
+      Array.isArray(submissions?.records) && canClaim
+        ? submissions.records
+            .filter(
+              (item: { id?: string; status?: string; canEdit?: boolean }) =>
+                typeof item.id === 'string' && item.status === 'DRAFT' && item.canEdit,
+            )
+            .slice(0, 3)
+            .map((item: { id: string; label?: string }) => ({
+              id: item.id,
+              name: item.label || 'Skills and certificates draft',
+              href: '/my-skills?submission=' + encodeURIComponent(item.id),
+            }))
+        : [];
+    const priority = { CHANGES_REQUESTED: 0, REJECTED: 1, DRAFT: 2, SUBMITTED: 3, APPROVED: 4 };
+    const today = at.toISOString().slice(0, 10);
+    const renewalWindow = new Date(at.getTime() + 90 * 86400000).toISOString().slice(0, 10);
+    const canManageCertificates = can(state, person, 'skill.claim', true);
     return {
       ...summary,
       ...(summary.topSkills
@@ -302,20 +325,78 @@ export async function loadDashboardCard(
             })),
           }
         : {}),
-      canClaim:
-        recent.canClaim &&
-        can(state, person, 'skill.claim', true) &&
-        can(state, person, 'skill.view'),
-      recentClaims: recent.claims.slice(0, 3).map(c => ({
-        id: c.id,
-        skillName: c.skillName,
-        category: c.category,
-        rank: c.rank,
-        levelName: c.levelName,
-        status: c.status,
-        updatedAt: c.updatedAt,
-        href: '/my-skills?claim=' + c.id,
-      })),
+      canClaim,
+      submissionDrafts: drafts,
+      ...(certificates === null ||
+      (certificates && certificates.records.some(c => c.personId !== actor))
+        ? { certificatePreviewUnavailable: true }
+        : certificates
+          ? {
+              recentCertificates: certificates.records
+                .filter(c => !c.supersededById)
+                .map(c => {
+                  const renewalDue =
+                    c.status === 'APPROVED' &&
+                    Boolean(c.expiryDate && c.expiryDate <= renewalWindow);
+                  const renewalAction =
+                    renewalDue &&
+                    canManageCertificates &&
+                    Boolean(sources.certificationRenewalConfigured);
+                  return {
+                    id: c.id,
+                    name: c.certificationName,
+                    issuer: c.provider,
+                    status: c.status,
+                    submittedAt: c.submittedAt,
+                    expiryDate: c.expiryDate,
+                    expired: Boolean(c.expiryDate && c.expiryDate < today),
+                    renewalDue,
+                    href: '/certifications?record=' + encodeURIComponent(c.id),
+                    renewalHref: renewalAction
+                      ? '/certifications?renew=' + encodeURIComponent(c.id)
+                      : undefined,
+                    activeRenewal: Boolean(c.activeRenewalId),
+                    editHref:
+                      canManageCertificates &&
+                      ['DRAFT', 'CHANGES_REQUESTED', 'REJECTED'].includes(c.status)
+                        ? '/certifications?editRecord=' + encodeURIComponent(c.id)
+                        : undefined,
+                    feedback: ['CHANGES_REQUESTED', 'REJECTED'].includes(c.status)
+                      ? c.feedback?.trim().slice(0, 180)
+                      : undefined,
+                  };
+                })
+                .sort(
+                  (a, b) =>
+                    (a.renewalDue ? -1 : priority[a.status]) -
+                    (b.renewalDue ? -1 : priority[b.status]),
+                )
+                .slice(0, 3),
+            }
+          : {}),
+      recentClaims: [...recent.claims]
+        .filter(
+          c => c.status !== 'DRAFT' || !drafts.some(draft => draft.id === c.activeSubmissionId),
+        )
+        .sort((a, b) => priority[a.status] - priority[b.status])
+        .slice(0, 3)
+        .map(c => ({
+          id: c.id,
+          skillName: c.skillName,
+          category: c.category,
+          rank: c.rank,
+          levelName: c.levelName,
+          status: c.status,
+          updatedAt: c.updatedAt,
+          href: '/my-skills?claim=' + c.id,
+          editHref:
+            canClaim && ['DRAFT', 'CHANGES_REQUESTED', 'REJECTED'].includes(c.status)
+              ? '/my-skills?editClaim=' + encodeURIComponent(c.id)
+              : undefined,
+          feedback: ['CHANGES_REQUESTED', 'REJECTED'].includes(c.status)
+            ? c.feedback?.trim().slice(0, 180)
+            : undefined,
+        })),
     };
   }
   if (id === 'requests') {

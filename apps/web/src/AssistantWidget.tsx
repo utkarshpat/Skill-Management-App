@@ -3,6 +3,11 @@ import { learningDraftHandoff } from './learning-draft-handoff';
 import { phaseTwoVisible } from './release-features';
 import { AssistantSession } from './assistant-session';
 import { assistantContextPrompt } from './assistant-context';
+import {
+  recordFactsSeparator,
+  type AssistantRecordAction,
+  type AssistantRecordContext,
+} from './assistant-record';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { requestRead, type RequestOptions } from './request-model';
@@ -167,6 +172,11 @@ export function AssistantWidget() {
     [showHistory, setShowHistory] = useState(false);
   const [historyBusy, setHistoryBusy] = useState(false);
   const [pendingContext, setPendingContext] = useState<string>();
+  const [pendingRecord, setPendingRecord] = useState<AssistantRecordContext>();
+  const [recordContext, setRecordContext] = useState<
+    AssistantRecordContext & { facts: string; locationKey: string }
+  >();
+  const currentRecord = recordContext?.locationKey === location.key ? recordContext : undefined;
   const peopleContext = useRef<string | undefined>(undefined);
   const conversationId = useRef<string | undefined>(undefined);
   const session = useRef(new AssistantSession());
@@ -181,6 +191,8 @@ export function AssistantWidget() {
     setError('');
     setActionNotice('');
     setPendingContext(undefined);
+    setPendingRecord(undefined);
+    setRecordContext(undefined);
     peopleContext.current = undefined;
     setShowHistory(false);
     setDocument(undefined);
@@ -194,14 +206,15 @@ export function AssistantWidget() {
     setOpen(true);
     setUnread(false);
   }
-  function collapse() {
+  function collapse(restoreFocus = true) {
     session.current.collapse();
     setArrivingReply(undefined);
     setOpen(false);
-    requestAnimationFrame(() => launcher.current?.focus());
+    if (restoreFocus) requestAnimationFrame(() => launcher.current?.focus());
   }
   const historyController = useRef<AbortController | null>(null);
   const actionController = useRef<AbortController | null>(null);
+  const recordActionController = useRef<AbortController | null>(null);
   const controller = useRef<AbortController | null>(null),
     input = useRef<HTMLTextAreaElement>(null),
     launcher = useRef<HTMLButtonElement>(null),
@@ -216,23 +229,40 @@ export function AssistantWidget() {
     },
     [],
   );
-  function prepareContext(value: unknown, autoSend = false) {
+  function useRecordPrompt(prompt: string, record?: AssistantRecordContext) {
+    const split = record ? prompt.indexOf(recordFactsSeparator) : -1;
+    setRecordContext(
+      record && split >= 0
+        ? {
+            ...record,
+            facts: prompt.slice(split + recordFactsSeparator.length),
+            locationKey: location.key,
+          }
+        : undefined,
+    );
+    setText(split >= 0 ? prompt.slice(0, split) : prompt);
+  }
+  function prepareContext(value: unknown, autoSend = false, record?: AssistantRecordContext) {
     if (busy || actionBusy || historyBusy) return;
     const context = assistantContextPrompt(value, session.current.restartOnOpen ? '' : text);
     if (!context) return;
     openChat();
     setError('');
     setShowHistory(false);
-    if (context.needsReplacement) setPendingContext(context.prompt);
-    else {
+    if (context.needsReplacement) {
+      setPendingContext(context.prompt);
+      setPendingRecord(record);
+    } else {
       setPendingContext(undefined);
+      setPendingRecord(undefined);
       if (autoSend) {
         beginPeopleSearch(context.prompt);
       } else {
         peopleContext.current = undefined;
-        setText(context.prompt);
+        useRecordPrompt(context.prompt, record);
       }
     }
+    return true;
   }
   function beginPeopleSearch(prompt: string) {
     newChat();
@@ -245,14 +275,54 @@ export function AssistantWidget() {
     ]);
   }
   useEffect(() => {
-    const contextual = (event: Event) =>
-      prepareContext(
-        (event as CustomEvent<{ prompt?: unknown; autoSend?: boolean }>).detail?.prompt,
-        (event as CustomEvent<{ autoSend?: boolean }>).detail?.autoSend === true,
-      );
+    const contextual = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          prompt?: unknown;
+          autoSend?: boolean;
+          record?: AssistantRecordContext;
+        }>
+      ).detail;
+      if (prepareContext(detail?.prompt, detail?.autoSend === true, detail?.record)) {
+        event.preventDefault();
+        if (event.cancelable)
+          requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
+      }
+    };
     window.addEventListener('assistant-context-request', contextual);
     return () => window.removeEventListener('assistant-context-request', contextual);
-  }, [busy, actionBusy, historyBusy, text]);
+  }, [busy, actionBusy, historyBusy, text, location.key]);
+  useEffect(() => {
+    setPendingContext(undefined);
+    setPendingRecord(undefined);
+    setRecordContext(undefined);
+    recordActionController.current?.abort();
+  }, [location.key]);
+
+  async function runRecordAction(action: AssistantRecordAction) {
+    if (busy || actionBusy || historyBusy || actionController.current) return;
+    const controller = new AbortController();
+    actionController.current = controller;
+    recordActionController.current = controller;
+    setActionBusy(true);
+    setError('');
+    try {
+      await action.run(controller.signal);
+      if (!controller.signal.aborted) collapse(false);
+    } catch (reason) {
+      if (!controller.signal.aborted) {
+        if ([401, 403, 404].includes((reason as { status?: number }).status ?? 0))
+          setRecordContext(undefined);
+        setError((reason as Error).message);
+      }
+    } finally {
+      if (recordActionController.current === controller) recordActionController.current = null;
+      if (actionController.current === controller) {
+        actionController.current = null;
+        setActionBusy(false);
+      }
+    }
+  }
   useEffect(() => {
     if (open) (status?.configured ? input.current : closeButton.current)?.focus();
   }, [open, status?.configured]);
@@ -407,6 +477,8 @@ export function AssistantWidget() {
           : '',
       );
       setPendingContext(undefined);
+      setPendingRecord(undefined);
+      setRecordContext(undefined);
       setText('');
       setDocument(undefined);
       setShowHistory(false);
@@ -446,19 +518,64 @@ export function AssistantWidget() {
     setPendingContext(undefined);
     collapse();
   }
+  async function checkRecordForSend() {
+    if (!currentRecord?.reload) return true;
+    if (actionController.current) return false;
+    const pending = new AbortController();
+    actionController.current = pending;
+    recordActionController.current = pending;
+    setActionBusy(true);
+    setError('');
+    try {
+      const latest = await currentRecord.reload(pending.signal);
+      if (pending.signal.aborted) return false;
+      const split = latest.prompt.indexOf(recordFactsSeparator);
+      if (split < 0) throw new Error('Record context could not be refreshed.');
+      const facts = latest.prompt.slice(split + recordFactsSeparator.length);
+      setRecordContext({
+        ...latest.record,
+        reload: currentRecord.reload,
+        facts,
+        locationKey: currentRecord.locationKey,
+      });
+      if (facts === currentRecord.facts) {
+        setActionNotice('');
+        return true;
+      }
+      setActionNotice('The record changed. Review the updated context and send again.');
+      return false;
+    } catch (error) {
+      if (!pending.signal.aborted) {
+        if ([401, 403, 404].includes((error as { status?: number }).status ?? 0))
+          setRecordContext(undefined);
+        setError((error as Error).message);
+      }
+      return false;
+    } finally {
+      if (recordActionController.current === pending) recordActionController.current = null;
+      if (actionController.current === pending) {
+        actionController.current = null;
+        setActionBusy(false);
+      }
+    }
+  }
   async function send(prompt?: string) {
     if (busy || historyBusy || actionBusy || !(prompt ?? text).trim() || !status?.configured)
       return;
     const outgoing = peopleContext.current
       ? `${peopleContext.current}\nThe initial question has already been asked. Use these requirements now; clarify only essential missing details.\nUser requirements:\n${(prompt ?? text).trim()}`
-      : (prompt ?? text).trim();
+      : currentRecord && !prompt
+        ? `${text.trim()}${recordFactsSeparator}${currentRecord.facts}\n\nExplain the recorded facts first, then give the next step. Clearly identify anything the record does not establish.`
+        : (prompt ?? text).trim();
     if (outgoing.length > 2000) {
-      setError('This matching request is too long. Shorten it before sending.');
+      setError('This message is too long. Shorten it before sending.');
       return;
     }
+    if (!prompt && currentRecord && !(await checkRecordForSend())) return;
     input.current?.focus({ preventScroll: true });
     const next: ChatMessage[] = [...messages, { role: 'user', content: (prompt ?? text).trim() }];
     setPendingContext(undefined);
+    setPendingRecord(undefined);
     setMessages(current => [...current, next.at(-1)!]);
     setText('');
     setBusy(true);
@@ -782,15 +899,55 @@ export function AssistantWidget() {
                       pendingContext.includes('Use conversational search')
                     )
                       beginPeopleSearch(pendingContext);
-                    else setText(pendingContext);
+                    else useRecordPrompt(pendingContext, pendingRecord);
                     setPendingContext(undefined);
+                    setPendingRecord(undefined);
                     input.current?.focus();
                   }}
                 >
                   Replace message
                 </button>
-                <button className="secondary-button" onClick={() => setPendingContext(undefined)}>
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    setPendingContext(undefined);
+                    setPendingRecord(undefined);
+                  }}
+                >
                   Keep my message
+                </button>
+              </div>
+            </section>
+          )}
+          {currentRecord && !showHistory && (
+            <section
+              className="assistant-context-choice assistant-record-context"
+              aria-label="Current record context"
+            >
+              <details>
+                <summary>{currentRecord.label}</summary>
+                <small>Included when you send a message</small>
+                <p>{currentRecord.facts}</p>
+              </details>
+              <div>
+                {currentRecord.actions.map(action => (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    key={action.label}
+                    disabled={busy || actionBusy || historyBusy}
+                    onClick={() => void runRecordAction(action)}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={busy || actionBusy}
+                  onClick={() => setRecordContext(undefined)}
+                >
+                  Remove context
                 </button>
               </div>
             </section>
@@ -863,7 +1020,7 @@ export function AssistantWidget() {
           aria-label="Collapse AI assistant and resume later"
           aria-controls="assistant-panel"
           title="Collapse · resume this chat"
-          onClick={collapse}
+          onClick={() => collapse()}
         >
           <ChevronRight size={20} />
         </button>

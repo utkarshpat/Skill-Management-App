@@ -385,7 +385,27 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
         {credential && (
           <CertificationReviewDialog
             certification={credential}
+            onReopen={setCredential}
+            refreshForAssistant={async signal => {
+              const filters = new URLSearchParams({
+                view: 'queue',
+                page: String(page),
+                search: query,
+              });
+              const latest = await readApiResponse<CertificationPage>(
+                await authenticatedFetch('/api/certifications?' + filters, {
+                  signal,
+                  headers: { 'X-Certification-View': 'review-only' },
+                }),
+                'This certificate approval could not be refreshed.',
+              );
+              return latest.records.find(record => record.id === credential.id);
+            }}
             onClose={() => setCredential(undefined)}
+            onRefresh={() => {
+              setCredential(undefined);
+              setAttempt(n => n + 1);
+            }}
             onDecision={async (record, action, feedback) => {
               await readApiResponse(
                 await authenticatedFetch('/api/certifications', {

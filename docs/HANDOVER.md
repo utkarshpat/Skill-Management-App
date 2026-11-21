@@ -12,7 +12,7 @@ The reporting guide is India Head -> DU Head -> Portfolio Manager/Delivery Manag
 
 **Rollout pending:** local code and an explicit preview/revision/hash-bound mapping template are supplied, not applied. Stop serving the application during migration/backfill: installing 088 before mapping intentionally invalidates old direct DU-to-client paths. Complete reviewed mapping and SQL acceptance before releasing the matching application. No live database, person-manager links or deployment were changed for this increment. See the [approved structural contract](ACCESS_MODEL_REDESIGN.md#mandatory-portfoliodivision---approved-structural-follow-up-5-november-2026) and [maintenance procedure](../database/operations/README.md#mandatory-portfoliodivision-rollout). Earlier dated rollout statements below remain historical.
 
-## Current company operations
+## Company operations overview
 
 Release `13508c2` is live on the company development App Service. The frontend bundle matched the release build and the public health check returned `ok`. The operator reported applying migration `115`. The full application regression run passed 1,197 tests. Hosted checks with representative employee, manager, Business Analytics and Admin accounts remain part of the next acceptance pass.
 

@@ -95,3 +95,37 @@ test('capability empty and read-only states hide unsupported editing actions', (
   assert.match(readonly, /Build your capability profile/);
   assert.doesNotMatch(readonly, /action=add|Recently updated|View feedback/);
 });
+
+test('dashboard shows exact draft, returned claim and renewal actions separately', () => {
+  const html = render({
+    ...data,
+    submissionDrafts: [
+      { id: 'mixed', name: 'Skills and certificate draft', href: '/my-skills?submission=mixed' },
+    ],
+    recentClaims: [
+      {
+        ...data.recentClaims[0],
+        status: 'CHANGES_REQUESTED',
+        feedback: 'Add a project example.',
+        editHref: '/my-skills?editClaim=one',
+      },
+    ],
+    recentCertificates: [
+      {
+        id: 'certificate',
+        name: 'Cloud Architect',
+        issuer: 'Oracle',
+        status: 'APPROVED',
+        expiryDate: '2026-11-01',
+        expired: true,
+        href: '/certifications?record=certificate',
+        renewalHref: '/certifications?renew=certificate',
+      },
+    ],
+  });
+  assert.match(html, /submission=mixed.*Continue draft/);
+  assert.match(html, /editClaim=one.*Edit and resubmit/);
+  assert.match(html, /Add a project example/);
+  assert.match(html, /renew=certificate.*Renew certificate/);
+  assert.match(html, /Expired 1 Nov 2026/);
+});

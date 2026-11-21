@@ -1,6 +1,6 @@
 {
   "version": "2026-11-20",
-  "revision": "4f2ebb6f8e715359",
+  "revision": "5e6d2a0e97d83631",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -7999,6 +7999,12 @@
     {
       "method": "GET",
       "path": "/api/health",
+      "module": "application",
+      "source": "apps/api/src/create-app.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ready",
       "module": "application",
       "source": "apps/api/src/create-app.ts"
     }

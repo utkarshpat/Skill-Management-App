@@ -1,6 +1,80 @@
 import { test, expect, fixture, ids } from './browser-fixture';
 import { commonLevels } from '../apps/web/src/proficiency';
 import type { Page } from '@playwright/test';
+import { certificates, claims } from './workforce-data';
+
+test('employee dashboard prioritizes returned claims and opens the exact certificate renewal', async ({
+  page,
+}) => {
+  await mockIntake(page);
+  const claim = claims[2];
+  const certificate = { ...certificates(ids.person)[0], expiryDate: '2026-01-31' };
+  await page.route('**/api/certifications/' + certificate.id, route =>
+    route.fulfill({ json: { record: certificate } }),
+  );
+  await page.route('**/api/dashboard/overview', route =>
+    route.fulfill({
+      json: {
+        revision: 1,
+        actorId: ids.person,
+        ai: false,
+        actions: [],
+        cards: [
+          {
+            id: 'capability',
+            title: 'My capability',
+            description: 'My work',
+            endpoint: '/api/dashboard/capability',
+            scope: { kind: 'OWN', actorId: ids.person },
+          },
+        ],
+        cardData: {
+          capability: {
+            data: {
+              total: 1,
+              verified: 0,
+              pending: 0,
+              draft: 0,
+              changesRequested: 1,
+              rejected: 0,
+              canClaim: true,
+              topSkills: [],
+              recentClaims: [
+                {
+                  ...claim,
+                  href: `/my-skills?claim=${claim.id}`,
+                  editHref: `/my-skills?editClaim=${claim.id}`,
+                },
+              ],
+              recentCertificates: [
+                {
+                  id: certificate.id,
+                  name: certificate.certificationName,
+                  issuer: certificate.provider,
+                  status: 'APPROVED',
+                  expiryDate: certificate.expiryDate,
+                  expired: true,
+                  href: `/certifications?record=${certificate.id}`,
+                  renewalHref: `/certifications?renew=${certificate.id}`,
+                },
+              ],
+            },
+          },
+        },
+      },
+    }),
+  );
+  await page.goto('/workspace');
+  const claimsSection = page.getByRole('region', { name: 'Skill claim status and next actions' });
+  await expect(
+    claimsSection.getByRole('link', { name: `Edit and resubmit for ${claim.skillName}` }),
+  ).toHaveAttribute('href', `/my-skills?editClaim=${claim.id}`);
+  await expect(claimsSection).toContainText(claim.feedback);
+  await page
+    .getByRole('link', { name: `Renew certificate for ${certificate.certificationName}` })
+    .click();
+  await expect(page.getByRole('dialog', { name: 'Renew certificate', exact: true })).toBeVisible();
+});
 const choice = {
   id: '11111111-1111-4111-8111-000000000001',
   name: 'SQL',
@@ -135,12 +209,26 @@ test('portfolio add actions open the right step and preserve the linked draft wh
     r.fulfill({ json: { records: [] } }),
   );
   await page.goto('/my-skills');
+  await expect(
+    page.getByRole('heading', { name: 'Skills & Certifications', exact: true }),
+  ).toBeVisible();
+  const portfolio = page.getByRole('navigation', { name: 'Skills and certifications sections' });
+  await portfolio.getByRole('link', { name: 'Certifications', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'My certification profile' })).toBeVisible();
+  await portfolio.getByRole('link', { name: 'Skills', exact: true }).click();
   await page.getByRole('button', { name: 'Add certificate', exact: true }).click();
   const certificateEntry = page.getByRole('dialog', { name: 'Add certificate', exact: true });
   await expect(
     certificateEntry.getByRole('button', { name: 'Certificates', exact: true }),
   ).toHaveAttribute('aria-current', 'step');
+  await certificateEntry.getByLabel('Certification name').fill('Certificate entered before upload');
+  await certificateEntry.getByRole('button', { name: 'Skills', exact: true }).click();
+  await certificateEntry.getByRole('button', { name: 'Certificates', exact: true }).click();
+  await expect(certificateEntry.getByLabel('Certification name')).toHaveValue(
+    'Certificate entered before upload',
+  );
   await certificateEntry.getByRole('button', { name: 'Close Add certificate' }).click();
+  await page.getByRole('button', { name: 'Discard', exact: true }).click();
 
   await page.getByRole('button', { name: 'Add skill', exact: true }).click();
   const composer = page.getByRole('dialog', { name: 'Add skill', exact: true });
@@ -186,4 +274,66 @@ test('portfolio add actions open the right step and preserve the linked draft wh
   );
   await composer.getByRole('button', { name: 'Edit certificates', exact: true }).click();
   await expect(composer.getByLabel('Certification name')).toHaveValue('Synthetic SQL credential');
+});
+
+test('certification renewal summaries exclude rejected credentials and links still open exact records', async ({
+  page,
+}) => {
+  await mockIntake(page);
+  const [approved, rejected] = certificates(ids.person);
+  const record = { ...rejected, status: 'REJECTED', expiryDate: '2000-01-01' };
+  await page.route('**/api/certifications?**', r =>
+    r.fulfill({
+      json: {
+        records: [approved, record],
+        snapshotRevision: 2,
+        total: 2,
+        page: 1,
+        pageSize: 25,
+        canManage: true,
+        canUploadImage: true,
+      },
+    }),
+  );
+  await page.route(`**/api/certifications/${record.id}`, r => r.fulfill({ json: { record } }));
+  await page.goto('/my-skills');
+  await expect(page.getByText('No renewals due in the next 90 days.')).toBeVisible();
+  await page.goto(`/certifications?record=${record.id}`);
+  const dialog = page.getByRole('dialog', { name: record.certificationName });
+  await expect(dialog).toContainText('Not approved');
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  const renewal = page.getByRole('heading', { name: 'Renewal attention' }).locator('..');
+  await expect(renewal.getByRole('button', { name: /^Expired\b/ }).locator('strong')).toHaveText(
+    '0',
+  );
+});
+
+test('renewal from either portfolio tab preselects the same approved skill', async ({ page }) => {
+  await mockIntake(page);
+  const record = { ...certificates(ids.person)[0], expiryDate: '2026-01-31' };
+  await page.route('**/api/certifications/' + record.id, route =>
+    route.fulfill({ json: { record } }),
+  );
+  await page.route('**/api/capability-submissions/options', route =>
+    route.fulfill({
+      json: {
+        claims: [{ ...claims[0], status: 'APPROVED', name: claims[0].skillName }],
+        certifications: [],
+        definitions: [],
+      },
+    }),
+  );
+  for (const path of ['/my-skills', '/certifications']) {
+    await page.goto(`${path}?renew=${record.id}`);
+    const dialog = page.getByRole('dialog', { name: 'Renew certificate', exact: true });
+    await dialog.locator('input[type="file"]').setInputFiles({
+      name: 'renewal.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('Sample renewal proof'),
+    });
+    await dialog.getByLabel('Issue date').fill('2026-02-01');
+    await dialog.getByLabel('Valid till').fill('2027-02-01');
+    await dialog.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(dialog.locator('.cap-skill-card')).toContainText('SQL');
+  }
 });

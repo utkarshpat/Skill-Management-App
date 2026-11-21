@@ -704,6 +704,15 @@
 .dashboard-capability-recent li > div {
   min-width: 0;
 }
+.dashboard-claim-next {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  text-align: right;
+}
+.dashboard-claim-next .dashboard-claim-title {
+  font-size: 13px;
+}
 .dashboard-claim-title {
   color: var(--ink);
   font-weight: 600;

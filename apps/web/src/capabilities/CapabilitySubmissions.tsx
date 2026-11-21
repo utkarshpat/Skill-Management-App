@@ -67,6 +67,7 @@ export function CapabilitySubmissions({
     [error, setError] = useState(''),
     [attempt, setAttempt] = useState(0),
     [opened, setOpened] = useState<string>();
+  const [genieSection, setGenieSection] = useState<'evidence' | 'feedback'>();
   useEffect(() => {
     const abort = new AbortController();
     setLoading(true);
@@ -172,8 +173,17 @@ export function CapabilitySubmissions({
         employeeName={records.find(r => r.id === opened)?.name}
         submissionLabel={records.find(r => r.id === opened)?.label}
         readOnly={!review}
-        onClose={() => setOpened(undefined)}
+        onClose={() => {
+          setGenieSection(undefined);
+          setOpened(undefined);
+        }}
+        initialSection={genieSection}
+        onReopen={section => {
+          setGenieSection(section);
+          setOpened(opened);
+        }}
         onSaved={done}
+        onRefresh={() => setAttempt(v => v + 1)}
       />
     ) : (
       <CapabilityComposer
