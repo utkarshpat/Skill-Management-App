@@ -40,13 +40,15 @@ let reads: string[] = [],
   writes: any[] = [],
   failure = 0,
   writeFailure = 0,
-  analyticsFailure = 0;
+  analyticsFailure = 0,
+  recordRevision = record.revision;
 beforeEach(async () => {
   reads = [];
   writes = [];
   failure = 0;
   writeFailure = 0;
   analyticsFailure = 0;
+  recordRevision = record.revision;
   mock.method(globalThis, 'fetch', async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     reads.push(url);
@@ -93,7 +95,7 @@ beforeEach(async () => {
             { status: failure },
           )
         : Response.json({
-            records: [record],
+            records: [{ ...record, revision: recordRevision }],
             total: 3,
             pageSize: 1,
             canManage: false,
@@ -171,14 +173,27 @@ test('legacy certification queue pages and debounced search retain current revie
   writeFailure = 409;
   await click('Approve');
   assert.match(document.body.textContent!, /Certification assignment changed/);
+  assert.equal(writes.length, 1);
+  assert.equal(document.querySelector('textarea')?.value, 'Verified supplied issuer details.');
+  assert.equal(
+    [...document.querySelectorAll('button')].find(
+      button => button.textContent?.trim() === 'Approve',
+    )?.disabled,
+    true,
+  );
   writeFailure = 0;
+  recordRevision++;
+  await click('Refresh approval queue');
+  await click('Open certification approval');
+  await fill('Decision note', 'Verified the current issuer details after refresh.');
   await click('Approve');
-  assert.deepEqual(writes[0], writes[1]);
+  assert.equal(writes.length, 2);
+  assert.equal(writes[0].revision, record.revision);
   assert.deepEqual(writes[1], {
     id: record.id,
-    revision: 3,
+    revision: record.revision + 1,
     action: 'APPROVE',
-    feedback: 'Verified supplied issuer details.',
+    feedback: 'Verified the current issuer details after refresh.',
   });
   assert.equal(document.querySelector('.form-dialog'), null);
 });
