@@ -219,7 +219,7 @@ test('evidence promotion enforces the certificate limit and retains the supporti
 
 test('AI autofill selects the approved credential and certificate upload precedes exact-revision submit', async () => {
   await mount({
-    initialCertificate: true,
+    entry: 'certificate',
     initialEvidenceFile: new File(['Certificate details'], 'azure-certificate.txt', {
       type: 'text/plain',
     }),
@@ -254,7 +254,7 @@ test('AI autofill selects the approved credential and certificate upload precede
 test('unmatched certificate autofill preserves manual identity and points to N+1', async () => {
   catalogueFound = false;
   await mount({
-    initialCertificate: true,
+    entry: 'certificate',
     initialEvidenceFile: new File(['Unlisted certificate'], 'unlisted.txt', { type: 'text/plain' }),
   });
   await fill('Certification name', 'My manual credential', base());
@@ -290,7 +290,7 @@ test('approved skills and credentials can be linked without new proficiency or r
   personal.certifications = [
     { ...fields, id: 'reviewed-certificate', revision: 4, status: 'APPROVED', hasImage: true },
   ];
-  await mount({ initialCertificate: true });
+  await mount({ entry: 'certificate' });
   await click('Continue without certificate', base());
   await click('Remove SQL reporting', base());
   await settle();
@@ -366,7 +366,7 @@ test('renewal requires a new file and AI extraction preserves the original crede
   await mount({
     initialSkill: undefined,
     initialSkillDraft: undefined,
-    initialCertificate: true,
+    entry: 'certificate',
     renewal: {
       id: 'original-oracle-certificate',
       fields: { ...fields, certificationName: 'Oracle Database SQL', provider: 'Oracle' },

@@ -67,7 +67,7 @@ type CredentialMatch =
 
 const catalogueMessages = {
   not_found:
-    'Not available in the catalogue. If this credential is missing, ask your N+1 to request a catalogue amendment.',
+    'Not available in the catalogue. Enter the certificate details manually and ask your N+1 to request a catalogue amendment if needed.',
   ambiguous:
     'Several catalogue credentials are too close to choose automatically. Select the exact credential, or ask your N+1 for a catalogue amendment if it is missing.',
   unreadable:
@@ -190,7 +190,7 @@ function FileCard({
   );
 }
 export function CapabilityComposer({
-  initialCertificate = false,
+  entry,
   initialSkill,
   initialSkillDraft,
   initialEvidenceFile,
@@ -200,7 +200,7 @@ export function CapabilityComposer({
   onClose,
   onSaved,
 }: {
-  initialCertificate?: boolean;
+  entry?: 'skill' | 'certificate';
   initialSkill?: {
     id?: string;
     name?: string;
@@ -224,15 +224,16 @@ export function CapabilityComposer({
 }) {
   const draftOnly = initialSkill?.intent === 'draft';
   const submitOnly = initialSkill?.intent === 'submit';
+  const startWithSkills = entry === 'skill' || (entry === undefined && Boolean(initialSkill));
   const id = useRef(submissionId ?? crypto.randomUUID()),
     version = useRef(0),
     lock = useRef(false),
     mounted = useRef(true);
-  const [page, setPage] = useState(initialSkill && !initialCertificate ? 1 : 0),
-    [hasCertificate, setHasCertificate] = useState(!initialSkill || initialCertificate),
+  const [page, setPage] = useState(startWithSkills ? 1 : 0),
+    [hasCertificate, setHasCertificate] = useState(!startWithSkills),
     [skills, setSkills] = useState<SelectedSkill[]>(initialSkillDraft ? [initialSkillDraft] : []),
     [certs, setCerts] = useState<SelectedCertificate[]>(() =>
-      initialSkill && !initialCertificate
+      startWithSkills
         ? []
         : renewal
           ? [
@@ -1251,10 +1252,20 @@ export function CapabilityComposer({
     if (dirty.current) setDiscard(true);
     else onClose();
   };
+  function openCertificates() {
+    if (!certs.length) addCertificate();
+    setError('');
+    setPage(0);
+  }
+  const title = isRenewal
+    ? 'Renew certificate'
+    : entry === 'certificate'
+      ? 'Add certificate'
+      : 'Add skill';
   return (
     <>
       <FormDialog
-        title={certs.some(c => c.renewedFromId) ? 'Renew certificate' : 'Add skill'}
+        title={title}
         className="capability-composer"
         busy={busy || uploadBusy}
         onClose={close}
@@ -1481,7 +1492,18 @@ export function CapabilityComposer({
                         supporting certificates.
                       </p>
                     </div>
-                    <span className="cap-count">{skills.length}/10</span>
+                    <div className="cap-step-actions">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={working}
+                        onClick={openCertificates}
+                      >
+                        {certs.length ? <Award size={16} /> : <Plus size={16} />}
+                        {certs.length ? 'Manage certificates' : 'Add certificate'}
+                      </button>
+                      <span className="cap-count">{skills.length}/10</span>
+                    </div>
                   </header>
                   <div className="cap-search">
                     <Search size={18} />
@@ -1711,7 +1733,7 @@ export function CapabilityComposer({
             ),
           },
           {
-            label: 'Preview',
+            label: 'Review & submit',
             content: (
               <section className="cap-final">
                 <h3>Preview your linked capabilities</h3>
@@ -1721,7 +1743,20 @@ export function CapabilityComposer({
                 </p>
                 <div className="cap-final-grid">
                   <section>
-                    <h4>Skills</h4>
+                    <header className="cap-step-actions">
+                      <h4>Skills</h4>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={working}
+                        onClick={() => {
+                          setError('');
+                          setPage(1);
+                        }}
+                      >
+                        Edit skills
+                      </button>
+                    </header>
                     {skills.map(s => (
                       <div className="cap-final-item" key={s.id}>
                         <strong>{s.choice.name}</strong>
@@ -1731,11 +1766,30 @@ export function CapabilityComposer({
                             : `${displayProficiencyName(s.rank, s.choice.levels.find(level => level.rank === s.rank)?.name)} · ${s.experienceMonths} months`}
                         </span>
                         <p>{s.description}</p>
+                        {certs.some(c => c.skillIds.includes(s.choice.id)) && (
+                          <ul aria-label={`Certificates linked to ${s.choice.name}`}>
+                            {certs
+                              .filter(c => c.skillIds.includes(s.choice.id))
+                              .map(c => (
+                                <li key={c.id}>{c.fields.certificationName}</li>
+                              ))}
+                          </ul>
+                        )}
                       </div>
                     ))}
                   </section>
                   <section>
-                    <h4>Certificates</h4>
+                    <header className="cap-step-actions">
+                      <h4>Certificates</h4>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={working}
+                        onClick={openCertificates}
+                      >
+                        {certs.length ? 'Edit certificates' : 'Add certificate'}
+                      </button>
+                    </header>
                     {certs.map(c => (
                       <div className="cap-final-item" key={c.id}>
                         <strong>{c.fields.certificationName}</strong>
@@ -1757,13 +1811,6 @@ export function CapabilityComposer({
                             : ''}
                         </p>
                         {c.file && <p>Attached: {c.file.name}</p>}
-                        <div className="cap-chips">
-                          {skills
-                            .filter(s => c.skillIds.includes(s.choice.id))
-                            .map(s => (
-                              <span key={s.id}>{s.choice.name}</span>
-                            ))}
-                        </div>
                       </div>
                     ))}
                     {!certs.length && (

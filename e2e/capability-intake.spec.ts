@@ -8,7 +8,7 @@ const choice = {
   definitionRevision: 2,
   levels: commonLevels(),
 };
-async function intake(page: Page) {
+async function mockIntake(page: Page) {
   await fixture(page, { role: 'employee', realistic: true });
   await page.route('**/api/capability-submissions/availability', r =>
     r.fulfill({ json: { aiAvailable: false, fileAvailable: true } }),
@@ -27,6 +27,9 @@ async function intake(page: Page) {
       },
     }),
   );
+}
+async function intake(page: Page) {
+  await mockIntake(page);
   await page.goto('/test/e2e/harness.html?fixture=composer');
   return page.getByRole('dialog', { name: 'SQL', exact: true });
 }
@@ -122,4 +125,65 @@ test('intake: one skill submission carries exact revisions and follows save befo
   expect(calls[1].revision).toBe(1);
   expect(calls[0]).not.toHaveProperty('actorId');
   expect(calls[0]).not.toHaveProperty('reviewerId');
+});
+
+test('portfolio add actions open the right step and preserve the linked draft when switching', async ({
+  page,
+}) => {
+  await mockIntake(page);
+  await page.route('**/api/capability-submissions?view=mine', r =>
+    r.fulfill({ json: { records: [] } }),
+  );
+  await page.goto('/my-skills');
+  await page.getByRole('button', { name: 'Add certificate', exact: true }).click();
+  const certificateEntry = page.getByRole('dialog', { name: 'Add certificate', exact: true });
+  await expect(
+    certificateEntry.getByRole('button', { name: 'Certificates', exact: true }),
+  ).toHaveAttribute('aria-current', 'step');
+  await certificateEntry.getByRole('button', { name: 'Close Add certificate' }).click();
+
+  await page.getByRole('button', { name: 'Add skill', exact: true }).click();
+  const composer = page.getByRole('dialog', { name: 'Add skill', exact: true });
+  await expect(composer.getByRole('button', { name: 'Skills', exact: true })).toHaveAttribute(
+    'aria-current',
+    'step',
+  );
+  await composer
+    .locator('.cap-skill-results')
+    .getByRole('button', { name: 'SQL Databases' })
+    .click();
+  const skill = page.getByRole('dialog', { name: 'SQL', exact: true });
+  await skill.getByRole('radio', { name: 'Autonomous', exact: true }).check();
+  await skill.getByLabel('Experience in months').fill('12');
+  await skill.getByRole('button', { name: 'Done', exact: true }).click();
+
+  await composer.getByRole('button', { name: 'Add certificate', exact: true }).click();
+  await expect(composer.getByRole('button', { name: 'Certificates', exact: true })).toHaveAttribute(
+    'aria-current',
+    'step',
+  );
+  await composer.locator('input[type="file"]').setInputFiles({
+    name: 'sql-certificate.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('Synthetic proof of SQL certification'),
+  });
+  await composer.getByLabel('Certification name').fill('Synthetic SQL credential');
+  await composer.getByLabel(/^Issuer/).fill('Example issuer');
+  await composer.getByLabel('Category').fill('Databases');
+  await composer.getByLabel('Issue date').fill('2026-01-01');
+  await composer.getByLabel('Lifetime valid').check();
+  await composer.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(composer.locator('.cap-skill-card')).toContainText('Autonomous · 12 mos');
+  await composer.getByRole('button', { name: 'Edit SQL' }).click();
+  await skill.getByRole('checkbox', { name: 'Synthetic SQL credential', exact: false }).check();
+  await skill.getByRole('button', { name: 'Done', exact: true }).click();
+  await composer
+    .locator('.form-dialog-footer')
+    .getByRole('button', { name: 'Preview', exact: true })
+    .click();
+  await expect(composer.getByRole('list', { name: 'Certificates linked to SQL' })).toContainText(
+    'Synthetic SQL credential',
+  );
+  await composer.getByRole('button', { name: 'Edit certificates', exact: true }).click();
+  await expect(composer.getByLabel('Certification name')).toHaveValue('Synthetic SQL credential');
 });

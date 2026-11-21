@@ -24,6 +24,19 @@
   justify-content: space-between;
   gap: 16px;
 }
+.cap-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cap-final-grid > section > .cap-step-actions {
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.cap-final-grid .cap-step-actions h4 {
+  margin: 0;
+}
 .cap-composer-body h3,
 .cap-entry h3,
 .cap-final h3 {
@@ -653,6 +666,22 @@
   .capability-composer {
     width: calc(100vw - 16px);
     max-height: calc(100dvh - 16px);
+  }
+  .capability-composer .form-dialog-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .capability-composer .form-dialog-header .catalogue-close {
+    grid-area: 1 / 2;
+  }
+  .capability-composer .form-dialog-header .wizard-steps.in-header {
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .capability-composer .form-dialog-header .wizard-steps.in-header button {
+    padding-inline: 6px;
   }
   .cap-composer-body,
   .cap-final,

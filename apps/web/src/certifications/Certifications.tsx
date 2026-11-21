@@ -175,7 +175,7 @@ export function Certifications({
         )}
       {data?.canManage && (
         <button className="admin-primary" disabled={loading} onClick={() => setCombined(true)}>
-          <Plus size={16} /> Add skill
+          <Plus size={16} /> Add certificate
         </button>
       )}
     </div>
@@ -186,7 +186,7 @@ export function Certifications({
       {combined && (
         <CapabilityComposer
           submissionId={combinedId}
-          initialCertificate
+          entry={combinedId || initialCredential || renewalSource ? undefined : 'certificate'}
           initialCredential={
             initialCredential
               ? { ...initialCredential, fields: certificationFields(initialCredential) }

@@ -412,6 +412,19 @@ export function MySkills({
       {showCertificateBulkAction && (
         <ExcelBulkActions kind="certifications" showImport onImported={certificateContext?.retry} />
       )}
+      {state?.canClaim && certificateContext?.data?.canManage && (
+        <button
+          className="secondary-button"
+          disabled={busy || loading}
+          onClick={() => {
+            setIntakeEntry({ certificate: true });
+            setCombined(true);
+          }}
+        >
+          <Plus size={17} />
+          Add certificate
+        </button>
+      )}
       {state?.canClaim && (
         <button
           className="admin-primary"
@@ -436,7 +449,7 @@ export function MySkills({
           initialSkill={intakeEntry?.skill}
           initialSkillDraft={intakeEntry?.draft}
           initialEvidenceFile={intakeEntry?.file}
-          initialCertificate={intakeEntry?.certificate}
+          entry={combinedId ? undefined : intakeEntry?.certificate ? 'certificate' : 'skill'}
           onClose={() => {
             setIntakeEntry(undefined);
             setCombined(false);
