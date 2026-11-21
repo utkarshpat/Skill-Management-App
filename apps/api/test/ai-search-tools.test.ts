@@ -255,7 +255,7 @@ test('assistant catalogue discovery and selected proficiency retrieval continue 
   assert.equal(result.mode, 'read-only');
 });
 
-test('skill draft actions are grounded in an authorized published choice', async () => {
+test('skill drafts get twelve distinct reads, reuse duplicate searches and reserve a final card', async () => {
   const access = await LocalAccessStore.open();
   const state = access.snapshot();
   const actor = state.people[0].id;
@@ -263,52 +263,66 @@ test('skill draft actions are grounded in an authorized published choice', async
   access.snapshot = () => structuredClone(state);
   for (const title of [option.name, 'Missing catalogue skill']) {
     let round = 0;
+    let catalogueReads = 0;
     const service = new AssistantService(
       access,
       undefined,
       {
         name: 'fixture',
-        complete: async () =>
-          round++ === 0
-            ? {
-                content: '',
-                calls: [
-                  {
-                    id: 'options',
-                    type: 'function',
-                    function: {
-                      name: 'skill_claim_options',
-                      arguments: JSON.stringify({ search: title }),
-                    },
-                  },
-                ],
-              }
-            : {
-                content: '',
-                calls: [
-                  {
-                    id: 'draft',
-                    type: 'function',
-                    function: {
-                      name: 'present_output',
-                      arguments: JSON.stringify({
-                        kind: 'skill_draft',
-                        title,
-                        summary: 'Draft for review',
-                        body: 'I reviewed changes with my team.',
-                        steps: [],
-                        questions: [],
-                      }),
-                    },
-                  },
-                ],
+        complete: async (_messages, tools) => {
+          const current = round++;
+          if (current < 5)
+            return {
+              content: '',
+              calls: [
+                [1, 1, 2],
+                [3, 4],
+                [5, 6],
+                [7, 8, 9],
+                [10, 11, 12],
+              ][current].map((page, index) => ({
+                id: `options-${current}-${index}`,
+                type: 'function' as const,
+                function: {
+                  name: 'skill_claim_options',
+                  arguments: JSON.stringify({ search: title, page }),
+                },
+              })),
+            };
+          assert.deepEqual(
+            tools.map(tool => tool.function.name),
+            ['present_output'],
+          );
+          return {
+            content: '',
+            calls: [
+              {
+                id: 'draft',
+                type: 'function',
+                function: {
+                  name: 'present_output',
+                  arguments: JSON.stringify({
+                    kind: 'skill_draft',
+                    title,
+                    summary: 'Draft for review',
+                    body: 'I reviewed changes with my team.',
+                    steps: [],
+                    questions: [],
+                  }),
+                },
               },
+            ],
+          };
+        },
       },
       {
         read: async () => {
           throw Error('Unexpected read');
         },
-        options: async () => ({ skills: [option], total: 1, page: 1, pageSize: 5 }),
+        options: async () => {
+          catalogueReads++;
+          return { skills: [option], total: 1, page: 1, pageSize: 5 };
+        },
         save: async () => {
           throw Error('Unexpected write');
         },
@@ -317,6 +331,7 @@ test('skill draft actions are grounded in an authorized published choice', async
     const result = await service.chat(actor, {
       message: 'Draft my skill claim in Skill Management App',
     });
+    assert.equal(catalogueReads, 12);
     if (title === option.name) {
       assert.deepEqual('artifact' in result && result.artifact?.skill, {
         id: option.id,
@@ -327,4 +342,69 @@ test('skill draft actions are grounded in an authorized published choice', async
       assert.match(result.reply, /couldn’t verify a published skill/);
     }
   }
+});
+
+test('a vague skill-claim follow-up gets a clarifying reply when the model requests too many actions', async () => {
+  const access = await LocalAccessStore.open();
+  const state = access.snapshot();
+  const actor = state.people[0].id;
+  state.roles[0].permissions = structuredClone(rolePresets[0].permissions);
+  access.snapshot = () => structuredClone(state);
+  let rounds = 0;
+  const service = new AssistantService(
+    access,
+    undefined,
+    {
+      name: 'fixture',
+      complete: async (_messages, tools) => {
+        if (rounds++ === 0)
+          return {
+            content: 'Which published skill are you claiming and what did you build?',
+            calls: [],
+          };
+        assert.deepEqual(tools.map(tool => tool.function.name).sort(), [
+          'my_skills',
+          'present_output',
+          'skill_claim_options',
+        ]);
+        if (rounds === 3)
+          return { content: 'Which tool did you use to prototype the dashboard?', calls: [] };
+        return {
+          content: '',
+          calls: Array.from({ length: 13 }, (_, index) => ({
+            id: 'search-' + index,
+            type: 'function',
+            function: {
+              name: 'skill_claim_options',
+              arguments: JSON.stringify({ search: 'AI', page: index + 1 }),
+            },
+          })),
+        };
+      },
+    },
+    {
+      read: async () => {
+        throw Error('Unexpected own skill read');
+      },
+      options: async () => {
+        throw Error('Over-budget calls should not run');
+      },
+      save: async () => {
+        throw Error('Unexpected write');
+      },
+    },
+  );
+  const start = await service.chat(actor, { message: 'can you help me claim skill' });
+  const followUp = await service.chat(actor, {
+    conversationId: start.conversationId,
+    message: 'something about ai vibe coding and product development',
+  });
+  assert.match(followUp.reply, /What’s one concrete thing you built/);
+  assert.equal(followUp.conversationId, start.conversationId);
+  assert.ok(!followUp.artifact);
+  const clarification = await service.chat(actor, {
+    conversationId: followUp.conversationId,
+    message: 'I prototyped a dashboard for my team.',
+  });
+  assert.match(clarification.reply, /Which tool did you use/);
 });

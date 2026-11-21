@@ -131,6 +131,12 @@ export class ConversationMemory {
   }
 }
 
+export function isOwnSkillDraftRequest(text: string) {
+  return /\b(?:skill\s+draft|claim\s+(?:(?:a|my|the)\s+)?skill|(?:draft|create|prepare|start|write|make|build|add)\b[^.!?]{0,64}\bskill\s+claim)\b/i.test(
+    text,
+  );
+}
+
 export function taskSettings(text: string) {
   if (/^Find people(?: in|[.!?]|$)/i.test(text))
     return { questionCount: undefined, kind: 'answer', maxOutputTokens: 1200 };
@@ -154,6 +160,7 @@ export function taskSettings(text: string) {
   return {
     questionCount,
     kind: quiz ? 'quiz' : draft ? 'draft' : 'answer',
+    ...(draft && !quiz && isOwnSkillDraftRequest(text) ? { ownSkillDraft: true } : {}),
     maxOutputTokens: quiz ? Math.min(6000, 1500 + questionCount! * 225) : draft ? 2400 : 1200,
   };
 }
@@ -195,7 +202,9 @@ function refinedTaskSettings(
     previous.kind === 'quiz'
       ? `${previous.questionCount ?? 10}-question quiz`
       : previous.kind === 'draft'
-        ? 'Draft'
+        ? previous.ownSkillDraft
+          ? 'Draft my skill claim'
+          : 'Draft'
         : 'Answer';
   return taskSettings(anchor + '\n' + message);
 }

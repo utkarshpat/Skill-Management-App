@@ -31,6 +31,7 @@ import {
   taskInstructions,
   conversationTaskSettings,
   isClarificationQuestion,
+  isOwnSkillDraftRequest,
 } from './context.js';
 import { UsageMeter, type TokenUsage } from './usage.js';
 import {
@@ -737,6 +738,15 @@ export class AssistantService {
     if (!person || !this.registry.permits(initial, person, 'own_profile'))
       throw new AccessError(403, 'Assistant access is not assigned.');
     const settings = rememberedTask ?? conversationTaskSettings(history);
+    const precedingReply = history.at(-2);
+    const precedingRequest = history.at(-3);
+    const ownSkillDraft =
+      settings.kind === 'draft' &&
+      (settings.ownSkillDraft ||
+        (precedingRequest?.role === 'user' &&
+          isOwnSkillDraftRequest(precedingRequest.content) &&
+          precedingReply?.role === 'assistant' &&
+          isClarificationQuestion(precedingReply.content)));
     const messages: Message[] = [
       {
         role: 'system',
@@ -746,12 +756,25 @@ export class AssistantService {
           workflowOnlyInstructions +
           (person.business?.view || person.business?.amend ? businessInstructions : '') +
           ' ' +
-          taskInstructions(settings.kind),
+          taskInstructions(settings.kind) +
+          (ownSkillDraft
+            ? ' For this personal skill claim, use short catalogue searches and refine them when results are vague. Ask a focused question when the user has only given a broad topic or more searches are unlikely to help. Present a draft only after one published choice matches and the user has described their work.'
+            : ''),
       },
       ...history,
     ];
     const sources: { label: string; url: string }[] = [];
+    const clarifySkillDraft = () => ({
+      reply:
+        'Let’s draft one skill claim at a time. What’s one concrete thing you built or contributed to, and which tools did you use? I’ll use that to find a published skill that fits.',
+      sources,
+      mode: 'read-only' as const,
+      artifact: undefined,
+    });
     const skillChoices = new Map<string, { id: string; name: string }>();
+    const skillReads = new Map<string, Awaited<ReturnType<ToolRegistry['execute']>>>();
+    const maxReads = ownSkillDraft ? 12 : 4;
+    const maxReadRounds = ownSkillDraft ? 5 : 3;
     let peopleSearch: { query: import('../business/index.js').PeopleSearchQuery } | undefined;
     let executions = 0;
     const recheck = async (name: string) => {
@@ -766,9 +789,9 @@ export class AssistantService {
         throw new AccessError(403, 'Business scope changed during this reply. Please ask again.');
       return { state, person: current };
     };
-    // Three bounded read rounds may be needed for plan -> skills -> credentials.
-    // The last round is answer-only; it cannot execute another tool or widen access.
-    for (let round = 0; round < 4; round++) {
+    // Reserve a final response round after the permitted reads.
+    for (let round = 0; round <= maxReadRounds; round++) {
+      const finalRound = round === maxReadRounds || (ownSkillDraft && executions >= maxReads);
       const current = await recheck('own_profile');
       signal.throwIfAborted();
       const fullContext = assistantCapabilities(current.state, current.person);
@@ -792,16 +815,22 @@ export class AssistantService {
         await recheck('own_profile');
         return { reply: capabilityGreeting(context), sources, mode: 'read-only' };
       }
-      const available =
-        round === 3
-          ? []
-          : [
-              ...this.registry.available(current.state, current.person),
-              ...(settings.kind === 'answer' ? [] : [presentationTool]),
-            ];
-      if (round === 3)
+      const reads = this.registry.available(current.state, current.person);
+      const available = finalRound
+        ? ownSkillDraft && skillChoices.size
+          ? [presentationTool]
+          : []
+        : [
+            ...(ownSkillDraft
+              ? reads.filter(tool =>
+                  ['skill_claim_options', 'my_skills'].includes(tool.function.name),
+                )
+              : reads),
+            ...(settings.kind === 'answer' ? [] : [presentationTool]),
+          ];
+      if (finalRound)
         messages[0].content +=
-          '\nFinal answer only: use the facts already read. No more tools, writes or invented catalogue options. Explain any missing information.';
+          '\nFinal response: use the facts already read. No more lookups, writes or invented catalogue options. Ask a focused question if information is missing.';
       if (Buffer.byteLength(JSON.stringify({ messages, available }), 'utf8') > 32000)
         throw new AccessError(
           422,
@@ -825,21 +854,34 @@ export class AssistantService {
           ...(peopleSearch ? { peopleSearch } : {}),
         };
       }
-      if (round === 3) throw new AccessError(422, 'Please ask a more focused question.');
-      if (answer.calls.length > 4 || executions + answer.calls.length > 4)
+      const output = answer.calls.find(call => call.function.name === 'present_output');
+      const finalSkillCard =
+        ownSkillDraft && skillChoices.size > 0 && Boolean(output) && answer.calls.length === 1;
+      if (finalRound && !finalSkillCard) {
+        if (ownSkillDraft) return clarifySkillDraft();
+        throw new AccessError(422, 'Please ask a more focused question.');
+      }
+      if (
+        !finalSkillCard &&
+        (answer.calls.length > maxReads ||
+          (!ownSkillDraft && executions + answer.calls.length > maxReads))
+      ) {
+        if (ownSkillDraft) return clarifySkillDraft();
         throw new AccessError(
           422,
           'The request needs too many assistant actions. Please ask a smaller question.',
         );
-      const output = answer.calls.find(call => call.function.name === 'present_output');
+      }
       if (output) {
         if (!available.some(tool => tool.function.name === 'present_output'))
           throw new AccessError(403, 'This response type was not requested.');
-        if (answer.calls.length !== 1)
+        if (answer.calls.length !== 1) {
+          if (ownSkillDraft) return clarifySkillDraft();
           throw new AccessError(
             422,
             'Read current facts before generating the final card. Please try again.',
           );
+        }
         let payload: unknown;
         try {
           payload = JSON.parse(output.function.arguments);
@@ -847,6 +889,7 @@ export class AssistantService {
           throw new AccessError(502, 'AI returned an invalid card. Please try again.');
         }
         const artifact = presentation(payload);
+        if (ownSkillDraft && artifact.kind !== 'skill_draft') return clarifySkillDraft();
         if (
           artifact.kind === 'practice_quiz' &&
           artifact.questions.length !== (settings.questionCount ?? 10)
@@ -905,7 +948,6 @@ export class AssistantService {
         providerParts: answer.providerParts,
       });
       for (const call of answer.calls) {
-        executions++;
         if (!available.some(tool => tool.function.name === call.function.name))
           throw new AccessError(403, 'Assistant tool is not permitted.');
         let args: unknown;
@@ -914,12 +956,18 @@ export class AssistantService {
         } catch {
           throw new AccessError(400, 'Invalid assistant tool arguments.');
         }
-        const { data, source } = await this.registry.execute(
-          actorId,
-          call.function.name,
-          args,
-          signal,
-        );
+        const key = ownSkillDraft ? JSON.stringify([call.function.name, args]) : undefined;
+        let result = key === undefined ? undefined : skillReads.get(key);
+        if (result) {
+          await recheck(call.function.name);
+          signal.throwIfAborted();
+        } else {
+          if (executions >= maxReads) return clarifySkillDraft();
+          executions++;
+          result = await this.registry.execute(actorId, call.function.name, args, signal);
+          if (key !== undefined) skillReads.set(key, result);
+        }
+        const { data, source } = result;
         if (call.function.name === 'skill_claim_options') {
           const { skills } = data as { skills: { id: string; name: string }[] };
           for (const { id, name } of skills) skillChoices.set(id, { id, name });
