@@ -173,7 +173,9 @@ export class AssistantService {
     )
       throw new AccessError(400, 'Choose a valid review assistance action.');
     const authorize = async (claim?: SkillClaim) => {
-      const s = await this.store.snapshot({ includeAudit: false }),
+      const s = claim
+          ? await this.store.snapshot({ includeAudit: false })
+          : await readActorAccess(this.store, actor),
         p = s.people.find(p => p.id === actor);
       if (!p || !can(s, p, 'profile.view', true) || !canReviewAssigned(s, p))
         throw new AccessError(403, 'Skill review assistance is not permitted.');

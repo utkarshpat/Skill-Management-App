@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { ContainerClient } from '@azure/storage-blob';
 import { AccessError } from './errors.js';
+import { ensurePrivateBlobContainer } from './blob-container-access.js';
 const uploadChunkBytes = 3 * 1024 * 1024;
 interface BlobUploadPart {
   id: string;
@@ -26,8 +27,7 @@ export async function assembleBlobUpload(
     data.length !== Math.min(uploadChunkBytes, part.bytes - part.index * uploadChunkBytes)
   )
     throw new AccessError(400, 'Invalid file size or incomplete upload part.');
-  if ((await container.getProperties()).blobPublicAccess)
-    throw new AccessError(503, 'Private file storage required.');
+  await ensurePrivateBlobContainer(container);
   const binding = createHash('sha256')
     .update(JSON.stringify([actor, target, revision, part.id, part.count, part.bytes, mime, name]))
     .digest('hex');

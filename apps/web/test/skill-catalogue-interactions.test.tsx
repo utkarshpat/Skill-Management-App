@@ -202,7 +202,7 @@ test('a committed save followed by refresh failure is reported as saved; retry o
   assert.equal(writes.length, 1);
   assert.match(document.body.textContent!, /SQL/);
 });
-test('catalogue amendment navigation requires canonical current amendment access and can recover a denied context', async () => {
+test('catalogue tabs share one context read and refresh it on access changes', async () => {
   contextAllowed = false;
   await mount(true);
   await click('Certifications');
@@ -211,6 +211,13 @@ test('catalogue amendment navigation requires canonical current amendment access
   await click('Skills', document);
   await debounce();
   assert.match(document.body.textContent!, /SQL/);
+  await click('Amendments');
+  assert.equal(reads.filter(path => path === '/api/business/context').length, 1);
+  contextAllowed = true;
+  window.dispatchEvent(new Event('workspace-access-updated'));
+  await settle();
+  assert.equal(reads.filter(path => path === '/api/business/context').length, 2);
+  assert.doesNotMatch(document.body.textContent!, /Catalogue amendment access is not assigned/);
   assert.equal(writes.length, 0);
 });
 

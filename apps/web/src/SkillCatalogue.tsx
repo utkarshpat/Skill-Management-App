@@ -31,6 +31,46 @@ export function SkillCatalogue({
   const amendments =
     amendmentsAllowed && ['amendments', 'certifications'].includes(params.get('tab') ?? '');
   const certifications = params.get('tab') === 'certifications';
+  const [context, setContext] = useState<BusinessContext>();
+  const [contextError, setContextError] = useState('');
+  const [contextAttempt, setContextAttempt] = useState(0);
+  useEffect(() => {
+    if (!amendmentsAllowed) {
+      setContext(undefined);
+      setContextError('');
+      return;
+    }
+    let controller: AbortController | undefined;
+    const refreshContext = () => {
+      controller?.abort();
+      controller = new AbortController();
+      const { signal } = controller;
+      setContextError('');
+      authenticatedFetch('/api/business/context', { signal })
+        .then(response =>
+          readApiResponse<BusinessContext>(response, 'Catalogue amendments are unavailable.'),
+        )
+        .then(current => {
+          if (!signal.aborted) setContext(current);
+        })
+        .catch(error => {
+          if (!signal.aborted) {
+            setContext(undefined);
+            setContextError(error.message);
+          }
+        });
+    };
+    refreshContext();
+    window.addEventListener('workspace-access-updated', refreshContext);
+    return () => {
+      controller?.abort();
+      window.removeEventListener('workspace-access-updated', refreshContext);
+    };
+  }, [amendmentsAllowed, contextAttempt]);
+  const amendmentError =
+    context && !context.canAmend && !context.canApprove
+      ? 'Catalogue amendment access is not assigned.'
+      : contextError;
   return (
     <>
       {amendmentsAllowed && (
@@ -70,55 +110,44 @@ export function SkillCatalogue({
         </nav>
       )}
       {amendments ? (
-        <CatalogueAmendments
-          key={certifications ? 'certifications' : 'amendments'}
-          certifications={certifications}
-        />
+        amendmentError ? (
+          <div role="alert" className="access-message">
+            {amendmentError}
+            <button
+              className="secondary-button"
+              onClick={() => setContextAttempt(value => value + 1)}
+            >
+              Retry
+            </button>
+          </div>
+        ) : context ? (
+          <CatalogueAmendments
+            key={certifications ? 'certifications' : 'amendments'}
+            certifications={certifications}
+            context={context}
+          />
+        ) : (
+          <p role="status">Loading catalogue amendments…</p>
+        )
       ) : (
         <SkillDefinitions
           actionsContainer={actionsContainer}
           onChanged={onChanged}
-          certificationsAllowed={amendmentsAllowed}
+          certificationAccess={amendmentsAllowed ? context : undefined}
         />
       )}
     </>
   );
 }
 
-function CatalogueAmendments({ certifications }: { certifications: boolean }) {
-  const [context, setContext] = useState<BusinessContext>();
-  const [error, setError] = useState('');
-  const [attempt, setAttempt] = useState(0);
+function CatalogueAmendments({
+  certifications,
+  context,
+}: {
+  certifications: boolean;
+  context: BusinessContext;
+}) {
   const [workbookRevision, setWorkbookRevision] = useState(0);
-  useEffect(() => {
-    const abort = new AbortController();
-    setError('');
-    setContext(undefined);
-    authenticatedFetch('/api/business/context', { signal: abort.signal })
-      .then(response =>
-        readApiResponse<BusinessContext>(response, 'Catalogue amendments are unavailable.'),
-      )
-      .then(current => {
-        if (abort.signal.aborted) return;
-        if (!current.canAmend && !current.canApprove)
-          throw Error('Catalogue amendment access is not assigned.');
-        setContext(current);
-      })
-      .catch(e => {
-        if (!abort.signal.aborted) setError(e.message);
-      });
-    return () => abort.abort();
-  }, [attempt]);
-  if (error)
-    return (
-      <div role="alert" className="access-message">
-        {error}
-        <button className="secondary-button" onClick={() => setAttempt(v => v + 1)}>
-          Retry
-        </button>
-      </div>
-    );
-  if (!context) return <p role="status">Loading catalogue amendments…</p>;
   return (
     <div className="bo-page">
       {certifications && context.canApprove && (
@@ -186,27 +215,13 @@ async function responseBody(response: Response) {
 function SkillDefinitions({
   actionsContainer,
   onChanged,
-  certificationsAllowed,
+  certificationAccess,
 }: {
   actionsContainer: HTMLElement | null;
   onChanged?: () => void;
-  certificationsAllowed: boolean;
+  certificationAccess?: BusinessContext;
 }) {
   const [params, setParams] = useSearchParams();
-  const [certificationAccess, setCertificationAccess] = useState<BusinessContext>();
-  useEffect(() => {
-    if (!certificationsAllowed) return;
-    const abort = new AbortController();
-    authenticatedFetch('/api/business/context', { signal: abort.signal })
-      .then(r => readApiResponse<BusinessContext>(r, 'Catalogue actions are unavailable.'))
-      .then(c => {
-        if (!abort.signal.aborted) setCertificationAccess(c);
-      })
-      .catch(() => {
-        if (!abort.signal.aborted) setCertificationAccess(undefined);
-      });
-    return () => abort.abort();
-  }, [certificationsAllowed]);
 
   const [state, setState] = useState<State>(),
     [search, setSearch] = useState(''),

@@ -8,11 +8,25 @@ import {
   privateStorageConfig,
 } from '../src/shared/private-files.js';
 import { ManagedEvidenceStore, configuredEvidence } from '../src/modules/skills/evidence.js';
+import { ensurePrivateBlobContainer } from '../src/shared/blob-container-access.js';
 const account = '11111111-1111-4111-8111-111111111111';
 const actor = '22222222-2222-4222-8222-222222222222';
 const record = '33333333-3333-4333-8333-333333333333';
 const id = '44444444-4444-4444-8444-444444444444';
 const access = { actor, context: 'certification' as const, record };
+
+test('concurrent privacy checks share a request and the next check detects public access', async t => {
+  const container = new ContainerClient('UseDevelopmentStorage=true', 'private');
+  const getProperties = t.mock.method(container, 'getProperties', async () => ({}));
+  await Promise.all([ensurePrivateBlobContainer(container), ensurePrivateBlobContainer(container)]);
+  assert.equal(getProperties.mock.callCount(), 1);
+  getProperties.mock.mockImplementation(async () => ({ blobPublicAccess: 'container' }));
+  await assert.rejects(ensurePrivateBlobContainer(container), { status: 503 });
+  assert.equal(getProperties.mock.callCount(), 2);
+  getProperties.mock.mockImplementation(async () => ({}));
+  await ensurePrivateBlobContainer(container);
+  assert.equal(getProperties.mock.callCount(), 3);
+});
 
 test('SQL file storage requires no Blob credential; invalid providers and incomplete Blob config fail closed', () => {
   assert.equal(privateStorageConfig({ STORAGE_IS_SQL: 'true' })?.provider, 'sql');

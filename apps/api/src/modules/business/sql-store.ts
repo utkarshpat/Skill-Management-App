@@ -2,7 +2,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { readSqlJson } from '../../shared/sql-json.js';
 import sql from 'mssql';
 import { readBusinessFile } from './files.js';
-import { BlobServiceClient } from '@azure/storage-blob';
+import { BlobServiceClient, type ContainerClient } from '@azure/storage-blob';
+import { ensurePrivateBlobContainer } from '../../shared/blob-container-access.js';
 import type { BusinessFiles } from './business.js';
 import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
@@ -33,6 +34,7 @@ export function assertBusinessScope(
 }
 export class SqlBusinessStore implements BusinessStore {
   private storage?: { connection: string; container: string };
+  private blobContainer?: ContainerClient;
   private managed?: PrivateFileStorage;
   constructor(
     private accountId: string,
@@ -70,11 +72,10 @@ export class SqlBusinessStore implements BusinessStore {
             { actor, context: kind === 'skills' ? 'business-skill' : 'business-cert', record: id },
             item.id,
           );
-        const container = BlobServiceClient.fromConnectionString(
+        const container = (this.blobContainer ??= BlobServiceClient.fromConnectionString(
           this.storage!.connection,
-        ).getContainerClient(this.storage!.container);
-        if ((await container.getProperties()).blobPublicAccess)
-          throw new AccessError(503, 'File storage must be private.');
+        ).getContainerClient(this.storage!.container));
+        await ensurePrivateBlobContainer(container);
         return container.getBlockBlobClient(item.blobName).downloadToBuffer(0, item.bytes);
       },
       fileId,

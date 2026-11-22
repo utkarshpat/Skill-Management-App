@@ -4,6 +4,7 @@ import { BlobServiceClient, type ContainerClient } from '@azure/storage-blob';
 import { withRuntimeDatabase } from './database.js';
 import { AccessError } from './errors.js';
 import { assembleBlobUpload } from './blob-upload.js';
+import { ensurePrivateBlobContainer } from './blob-container-access.js';
 
 export interface PrivateStorageConfig {
   provider: 'sql' | 'azure-blob';
@@ -81,8 +82,7 @@ export class PrivateFileStorage {
   }
   private async container() {
     if (!this.blob) throw new AccessError(503, 'This file requires the Azure Blob connection.');
-    if ((await this.blob.getProperties()).blobPublicAccess)
-      throw new AccessError(503, 'Private file storage required.');
+    await ensurePrivateBlobContainer(this.blob);
     return this.blob;
   }
   private async execute<T>(
