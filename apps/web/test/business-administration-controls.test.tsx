@@ -229,10 +229,13 @@ test('existing All issuers coverage can be edited on the same Business Analytics
   await click('Allowed');
   await fill('Issuer coverage', 'selected');
   await toggleLabel('Oracle');
+  await fill('Expires', '2026-12-01T09:00');
+  await fill('Expires', '');
   await fill('Reason', 'Limit this assignment to Oracle');
   await click('Preview change');
   assert.equal(previews[0].id, 'existing-grant');
   assert.equal(previews[0].payload.scopeId, 'client');
+  assert.equal(previews[0].payload.validUntil, null);
   assert.deepEqual(previews[0].payload.issuerIds, ['oracle']);
   assert.equal(saves.length, 0);
   await click('Confirm & save', review());

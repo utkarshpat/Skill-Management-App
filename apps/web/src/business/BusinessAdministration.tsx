@@ -222,6 +222,10 @@ export function BusinessAdministration({
   async function prepare() {
     if (guard.current || !state) return;
     const isLead = kind === 'RESPONSIBILITY' && bundle === 'CAPABILITY_LEAD';
+    if (kind === 'RESPONSIBILITY' && !isLead && until && !Number.isFinite(Date.parse(until))) {
+      setError('Enter a valid expiry date and time or leave it blank.');
+      return;
+    }
     if (
       (isLead && !leadConfig) ||
       (kind === 'RESPONSIBILITY' && bundle !== 'SYSTEM_ADMIN' && !allIssuers && !issuerIds.length)

@@ -1,7 +1,7 @@
 import test, { after, afterEach, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { act } from 'react';
-import { render, settle, closeBrowser, demoResponse } from './support/browser';
+import { render, settle, closeBrowser, deferred, demoResponse } from './support/browser';
 import {
   component,
   MemoryRouter,
@@ -54,6 +54,7 @@ let previewFailure = 0,
 let masterReads: URLSearchParams[] = [];
 let cataloguePages = false;
 let masterFailure = 0;
+let pendingMasterRefresh: ReturnType<typeof deferred<void>> | undefined;
 let previews: any[] = [],
   saves: any[] = [];
 beforeEach(async () => {
@@ -64,6 +65,7 @@ beforeEach(async () => {
   masterReads = [];
   cataloguePages = false;
   masterFailure = 0;
+  pendingMasterRefresh = undefined;
   previews = [];
   saves = [];
   mock.method(globalThis, 'fetch', async (input: string | URL | Request, init?: RequestInit) => {
@@ -72,6 +74,7 @@ beforeEach(async () => {
     if (url.startsWith(root + '/masters?')) {
       const query = new URL(url, 'http://localhost').searchParams;
       masterReads.push(query);
+      if (pendingMasterRefresh) await pendingMasterRefresh.promise;
       if (masterFailure)
         return Response.json(
           { error: { message: 'Catalogue access unavailable' } },
@@ -189,7 +192,13 @@ test('demand scope and requirement changes are previewed before an exact receipt
   await checkLabel('SQL reporting');
   await change(dialog().querySelector('[aria-label="Minimum level for SQL reporting"]')!, '3');
   await checkLabel('Azure Fundamentals');
+  pendingMasterRefresh = deferred<void>();
+  const readsBeforeRefresh = masterReads.length;
+  await act(async () => window.dispatchEvent(new Event('notifications-remote-updated')));
+  assert.equal(masterReads.length, readsBeforeRefresh + 1);
   await click('Preview proposal');
+  await act(async () => pendingMasterRefresh!.resolve());
+  pendingMasterRefresh = undefined;
   assert.equal(saves.length, 0);
   assert.equal(previews[0].operation, 'SAVE_DEMAND');
   assert.equal(previews[0].payload.scopeId, 'portfolio-analytics');

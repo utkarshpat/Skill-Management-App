@@ -2,10 +2,12 @@ import test, { after, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { act } from 'react';
 import { render, settle, closeBrowser, demoResponse } from './support/browser';
-import { component, refreshDevelopmentLogin } from './support/interactions';
+import { click, component, refreshDevelopmentLogin } from './support/interactions';
 import type { Definition } from '../src/announcement-model';
 const { AnnouncementSandbox } =
   component<typeof import('../src/AnnouncementSandbox')>('AnnouncementSandbox.tsx');
+const { ThemeProvider, ThemeSwitcher, useTheme } =
+  component<typeof import('../src/Theme')>('Theme.tsx');
 const definition = {
   kind: 'FORM',
   title: 'Training',
@@ -35,7 +37,7 @@ const definition = {
 const person = { name: 'Employee', email: 'employee@example.com', employeeId: '100' };
 function fakeBridge(frame: HTMLIFrameElement) {
   Object.defineProperty(frame, 'contentWindow', { configurable: true, value: {} });
-  const rendered: { channel: string; image?: string; person: typeof person }[] = [];
+  const rendered: { channel: string; image?: string; person: typeof person; theme: string }[] = [];
   const channel = frame.getAttribute('src')!.split('#')[1];
   const receiver = {
     onmessage: undefined as ((event: MessageEvent) => void) | undefined,
@@ -63,6 +65,42 @@ afterEach(async () => {
   mock.restoreAll();
 });
 after(closeBrowser);
+
+test('an open announcement receives manual and system theme changes on its existing bridge', async t => {
+  const media = new window.EventTarget() as EventTarget & { matches: boolean };
+  media.matches = false;
+  const original = globalThis.matchMedia;
+  globalThis.matchMedia = () => media as MediaQueryList;
+  t.after(() => {
+    globalThis.matchMedia = original;
+  });
+  function SystemTheme() {
+    const { setTheme } = useTheme();
+    return <button onClick={() => setTheme('system')}>Use system theme</button>;
+  }
+  view = await render(
+    <ThemeProvider>
+      <ThemeSwitcher />
+      <SystemTheme />
+      <AnnouncementSandbox definition={definition} person={person} />
+    </ThemeProvider>,
+  );
+  const frame = document.querySelector('iframe')!;
+  const { channel, ready, rendered } = fakeBridge(frame);
+  await ready();
+  assert.equal(rendered.at(-1)?.theme, 'light');
+  await click('Switch to dark theme');
+  assert.equal(rendered.at(-1)?.theme, 'dark');
+  await click('Use system theme');
+  assert.equal(rendered.at(-1)?.theme, 'light');
+  await act(async () => {
+    media.matches = true;
+    media.dispatchEvent(new Event('change'));
+  });
+  assert.equal(rendered.at(-1)?.theme, 'dark');
+  assert.equal(document.querySelector('iframe'), frame);
+  assert.ok(rendered.every(message => message.channel === channel));
+});
 
 test('sandbox bridge rejects forged sources, channels and answer keys and uses current callbacks after locking', async () => {
   const submitted: unknown[] = [],

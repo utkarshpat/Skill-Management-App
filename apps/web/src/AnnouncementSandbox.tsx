@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { authenticatedFetch } from './auth';
 import type { Definition, Person } from './announcement-model';
+import { useTheme } from './Theme';
 
 export function AnnouncementSandbox({
   definition,
@@ -29,7 +30,7 @@ export function AnnouncementSandbox({
   const [height, setHeight] = useState(300);
   const [imageData, setImageData] = useState<string>();
   const design = definition.design!;
-  const theme = document.documentElement.dataset.theme ?? 'light';
+  const { resolvedTheme: theme } = useTheme();
   const current = useRef({
     definition,
     person,

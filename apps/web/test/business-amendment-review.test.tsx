@@ -1,6 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { closeBrowser, demoResponse, render, settle } from './support/browser';
+import { act } from 'react';
+import { closeBrowser, deferred, demoResponse, render, settle } from './support/browser';
 import {
   click,
   component,
@@ -49,7 +50,9 @@ for (const targetChanged of [false, true]) {
   test(`catalogue decisions use a reviewed receipt and enforce target drift (changed=${targetChanged})`, async t => {
     const previews: { operation: string; payload: object }[] = [];
     const saves: object[] = [];
-    let listReads = 0;
+    let listReads = 0,
+      detailReads = 0;
+    let pendingDetail: ReturnType<typeof deferred<Response>> | undefined;
     let rejected = false;
     t.mock.method(
       globalThis,
@@ -80,8 +83,10 @@ for (const targetChanged of [false, true]) {
             rows: [{ ...amendment, status: rejected ? 'REJECTED' : 'SUBMITTED' }],
           });
         }
-        if (path === root + '/amendment?id=' + amendment.id)
-          return Response.json({ ...amendment, targetChanged });
+        if (path === root + '/amendment?id=' + amendment.id) {
+          detailReads++;
+          return pendingDetail?.promise ?? Response.json({ ...amendment, targetChanged });
+        }
         if (path === root + '/preview') {
           const command = JSON.parse(String(options?.body));
           previews.push(command);
@@ -115,6 +120,17 @@ for (const targetChanged of [false, true]) {
       await settle();
       await click('Open approval');
       await settle();
+      await act(async () => window.dispatchEvent(new Event('focus')));
+      await act(async () => document.dispatchEvent(new Event('visibilitychange')));
+      assert.equal(listReads, 1);
+      assert.equal(detailReads, 1);
+      pendingDetail = deferred<Response>();
+      await act(async () => window.dispatchEvent(new Event('business-changed')));
+      assert.equal(listReads, 2);
+      assert.equal(detailReads, 2);
+      assert.match(dialog().textContent ?? '', /Cloud Skills Academy/);
+      await act(async () => pendingDetail!.resolve(Response.json({ ...amendment, targetChanged })));
+      pendingDetail = undefined;
       const previewButton = [...dialog().querySelectorAll('button')].find(b =>
         b.textContent?.includes('Preview decision'),
       );

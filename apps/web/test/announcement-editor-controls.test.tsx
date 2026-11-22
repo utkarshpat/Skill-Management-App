@@ -79,7 +79,20 @@ test('announcement form controls preserve reordered questions, exports, schedule
   await click('New announcement');
   await fill('Title', 'Training signup');
   await fill('Message', 'Choose a preferred batch.');
+  await fill('Starts at', '');
+  await click('Save draft');
+  assert.match(document.body.textContent ?? '', /Enter a valid start date and time/);
   await fill('Starts at', '2026-12-01T10:00');
+  await fill('Ends at', '');
+  await click('Continue to AI design');
+  assert.match(document.body.textContent ?? '', /Enter a valid end date and time/);
+  await fill('Ends at', '2026-12-01T09:00');
+  await click('Save draft');
+  assert.match(document.body.textContent ?? '', /end date and time must be after the start/);
+  assert.equal(
+    requests.filter(x => x.path.endsWith('/draft') || x.path.endsWith('/design')).length,
+    0,
+  );
   await fill('Ends at', '2026-12-02T10:00');
   await fill('Button label', 'Apply now');
   await click('Add field');

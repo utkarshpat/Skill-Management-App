@@ -109,6 +109,10 @@ interface Preview {
   details: Record<string, unknown>;
   revision: number;
 }
+function workflowUnavailable(error: { status?: number }) {
+  return error.status === 401 || error.status === 403 || error.status === 404;
+}
+
 export function BusinessWorkflows({
   context,
   view,
@@ -175,6 +179,8 @@ export function BusinessWorkflows({
     Boolean(params.get('draftTicket') && context.actorId);
   useEffect(() => {
     setRequestDetail(undefined);
+  }, [requestId]);
+  useEffect(() => {
     setRequestError('');
     if (!requestId) return;
     const abort = new AbortController();
@@ -186,7 +192,9 @@ export function BusinessWorkflows({
         if (!abort.signal.aborted) setRequestDetail(r);
       })
       .catch(e => {
-        if (!abort.signal.aborted) setRequestError(e.message);
+        if (abort.signal.aborted) return;
+        if (workflowUnavailable(e)) setRequestDetail(undefined);
+        setRequestError(e.message);
       });
     return () => abort.abort();
   }, [requestId, attempt]);
@@ -203,11 +211,13 @@ export function BusinessWorkflows({
     setError('');
   }, [view]);
   useEffect(() => {
-    const abort = new AbortController();
-    setError('');
     setList(undefined);
     setOpenDefinitions(current => (current.size ? new Set() : current));
+  }, [view, catalogueMode, page]);
+  useEffect(() => {
     if (catalogueMode) return;
+    const abort = new AbortController();
+    setError('');
     authenticatedFetch(
       '/api/business/workflow/' +
         (view === 'amendments' ? 'amendments' : 'demands') +
@@ -220,28 +230,28 @@ export function BusinessWorkflows({
         if (!abort.signal.aborted) setList(records);
       })
       .catch(e => {
-        if (!abort.signal.aborted) setError(e.message);
+        if (abort.signal.aborted) return;
+        if (workflowUnavailable(e)) {
+          setList(undefined);
+          setOpenDefinitions(new Set());
+        }
+        setError(e.message);
       });
     return () => abort.abort();
   }, [view, catalogueMode, page, attempt]);
   useEffect(() => {
     const refresh = () => setAttempt(n => n + 1);
-    const visible = () => {
-      if (document.visibilityState === 'visible') refresh();
-    };
     window.addEventListener('business-changed', refresh);
     window.addEventListener('notifications-remote-updated', refresh);
-    window.addEventListener('focus', refresh);
-    document.addEventListener('visibilitychange', visible);
     return () => {
       window.removeEventListener('business-changed', refresh);
       window.removeEventListener('notifications-remote-updated', refresh);
-      window.removeEventListener('focus', refresh);
-      document.removeEventListener('visibilitychange', visible);
     };
   }, []);
   useEffect(() => {
     setMasters(undefined);
+  }, [needsMasters, view, masterPage, masterTerm]);
+  useEffect(() => {
     if (!needsMasters) return;
     const abort = new AbortController();
     authenticatedFetch(
@@ -266,14 +276,21 @@ export function BusinessWorkflows({
         }
       })
       .catch(e => {
-        if (!abort.signal.aborted) setError(e.message);
+        if (abort.signal.aborted) return;
+        if (workflowUnavailable(e)) {
+          setMasters(undefined);
+          setKnownSkills({});
+        }
+        setError(e.message);
       });
     return () => abort.abort();
   }, [needsMasters, view, masterPage, masterTerm, attempt]);
   useEffect(() => {
+    setMatches(undefined);
+  }, [matching, matchPage, matchAttempt]);
+  useEffect(() => {
     if (!matching) return;
     const abort = new AbortController();
-    setMatches(undefined);
     authenticatedFetch(`/api/business/workflow/matches?id=${matching}&page=${matchPage}`, {
       signal: abort.signal,
     })
@@ -282,7 +299,9 @@ export function BusinessWorkflows({
         if (!abort.signal.aborted) setMatches(v);
       })
       .catch(e => {
-        if (!abort.signal.aborted) setError(e.message);
+        if (abort.signal.aborted) return;
+        if (workflowUnavailable(e)) setMatches(undefined);
+        setError(e.message);
       });
     return () => abort.abort();
   }, [matching, matchPage, attempt, matchAttempt]);
@@ -369,7 +388,6 @@ export function BusinessWorkflows({
         next.set('request', saved.id);
         setParams(next);
       }
-      setAttempt(n => n + 1);
       window.dispatchEvent(new Event('business-changed'));
       window.dispatchEvent(new Event('notifications-updated'));
     } catch (e) {
@@ -1621,6 +1639,7 @@ export function BusinessWorkflows({
                 busy ||
                 (decision.operation !== 'SHORTLIST' &&
                   (!requestDetail ||
+                    Boolean(requestError) ||
                     (decision.operation === 'APPROVE_AMENDMENT' &&
                       requestDetail.targetChanged === true)))
               }
@@ -1647,11 +1666,14 @@ export function BusinessWorkflows({
                   <p>Requested by {request.employee}</p>
                   <p>Reason: {request.reason}</p>
                   {requestDetail ? (
-                    <AmendmentComparison
-                      request={requestDetail}
-                      masters={masters}
-                      context={context}
-                    />
+                    <>
+                      {requestError && <p role="alert">{requestError}</p>}
+                      <AmendmentComparison
+                        request={requestDetail}
+                        masters={masters}
+                        context={context}
+                      />
+                    </>
                   ) : (
                     <p>{requestError || 'Loading current catalogue details…'}</p>
                   )}
@@ -1789,6 +1811,7 @@ export function BusinessWorkflows({
             <p role={requestError ? 'alert' : undefined}>{requestError || 'Loading request…'}</p>
           ) : (
             <>
+              {requestError && <p role="alert">{requestError}</p>}
               <p>
                 <strong>
                   {requestDetail.status === 'SUBMITTED'

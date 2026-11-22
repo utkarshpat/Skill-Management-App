@@ -78,6 +78,14 @@ const scopeLabels: Record<string, string> = {
 };
 const localDate = (date: Date) =>
   new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+function announcementSchedule(start: string, end: string) {
+  const startsAt = new Date(start);
+  const endsAt = new Date(end);
+  if (!Number.isFinite(startsAt.getTime())) throw Error('Enter a valid start date and time.');
+  if (!Number.isFinite(endsAt.getTime())) throw Error('Enter a valid end date and time.');
+  if (endsAt <= startsAt) throw Error('The end date and time must be after the start.');
+  return { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };
+}
 const sample = { name: 'Preview Employee', email: 'employee@example.com', employeeId: '000001' };
 async function api<T>(url: string, data?: object) {
   return readApiResponse<T>(
@@ -401,8 +409,7 @@ export function AnnouncementManager({
     id: draft?.id,
     revision: draft?.revision ?? 0,
     grantId,
-    startsAt: new Date(start).toISOString(),
-    endsAt: new Date(end).toISOString(),
+    ...announcementSchedule(start, end),
     definition: { ...definition, image: undefined },
     image: image?.base64,
   });
@@ -458,8 +465,7 @@ export function AnnouncementManager({
         id: draft?.id,
         grantId,
         prompt: request,
-        startsAt: new Date(start).toISOString(),
-        endsAt: new Date(end).toISOString(),
+        ...announcementSchedule(start, end),
         viewport: {
           width: window.innerWidth,
           height: window.innerHeight,

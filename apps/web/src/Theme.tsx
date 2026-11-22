@@ -26,6 +26,9 @@ const ThemeContext = createContext<{
   resolvedTheme: 'light' | 'dark';
   setTheme: (theme: Theme) => void;
 }>({ theme: 'light', resolvedTheme: 'light', setTheme: () => {} });
+export function useTheme() {
+  return useContext(ThemeContext);
+}
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(savedTheme);
   const [systemDark, setSystemDark] = useState(
@@ -66,7 +69,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 export function ThemeSwitcher() {
-  const { resolvedTheme, setTheme } = useContext(ThemeContext),
+  const { resolvedTheme, setTheme } = useTheme(),
     dark = resolvedTheme === 'dark',
     Icon = dark ? Moon : Sun;
   const action = dark ? 'Switch to light theme' : 'Switch to dark theme';
