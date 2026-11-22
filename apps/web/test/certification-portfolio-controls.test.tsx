@@ -144,7 +144,7 @@ test('portfolio filters search and reset without inventing empty certifications'
     document.querySelector('[aria-label="Filter certification approval status"]')!,
     'REJECTED',
   );
-  assert.equal(document.querySelector('tbody tr'), null);
+  assert.equal(document.querySelector('[aria-label="Your certificates list"]'), null);
   await click('Clear filters');
   assert.ok(document.querySelector('[aria-label="View Azure Fundamentals credential"]'));
 });
@@ -283,7 +283,9 @@ test('credential pagination, status tabs and renewal attention apply independent
     })),
   );
   await mount();
-  const rows = () => [...document.querySelectorAll('tbody tr')];
+  const rows = () => [
+    ...document.querySelectorAll('[aria-label="Your certificates list"] [role="listitem"]'),
+  ];
   assert.equal(rows().length, 10);
   await click('Next certifications page');
   assert.equal(rows().length, 2);

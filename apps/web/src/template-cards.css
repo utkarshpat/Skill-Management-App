@@ -82,3 +82,17 @@
 .template-bundle-card small {
   display: block;
 }
+.template-editor-permissions {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+.template-editor-permissions > :is(h3, p, fieldset) {
+  margin: 0;
+}
+.template-editor-permissions > fieldset {
+  justify-self: stretch;
+}
+.template-editor-dialog .form-dialog-body {
+  overflow-y: auto;
+}

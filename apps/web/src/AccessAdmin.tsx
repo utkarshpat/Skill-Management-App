@@ -151,8 +151,8 @@ export function AccessAdmin({
   const [notice, setNotice] = useState('');
   const [role, setRole] = useState<Role>(emptyRole);
   const [editor, setEditor] = useState<'role'>(),
-    [editorPage, setEditorPage] = useState(0),
     [editorRevision, setEditorRevision] = useState(0);
+  const canPreviewTemplate = Boolean(role.name.trim() && (role.id || role.permissions.length));
   const [search, setSearch] = useState('');
   const [navigationOpen, setNavigationOpen] = useState(false);
   useEffect(() => {
@@ -210,6 +210,12 @@ export function AccessAdmin({
       unsupportedAssignments: unknown[];
     }[];
   }>();
+  useEffect(() => {
+    if (tab !== 'roles') {
+      setEditor(undefined);
+      setReview(undefined);
+    }
+  }, [tab]);
   const [busy, setBusy] = useState(false);
   function setTab(view: View) {
     if (personalPath) {
@@ -229,17 +235,12 @@ export function AccessAdmin({
   const accessReadUrl = endpoint + (summaryRead ? '?summary=1' : '');
   const accessRead = useRef<{ url: string; signal: AbortSignal }>(undefined);
   function createTemplate() {
-    setTab('roles');
     setSearch('');
     setNotice('');
     setError('');
     setEditor('role');
-    setEditorPage(0);
     setEditorRevision(state?.revision ?? 0);
     setRole(emptyRole());
-    requestAnimationFrame(() =>
-      document.querySelector<HTMLInputElement>('#role-editor input')?.focus(),
-    );
   }
   async function load() {
     const current = accessRead.current;
@@ -291,7 +292,7 @@ export function AccessAdmin({
     };
   }, [accessReadUrl, summaryRead, Boolean(personalTitle)]);
   async function saveTemplate() {
-    if (!state) return;
+    if (!state || busy || !canPreviewTemplate) return;
     setBusy(true);
     setError('');
     setNotice('');
@@ -527,20 +528,11 @@ export function AccessAdmin({
                 }}
               />
             )}
-            {readyState && tab === 'overview' && (
-              <>
-                <button className="secondary-button" onClick={createTemplate}>
-                  Create template
-                </button>
-              </>
-            )}
             {readyState && tab === 'roles' && (
-              <>
-                <button className="secondary-button" disabled={busy} onClick={createTemplate}>
-                  <Plus size={16} />
-                  Create template
-                </button>
-              </>
+              <button className="secondary-button" disabled={busy} onClick={createTemplate}>
+                <Plus size={16} aria-hidden="true" />
+                Create template
+              </button>
             )}
             {readyState && canViewAudit && tab === 'audit' && (
               <label className="list-search">
@@ -764,7 +756,6 @@ export function AccessAdmin({
                   onEdit={item => {
                     setRole(structuredClone(item));
                     setEditor('role');
-                    setEditorPage(0);
                     setEditorRevision(state.revision);
                     setError('');
                   }}
@@ -845,7 +836,7 @@ export function AccessAdmin({
                     ))}
                 </FormDialog>
               )}
-              {review && (
+              {tab === 'roles' && review && (
                 <FormDialog
                   title="Preview access change"
                   busy={busy}
@@ -874,10 +865,27 @@ export function AccessAdmin({
                     change and its audit.
                   </p>
                   <h3>{String(review.body.name)}</h3>
-                  <details>
-                    <summary>Check exact assignments and details</summary>
-                    <pre>{JSON.stringify(review.body, null, 2)}</pre>
-                  </details>
+                  {role.permissions.length ? (
+                    <ul aria-label="Selected permissions">
+                      {role.permissions.map(permission => (
+                        <li key={`${permission.permission}:${permission.scope}`}>
+                          {state.catalogue.find(item => item.code === permission.permission)
+                            ?.label ?? permission.permission}{' '}
+                          ·{' '}
+                          {permission.scope === 'OWN'
+                            ? 'Own records'
+                            : permission.scope === 'ORGANIZATION'
+                              ? 'Entire workspace'
+                              : permission.scope}{' '}
+                          · {permission.effect === 'ALLOW' ? 'Allow' : 'Block'}
+                          {permission.validUntil && ` · Expires ${permission.validUntil}`}
+                          {permission.reason && ` · ${permission.reason}`}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No permissions selected.</p>
+                  )}
                   {review.impacts.length ? (
                     review.impacts.map(impact => (
                       <section key={impact.personId}>
@@ -908,18 +916,25 @@ export function AccessAdmin({
                   )}
                 </FormDialog>
               )}
-              {editor === 'role' && !review && (
+              {tab === 'roles' && editor === 'role' && !review && (
                 <FormDialog
+                  className="template-editor-dialog"
                   title={role.id ? 'Edit access template' : 'Create access template'}
+                  subtitle="Build a reusable set of permissions to assign from People & Access."
                   onClose={() => setEditor(undefined)}
                   busy={busy}
                   formId="role-editor"
                   onSubmit={() => void saveTemplate()}
-                  page={editorPage}
-                  onPageChange={setEditorPage}
                   message={error && <p role="alert">{error}</p>}
                   footer={
                     <>
+                      <span>
+                        {role.permissions.length
+                          ? `${role.permissions.length} ${role.permissions.length === 1 ? 'permission' : 'permissions'} selected`
+                          : role.id
+                            ? 'No permissions selected'
+                            : 'Choose permissions to preview'}
+                      </span>
                       <button
                         type="button"
                         className="secondary-button"
@@ -929,42 +944,37 @@ export function AccessAdmin({
                         Cancel
                       </button>
                       <button
-                        className="microsoft-button"
+                        className="primary-button"
                         form="role-editor"
                         type="submit"
-                        disabled={busy}
+                        disabled={busy || !canPreviewTemplate}
                       >
                         {busy ? 'Checking…' : 'Preview change'}
                       </button>
                     </>
                   }
-                  pages={[
-                    {
-                      label: 'Details',
-                      content: (
-                        <label>
-                          Template name
-                          <input
-                            required
-                            maxLength={100}
-                            value={role.name}
-                            onChange={event => setRole({ ...role, name: event.target.value })}
-                          />
-                        </label>
-                      ),
-                    },
-                    {
-                      label: 'Permissions',
-                      content: (
-                        <TemplatePermissionBundles
-                          value={role.permissions}
-                          onChange={permissions => setRole({ ...role, permissions })}
-                          catalogue={state.catalogue}
-                        />
-                      ),
-                    },
-                  ]}
-                />
+                >
+                  <label>
+                    Template name
+                    <input
+                      required
+                      maxLength={100}
+                      value={role.name}
+                      onChange={event => setRole({ ...role, name: event.target.value })}
+                    />
+                  </label>
+                  <section className="template-editor-permissions" aria-label="Permissions">
+                    <h3>Permissions</h3>
+                    <p className="template-note">
+                      Choose a permission bundle or customize individual permissions.
+                    </p>
+                    <TemplatePermissionBundles
+                      value={role.permissions}
+                      onChange={permissions => setRole({ ...role, permissions })}
+                      catalogue={state.catalogue}
+                    />
+                  </section>
+                </FormDialog>
               )}
               {!personalTitle && tab === 'assignments' && (
                 <RoleAssignments

@@ -344,8 +344,13 @@ test('activity log follows the current cursor, resets on search and keeps denied
   assert.equal(currentAudit().has('before'), false);
 });
 
-test('overview template shortcut opens the template editor and close discards the unsaved request', async () => {
+test('creation is in People & Access templates and closing discards the unsaved request', async () => {
   await mount('/access?view=overview');
+  assert.doesNotMatch(
+    document.querySelector('[aria-label="Page actions"]')!.textContent!,
+    /Create template/,
+  );
+  await click('Templates');
   await click('Create template');
   const dialog = document.querySelector('dialog[aria-label="Create access template"]');
   assert.ok(dialog);

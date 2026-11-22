@@ -3,7 +3,6 @@ import { Link, Navigate, useLocation } from 'react-router';
 import { SkillCertificates } from './capabilities/SkillCertificates';
 import type { WorkspaceState } from './Workspace';
 import './capability-workspace.css';
-import './access-navigation.css';
 const MySkills = lazy(() => import('./MySkills').then(m => ({ default: m.MySkills })));
 const Certifications = lazy(() =>
   import('./certifications/Certifications').then(m => ({ default: m.Certifications })),
@@ -31,7 +30,7 @@ export function CapabilityPortfolio({
   return (
     <>
       {ownSkills && certifications && (
-        <nav className="access-section-tabs" aria-label="Skills and certifications sections">
+        <nav className="capability-tabs" aria-label="Skills and certifications sections">
           <Link to="/my-skills" aria-current={!showCertifications ? 'page' : undefined}>
             Skills
           </Link>

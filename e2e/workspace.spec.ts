@@ -332,7 +332,7 @@ test('workforce: expired reviewed credential remains visible with renewal contex
   await expect(dialog.getByRole('button', { name: 'Approve', exact: true })).toHaveCount(0);
 });
 
-test('portfolio filters can leave Approved and the certification table scrolls within the page', async ({
+test('portfolio uses a full-width switch and matching responsive skill and certificate cards', async ({
   page,
 }) => {
   await fixture(page, { role: 'employee', realistic: true });
@@ -367,20 +367,30 @@ test('portfolio filters can leave Approved and the certification table scrolls w
     .click();
   await page.getByRole('combobox', { name: 'Filter skill status' }).selectOption('SUBMITTED');
   await expect(page.getByRole('button', { name: /^Power BI/ }).first()).toBeVisible();
-  await page.getByRole('link', { name: 'Certifications', exact: true }).click();
-  const expired = page.getByRole('row', { name: /Microsoft Power BI Data Analyst/ });
+  const sections = page.getByRole('navigation', { name: 'Skills and certifications sections' });
+  const skills = sections.getByRole('link', { name: 'Skills', exact: true });
+  const certifications = sections.getByRole('link', { name: 'Certifications', exact: true });
+  await expect(skills).toHaveAttribute('aria-current', 'page');
+  await expect(sections).toHaveCSS('display', 'grid');
+  const switchSize = (await sections.boundingBox())!;
+  const skillsSize = (await page.getByRole('region', { name: 'My skills profile' }).boundingBox())!;
+  expect(switchSize.width).toBeCloseTo(skillsSize.width, 0);
+  expect(switchSize.height).toBeLessThan(54);
+  expect((await skills.boundingBox())!.width).toBeCloseTo(
+    (await certifications.boundingBox())!.width,
+    0,
+  );
+  await certifications.click();
+  await expect(certifications).toHaveAttribute('aria-current', 'page');
+  const expired = page.getByRole('listitem', { name: 'Microsoft Power BI Data Analyst' });
   await expect(expired.getByText('Expired', { exact: true })).toHaveCount(1);
-  const table = page.getByLabel('Certification table; scroll horizontally on smaller screens');
-  await expect(table).toBeVisible();
+  const list = page.getByRole('list', { name: 'Your certificates list' });
+  await expect(list).toBeVisible();
+  const certificationSize = (await page
+    .getByRole('region', { name: 'My certification profile' })
+    .boundingBox())!;
+  expect(certificationSize.width).toBeCloseTo(switchSize.width, 0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  if (page.viewportSize()!.width < 600) {
-    expect(
-      await table.evaluate(element => {
-        element.scrollLeft = 100;
-        return element.scrollLeft;
-      }),
-    ).toBeGreaterThan(0);
-  }
   await page
     .getByRole('group', { name: 'Certification views' })
     .getByRole('button', { name: /^Approved/ })
@@ -388,7 +398,7 @@ test('portfolio filters can leave Approved and the certification table scrolls w
   await page
     .getByRole('combobox', { name: 'Filter certification approval status' })
     .selectOption('SUBMITTED');
-  await expect(page.getByRole('row', { name: /Pending AWS credential/ })).toBeVisible();
+  await expect(page.getByRole('listitem', { name: 'Pending AWS credential' })).toBeVisible();
 });
 
 test('admin home opens the dashboard, catalogue marks the active destination, and unavailable tabs explain access', async ({

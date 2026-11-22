@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import {
   Award,
+  AlertCircle,
   Layers,
   ShieldCheck,
   Clock3,
   FilePenLine,
-  Search,
   Eye,
   Pencil,
   Send,
   ChevronLeft,
   ChevronRight,
   RotateCcw,
-  X,
 } from 'lucide-react';
+import { PortfolioSearch } from '../PortfolioSearch';
 import type { CertificationRecord } from './types';
 import { certificationStatusLabels, credentialValidity } from './certification-model';
 export function CertificationProfileView({
@@ -102,11 +102,7 @@ export function CertificationProfileView({
     r => credentialValidity(r.expiryDate, today) === 'Expires soon',
   ).length;
   return (
-    <section
-      className="skills-profile certification-profile"
-      aria-label="My certification profile"
-      aria-busy={loading}
-    >
+    <section className="skills-profile" aria-label="My certification profile" aria-busy={loading}>
       <div className="skills-metrics">
         {[
           {
@@ -157,33 +153,14 @@ export function CertificationProfileView({
       <div className="skills-content-grid">
         <section className="skills-list-card" aria-label="Your certifications">
           <div className="skills-card-header">
-            <div className="skills-query">
-              <Search size={16} className="skills-query-search-icon" aria-hidden="true" />
-              <input
-                type="search"
-                aria-label="Search your certifications"
-                placeholder="Search your certifications…"
-                maxLength={100}
-                value={query}
-                onChange={e => {
-                  setQuery(e.target.value);
-                  setPage(1);
-                }}
-              />
-              {query && (
-                <button
-                  type="button"
-                  className="skills-query-clear-btn"
-                  aria-label="Clear search query"
-                  onClick={() => {
-                    setQuery('');
-                    setPage(1);
-                  }}
-                >
-                  <X size={14} aria-hidden="true" />
-                </button>
-              )}
-            </div>
+            <PortfolioSearch
+              label="Search your certifications"
+              query={query}
+              onChange={value => {
+                setQuery(value);
+                setPage(1);
+              }}
+            />
             <div className="skills-list-tabs" role="group" aria-label="Certification views">
               {[
                 { id: 'all', label: 'All certifications' },
@@ -259,112 +236,107 @@ export function CertificationProfileView({
           {rows.length ? (
             <>
               <div
-                className="skills-table-scroll"
-                tabIndex={0}
-                aria-label="Certification table; scroll horizontally on smaller screens"
+                className="skills-items-container"
+                role="list"
+                aria-label="Your certificates list"
               >
-                <table className="skills-profile-table">
-                  <thead>
-                    <tr>
-                      {[
-                        'Certification',
-                        'Category',
-                        'Issuer',
-                        'Approval status',
-                        'Validity',
-                        'Issued',
-                        'Actions',
-                      ].map(label => (
-                        <th key={label} scope="col">
-                          {label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map(record => (
-                      <tr key={record.id}>
-                        <td>
-                          <button
-                            className="skills-name-button"
-                            disabled={loading}
-                            onClick={() => onView(record)}
-                          >
-                            <span className="skills-row-icon">
-                              <Award size={18} />
-                            </span>
-                            <span>
-                              <strong>{record.certificationName}</strong>
-                              <small>View credential & feedback</small>
-                            </span>
-                          </button>
-                        </td>
-                        <td>
-                          <span className="skills-category-pill">{record.category}</span>
-                        </td>
-                        <td>{record.provider}</td>
-                        <td>
-                          <span className={'skills-status ' + record.status.toLowerCase()}>
-                            {certificationStatusLabels[record.status]}
-                          </span>
-                        </td>
-                        <td>
-                          <span
-                            className={
-                              credentialValidity(record.expiryDate, today) === 'Expired'
-                                ? 'cert-expired'
-                                : ''
-                            }
-                          >
-                            {credentialValidity(record.expiryDate, today)}
-                          </span>
-                          {record.expiryDate && (
-                            <small className="cert-expiry-date">{record.expiryDate}</small>
-                          )}
-                        </td>
-                        <td className="skills-date">{record.certificationDate}</td>
-                        <td>
+                {rows.map(record => {
+                  const validity = credentialValidity(record.expiryDate, today);
+                  const StatusIcon =
+                    record.status === 'APPROVED'
+                      ? ShieldCheck
+                      : record.status === 'SUBMITTED'
+                        ? Clock3
+                        : record.status === 'DRAFT'
+                          ? FilePenLine
+                          : AlertCircle;
+                  return (
+                    <article
+                      key={record.id}
+                      className="skills-item-card"
+                      role="listitem"
+                      aria-label={record.certificationName}
+                    >
+                      <div className="skills-item-main">
+                        <div className="skills-item-left">
+                          <div className="skills-item-icon" aria-hidden="true">
+                            <Award size={18} />
+                          </div>
+                          <div className="skills-item-info">
+                            <div className="skills-item-title-row">
+                              <button
+                                type="button"
+                                className="skills-name-button"
+                                disabled={loading}
+                                onClick={() => onView(record)}
+                              >
+                                <strong>{record.certificationName}</strong>
+                              </button>
+                              <span className="skills-category-pill">{record.category}</span>
+                              <span className={'skills-status ' + record.status.toLowerCase()}>
+                                <StatusIcon size={13} aria-hidden="true" />
+                                {certificationStatusLabels[record.status]}
+                              </span>
+                            </div>
+                            <div className="skills-item-meta-row">
+                              <span>{record.provider}</span>
+                              <span className="skills-meta-sep" aria-hidden="true">
+                                ·
+                              </span>
+                              <span className="skills-date">Issued {record.certificationDate}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="skills-item-right">
+                          <div className="skills-item-proficiency">
+                            <strong
+                              className={
+                                validity === 'Expired' ? 'cert-expired' : 'skills-level-label'
+                              }
+                            >
+                              {validity}
+                            </strong>
+                            {record.expiryDate && (
+                              <span className="skills-item-meta-row">{record.expiryDate}</span>
+                            )}
+                          </div>
                           <div className="skills-row-actions">
                             <button
-                              className="skills-action-btn skills-action-view"
+                              type="button"
                               aria-label={`View ${record.certificationName} credential`}
                               title="View credential"
                               disabled={loading}
                               onClick={() => onView(record)}
                             >
-                              <Eye size={15} />
+                              <Eye size={16} />
                             </button>
                             {record.canEdit && (
                               <button
-                                className="skills-action-btn skills-action-edit"
+                                type="button"
                                 aria-label={`Edit ${record.certificationName} draft`}
                                 title="Edit details"
                                 disabled={loading}
                                 onClick={() => onEdit(record)}
                               >
-                                <Pencil size={14} />
+                                <Pencil size={15} />
                               </button>
                             )}
                             {canRenew &&
                               record.status === 'APPROVED' &&
-                              record.expiryDate &&
-                              (Date.parse(record.expiryDate + 'T12:00:00Z') -
-                                Date.parse(today + 'T12:00:00Z')) /
-                                86400000 <=
-                                90 && (
+                              (validity === 'Expired' || validity === 'Expires soon') && (
                                 <button
-                                  className="skills-action-btn skills-action-renew"
+                                  type="button"
                                   aria-label={`Record renewal for ${record.certificationName}`}
                                   title="Record renewal"
                                   disabled={loading}
                                   onClick={() => onRenew(record)}
                                 >
-                                  <RotateCcw size={14} />
+                                  <RotateCcw size={15} />
                                 </button>
                               )}
                             {record.canSubmit && (
                               <button
-                                className="skills-action-btn skills-action-submit"
+                                type="button"
                                 aria-label={`${record.status === 'SUBMITTED' ? 'Reroute' : 'Submit'} ${record.certificationName} for approval`}
                                 title={
                                   record.status === 'SUBMITTED'
@@ -374,20 +346,20 @@ export function CertificationProfileView({
                                 disabled={loading}
                                 onClick={() => onSubmit(record)}
                               >
-                                <Send size={14} />
+                                <Send size={15} />
                               </button>
                             )}
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
               <div className="skills-pagination">
                 <span>
                   Showing {(current - 1) * size + 1}–{Math.min(current * size, matching.length)} of{' '}
-                  {matching.length} certifications
+                  {matching.length} {matching.length === 1 ? 'certification' : 'certifications'}
                 </span>
                 <div>
                   <button
@@ -406,7 +378,7 @@ export function CertificationProfileView({
                     <ChevronRight size={16} />
                   </button>
                   <label>
-                    Per page
+                    Rows
                     <select
                       aria-label="Certifications per page"
                       value={size}

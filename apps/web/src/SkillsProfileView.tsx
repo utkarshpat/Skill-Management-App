@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   Clock3,
   UserRound,
-  Search,
   ArrowUpRight,
   BookOpen,
   ChevronLeft,
@@ -26,6 +25,7 @@ import {
   AlertCircle,
   Plus,
 } from 'lucide-react';
+import { PortfolioSearch } from './PortfolioSearch';
 import {
   SupportingCertificates,
   indexCertificatesBySkill,
@@ -183,21 +183,14 @@ export function SkillsProfileView({
       <div className="skills-content-grid">
         <section className="skills-list-card" aria-label="Your skill claims">
           <div className="skills-card-header">
-            <label className="skills-query">
-              <Search size={17} aria-hidden="true" />
-              <input
-                type="search"
-                name="profileSkillSearch"
-                aria-label="Search your skills"
-                value={query}
-                maxLength={100}
-                placeholder="Search your skills…"
-                onChange={e => {
-                  setQuery(e.target.value);
-                  change();
-                }}
-              />
-            </label>
+            <PortfolioSearch
+              label="Search your skills"
+              query={query}
+              onChange={value => {
+                setQuery(value);
+                change();
+              }}
+            />
             <div className="skills-list-tabs" role="group" aria-label="Skill views">
               {[
                 { id: 'all', label: 'All skills' },
