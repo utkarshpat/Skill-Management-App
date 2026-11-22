@@ -117,6 +117,32 @@ export async function readExcel(file: Buffer, sheets: readonly ExcelSheet[]) {
           values[column] = value.toISOString().slice(0, 10);
         } else if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) {
           values[column] = value as Cell;
+        } else if (
+          value &&
+          typeof value === 'object' &&
+          !('formula' in value) &&
+          !('sharedFormula' in value) &&
+          !('error' in value) &&
+          'text' in value &&
+          typeof value.text === 'string' &&
+          'hyperlink' in value &&
+          typeof value.hyperlink === 'string'
+        ) {
+          values[column] = value.text;
+        } else if (
+          value &&
+          typeof value === 'object' &&
+          !('formula' in value) &&
+          !('sharedFormula' in value) &&
+          !('error' in value) &&
+          'richText' in value &&
+          Array.isArray(value.richText) &&
+          value.richText.every(
+            (part: unknown) =>
+              part && typeof part === 'object' && 'text' in part && typeof part.text === 'string',
+          )
+        ) {
+          values[column] = value.richText.map((part: { text: string }) => part.text).join('');
         } else {
           throw new AccessError(
             400,

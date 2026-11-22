@@ -62,6 +62,24 @@ test('Excel exports preserve text identifiers and reject formula cells on upload
     readExcel(Buffer.from(await workbook.xlsx.writeBuffer()), people),
     /use plain cell values/,
   );
+
+  const formatted = new ExcelJS.Workbook();
+  const formattedSheet = formatted.addWorksheet(people[0].name);
+  formattedSheet.addRow(people[0].columns);
+  formattedSheet.addRow([
+    '007013',
+    { richText: [{ text: 'Ada ' }, { text: 'Lovelace' }] },
+    { text: 'ada@example.test', hyperlink: 'mailto:ada@example.test' },
+  ]);
+  const parsedFormatted = await readExcel(
+    Buffer.from(await formatted.xlsx.writeBuffer()),
+    people,
+  );
+  assert.equal(parsedFormatted[people[0].name][0].values[people[0].columns[1]], 'Ada Lovelace');
+  assert.equal(
+    parsedFormatted[people[0].name][0].values[people[0].columns[2]],
+    'ada@example.test',
+  );
 });
 
 test('Excel import requires current access and a preview for the exact workbook', async t => {

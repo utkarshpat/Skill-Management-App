@@ -59,12 +59,14 @@ export function SkillReviews({
   unified = false,
   queueContent,
   includeCombined = false,
+  compactEmpty = false,
   teamContent,
   recommendationContent,
 }: {
   unified?: boolean;
   queueContent?: ReactNode;
   includeCombined?: boolean;
+  compactEmpty?: boolean;
   teamContent?: ReactNode;
   recommendationContent?: ReactNode;
 } = {}) {
@@ -438,22 +440,28 @@ export function SkillReviews({
             !submissions.length &&
             !combined?.loading &&
             !combined?.error && (
-              <div className="review-empty">
+              <div className={compactEmpty ? 'review-empty review-empty-compact' : 'review-empty'}>
                 <span className="review-empty-icon">
-                  {filtered ? <Search size={30} /> : <CheckCheck size={32} />}
+                  {filtered ? (
+                    <Search size={compactEmpty ? 18 : 30} />
+                  ) : (
+                    <CheckCheck size={compactEmpty ? 18 : 32} />
+                  )}
                 </span>
-                <h3>
-                  {filtered
-                    ? 'No matching approval records'
-                    : includeCombined
-                      ? 'No combined or individual skill approvals on this page'
-                      : 'You’re all caught up'}
-                </h3>
-                <p>
-                  {filtered
-                    ? 'Try another employee, category or approval status.'
-                    : 'New requests assigned to you will appear here.'}
-                </p>
+                <div className="review-empty-copy">
+                  <h3>
+                    {filtered
+                      ? 'No matching approval records'
+                      : includeCombined
+                        ? 'No combined or individual skill approvals on this page'
+                        : 'You’re all caught up'}
+                  </h3>
+                  <p>
+                    {filtered
+                      ? 'Try another employee, category or approval status.'
+                      : 'New requests assigned to you will appear here.'}
+                  </p>
+                </div>
                 <div className="review-empty-actions">
                   {filtered ? (
                     <button className="secondary-button" onClick={clear}>

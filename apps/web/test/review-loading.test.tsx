@@ -83,8 +83,40 @@ test('initial queues read in parallel and show combined submissions before slowe
   assert.equal(document.querySelectorAll('.review-workspace-tabs button').length, 3);
   assert.match(content().textContent ?? '', /No combined or individual skill approvals/);
   assert.equal(document.querySelector('.assigned-review-total'), null);
+  assert.equal(document.querySelector('.review-empty-compact'), null);
   assert.ok(document.querySelector('[aria-label="Assigned approvals"]'));
   assert.equal(reads.size, 3);
+  await view.unmount();
+});
+test('skill empty state collapses to compact banner when individual certification approvals are pending', async () => {
+  const reads = fixture();
+  await initializeAuth();
+  const view = await render(
+    <MemoryRouter>
+      <ReviewWorkspace certificationsAllowed />
+    </MemoryRouter>,
+  );
+  await waitFor(() => reads.size === 3);
+  await resolve(reads, '/api/capability-submissions', { records: [] });
+  await resolve(reads, '/api/skill-reviews', skills);
+  await resolve(reads, '/api/certifications', {
+    records: [
+      {
+        id: 'cert-1',
+        employeeName: 'Ada Lovelace',
+        title: 'Azure Solutions Architect',
+        provider: 'Microsoft',
+        category: 'Cloud',
+        status: 'SUBMITTED',
+        submittedAt: '2026-04-01T10:00:00Z',
+        revision: 1,
+      },
+    ],
+    total: 1,
+    pageSize: 10,
+  });
+  assert.ok(document.querySelector('.review-empty.review-empty-compact'));
+  assert.ok(document.querySelector('.assigned-review-total'));
   await view.unmount();
 });
 test('combined requests and standalone claims share one table without duplicating bundled claims', async () => {
