@@ -21,7 +21,7 @@
   border-left: 4px solid var(--tone);
   box-shadow: 0 8px 30px #10203026;
   border-radius: 12px;
-  pointer-events: auto;
+  pointer-events: none;
   font-size: 14px;
   line-height: 1.5;
   animation: toast-enter 0.18s ease-out;
@@ -41,6 +41,7 @@
   overflow-wrap: anywhere;
 }
 .app-toast button {
+  pointer-events: auto;
   display: grid;
   place-items: center;
   min-width: 32px;

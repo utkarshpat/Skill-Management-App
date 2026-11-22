@@ -212,7 +212,10 @@ export function registerRoutes(
         res.sendStatus(403);
         return;
       }
-      const notificationPolicy = JSON.stringify(effectiveAccessSummary(state, person));
+      const { revision: notificationRevision, ...notificationPolicy } = effectiveAccessSummary(
+        state,
+        person,
+      );
       try {
         const input = req.query.reminderPage ?? '1';
         const reminderPage =
@@ -299,20 +302,17 @@ export function registerRoutes(
         const current = fresh?.people.find(
           item => item.id === actor && item.active && (!demo?.subject(req) || !item.entraObjectId),
         );
-        if (
-          !fresh ||
-          !current ||
-          !can(fresh, current, 'profile.view', true) ||
-          fresh.revision !== state.revision ||
-          JSON.stringify(effectiveAccessSummary(fresh, current)) !== notificationPolicy
-        )
-          throw new AccessError(403, 'Notification access changed.');
+        if (!fresh || !current || !can(fresh, current, 'profile.view', true))
+          throw new AccessError(403, 'Notification access changed. Refresh your workspace.');
+        const { revision: freshRevision, ...freshPolicy } = effectiveAccessSummary(fresh, current);
+        if (JSON.stringify(freshPolicy) !== JSON.stringify(notificationPolicy))
+          throw new AccessError(403, 'Notification access changed. Refresh your workspace.');
+        if (freshRevision !== notificationRevision)
+          throw new AccessError(409, 'Notifications changed while loading. Retry to refresh.');
         res.json({ ...feed, hasMoreAnnouncements });
       } catch (error) {
         if (error instanceof AccessError) {
-          res
-            .status(error.status)
-            .json({ error: { message: 'Notification access changed. Refresh your workspace.' } });
+          res.status(error.status).json({ error: { message: error.message } });
           return;
         }
         throw error;

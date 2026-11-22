@@ -58,6 +58,7 @@ const original = {
 let state: any, view: Awaited<ReturnType<typeof render>> | undefined;
 let previews: any[] = [],
   saves: any[] = [],
+  failReadAfterSave = false,
   saveFailure = 0,
   failPerson = '',
   previewFailure = 0,
@@ -67,6 +68,7 @@ beforeEach(async () => {
   state = structuredClone(original);
   previews = [];
   saves = [];
+  failReadAfterSave = false;
   saveFailure = 0;
   failPerson = '';
   previewFailure = 0;
@@ -112,6 +114,11 @@ beforeEach(async () => {
     if (url === '/api/dev-access/preview') {
       const body = JSON.parse(String(init?.body));
       previews.push(body);
+      if (body.kind === 'role' && body.revision !== state.revision)
+        return Response.json(
+          { error: { message: 'Access revision changed. Preview again.' } },
+          { status: 409 },
+        );
       return previewFailure
         ? Response.json(
             { error: { message: 'Current access cannot preview this change' } },
@@ -127,7 +134,11 @@ beforeEach(async () => {
     if (url === '/api/dev-access' && method === 'POST') {
       const body = JSON.parse(String(init?.body));
       saves.push(body);
-      if (saveFailure || (failPerson && body.id === failPerson))
+      if (
+        saveFailure ||
+        (failPerson && body.id === failPerson) ||
+        (body.kind === 'role' && body.revision !== state.revision)
+      )
         return Response.json(
           { error: { message: 'Access revision changed. Preview again.' } },
           { status: saveFailure || 409 },
@@ -144,7 +155,10 @@ beforeEach(async () => {
       }
       return Response.json({ ok: true });
     }
-    if (url.startsWith('/api/dev-access')) return Response.json(state);
+    if (url.startsWith('/api/dev-access'))
+      return failReadAfterSave && saves.length
+        ? Response.json({}, { status: 500 })
+        : Response.json(state);
     throw Error('Unexpected administration request ' + url);
   });
   await refreshDevelopmentLogin();
@@ -204,7 +218,7 @@ test('failed access recheck preserves the edited template and requires a new pre
   await click('Edit template Delivery Support');
   await fill('Template name', 'Client delivery support');
   await click('Preview change');
-  saveFailure = 409;
+  state.revision++;
   await click('Confirm & save', review());
   assert.equal(document.querySelector('[aria-label="Preview access change"]'), null);
   assert.match(document.body.textContent!, /Access revision changed/);
@@ -212,11 +226,48 @@ test('failed access recheck preserves the edited template and requires a new pre
     document.querySelector<HTMLInputElement>('#role-editor input')!.value,
     'Client delivery support',
   );
-  saveFailure = 0;
   await click('Preview change');
   await click('Confirm & save', review());
-  assert.equal(previews.length, 2);
-  assert.equal(saves.length, 2);
+  assert.deepEqual(
+    previews.map(change => change.revision),
+    [15, 16],
+  );
+  assert.deepEqual(
+    saves.map(change => change.revision),
+    [15, 16],
+  );
+});
+
+test('retry preserves a template draft and refuses to overwrite a concurrent edit to the same template', async () => {
+  await mount();
+  await click('Edit template Delivery Support');
+  await fill('Template name', 'My unsaved edit');
+  state.roles[0].name = 'Updated by another administrator';
+  state.revision++;
+  await click('Preview change');
+  await click('Preview change');
+  assert.match(editor().textContent!, /This template changed/);
+  assert.equal(
+    document.querySelector<HTMLInputElement>('#role-editor input')!.value,
+    'My unsaved edit',
+  );
+  assert.equal(previews.length, 1);
+  assert.equal(saves.length, 0);
+});
+
+test('a saved template stays saved when the follow-up read fails', async () => {
+  await mount();
+  await click('Edit template Delivery Support');
+  await fill('Template name', 'Updated delivery support');
+  await click('Preview change');
+  failReadAfterSave = true;
+  await click('Confirm & save', review());
+  assert.equal(document.querySelector('.form-dialog'), null);
+  assert.match(document.body.textContent!, /The template was saved/);
+  failReadAfterSave = false;
+  await click('Reload current configuration');
+  assert.match(document.body.textContent!, /Updated delivery support/);
+  assert.equal(saves.length, 1);
 });
 
 test('individual customization remains available and failed preview never writes', async () => {

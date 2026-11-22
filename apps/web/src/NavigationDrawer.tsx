@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { lockPageScroll } from './page-scroll-lock';
+import { keepDialogFocus } from './modal-focus';
+import { registerToastDialog } from './ToastHost';
 
 export function NavigationDrawer({
   onClose,
@@ -26,8 +28,9 @@ export function NavigationDrawer({
     if (!element) return;
     const previous = document.activeElement as HTMLElement | null;
     element.showModal();
+    const unregisterToastDialog = registerToastDialog(element);
     const unlockScroll = lockPageScroll();
-    const media = matchMedia('(max-width:650px)'),
+    const media = matchMedia('(max-width: 850px)'),
       resized = () => {
         if (!media.matches) onClose();
       };
@@ -36,6 +39,7 @@ export function NavigationDrawer({
       clearTimeout(timer.current);
       media.removeEventListener('change', resized);
       element.close();
+      unregisterToastDialog();
       unlockScroll();
       if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
@@ -46,6 +50,7 @@ export function NavigationDrawer({
       ref={dialog}
       className={'navigation-drawer' + (closing ? ' closing' : '')}
       aria-label="Workspace navigation"
+      onKeyDown={keepDialogFocus}
       onCancel={event => {
         event.preventDefault();
         close();

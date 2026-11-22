@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { ToastHost } from './ToastHost';
+import { registerToastDialog } from './ToastHost';
+import { keepDialogFocus } from './modal-focus';
 import { notify } from './toast';
 import { lockPageScroll } from './page-scroll-lock';
 
@@ -66,6 +67,7 @@ export function FormDialog({
     if (!element) return;
     const previous = document.activeElement as HTMLElement | null;
     element.showModal();
+    const unregisterToastDialog = registerToastDialog(element);
     const unlockScroll = lockPageScroll();
     const input = Array.from(element.querySelectorAll<HTMLElement>('input,select,textarea')).find(
       field => !field.closest('[hidden]') && !field.hasAttribute('disabled') && field.tabIndex >= 0,
@@ -77,36 +79,11 @@ export function FormDialog({
       input?.focus();
     return () => {
       element.close();
+      unregisterToastDialog();
       unlockScroll();
       if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
   }, []);
-  function trapFocus(event: React.KeyboardEvent<HTMLDialogElement>) {
-    if (event.key !== 'Tab') return;
-    const element = dialog.current;
-    if (!element) return;
-    const focusable = Array.from(
-      element.querySelectorAll<HTMLElement>(
-        'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])',
-      ),
-    ).filter(
-      node =>
-        !node.hasAttribute('disabled') &&
-        node.tabIndex >= 0 &&
-        !node.closest('[hidden]') &&
-        node.getClientRects().length > 0,
-    );
-    if (!focusable.length) return;
-    const first = focusable[0],
-      last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
   function validate(event: FormEvent<HTMLDialogElement>) {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
@@ -145,7 +122,7 @@ export function FormDialog({
       className={'form-dialog ' + className + (compact ? ' form-dialog-compact' : '')}
       data-readonly={readOnly || undefined}
       aria-label={title}
-      onKeyDown={trapFocus}
+      onKeyDown={keepDialogFocus}
       onCancel={event => {
         event.preventDefault();
         if (!busy) onClose();
@@ -231,7 +208,6 @@ export function FormDialog({
         )}
       </div>
       {footer && <footer className="form-dialog-footer">{footer}</footer>}
-      <ToastHost inDialog />
     </dialog>,
     document.body,
   );

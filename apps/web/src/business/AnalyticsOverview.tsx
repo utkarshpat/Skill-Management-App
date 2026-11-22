@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { displayProficiencyName } from '../proficiency';
 import { Award, ArrowRight, Clock3, ShieldCheck, TrendingUp, Users, Eye } from 'lucide-react';
 import { businessCoverageRows, type BusinessDashboard } from './business-model';
@@ -128,12 +129,16 @@ export function AnalyticsOverview({
   exporting: boolean;
   onOpenFiles: (row: BusinessDashboard['rows'][number]) => void;
 }) {
-  const coverage = businessCoverageRows(data.coverage)
-    .map(row => ({
-      ...row,
-      holders: [1, 2, 3, 4].reduce((sum, rank) => sum + (row.cells.get(rank)?.holders ?? 0), 0),
-    }))
-    .sort((a, b) => b.holders - a.holders);
+  const coverage = useMemo(
+    () =>
+      businessCoverageRows(data.coverage)
+        .map(row => ({
+          ...row,
+          holders: [1, 2, 3, 4].reduce((sum, rank) => sum + (row.cells.get(rank)?.holders ?? 0), 0),
+        }))
+        .sort((a, b) => b.holders - a.holders),
+    [data.coverage],
+  );
   const rows = data.rows.slice(0, 5);
   const clear = {
     category: '',

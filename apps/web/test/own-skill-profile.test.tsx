@@ -92,6 +92,21 @@ test('a truncated first page cannot be accepted as a complete profile', async ()
     /changed while loading/,
   );
 });
+test('a pagination conflict retries from page one and returns only the fresh profile', async () => {
+  const calls: number[] = [];
+  const fresh = { ...claim, revision: 2 };
+  const result = await fetchOwnSkillProfile(async path => {
+    const page = Number(path.split('page=')[1]);
+    calls.push(page);
+    if (calls.length === 1)
+      return Response.json({ ...profile, claims: [claim], total: 2, pageSize: 1 });
+    if (calls.length === 2)
+      return Response.json({ ...profile, claims: [], page, total: 1, pageSize: 1 });
+    return Response.json({ ...profile, claims: [fresh], total: 1 });
+  }, new AbortController().signal);
+  assert.deepEqual(calls, [1, 2, 1]);
+  assert.deepEqual(result.claims, [fresh]);
+});
 test('refresh failure stays a fetch failure instead of inventing a missing claim, and retry reads fresh revision', async () => {
   let attempts = 0;
   const fetcher = async () =>

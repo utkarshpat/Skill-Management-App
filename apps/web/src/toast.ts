@@ -7,6 +7,7 @@ export function notify(message: string, kind: ToastKind = 'info') {
 }
 export async function notifyResponse(path: string, method: string, response: Response) {
   if (path.startsWith('/api/excel/') || path === '/api/announcements/design') return;
+  if (response.status === 409 && /^\/api\/notifications(?:\?|$)/.test(path)) return;
   if (!response.ok) {
     const body = await response
       .clone()

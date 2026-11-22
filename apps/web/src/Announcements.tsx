@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
+import { startActivityRefresh } from './activity-refresh';
 import { FormDialog } from './FormDialog';
 import { notify } from './toast';
 import { Megaphone, MessageSquare, RefreshCw } from 'lucide-react';
@@ -58,6 +59,7 @@ export function Announcements({
   const [feedError, setFeedError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [feedPage, setFeedPage] = useState(1);
+  const requestedPage = page ? feedPage : 1;
   const [feedLoading, setFeedLoading] = useState(false);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [hiddenBanners, setHiddenBanners] = useState<Set<string>>(new Set());
@@ -74,7 +76,7 @@ export function Announcements({
   }, [confirmation, dialog]);
   useEffect(() => {
     let request: AbortController | undefined;
-    const refresh = () => {
+    const refresh = async () => {
       request?.abort();
       request = new AbortController();
       const signal = request.signal;
@@ -84,9 +86,9 @@ export function Announcements({
       if (target) query.set('announcement', target);
       else {
         query.set('pending', '1');
-        if (feedPage > 1) query.set('page', String(feedPage));
+        if (requestedPage > 1) query.set('page', String(requestedPage));
       }
-      authenticatedFetch(endpoint + '/feed' + (query.size ? '?' + query : ''), { signal })
+      return authenticatedFetch(endpoint + '/feed' + (query.size ? '?' + query : ''), { signal })
         .then(response => readApiResponse<Feed>(response, 'Announcements are unavailable.'))
         .then(value => {
           if (!signal.aborted) {
@@ -112,31 +114,23 @@ export function Announcements({
               setDialog(undefined);
             }
           }
+          return false;
         })
         .finally(() => {
           if (!signal.aborted) setFeedLoading(false);
         });
     };
-    const timer = window.setTimeout(refresh, 0);
-    const interval = window.setInterval(() => {
-      if (!document.hidden) refresh();
-    }, 30000);
-    window.addEventListener(notificationEvent, refresh);
-    window.addEventListener('focus', refresh);
-    const refreshAccess = () => {
-      onPublishAccess?.(false);
-      refresh();
-    };
-    window.addEventListener('workspace-access-updated', refreshAccess);
+    const stop = startActivityRefresh(
+      refresh,
+      [notificationEvent, 'workspace-access-updated'],
+      undefined,
+      { pollMs: 60_000 },
+    );
     return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
+      stop();
       request?.abort();
-      window.removeEventListener(notificationEvent, refresh);
-      window.removeEventListener('focus', refresh);
-      window.removeEventListener('workspace-access-updated', refreshAccess);
     };
-  }, [requestedId, conflictTarget, attempt, feedPage, onPublishAccess]);
+  }, [requestedId, conflictTarget, attempt, requestedPage, onPublishAccess]);
   const items = feed?.items.filter(item => Date.parse(item.endsAt) > now) ?? [];
   const person = feed?.person;
   const bannerKey = (entry: LiveAnnouncement) =>

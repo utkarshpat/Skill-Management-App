@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router';
 import { ArrowUpRight, Bell, Check, RefreshCw, X } from 'lucide-react';
 import { notificationDestination, notificationDay } from './notification-model';
@@ -78,9 +78,12 @@ export function Notifications({ id }: { id: string }) {
         if (reminderPage > 1) query.set('reminderPage', String(reminderPage));
         if (announcementPage > 1) query.set('announcementPage', String(announcementPage));
         const path = '/api/notifications' + (query.size ? '?' + query : '');
-        const response = await authenticatedFetch(path, {
+        let response = await authenticatedFetch(path, {
           signal: controller.signal,
         });
+        if (response.status === 409 && !controller.signal.aborted) {
+          response = await authenticatedFetch(path, { signal: controller.signal });
+        }
         if (!response.ok) {
           if ([401, 403].includes(response.status)) {
             setFeed(undefined);
@@ -169,30 +172,36 @@ export function Notifications({ id }: { id: string }) {
     mark([itemId]);
     event.currentTarget.closest<HTMLElement>('[popover]')?.hidePopover();
   }
-  const unread = feed?.items.filter(item => !read.includes(item.id)).length ?? 0;
+  const readSet = useMemo(() => new Set(read), [read]);
+  const unread = feed?.items.filter(item => !readSet.has(item.id)).length ?? 0;
   const badgeFeed = firstPage?.personId === feed?.personId ? firstPage : feed;
-  const badgeUnread = badgeFeed?.items.filter(item => !read.includes(item.id)).length ?? 0;
+  const badgeUnread = badgeFeed?.items.filter(item => !readSet.has(item.id)).length ?? 0;
   const paged =
     reminderPage > 1 ||
     announcementPage > 1 ||
     Boolean(feed?.hasMoreReminders || feed?.hasMoreAnnouncements);
-  const items =
-    feed?.items.filter(
-      item =>
-        (filter === 'all' || !read.includes(item.id)) &&
-        (category === 'All updates' ||
-          (notificationDestination(item.href)?.kind ?? 'Workspace update') === category) &&
-        [item.title, item.body, item.subject, item.actorName]
+  const entries = useMemo(
+    () =>
+      (feed?.items ?? []).map(item => ({
+        item,
+        destination: notificationDestination(item.href),
+        searchable: [item.title, item.body, item.subject, item.actorName]
           .filter(Boolean)
           .join(' ')
-          .toLocaleLowerCase()
-          .includes(search.trim().toLocaleLowerCase()),
-    ) ?? [];
+          .toLocaleLowerCase(),
+      })),
+    [feed?.items],
+  );
+  const query = search.trim().toLocaleLowerCase();
+  const items = entries.filter(
+    ({ item, destination, searchable }) =>
+      (filter === 'all' || !readSet.has(item.id)) &&
+      (category === 'All updates' || (destination?.kind ?? 'Workspace update') === category) &&
+      searchable.includes(query),
+  );
   const categories = [
     'All updates',
-    ...new Set(
-      feed?.items.map(i => notificationDestination(i.href)?.kind ?? 'Workspace update') ?? [],
-    ),
+    ...new Set(entries.map(({ destination }) => destination?.kind ?? 'Workspace update')),
   ];
   return (
     <>
@@ -389,10 +398,9 @@ export function Notifications({ id }: { id: string }) {
                 </div>
               ) : (
                 <ul className="notification-list">
-                  {items.map((item, index) => {
-                    const destination = notificationDestination(item.href),
-                      Icon = destination?.icon ?? Bell,
-                      isRead = read.includes(item.id);
+                  {items.map(({ item, destination }, index) => {
+                    const Icon = destination?.icon ?? Bell,
+                      isRead = readSet.has(item.id);
                     const prefix = `${item.actorName} · ${item.actionLabel} · `;
                     const body = (
                       item.actorName && item.actionLabel && item.body.startsWith(prefix)
@@ -405,7 +413,8 @@ export function Notifications({ id }: { id: string }) {
                     return (
                       <li key={item.id} className={isRead ? '' : 'unread'}>
                         {(index === 0 ||
-                          notificationDay(items[index - 1].at) !== notificationDay(item.at)) && (
+                          notificationDay(items[index - 1].item.at) !==
+                            notificationDay(item.at)) && (
                           <span className="notification-date-group">
                             {notificationDay(item.at)}
                           </span>

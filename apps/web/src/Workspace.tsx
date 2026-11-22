@@ -1,4 +1,3 @@
-import { Announcements } from './Announcements';
 import { SidebarNavigation } from './SidebarNavigation';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router';
@@ -22,6 +21,9 @@ const SkillReviews = lazy(() =>
 );
 const CapabilityPortfolio = lazy(() =>
   import('./CapabilityPortfolio').then(module => ({ default: module.CapabilityPortfolio })),
+);
+const Announcements = lazy(() =>
+  import('./Announcements').then(module => ({ default: module.Announcements })),
 );
 const Learning = lazy(() => import('./Learning').then(module => ({ default: module.Learning })));
 const Requests = lazy(() => import('./Requests').then(module => ({ default: module.Requests })));
@@ -99,17 +101,14 @@ export function Workspace({
   embedded = false,
   actionsContainer,
   initialWorkspace,
-  onAnnouncementPublishAccess,
 }: {
   embedded?: boolean;
   actionsContainer?: HTMLDivElement | null;
   initialWorkspace?: WorkspaceState;
-  onAnnouncementPublishAccess?: (allowed: boolean) => void;
 }) {
   const { pathname, search: routeSearch } = useLocation();
   const [state, setState] = useState<WorkspaceState | undefined>(initialWorkspace);
   const [canPublishAnnouncements, setCanPublishAnnouncements] = useState(false);
-  const announcementPublishAccess = onAnnouncementPublishAccess ?? setCanPublishAnnouncements;
   useEffect(() => {
     if (state?.person.id) return subscribeWorkspaceUpdates(state.person.id);
   }, [state?.person.id]);
@@ -272,9 +271,6 @@ export function Workspace({
   const content = state && permitted && (
     <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
       {analytics}
-      {view === 'announcements' && (
-        <Announcements page onPublishAccess={announcementPublishAccess} />
-      )}
       {view === 'overview' && <Dashboard />}
       {view === 'profile' && <PersonalProfile workspace={state} />}
       {(view === 'my-skills' || view === 'certifications') && (
@@ -369,8 +365,15 @@ export function Workspace({
             }
           />
         </header>
-        {view !== 'announcements' && <Announcements onPublishAccess={announcementPublishAccess} />}
         <main id="workspace-main" className="access-main" tabIndex={-1}>
+          {(view !== 'announcements' || (state && permitted)) && (
+            <Suspense fallback={null}>
+              <Announcements
+                page={view === 'announcements'}
+                onPublishAccess={setCanPublishAnnouncements}
+              />
+            </Suspense>
+          )}
           {error && (
             <section className="profile-panel">
               <h2>Workspace access</h2>

@@ -85,6 +85,9 @@ test('certification input rejects forged owners, approval status, unsafe URLs an
   );
   assert.throws(() => certificationQuery({ view: 'directory' }));
   assert.throws(() => certificationQuery({ view: 'queue', personId: change.id }));
+  assert.throws(() => certificationQuery({ view: 'mine', id: change.id }));
+  assert.throws(() => certificationQuery({ view: 'queue', id: change.id, page: '2' }));
+  assert.equal(certificationQuery({ view: 'queue', id: change.id.toUpperCase() }).id, change.id);
   assert.throws(() => certificationQuery({ page: ['1'] }));
 });
 
@@ -591,7 +594,8 @@ test('compact certification admission avoids an initial roster read and retains 
     compactReads = 0,
     fullReads = 0,
     recordReads = 0,
-    emptyQueue = false;
+    emptyQueue = false,
+    queriedId: string | undefined;
   let changeDuringRead: (() => void) | undefined;
   f.store.actorSnapshot = id => {
     compactReads++;
@@ -614,8 +618,9 @@ test('compact certification admission avoids an initial roster read and retains 
     profile: async () => undefined,
     access: f.store,
     certifications: {
-      read: async () => {
+      read: async (_actor, query) => {
         recordReads++;
+        queriedId = query.id;
         changeDuringRead?.();
         if (emptyQueue) return { records: [], total: 0 };
         return { records: [f.record], total: 1 };
@@ -634,7 +639,8 @@ test('compact certification admission avoids an initial roster read and retains 
     assert.equal(compactReads, 1);
     assert.equal(fullReads, 1);
     actor = f.manager.id;
-    assert.equal((await fetch(root + '?view=queue')).status, 200);
+    assert.equal((await fetch(root + '?view=queue&id=' + f.record.id)).status, 200);
+    assert.equal(queriedId, f.record.id);
     assert.equal(compactReads, 2);
     assert.equal(fullReads, 2);
     const reviewOnly = { headers: { 'X-Certification-View': 'review-only' } };
@@ -652,7 +658,7 @@ test('compact certification admission avoids an initial roster read and retains 
     changeDuringRead = () => {
       f.state.reporting![0].managerId = f.unrelated.id;
     };
-    assert.equal((await fetch(root + '?view=queue', reviewOnly)).status, 403);
+    assert.equal((await fetch(root + '?view=queue&id=' + f.record.id, reviewOnly)).status, 403);
     actor = f.owner.id;
     changeDuringRead = () => {
       f.owner.active = false;

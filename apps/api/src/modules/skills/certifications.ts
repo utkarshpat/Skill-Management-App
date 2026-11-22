@@ -43,6 +43,7 @@ export interface CertificationQuery {
   view: 'mine' | 'queue';
   page: number;
   search: string;
+  id?: string;
 }
 export type CertificationChange =
   | {
@@ -98,7 +99,7 @@ function day(value: unknown) {
   return value as string;
 }
 export function certificationQuery(input: Record<string, unknown>): CertificationQuery {
-  if (Object.keys(input).some(k => !['view', 'page', 'search'].includes(k)))
+  if (Object.keys(input).some(k => !['view', 'page', 'search', 'id'].includes(k)))
     fail('Invalid certification filters.');
   const view = input.view ?? 'mine',
     page = Number(input.page ?? 1);
@@ -111,10 +112,14 @@ export function certificationQuery(input: Record<string, unknown>): Certificatio
     (input.page !== undefined && typeof input.page !== 'string')
   )
     fail('Invalid certification filters.');
+  const search = text(input.search ?? '', 100, 'search');
+  if (input.id !== undefined && (view !== 'queue' || page !== 1 || search))
+    fail('An exact certification ID is supported only in the approval queue.');
   return {
     view: view as CertificationQuery['view'],
     page,
-    search: text(input.search ?? '', 100, 'search'),
+    search,
+    ...(input.id !== undefined && { id: certificationId(input.id) }),
   };
 }
 export function certificationChange(input: unknown, now = new Date()): CertificationChange {

@@ -71,6 +71,32 @@ test('sidebar uses slim theme scrollbars in light and dark mode', async ({ page 
   expect(light.thumbClip).toBe('content-box');
   expect(dark.thumbClip).toBe('content-box');
 });
+
+test('navigation drawer keeps focus and toasts across the tablet breakpoint', async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 850 });
+  await fixture(page, { role: 'employee' });
+  await page.goto('/profile');
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  const drawer = page.getByRole('dialog', { name: 'Workspace navigation' });
+  await expect(drawer).toBeVisible();
+  await page.setViewportSize({ width: 760, height: 850 });
+  await expect(drawer).toBeVisible();
+  await drawer.getByRole('button', { name: 'Close navigation' }).focus();
+  await page.keyboard.press('Shift+Tab');
+  expect(await drawer.evaluate(element => element.contains(document.activeElement))).toBe(true);
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new CustomEvent('app-toast', {
+        detail: { kind: 'info', message: 'Drawer notification' },
+      }),
+    ),
+  );
+  await expect(drawer.getByText('Drawer notification', { exact: true })).toBeVisible();
+  await expect(page.getByText('Drawer notification', { exact: true })).toHaveCount(1);
+  await page.setViewportSize({ width: 900, height: 850 });
+  await expect(drawer).toHaveCount(0);
+  await expect(page.getByText('Drawer notification', { exact: true })).toBeVisible();
+});
 test('workspace error stops spinner; retry recovers and sign out ends session', async ({
   page,
 }) => {

@@ -81,7 +81,16 @@ export function LearningHome({
     [aiMode, setAiMode] = useState('Recommendations'),
     [plannerGoal, setPlannerGoal] = useState('');
   const aiController = useRef<AbortController | null>(null);
-  useEffect(() => () => aiController.current?.abort(), []);
+  const aiScrollTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const aiHighlightTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(
+    () => () => {
+      aiController.current?.abort();
+      clearTimeout(aiScrollTimer.current);
+      clearTimeout(aiHighlightTimer.current);
+    },
+    [],
+  );
   async function generate() {
     if (aiBusy) return;
     const controller = new AbortController();
@@ -117,12 +126,14 @@ export function LearningHome({
     if (!ai && !aiBusy) {
       void generate();
     }
-    setTimeout(() => {
+    clearTimeout(aiScrollTimer.current);
+    aiScrollTimer.current = setTimeout(() => {
       const target = document.getElementById('learning-recommendations');
       if (target) {
         target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         target.classList.add('ld-highlight');
-        setTimeout(() => target.classList.remove('ld-highlight'), 1600);
+        clearTimeout(aiHighlightTimer.current);
+        aiHighlightTimer.current = setTimeout(() => target.classList.remove('ld-highlight'), 1600);
       }
     }, 80);
   }

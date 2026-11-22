@@ -32,6 +32,24 @@ export async function fetchOwnSkillProfile(
   fetcher: Fetcher,
   signal: AbortSignal,
 ): Promise<OwnSkillProfile> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await readOwnSkillProfile(fetcher, signal);
+    } catch (error) {
+      signal.throwIfAborted();
+      if (attempt >= 1 || !(error instanceof SkillProfileChanged)) throw error;
+    }
+  }
+}
+class SkillProfileChanged extends Error {
+  constructor() {
+    super('Your skill profile changed while loading. Please refresh and retry.');
+  }
+}
+async function readOwnSkillProfile(
+  fetcher: Fetcher,
+  signal: AbortSignal,
+): Promise<OwnSkillProfile> {
   const read = async (page: number) => {
     const value = await readApiResponse<OwnSkillProfile>(
       await fetcher('/api/my-skills?page=' + page, { signal }),
@@ -61,10 +79,9 @@ export async function fetchOwnSkillProfile(
       page.claims.length !==
         Math.min(value.pageSize, value.total - (page.page - 1) * value.pageSize)
     )
-      throw new Error('Your skill profile changed while loading. Please refresh and retry.');
+      throw new SkillProfileChanged();
     for (const claim of page.claims) {
-      if (ids.has(claim.id))
-        throw new Error('Your skill profile changed while loading. Please refresh and retry.');
+      if (ids.has(claim.id)) throw new SkillProfileChanged();
       ids.add(claim.id);
       claims.push(claim);
     }

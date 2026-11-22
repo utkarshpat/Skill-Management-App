@@ -208,7 +208,14 @@ function permissiveFixture(extra: (path: string) => boolean) {
   const reads = new Map<string, ReturnType<typeof deferred<Response>>>();
   const other: string[] = [];
   globalThis.fetch = async input => {
-    const path = new URL(String(input), 'http://localhost').pathname;
+    const url = new URL(String(input), 'http://localhost');
+    const path = url.pathname;
+    const exact = path === '/api/certifications' && url.searchParams.get('id');
+    if (exact) {
+      const pending = deferred<Response>();
+      reads.set(`${path}?id=${exact}`, pending);
+      return pending.promise;
+    }
     if (path === '/api/auth/config') return Response.json({ enabled: false });
     if (path === '/api/dev-login')
       return Response.json({ mode: 'local-demo', signedIn: true, people: [] });
@@ -297,7 +304,7 @@ test('approval permission denial closes and blocks a submission deep-link dialog
   assert.ok(other.every(path => path.includes(submission)));
   await view.unmount();
 });
-test('certification notification link opens from the authorized queue after a transient failure', async () => {
+test('certification notification link retries a failed queue and looks up an off-page record directly', async () => {
   const { reads } = permissiveFixture(path => path.startsWith('/api/certifications/' + linkedId));
   await initializeAuth();
   const view = await render(
@@ -316,6 +323,14 @@ test('certification notification link opens from the authorized queue after a tr
   await act(async () => retry.click());
   await waitFor(() => reads.has('/api/certifications'));
   await resolve(reads, '/api/certifications', {
+    records: [],
+    total: 1000,
+    page: 1,
+    pageSize: 25,
+  });
+  const lookup = '/api/certifications?id=' + linkedId;
+  await waitFor(() => reads.has(lookup));
+  await resolve(reads, lookup, {
     records: [certification],
     total: 1,
     page: 1,

@@ -91,6 +91,7 @@ test('Excel import requires current access and a preview for the exact workbook'
     ) as T;
   };
   registerExcelBulkRoutes(app, {
+    excelPreviewReceiptSecret: 'excel-test-fixture-key',
     verify: async () => {
       throw Error('Expected company cookie.');
     },

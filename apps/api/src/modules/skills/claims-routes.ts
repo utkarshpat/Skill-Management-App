@@ -85,6 +85,7 @@ export function registerClaimsRoutes(
     }
     res.locals.claimActor = person.id;
     res.locals.claimAccessRevision = state.revision;
+    if (review) res.locals.claimAccessState = state;
     next();
   });
   for (const root of ['/api/my-skills', '/api/skill-reviews']) {
@@ -341,9 +342,8 @@ export function registerClaimsRoutes(
         if (change.action !== 'SUBMIT') {
           if (!dependencies.claims.reviewDetail)
             throw new AccessError(503, 'Current claim access cannot be checked.');
-          const access = dependencies.access ?? store,
-            before = await access?.snapshot({ includeAudit: false });
-          if (!before) throw new AccessError(403, 'Approval access unavailable.');
+          const access = dependencies.access ?? store;
+          const revision = res.locals.claimAccessRevision;
           const detail = await dependencies.claims.reviewDetail(
             res.locals.claimActor,
             change.id,
@@ -353,7 +353,7 @@ export function registerClaimsRoutes(
             actor = after.people.find(
               person => person.id === res.locals.claimActor && person.active,
             );
-          if (after.revision !== before.revision || detail.claim.revision !== change.revision)
+          if (after.revision !== revision || detail.claim.revision !== change.revision)
             throw new AccessError(409, 'Approval records changed. Refresh before continuing.');
           if (!actor || !effectiveClaimReview(after, actor, detail.claim).allowed)
             throw new AccessError(403, 'This claim is not currently available for your decision.');
@@ -379,22 +379,18 @@ export function registerClaimsRoutes(
     try {
       const query = teamQuery(req.query),
         access = dependencies?.access ?? store;
-      const before = await access?.snapshot({ includeAudit: false }),
-        actor = before?.people.find(p => p.id === res.locals.claimActor && p.active);
-      if (
-        !before ||
-        !actor ||
-        !can(before, actor, 'skill.view') ||
-        !canReviewAssigned(before, actor)
-      )
+      const before = res.locals.claimAccessState as Awaited<ReturnType<AccessStore['snapshot']>>;
+      const actor = before.people.find(p => p.id === res.locals.claimActor && p.active);
+      if (!actor || !can(before, actor, 'skill.view') || !canReviewAssigned(before, actor))
         throw new AccessError(403, 'Team capability access is unavailable.');
       if (!dependencies?.claims?.team)
         throw new AccessError(503, 'Team capability is not configured.');
       const revision = before.revision,
         data = await dependencies.claims.team(actor.id, query);
-      const after = await access!.snapshot({ includeAudit: false }),
-        current = after.people.find(p => p.id === actor.id && p.active);
+      const after = await readActorAccess(access, actor.id),
+        current = after?.people.find(p => p.id === actor.id && p.active);
       if (
+        !after ||
         !current ||
         !can(after, current, 'profile.view', true) ||
         !can(after, current, 'skill.view') ||
@@ -428,9 +424,7 @@ export function registerClaimsRoutes(
       const id = reviewIdentifier(req.params.id),
         page = claimPage(req.query.page),
         access = dependencies?.access ?? store;
-      const before = await access?.snapshot({ includeAudit: false });
-      if (!before) throw new AccessError(403, 'Approval access unavailable.');
-      const revision = before.revision;
+      const revision = res.locals.claimAccessRevision;
       if (!dependencies?.claims?.reviewDetail)
         throw new AccessError(503, 'Approval history is not configured.');
       const data = await dependencies.claims.reviewDetail(res.locals.claimActor, id, page),

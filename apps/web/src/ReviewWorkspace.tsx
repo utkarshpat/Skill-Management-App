@@ -13,19 +13,16 @@ import './review-workbench.css';
 import './certifications/certifications.css';
 const SkillReviews = lazy(() => import('./SkillReviews').then(m => ({ default: m.SkillReviews })));
 
-async function findCertificationApproval(id: string, signal: AbortSignal, firstPage = 1) {
-  for (let page = firstPage; ; page++) {
-    const filters = new URLSearchParams({ view: 'queue', page: String(page) });
-    const result = await readApiResponse<CertificationPage>(
-      await authenticatedFetch('/api/certifications?' + filters, {
-        signal,
-        headers: { 'X-Certification-View': 'review-only' },
-      }),
-      'This certificate approval could not be loaded.',
-    );
-    const match = result.records.find(record => record.id.toLowerCase() === id.toLowerCase());
-    if (match || !result.pageSize || page * result.pageSize >= result.total) return match;
-  }
+async function findCertificationApproval(id: string, signal: AbortSignal) {
+  const filters = new URLSearchParams({ view: 'queue', id });
+  const result = await readApiResponse<CertificationPage>(
+    await authenticatedFetch('/api/certifications?' + filters, {
+      signal,
+      headers: { 'X-Certification-View': 'review-only' },
+    }),
+    'This certificate approval could not be loaded.',
+  );
+  return result.records.find(record => record.id.toLowerCase() === id.toLowerCase());
 }
 
 export function ReviewWorkspace({
@@ -173,7 +170,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
     }
     const controller = new AbortController();
     setOpening(true);
-    findCertificationApproval(linked, controller.signal, useFirstPage ? 2 : 1)
+    findCertificationApproval(linked, controller.signal)
       .then(match => {
         if (!controller.signal.aborted) open(match);
       })

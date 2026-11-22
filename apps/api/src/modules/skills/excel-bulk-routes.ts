@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { raw, type ErrorRequestHandler, type Express } from 'express';
 import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
@@ -81,8 +81,8 @@ const sheetsByKind = {
   certifications: certificateSheets,
   employees: employeeSheets,
 };
-const receiptKey = process.env.ENTRA_WEB_CLIENT_SECRET || randomBytes(32);
 function previewSignature(
+  receiptKey: string,
   actor: string,
   kind: Kind,
   digest: string,
@@ -100,6 +100,7 @@ interface BulkDependencies {
   verify: (authorization: string | undefined) => Promise<Identity>;
   resolveAccess?: (identity: Identity) => Promise<string | undefined>;
   excelBulk?: Pick<SqlExcelBulkData, 'execute'>;
+  excelPreviewReceiptSecret?: string;
 }
 
 export class SqlExcelBulkData {
@@ -332,6 +333,9 @@ function normalizeRow(kind: Kind, sheet: string, { row, values }: ExcelRow) {
 export function registerExcelBulkRoutes(app: Express, dependencies?: BulkDependencies) {
   if (!dependencies?.excelBulk) return;
   const store = dependencies.excelBulk;
+  const receiptKey =
+    dependencies.excelPreviewReceiptSecret ??
+    (process.env.EXCEL_PREVIEW_RECEIPT_SECRET || process.env.ENTRA_WEB_CLIENT_SECRET);
   app.use('/api/excel/:kind', async (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     const kind = req.params.kind;
@@ -433,6 +437,13 @@ export function registerExcelBulkRoutes(app: Express, dependencies?: BulkDepende
     },
     upload,
     async (req, res, next) => {
+      if (!receiptKey)
+        return next(
+          new AccessError(
+            503,
+            'Excel import preview signing is not configured. Contact your administrator.',
+          ),
+        );
       const kind = req.params.kind as Kind;
       if (!Buffer.isBuffer(req.body))
         return next(new AccessError(400, 'Choose an .xlsx workbook.'));
@@ -454,7 +465,7 @@ export function registerExcelBulkRoutes(app: Express, dependencies?: BulkDepende
           !/^[a-f0-9]{64}$/.test(signature ?? '') ||
           !timingSafeEqual(
             Buffer.from(signature, 'hex'),
-            previewSignature(actor, kind, digest, revision, expires),
+            previewSignature(receiptKey, actor, kind, digest, revision, expires),
           ))
       )
         return next(new AccessError(409, 'Preview this workbook before importing.'));
@@ -473,7 +484,7 @@ export function registerExcelBulkRoutes(app: Express, dependencies?: BulkDepende
       const previewExpires = Date.now() + 10 * 60_000;
       const preview = importing
         ? undefined
-        : `${result.revision}.${previewExpires}.${previewSignature(actor, kind, digest, result.revision, previewExpires).toString('hex')}`;
+        : `${result.revision}.${previewExpires}.${previewSignature(receiptKey, actor, kind, digest, result.revision, previewExpires).toString('hex')}`;
       const examples = importing
         ? undefined
         : (result.examples ??

@@ -105,6 +105,8 @@ export function registerCertificationRoutes(
         throw new AccessError(403, 'Assigned certification approval is unavailable.');
       const snapshotRevision = state.revision;
       const result = await deps!.certifications!.read(actor.id, query);
+      if (query.id && result.records.some(record => record.id.toLowerCase() !== query.id))
+        throw new AccessError(503, 'Exact certification approval lookup is unavailable.');
       // An empty review-only page has no reporting edges or personal
       // submission actions to resolve. Recheck the actor and revision either way.
       ({ state, actor } = await context(actor.id, queueOnly && !result.records.length));

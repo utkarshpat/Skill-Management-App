@@ -1,4 +1,3 @@
-import { Announcements } from './Announcements';
 import { AccessAudit } from './AccessAudit';
 import type { Decision } from './EffectiveAccess';
 import type { Employment } from './EmploymentDetails';
@@ -17,6 +16,7 @@ import { RoleAssignments } from './RoleAssignments';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useSearchParams, useNavigate } from 'react-router';
 import { authenticatedFetch, isDemoSession } from './auth';
+import { readApiResponse } from './api-response';
 import './access-navigation.css';
 import {
   LayoutDashboard,
@@ -37,6 +37,9 @@ const BusinessAdministration = lazy(() =>
   import('./business/BusinessAdministration').then(module => ({
     default: module.BusinessAdministration,
   })),
+);
+const Announcements = lazy(() =>
+  import('./Announcements').then(module => ({ default: module.Announcements })),
 );
 const OrganizationSetup = lazy(() =>
   import('./OrganizationSetup').then(module => ({ default: module.OrganizationSetup })),
@@ -152,6 +155,8 @@ export function AccessAdmin({
   const [role, setRole] = useState<Role>(emptyRole);
   const [editor, setEditor] = useState<'role'>(),
     [editorRevision, setEditorRevision] = useState(0);
+  const [originalRole, setOriginalRole] = useState<Role>();
+  const [needsTemplateRefresh, setNeedsTemplateRefresh] = useState(false);
   const canPreviewTemplate = Boolean(role.name.trim() && (role.id || role.permissions.length));
   const [search, setSearch] = useState('');
   const [navigationOpen, setNavigationOpen] = useState(false);
@@ -240,13 +245,18 @@ export function AccessAdmin({
     setError('');
     setEditor('role');
     setEditorRevision(state?.revision ?? 0);
+    setOriginalRole(undefined);
+    setNeedsTemplateRefresh(false);
     setRole(emptyRole());
   }
   async function load() {
     const current = accessRead.current;
     if (!current || current.url !== accessReadUrl || current.signal.aborted) return;
     try {
-      const response = await authenticatedFetch(current.url, { signal: current.signal });
+      const response = await authenticatedFetch(current.url, {
+        signal: current.signal,
+        cache: 'no-store',
+      });
       if (!response.ok)
         throw new Error(
           response.status === 403
@@ -260,6 +270,7 @@ export function AccessAdmin({
       setSummaryState(summaryRead);
       setState(data);
       window.dispatchEvent(new Event('workspace-access-updated'));
+      return data;
     } catch (error) {
       if (!current.signal.aborted) throw error;
     }
@@ -297,14 +308,34 @@ export function AccessAdmin({
     setError('');
     setNotice('');
     try {
-      const body = { ...role, id: role.id || undefined, kind: 'role', revision: editorRevision };
+      let revision = editorRevision;
+      if (needsTemplateRefresh) {
+        const fresh = await load();
+        if (!fresh) return;
+        if (originalRole) {
+          const current = fresh.roles.find(item => item.id === originalRole.id);
+          if (!current || JSON.stringify(current) !== JSON.stringify(originalRole)) {
+            setError(
+              'This template changed. Close this editor and open the current template before applying your changes.',
+            );
+            return;
+          }
+        }
+        revision = fresh.revision;
+        setEditorRevision(revision);
+        setNeedsTemplateRefresh(false);
+      }
+      const body = { ...role, id: role.id || undefined, kind: 'role', revision };
       const response = await authenticatedFetch(endpoint + '/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const result = await response.json();
-      if (!response.ok) throw Error(result?.error?.message ?? 'Preview could not be loaded.');
+      if (response.status === 409) setNeedsTemplateRefresh(true);
+      const result = await readApiResponse<Omit<NonNullable<typeof review>, 'body'>>(
+        response,
+        'Preview could not be loaded.',
+      );
       setReview({
         body,
         receipt: result.receipt,
@@ -313,7 +344,7 @@ export function AccessAdmin({
         impacts: result.impacts,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'The change could not be saved.');
+      setError(err instanceof Error ? err.message : 'Preview could not be loaded.');
     } finally {
       setBusy(false);
     }
@@ -328,12 +359,16 @@ export function AccessAdmin({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...review.body, previewReceipt: review.receipt }),
       });
-      const result = await response.json();
-      if (!response.ok) throw Error(result?.error?.message ?? 'Save failed.');
-      await load();
+      if (response.status === 409) setNeedsTemplateRefresh(true);
+      await readApiResponse(response, 'Save failed.');
       setReview(undefined);
       setEditor(undefined);
-      setNotice('Saved and audited. Effective access has been refreshed.');
+      setNotice('Saved and audited.');
+      try {
+        if (await load()) setNotice('Saved and audited. Effective access has been refreshed.');
+      } catch {
+        setError('The template was saved. Reload current configuration to refresh the list.');
+      }
     } catch (err) {
       setReview(undefined);
       setError(err instanceof Error ? err.message : 'Save failed.');
@@ -556,10 +591,15 @@ export function AccessAdmin({
             workspaceLink={{ href: '/workspace', label: 'Personal workspace' }}
           />
         </header>
-        {personalPath !== '/announcements' && (
-          <Announcements onPublishAccess={setCanPublishAnnouncements} />
-        )}
         <main id="access-main" className="access-main" tabIndex={-1}>
+          {(personalPath !== '/announcements' || personalCapabilities?.ownProfile) && (
+            <Suspense fallback={null}>
+              <Announcements
+                page={personalPath === '/announcements'}
+                onPublishAccess={setCanPublishAnnouncements}
+              />
+            </Suspense>
+          )}
           {!personalTitle && ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
             <>
               <nav className="access-section-tabs" aria-label="People and access sections">
@@ -630,7 +670,6 @@ export function AccessAdmin({
               embedded
               actionsContainer={pageActions}
               initialWorkspace={workspaceContext}
-              onAnnouncementPublishAccess={setCanPublishAnnouncements}
             />
           )}
           {!personalTitle && !readyState && !error && (
@@ -755,6 +794,8 @@ export function AccessAdmin({
                   onAssignments={() => setTab('assignments')}
                   onEdit={item => {
                     setRole(structuredClone(item));
+                    setOriginalRole(item);
+                    setNeedsTemplateRefresh(false);
                     setEditor('role');
                     setEditorRevision(state.revision);
                     setError('');

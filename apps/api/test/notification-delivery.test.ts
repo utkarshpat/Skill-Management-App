@@ -62,7 +62,11 @@ test('notification delivery rechecks active status, effective permissions and ac
         { headers: { Authorization: 'Bearer fixture' } },
       );
       const body = await response.json();
-      assert.equal(response.status, change === 'stable' ? 200 : 403, change);
+      assert.equal(
+        response.status,
+        change === 'stable' ? 200 : change === 'revision' ? 409 : 403,
+        change,
+      );
       if (change === 'stable')
         assert.ok(body.items.some((item: { id: string }) => item.id === 'private-event'));
       else assert.equal(body.items, undefined);

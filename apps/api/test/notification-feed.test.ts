@@ -60,6 +60,27 @@ test('one notification source failure preserves successful sources and marks par
     ['profile', 'request'],
   );
 });
+test('skill staleness copy matches the read-only claim destination', async () => {
+  const href = '/my-skills?claim=9e105227-8a6c-47aa-b25f-001000000001';
+  const feed = await loadNotificationFeed({ personId: 'owner', items: [] }, [
+    {
+      name: 'skill-staleness',
+      load: async () => [
+        {
+          ...item('skill-stale-1'),
+          title: 'Review your skill',
+          body: 'SQL has not been updated for 18 months. Do you want to update or retire this skill?',
+          href,
+        },
+      ],
+    },
+  ]);
+  assert.equal(feed.items[0].href, href);
+  assert.equal(
+    feed.items[0].body,
+    'SQL has not been updated for 18 months. Open the claim to review your recorded proficiency and experience.',
+  );
+});
 test('notification permission failures fail closed and synchronous failures are isolated', async () => {
   await assert.rejects(
     loadNotificationFeed({ personId: 'owner', items: [] }, [

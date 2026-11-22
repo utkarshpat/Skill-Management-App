@@ -15,6 +15,7 @@ const css = registerHooks({
   },
 });
 const { Learning } = await import('../src/Learning');
+const { ToastHost } = await import('../src/ToastHost');
 const plan: import('../src/Learning').Plan = {
   id: 'customer-reporting',
   revision: 4,
@@ -180,6 +181,7 @@ async function mount(path = '/learning?tab=paths') {
   view = await render(
     <MemoryRouter initialEntries={[path]}>
       <Learning />
+      <ToastHost />
     </MemoryRouter>,
   );
   await settle();

@@ -45,18 +45,27 @@ export async function loadNotificationFeed(
     if (result.status === 'fulfilled') {
       const source = sources[index].name;
       items.push(
-        ...result.value.map(item =>
-          source === 'reviews' || source === 'certifications'
-            ? {
-                ...item,
-                title: approvalTitles.get(item.title) ?? item.title,
-                body: approvalBodies.get(item.body) ?? item.body,
-                ...(item.actionLabel && {
-                  actionLabel: approvalActions.get(item.actionLabel) ?? item.actionLabel,
-                }),
-              }
-            : item,
-        ),
+        ...result.value.map(item => {
+          if (source === 'skill-staleness') {
+            return {
+              ...item,
+              // The installed reminder procedure links to the approved claim in view mode.
+              body: item.body.replace(
+                / Do you want to update or retire this skill\?$/,
+                ' Open the claim to review your recorded proficiency and experience.',
+              ),
+            };
+          }
+          if (source !== 'reviews' && source !== 'certifications') return item;
+          return {
+            ...item,
+            title: approvalTitles.get(item.title) ?? item.title,
+            body: approvalBodies.get(item.body) ?? item.body,
+            ...(item.actionLabel && {
+              actionLabel: approvalActions.get(item.actionLabel) ?? item.actionLabel,
+            }),
+          };
+        }),
       );
     } else {
       // A changed permission is not a transient failure. Do not return stale data.

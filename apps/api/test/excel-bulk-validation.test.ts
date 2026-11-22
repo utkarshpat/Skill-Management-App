@@ -27,6 +27,7 @@ test('Excel boundaries reject invalid filters, malformed previews and invalid hi
     ) as T;
   };
   registerExcelBulkRoutes(app, {
+    excelPreviewReceiptSecret: 'excel-test-fixture-key',
     verify: async () => ({ tenantId: 'tenant', objectId: 'object' }),
     resolveAccess: async () => 'person',
     excelBulk: { execute },
@@ -163,7 +164,8 @@ test('Excel boundaries reject invalid filters, malformed previews and invalid hi
   skills.getRow(1).getCell(6).value = 'Foundation';
   assert.equal((await send('catalogue', catalogue)).status, 200);
   assert.equal(
-    operations.filter(x => x.operation === 'PREVIEW').at(-1)!.payload.rows[1].definition.levels[0].name,
+    operations.filter(x => x.operation === 'PREVIEW').at(-1)!.payload.rows[1].definition.levels[0]
+      .name,
     'Beginner',
   );
   certificates.getRow(2).getCell(7).value = '[]';
@@ -242,6 +244,7 @@ test('Excel identity provisioning and database failures do not masquerade as exp
   let provisioned = false;
   let databaseFailed = false;
   registerExcelBulkRoutes(app, {
+    excelPreviewReceiptSecret: 'excel-test-fixture-key',
     verify: async () => ({ tenantId: 'tenant', objectId: 'object' }),
     resolveAccess: async () => {
       if (databaseFailed) throw Error('database unavailable');
