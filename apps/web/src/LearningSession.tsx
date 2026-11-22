@@ -129,6 +129,7 @@ export function LearningSession({
   async function loadReview(id: string, quizId: string) {
     setBusy(true);
     setError('');
+    setNotice('');
     try {
       const response = await authenticatedFetch(learningPracticeUrl(plan.id, task.id, id));
       const body = await response.json().catch(() => undefined);
@@ -137,8 +138,10 @@ export function LearningSession({
       setReview(readPracticeReview(body, id, quizId));
       setReviewIndex(0);
       setPage(3);
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load your attempt.');
+      return false;
     } finally {
       setBusy(false);
     }
@@ -152,10 +155,11 @@ export function LearningSession({
     const result = next?.attempts.find(a => a.id === attemptId);
     if (result) {
       setQuiz(undefined);
+      setReview(undefined);
       setPage(3);
       setHistoryPage(0);
-      await loadReview(result.id, result.quizId);
-      setNotice('Attempt saved. This is informal learning practice.');
+      if (await loadReview(result.id, result.quizId))
+        setNotice('Attempt saved. This is informal learning practice.');
     }
   }
   function addResource() {

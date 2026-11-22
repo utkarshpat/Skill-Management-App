@@ -236,6 +236,7 @@ test('practice generation is bounded, answers stay hidden until submission, and 
   await click('Submit answers');
   assert.match(document.body.textContent!, /Session changed/);
   postFailure = 0;
+  mode = 'bad-review';
   await click('Submit answers');
   const attempts = writes.filter(w => w.action === 'attempt');
   assert.equal(attempts.length, 2);
@@ -243,6 +244,12 @@ test('practice generation is bounded, answers stay hidden until submission, and 
   assert.deepEqual(attempts[1].body.answers, [0, 1]);
   assert.equal(attempts[1].body.quizId, quizId);
   assert.equal('correctIndex' in attempts[1].body, false);
+  assert.match(document.body.textContent!, /practice review is incomplete/i);
+  assert.doesNotMatch(document.body.textContent!, /Attempt saved/);
+  assert.match(page(3).textContent!, /2\/2/);
+  mode = '';
+  await click('View explanations');
+  assert.equal(writes.filter(w => w.action === 'attempt').length, 2);
   assert.match(page(3).textContent!, /Correct answer:/);
   await click('Next', page(3));
   assert.match(page(3).textContent!, /GROUP BY aggregates/);

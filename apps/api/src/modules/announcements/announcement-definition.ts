@@ -50,12 +50,14 @@ function choices(value: unknown, minimum = 2) {
 export function schedule(start: unknown, end: unknown) {
   const parse = (value: unknown) => {
     const time = text(value, 30);
+    const parsed = new Date(time);
     requireValue(
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(time) &&
-        Number.isFinite(Date.parse(time)),
+        Number.isFinite(parsed.getTime()) &&
+        parsed.toISOString().slice(0, 19) === time.slice(0, 19),
       'Choose a valid date and time.',
     );
-    return new Date(time).toISOString();
+    return parsed.toISOString();
   };
   const startsAt = parse(start),
     endsAt = parse(end);

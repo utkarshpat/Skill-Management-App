@@ -128,6 +128,7 @@ let dashboardFailure = 0,
   total = 1;
 let pendingExport: ReturnType<typeof deferred<Response>> | undefined;
 let exportSignal: AbortSignal | null | undefined;
+let canDemandView = false;
 beforeEach(async () => {
   globalThis.FormData = window.FormData as typeof FormData;
   queries = [];
@@ -136,6 +137,7 @@ beforeEach(async () => {
   blobs = [];
   dashboardFailure = exportFailure = 0;
   denied = noExport = false;
+  canDemandView = false;
   total = 1;
   pendingExport = undefined;
   exportSignal = undefined;
@@ -151,7 +153,9 @@ beforeEach(async () => {
     const url = String(input);
     if (url === '/api/dev-login') return demoResponse();
     if (url === '/api/business/context')
-      return Response.json({ ...context, canView: !denied, canExport: !noExport });
+      return Response.json({ ...context, canView: !denied, canExport: !noExport, canDemandView });
+    if (url.startsWith('/api/business/workflow/demands?'))
+      return Response.json({ revision: 4, rows: [], total: 0, page: 1, pageSize: 25 });
     const q = new URL(url, 'http://localhost').searchParams;
     if (url.startsWith('/api/business/export?') || url.startsWith('/api/business/report?')) {
       exports.push(q);
@@ -217,6 +221,24 @@ async function mount(query = '') {
   await settle();
   await settle();
 }
+
+test('analytics users with demand access can navigate to matching and back', async () => {
+  canDemandView = true;
+  await mount();
+  const tabs = document.querySelector<HTMLElement>('nav[aria-label="Analytics sections"]')!;
+  assert.equal(tabs.querySelector('[aria-current="page"]')?.textContent, 'Analytics');
+  await click('Demand & matching', tabs);
+  assert.equal(tabs.querySelector('[aria-current="page"]')?.textContent, 'Demand & matching');
+  assert.equal(document.querySelector('.bo-record-heading h2')?.textContent, 'Demand & matching');
+  await click('Analytics', tabs);
+  assert.equal(tabs.querySelector('[aria-current="page"]')?.textContent, 'Analytics');
+});
+
+test('the demand tab stays hidden when access is unavailable, including on a direct link', async () => {
+  await mount('?tab=demand');
+  assert.equal(document.querySelector('nav[aria-label="Analytics sections"]'), null);
+  assert.ok(queries.length > 0);
+});
 const current = () => queries.at(-1)!;
 async function named(name: string, value: string) {
   const field = document.querySelector<HTMLInputElement | HTMLSelectElement>(

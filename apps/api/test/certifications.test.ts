@@ -659,6 +659,19 @@ test('compact certification admission avoids an initial roster read and retains 
       f.state.reporting![0].managerId = f.unrelated.id;
     };
     assert.equal((await fetch(root + '?view=queue&id=' + f.record.id, reviewOnly)).status, 403);
+    f.unrelated.issuerApprovals = true;
+    f.record.issuerApproval = true;
+    actor = f.unrelated.id;
+    changeDuringRead = undefined;
+    assert.equal((await fetch(root + '?view=queue', reviewOnly)).status, 200);
+    changeDuringRead = () => {
+      f.unrelated.issuerApprovals = false;
+    };
+    // Retaining direct reports does not let the actor keep issuer-only rows.
+    assert.equal((await fetch(root + '?view=queue', reviewOnly)).status, 403);
+    emptyQueue = true;
+    f.unrelated.issuerApprovals = true;
+    assert.equal((await fetch(root + '?view=queue', reviewOnly)).status, 403);
     actor = f.owner.id;
     changeDuringRead = () => {
       f.owner.active = false;

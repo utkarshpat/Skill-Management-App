@@ -100,8 +100,7 @@ export function registerCertificationRoutes(
         state: LocalAccessState;
         actor: LocalPerson;
       };
-      const issuerApprovals = actor.issuerApprovals === true;
-      if (query.view === 'queue' && !canReviewAssigned(state, actor) && !issuerApprovals)
+      if (query.view === 'queue' && !canReviewAssigned(state, actor) && !actor.issuerApprovals)
         throw new AccessError(403, 'Assigned certification approval is unavailable.');
       const snapshotRevision = state.revision;
       const result = await deps!.certifications!.read(actor.id, query);
@@ -110,13 +109,16 @@ export function registerCertificationRoutes(
       // An empty review-only page has no reporting edges or personal
       // submission actions to resolve. Recheck the actor and revision either way.
       ({ state, actor } = await context(actor.id, queueOnly && !result.records.length));
+      const issuerApprovals = actor.issuerApprovals === true;
       if (query.view === 'queue' && !canReviewAssigned(state, actor) && !issuerApprovals)
         throw new AccessError(403, 'Assigned certification approval is unavailable.');
       // Do not deliver records if current reporting scope changed during the SQL read.
       if (
         query.view === 'queue' &&
         result.records.some(
-          r => !r.issuerApproval && !certificationAccess(state, actor, r).canReview,
+          r =>
+            !(issuerApprovals && r.issuerApproval) &&
+            !certificationAccess(state, actor, r).canReview,
         )
       )
         throw new AccessError(403, 'Review assignments changed. Refresh the queue.');

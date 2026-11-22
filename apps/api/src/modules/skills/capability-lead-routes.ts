@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Express } from 'express';
 import sql from 'mssql';
 import { withRuntimeDatabase } from '../../shared/database.js';
@@ -116,7 +116,12 @@ export function registerCapabilityLeadRoutes(app: Express, deps?: CapabilityLead
       const receipt = createHmac('sha256', previewKey)
         .update(JSON.stringify({ actor, command }))
         .digest('hex');
-      if (operation === 'SAVE' && body.receipt !== receipt)
+      if (
+        operation === 'SAVE' &&
+        (typeof body.receipt !== 'string' ||
+          !/^[0-9a-f]{64}$/.test(body.receipt) ||
+          !timingSafeEqual(Buffer.from(body.receipt, 'hex'), Buffer.from(receipt, 'hex')))
+      )
         throw new AccessError(409, 'Preview this exact assignment before saving.');
       const result = await leads.run(actor, operation, command);
       res.json(

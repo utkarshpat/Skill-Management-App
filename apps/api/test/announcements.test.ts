@@ -10,6 +10,7 @@ import {
   canonicalExportFields,
   definition,
   design,
+  schedule,
 } from '../src/modules/announcements/announcement-definition.js';
 import {
   announcementDesignContext,
@@ -72,6 +73,16 @@ const dev = {
 const html =
   '<section><div data-slot="title"></div><div data-slot="image"></div><div data-slot="message"></div><div data-slot="action"></div></section>';
 const css = 'section { color: #126b70; background-color: #f7f8f6; --layout: split; }';
+
+test('announcement schedules reject dates and times that would roll over', () => {
+  const start = '2026-01-01T00:00:00Z',
+    end = '2028-03-01T00:00:00Z';
+  for (const time of ['2026-02-31T10:00:00Z', '2026-04-30T24:00:00Z']) {
+    assert.throws(() => schedule(time, end), /valid date and time/);
+    assert.throws(() => schedule(start, time), /valid date and time/);
+  }
+  assert.equal(schedule('2028-02-29T10:00:00.1Z', end).startsAt, '2028-02-29T10:00:00.100Z');
+});
 
 test('radio choices and checkbox answers are validated without accepting identity input', () => {
   const configured = definition({

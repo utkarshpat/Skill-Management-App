@@ -89,10 +89,9 @@ export function BusinessOperations() {
 
   return (
     <div className="bo-page">
-      {selected === 'demand' && (
+      {context?.canDemandView && (
         <header className="bo-heading bo-heading-compact">
           <h2 className="sr-only">Business analytics</h2>
-          {/* Main Section Navigation Tabs */}
           <nav className="bo-tabs" aria-label="Analytics sections">
             {tabs.map(([id, label]) => (
               <button
@@ -105,7 +104,7 @@ export function BusinessOperations() {
             ))}
           </nav>
 
-          {context?.canView && (
+          {selected === 'demand' && (
             <button
               className="secondary-button"
               onClick={() =>

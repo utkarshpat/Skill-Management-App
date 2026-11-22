@@ -126,15 +126,24 @@ test('profile trusts verified identity, denies missing membership and hides SQL 
 test('capability lead route keeps expected rejections in the public HTTP error contract', async t => {
   const actor = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const leads = new SqlCapabilityLeads(actor);
-  t.mock.method(leads, 'run', async () => {
-    throw new AccessError(409, 'Workspace changed. Refresh and review again.');
+  let saves = 0;
+  t.mock.method(leads, 'run', async (...[, operation]: Parameters<SqlCapabilityLeads['run']>) => {
+    if (operation === 'LIST')
+      throw new AccessError(409, 'Workspace changed. Refresh and review again.');
+    if (operation === 'SAVE') saves++;
+    return {};
   });
-  const server = createApp({
+  const previousKey = process.env.ENTRA_WEB_CLIENT_SECRET;
+  process.env.ENTRA_WEB_CLIENT_SECRET = 'test-preview-key';
+  const app = createApp({
     capabilityLeads: leads,
     profile: async () => undefined,
     verify: async () => ({ tenantId: 'trusted-tenant', objectId: 'trusted-object' }),
     resolveAccess: async () => actor,
-  }).listen(0, '127.0.0.1');
+  });
+  if (previousKey === undefined) delete process.env.ENTRA_WEB_CLIENT_SECRET;
+  else process.env.ENTRA_WEB_CLIENT_SECRET = previousKey;
+  const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
@@ -150,6 +159,33 @@ test('capability lead route keeps expected rejections in the public HTTP error c
       assert.equal(error.code, 'ACCESS_REJECTED');
       assert.equal(error.requestId, response.headers.get('x-request-id'));
     }
+    const assignment = {
+      id: actor,
+      personId: actor,
+      revision: 1,
+      allIssuers: true,
+      issuerIds: [],
+      scopeId: actor,
+      scopeKind: 'PROJECT',
+      effect: 'ALLOW',
+      active: true,
+      reason: 'Certificate approvals for this project',
+    };
+    const post = (operation: string, body: object) =>
+      fetch(`${url}/${operation}`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer valid', 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    const preview = await post('preview', assignment);
+    assert.equal(preview.status, 200);
+    const { receipt } = await preview.json();
+    for (const invalid of [undefined, 42, 'g'.repeat(64), receipt.slice(1), receipt + '0'])
+      assert.equal((await post('save', { ...assignment, receipt: invalid })).status, 409);
+    assert.equal((await post('save', { ...assignment, active: false, receipt })).status, 409);
+    assert.equal(saves, 0);
+    assert.equal((await post('save', { ...assignment, receipt })).status, 200);
+    assert.equal(saves, 1);
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close(error => (error ? reject(error) : resolve())),
