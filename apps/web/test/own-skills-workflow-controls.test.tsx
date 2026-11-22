@@ -147,7 +147,7 @@ test('own skill view searches recorded claims and opens read-only evidence witho
   assert.equal(writes.length, 0);
   await click('Close');
   await change(document.querySelector('[aria-label="Search your skills"]')!, '');
-  await click('To complete');
+  await click('Action needed');
   assert.ok(document.querySelector('[aria-label="View SQL reporting claim"]'));
   assert.equal(document.querySelector('[aria-label="View Azure operations claim"]'), null);
   await click('Clear skill filters');

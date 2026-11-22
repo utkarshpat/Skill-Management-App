@@ -2,11 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   authorize,
-  resolveNPlusOne,
   type Actor,
   type Resource,
   type Grant,
-  type ReportingRelationship,
 } from '../src/modules/access/domain/authorization.js';
 
 const at = new Date('2026-10-02T06:00:00Z');
@@ -116,29 +114,4 @@ test('own, resource-specific and capability scopes do not expose unrelated evide
   assert.equal(authorize(actor, 'evidence.view', resource, [specific], at).allowed, false);
   const capability: Grant = { ...view, scope: { kind: 'CAPABILITY' } };
   assert.equal(authorize(actor, 'evidence.view', resource, [capability], at).allowed, false);
-});
-test('N+1 follows current reporting data; gaps, duplicate relationships and self-routing block', () => {
-  const old: ReportingRelationship = {
-    accountId: 'acme',
-    employeeId: 'employee',
-    managerId: 'old-manager',
-    validFrom: '2026-01-01T00:00:00Z',
-    validUntil: at.toISOString(),
-  };
-  const current: ReportingRelationship = {
-    ...old,
-    managerId: 'new-manager',
-    validFrom: at.toISOString(),
-    validUntil: undefined,
-  };
-  assert.equal(resolveNPlusOne('acme', 'employee', [old, current], at), 'new-manager');
-  assert.equal(resolveNPlusOne('other', 'employee', [current], at), undefined);
-  assert.equal(
-    resolveNPlusOne('acme', 'employee', [current, { ...current, managerId: 'third' }], at),
-    undefined,
-  );
-  assert.equal(
-    resolveNPlusOne('acme', 'employee', [{ ...current, managerId: 'employee' }], at),
-    undefined,
-  );
 });

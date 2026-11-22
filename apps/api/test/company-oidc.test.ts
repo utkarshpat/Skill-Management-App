@@ -114,6 +114,19 @@ test('backend callback binds PKCE and nonce, consumes state once, and authorizes
       (await get('/api/auth/signed-out')).headers.get('location'),
       '/?signin=signed-out',
     );
+    const completion = await get('/api/auth/resume-complete');
+    assert.match(completion.headers.get('content-type') ?? '', /^text\/html/);
+    assert.equal(completion.headers.get('cache-control'), 'no-store');
+    const pageNonce = /script-src 'nonce-([\w-]+)'/.exec(
+      completion.headers.get('content-security-policy') ?? '',
+    )?.[1];
+    assert.ok(pageNonce);
+    const completionHtml = await completion.text();
+    assert.ok(completionHtml.includes(`<script nonce="${pageNonce}">`));
+    assert.match(completionHtml, /href="\/workspace"/);
+    const failedCompletion = await (await get('/api/auth/resume-complete?signin=failed')).text();
+    assert.match(failedCompletion, /Try Microsoft sign-in again/);
+    assert.doesNotMatch(failedCompletion, /<script/);
     const legacy = await fetch('http://127.0.0.1:' + address.port + '/api/auth/session', {
       method: 'POST',
       headers: { Authorization: 'Bearer legacy', Origin: origin },

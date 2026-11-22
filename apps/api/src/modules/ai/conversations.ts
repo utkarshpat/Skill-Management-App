@@ -3,7 +3,7 @@ import { withRuntimeDatabase } from '../../shared/database.js';
 import { AccessError } from '../../shared/errors.js';
 import type { Session } from './context.js';
 
-export interface SavedMessage {
+interface SavedMessage {
   role: 'user' | 'assistant';
   content: string;
   sources?: { label: string; url: string }[];

@@ -88,7 +88,7 @@ try {
             .input('expected_revision', sql.Int, revision++)
             .input('target_id', sql.UniqueIdentifier, randomUUID())
             .input('is_new', sql.Bit, true)
-            .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(seedPayload(seed, skill)))
+            .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(seedPayload(skill)))
             .execute('dbo.SaveSkillCatalogue');
         for (const change of changes)
           await new sql.Request(tx)

@@ -1,6 +1,6 @@
 import { AccessError } from '../../shared/errors.js';
-export type WorkflowKind = 'REQUEST' | 'INCIDENT';
-export const workflowCategories = [
+type WorkflowKind = 'REQUEST' | 'INCIDENT';
+const workflowCategories = [
   'LEARNING',
   'SKILL',
   'ASSESSMENT',

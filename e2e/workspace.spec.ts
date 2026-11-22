@@ -1,5 +1,5 @@
 import { test, expect, fixture, ids, type State } from './browser-fixture';
-import { people, plan, request as workforceRequest } from './workforce-data';
+import { certificates, people, plan, request as workforceRequest } from './workforce-data';
 
 for (const role of ['employee', 'manager', 'admin'] as const) {
   test(`${role}: own profile, navigation and keyboard account menu`, async ({ page }) => {
@@ -204,17 +204,23 @@ test('amendments: approver starts at type selection and can edit Provider', asyn
   await page.getByRole('button', { name: /Next: entry details/ }).click();
   await expect(page.getByText('Update provider: Synthetic issuer')).toBeVisible();
 });
-test('review search and category keep the assigned approvals workbench visible', async ({ page }) => {
+test('review search and category keep the assigned approvals workbench visible', async ({
+  page,
+}) => {
   await fixture(page, { role: 'manager' });
   await page.goto('/test/e2e/harness.html?fixture=reviews');
   await expect(page.getByRole('region', { name: 'Assigned skill approvals' })).toBeVisible();
-  await page.getByRole('searchbox', { name: 'Search approvals by employee or skill' }).fill('Synthetic');
+  await page
+    .getByRole('searchbox', { name: 'Search approvals by employee or skill' })
+    .fill('Synthetic');
   await expect(page.getByRole('region', { name: 'Assigned skill approvals' })).toBeVisible();
   await page.getByLabel('Approval category').selectOption('Synthetic');
   await expect(page.getByRole('region', { name: 'Assigned skill approvals' })).toBeVisible();
 });
 
-test('workforce: employee filters delivered skills and reads approval feedback', async ({ page }) => {
+test('workforce: employee filters delivered skills and reads approval feedback', async ({
+  page,
+}) => {
   await fixture(page, { role: 'employee', realistic: true });
   await page.goto('/my-skills');
   await expect(page.getByRole('button', { name: 'View SQL claim' })).toBeVisible();
@@ -324,4 +330,87 @@ test('workforce: expired reviewed credential remains visible with renewal contex
     }),
   ).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Approve', exact: true })).toHaveCount(0);
+});
+
+test('portfolio filters can leave Approved and the certification table scrolls within the page', async ({
+  page,
+}) => {
+  await fixture(page, { role: 'employee', realistic: true });
+  const records = certificates(ids.person);
+  await page.route('**/api/capability-submissions?**', route =>
+    route.fulfill({ json: { records: [] } }),
+  );
+  await page.route('**/api/certifications?**', route =>
+    route.fulfill({
+      json: {
+        snapshotRevision: 1,
+        records: [
+          ...records,
+          {
+            ...records[0],
+            id: '66666666-6666-4666-8666-000000000003',
+            certificationName: 'Pending AWS credential',
+            status: 'SUBMITTED',
+          },
+        ],
+        total: 3,
+        page: 1,
+        pageSize: 25,
+        canManage: true,
+      },
+    }),
+  );
+  await page.goto('/my-skills');
+  await page
+    .getByRole('group', { name: 'Skill views' })
+    .getByRole('button', { name: /^Approved/ })
+    .click();
+  await page.getByRole('combobox', { name: 'Filter skill status' }).selectOption('SUBMITTED');
+  await expect(page.getByRole('button', { name: /^Power BI/ }).first()).toBeVisible();
+  await page.getByRole('link', { name: 'Certifications', exact: true }).click();
+  const expired = page.getByRole('row', { name: /Microsoft Power BI Data Analyst/ });
+  await expect(expired.getByText('Expired', { exact: true })).toHaveCount(1);
+  const table = page.getByLabel('Certification table; scroll horizontally on smaller screens');
+  await expect(table).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  if (page.viewportSize()!.width < 600) {
+    expect(
+      await table.evaluate(element => {
+        element.scrollLeft = 100;
+        return element.scrollLeft;
+      }),
+    ).toBeGreaterThan(0);
+  }
+  await page
+    .getByRole('group', { name: 'Certification views' })
+    .getByRole('button', { name: /^Approved/ })
+    .click();
+  await page
+    .getByRole('combobox', { name: 'Filter certification approval status' })
+    .selectOption('SUBMITTED');
+  await expect(page.getByRole('row', { name: /Pending AWS credential/ })).toBeVisible();
+});
+
+test('admin home opens the dashboard, catalogue marks the active destination, and unavailable tabs explain access', async ({
+  page,
+}) => {
+  await fixture(page, { role: 'admin', businessAdministration: false });
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/access\?view=overview$/);
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
+  await page.goto('/access?view=profiles');
+  await expect(page.getByRole('heading', { name: 'Access is not assigned' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Return to your workspace' })).toBeVisible();
+  const mobile = page.viewportSize()!.width < 600;
+  if (mobile) await page.getByRole('button', { name: 'Open navigation' }).click();
+  await page.getByRole('button', { name: 'Skill catalogue', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Skill catalogue', exact: true })).toBeVisible();
+  if (mobile) await page.getByRole('button', { name: 'Open navigation' }).click();
+  await expect(page.getByRole('button', { name: 'Skill catalogue', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  await page.getByRole('link', { name: 'Sopra Steria' }).click();
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
+  if (mobile) await expect(page.getByRole('dialog', { name: 'Workspace navigation' })).toBeHidden();
 });

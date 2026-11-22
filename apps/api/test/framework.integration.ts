@@ -43,13 +43,13 @@ await withDatabase(async pool => {
         .input('payload', sql.NVarChar(sql.MAX), JSON.stringify(payload))
         .execute('dbo.SaveSkillCatalogue');
     const first = {
-      ...seedPayload(seed, seed.skills[0]),
+      ...seedPayload(seed.skills[0]),
       businessCode: undefined,
       name: 'Framework QA ' + ids[0],
     };
     await save(ids[0], revision, true, first);
     await save(ids[1], revision + 1, true, {
-      ...seedPayload(seed, seed.skills[1]),
+      ...seedPayload(seed.skills[1]),
       businessCode: undefined,
       name: 'Framework QA ' + ids[1],
     });

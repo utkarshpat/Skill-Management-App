@@ -3,7 +3,7 @@ import type { WorkspaceState } from './Workspace';
 import { administrationShellFor, isSupportedWorkspacePath } from './WorkspaceNavigation';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { FormDialog } from './FormDialog';
-import { Link, useLocation } from 'react-router';
+import { Link, Navigate, useLocation } from 'react-router';
 
 import { ThemeSwitcher } from './Theme';
 import { startActivityRefresh } from './activity-refresh';
@@ -74,6 +74,8 @@ export function App() {
   const [resumePath, setResumePath] = useState<string>();
   const [resumeError, setResumeError] = useState('');
   const [resuming, setResuming] = useState(false);
+  const recoveryRequest = useRef<Promise<void>>(undefined);
+  const recoveryChannel = useRef<BroadcastChannel>(undefined);
   const paused = useRef(false);
   const [bindingPending, setBindingPending] = useState(false);
   const [leavingWorkspace, setLeavingWorkspace] = useState(false);
@@ -191,31 +193,55 @@ export function App() {
       active = false;
     };
   }, [entryPath]);
-  async function resumeWorkspace() {
-    if (resuming) return;
+  function resumeWorkspace(showError: boolean) {
+    if (recoveryRequest.current) return recoveryRequest.current;
     setResuming(true);
-    setResumeError('');
-    try {
+    if (showError) setResumeError('');
+    return (recoveryRequest.current = (async () => {
       if (!(await resumeCompanySession())) {
-        window.location.reload();
+        setResumeError('Choose the same work account to continue with your unsaved changes.');
+        setResumePath(companyResumePath(true));
         return;
       }
       const response = await authenticatedFetch('/api/workspace');
-      if (response.status === 401 || response.status === 403) {
-        window.location.reload();
-        return;
-      }
-      if (!response.ok) throw Error('Workspace could not be refreshed. Try again.');
+      if (!response.ok)
+        throw Error('Workspace could not be refreshed. Check your access and try again.');
       setWorkspace(await response.json());
       paused.current = false;
+      setResumeError('');
+      recoveryChannel.current?.postMessage('resumed');
       setResumePath(undefined);
       window.dispatchEvent(new Event('workspace-access-updated'));
-    } catch (error) {
-      setResumeError(error instanceof Error ? error.message : 'Sign-in could not be resumed.');
-    } finally {
-      setResuming(false);
-    }
+    })()
+      .catch(error => {
+        if (showError)
+          setResumeError(error instanceof Error ? error.message : 'Sign-in could not be resumed.');
+      })
+      .finally(() => {
+        recoveryRequest.current = undefined;
+        setResuming(false);
+      }));
   }
+  useEffect(() => {
+    if (!resumePath) return;
+    const channel =
+      typeof BroadcastChannel === 'function'
+        ? new BroadcastChannel('skill-company-recovery')
+        : undefined;
+    if (channel) {
+      recoveryChannel.current = channel;
+      channel.onmessage = ({ data }) => {
+        if (data === 'complete') void resumeWorkspace(true);
+      };
+    }
+    const onFocus = () => void resumeWorkspace(false);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      recoveryChannel.current = undefined;
+      channel?.close();
+    };
+  }, [resumePath]);
   const recovery = resumePath && (
     <FormDialog
       title="Sign in to resume your work"
@@ -235,7 +261,7 @@ export function App() {
           <button
             type="button"
             className="primary-button"
-            onClick={() => void resumeWorkspace()}
+            onClick={() => void resumeWorkspace(true)}
             disabled={resuming}
           >
             {resuming ? 'Checking sign-in…' : 'Resume workspace'}
@@ -243,7 +269,10 @@ export function App() {
         </>
       }
     >
-      <p>Sign in with the same work account in the new tab, then return here to continue.</p>
+      <p>
+        Sign in with the same work account. This tab will reopen your work when sign-in finishes.
+      </p>
+      <p>If it stays paused, select Resume workspace.</p>
       {resumeError && <p role="alert">{resumeError}</p>}
     </FormDialog>
   );
@@ -309,6 +338,8 @@ export function App() {
         Preparing workspace navigation…
       </div>
     );
+  if (session === 'signed-in' && pathname === '/' && workspace?.capabilities.administration)
+    return <Navigate replace to="/access?view=overview" />;
   const refreshWarning =
     workspace && workspaceError ? (
       <div className="workspace-refresh-warning" role="alert">

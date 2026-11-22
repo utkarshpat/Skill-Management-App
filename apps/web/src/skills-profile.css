@@ -111,6 +111,9 @@
   border-radius: 12px;
   box-shadow: var(--shadow-sm);
 }
+.skills-table-scroll {
+  overflow-x: auto;
+}
 .skills-card-header {
   display: flex;
   align-items: center;
@@ -812,7 +815,7 @@
 }
 @media (max-width: 1100px) {
   .skills-content-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .skills-insights {
     grid-template-columns: repeat(3, minmax(0, 1fr));

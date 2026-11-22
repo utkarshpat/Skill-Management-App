@@ -5,8 +5,6 @@ import {
   Search,
   FileText,
   Clock3,
-  XCircle,
-  AlertCircle,
   Inbox,
   ChevronLeft,
   ChevronRight,

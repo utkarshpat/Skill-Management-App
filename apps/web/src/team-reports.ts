@@ -35,16 +35,6 @@ export async function fetchTeamAnalytics(fetcher: Fetcher, query: string, signal
   signal.throwIfAborted();
   return { analytics: body.analytics, at: new Date() };
 }
-export async function fetchTeamReport(
-  fetcher: Fetcher,
-  kind: TeamReportKind,
-  rank: number,
-  query: string,
-  signal: AbortSignal,
-) {
-  const { analytics, at } = await fetchTeamAnalytics(fetcher, query, signal);
-  return { csv: teamReportCsv(analytics, kind, rank, query, at), at };
-}
 export function coverageRows(
   analytics: TeamReportAnalytics,
   rank: number,

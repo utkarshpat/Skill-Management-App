@@ -327,6 +327,9 @@ export function createApp(
             dependencies.announcements,
           ),
           skillNotifications: dependencies.claims?.notifications?.bind(dependencies.claims),
+          skillStalenessNotifications: dependencies.claims?.stalenessNotifications?.bind(
+            dependencies.claims,
+          ),
           workflowNotifications: dependencies.workflows?.notifications.bind(dependencies.workflows),
           amendmentNotifications: dependencies.business?.notifications?.bind(dependencies.business),
           recommendationNotifications: dependencies.recommendations?.notifications.bind(

@@ -5,7 +5,7 @@ import { ToastHost } from './ToastHost';
 import { notify } from './toast';
 import { lockPageScroll } from './page-scroll-lock';
 
-export interface FormPage {
+interface FormPage {
   label: string;
   content: ReactNode;
 }

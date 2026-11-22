@@ -86,7 +86,7 @@ export interface BusinessDashboard {
   page: number;
   pageSize: number;
 }
-export const businessFilterKeys = [
+const businessFilterKeys = [
   'scopeId',
   'hierarchyId',
   'dataset',
@@ -149,17 +149,6 @@ export function businessPeriod(preset: 'all' | '30' | '90' | 'ytd', now = new Da
 }
 
 /** Counts in the People dataset are paginated; they cannot establish a scope-wide ranking. */
-export function businessPeoplePage(rows: BusinessDashboard['rows']) {
-  return [...rows]
-    .sort(
-      (a, b) =>
-        (Number(b.currentCertifications) || 0) - (Number(a.currentCertifications) || 0) ||
-        (Number(b.reviewedSkills) || 0) - (Number(a.reviewedSkills) || 0) ||
-        String(a.employee).localeCompare(String(b.employee)),
-    )
-    .slice(0, 8);
-}
-
 export interface KnownSkill {
   name: string;
   active: boolean;

@@ -1,4 +1,3 @@
-import { SidebarNavigation } from './SidebarNavigation';
 import { Megaphone, BarChart3, BookOpen, Compass, ShieldCheck, UserRound } from 'lucide-react';
 import { isPhaseTwoPage, phaseTwoVisible } from './release-features';
 
@@ -54,7 +53,7 @@ export const catalogueNavigationVisible = (
       capabilities.amendments ||
       capabilities.approveAmendments),
   );
-export const businessNavigationVisible = (
+const businessNavigationVisible = (
   capabilities:
     | { businessOperations?: boolean; businessAdministration?: boolean; issuerApprovals?: boolean }
     | undefined,
@@ -78,7 +77,7 @@ export const isSupportedWorkspacePath = (pathname: string) =>
     '/knowledgetransfer',
   ].includes(pathname);
 
-export interface PersonalNavigationCapabilities {
+interface PersonalNavigationCapabilities {
   ownProfile: boolean;
   canPublishAnnouncements?: boolean;
   ownSkills: boolean;
@@ -131,26 +130,4 @@ export function personalNavigationItems(
       pathname === item.href ||
       (item.id === 'my-skills' && ['/my-skills', '/certifications'].includes(pathname ?? '')),
   }));
-}
-export function PersonalCapabilityNavigation({
-  capabilities,
-  pathname,
-  onNavigate,
-}: {
-  capabilities?: PersonalNavigationCapabilities;
-  pathname?: string;
-  onNavigate: () => void;
-}) {
-  const items = personalNavigationItems(capabilities, pathname);
-  if (!items.length) return null;
-  return (
-    <>
-      <p className="nav-caption">MY CAPABILITY</p>
-      <SidebarNavigation
-        items={items}
-        label="Personal capability sections"
-        onNavigate={onNavigate}
-      />
-    </>
-  );
 }

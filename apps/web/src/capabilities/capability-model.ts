@@ -143,7 +143,7 @@ export function submissionReviewSummary(
 export function relatedSkillIds(selected: string[], available: string[]) {
   return [...new Set(selected)].filter(id => available.includes(id));
 }
-export interface CertificateIdentity {
+interface CertificateIdentity {
   certificationName: string;
   provider: string;
   credentialId: string;

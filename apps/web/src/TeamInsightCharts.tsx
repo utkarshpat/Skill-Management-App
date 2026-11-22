@@ -21,7 +21,7 @@ const EXAMPLES = [
   'Who could reach Experienced proficiency in SQL?',
 ];
 
-export function askAssistant(prompt: string) {
+function askAssistant(prompt: string) {
   window.dispatchEvent(new CustomEvent('assistant-context-request', { detail: { prompt } }));
 }
 

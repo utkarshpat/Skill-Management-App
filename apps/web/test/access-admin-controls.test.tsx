@@ -8,8 +8,6 @@ const { PermissionEditor } =
   component<typeof import('../src/PermissionEditor')>('PermissionEditor.tsx');
 const { RoleAssignments } =
   component<typeof import('../src/RoleAssignments')>('RoleAssignments.tsx');
-const { AccessDirectory } =
-  component<typeof import('../src/AccessDirectory')>('AccessDirectory.tsx');
 let view: Awaited<ReturnType<typeof render>> | undefined;
 afterEach(async () => {
   await view?.unmount();
@@ -165,43 +163,4 @@ test('bulk assignment drafts preserve existing templates and revert exact toggle
   } finally {
     actions.remove();
   }
-});
-
-test('directory search, active filtering and independent template editing operate on exact records', async () => {
-  const selected: string[] = [];
-  view = await render(
-    <AccessDirectory
-      kind="people"
-      people={people}
-      roles={roles}
-      busy={false}
-      onPerson={id => selected.push(id)}
-      onRole={() => assert.fail('Unexpected template edit')}
-    />,
-  );
-  const search = document.querySelector<HTMLInputElement>('input[aria-label="Search people"]')!;
-  await change(search, '710300');
-  await click('Manage person Priya Nair');
-  assert.deepEqual(selected, ['person-0']);
-  await change(search, 'no match');
-  assert.match(document.body.textContent ?? '', /No matching/);
-  await change(search, '');
-  const filter = document.querySelector<HTMLSelectElement>('select')!;
-  await change(filter, 'suspended');
-  assert.match(document.body.textContent ?? '', /Meera Joshi/);
-  assert.doesNotMatch(document.body.textContent ?? '', /Priya Nair/);
-  await view.unmount();
-  view = undefined;
-  view = await render(
-    <AccessDirectory
-      kind="roles"
-      people={people}
-      roles={roles}
-      busy={false}
-      onPerson={() => assert.fail('Unexpected person edit')}
-      onRole={id => selected.push(id)}
-    />,
-  );
-  await click('Edit Delivery Support');
-  assert.equal(selected.at(-1), 'role-0');
 });

@@ -10,7 +10,7 @@ export function escapeHtml(value: string | number | null | undefined): string {
   );
 }
 
-export function escapeJsonForScript(json: string): string {
+function escapeJsonForScript(json: string): string {
   return json
     .replace(/</g, '\\u003c')
     .replace(/>/g, '\\u003e')
@@ -20,17 +20,6 @@ export function escapeJsonForScript(json: string): string {
 
 const LEVEL_NAMES = proficiencyNames;
 const LEVEL_COLORS = ['#61bdb5', '#098b8c', '#357ac2', '#123c44'];
-const CATEGORY_COLORS = [
-  '#008595',
-  '#357ac2',
-  '#b87b11',
-  '#7b5ea7',
-  '#3f8a4f',
-  '#c4573a',
-  '#5d6b78',
-  '#a0466b',
-];
-
 export function businessReportHtml(
   data: BusinessDashboard,
   scopeLabel: string,
@@ -75,7 +64,6 @@ export function businessReportHtml(
 
   // Categories
   const categories = data.categories || [];
-  const totalCatRecords = categories.reduce((s, c) => s + c.value, 0);
 
   // Comparisons (Accounts/Clients and Delivery Units)
   const comparisons = data.comparisons || [];
@@ -676,7 +664,7 @@ export function businessReportHtml(
         </div>
       </div>
       <div class="radar-container" id="radarMount">
-        ${renderRadarSvg(radarSkills, categories, totalEmployees)}
+        ${renderRadarSvg(radarSkills)}
       </div>
       <div class="chart-legend" id="radarLegend">
         <span><i class="legend-dot" style="background:var(--primary)"></i> Average Level / 4-Level Framework</span>
@@ -887,7 +875,7 @@ export function businessReportHtml(
           </tr>
         </thead>
         <tbody id="skillsTableBody">
-          ${renderTableRows(skillList, totalEmployees)}
+          ${renderTableRows(skillList)}
         </tbody>
       </table>
     </div>
@@ -1251,11 +1239,7 @@ export function businessReportHtml(
 </html>`;
 }
 
-function renderRadarSvg(
-  skills: { name: string; average: number; totalHolders: number }[],
-  categories: { label: string; value: number }[],
-  totalEmployees: number,
-): string {
+function renderRadarSvg(skills: { name: string; average: number; totalHolders: number }[]): string {
   if (skills.length < 3) {
     return '<p class="report-scope" style="padding:40px;text-align:center;">At least 3 approved skills are needed for the capability radar view.</p>';
   }
@@ -1336,7 +1320,6 @@ function renderTableRows(
     maxRank: number;
     covPct: number;
   }[],
-  totalEmployees: number,
 ): string {
   if (!skills.length) {
     return '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">No approved skill coverage records established in this scope.</td></tr>';
@@ -1344,7 +1327,6 @@ function renderTableRows(
 
   return skills
     .map(s => {
-      const sum = s.totalHolders || 1;
       return `
       <tr>
         <td><strong>${escapeHtml(s.name)}</strong></td>

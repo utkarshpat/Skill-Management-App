@@ -10,7 +10,7 @@ import {
   privateStorageConfig,
   type PrivateStorageConfig,
 } from '../../shared/private-files.js';
-export interface EvidenceItem {
+interface EvidenceItem {
   id: string;
   blobName: string;
   bytes: number;
@@ -156,6 +156,17 @@ export async function prepareSkillEvidence(source: Buffer, mimeType: string, fil
   // SkillEvidence enforces a separate 1 MB limit for stored WebP images.
   return prepareFile(source, mimeType, fileName, 10 * 1024 * 1024, skillWebpLimit);
 }
+async function prepareEvidenceAttachment(
+  kind: 'skill' | 'certification',
+  data: Buffer,
+  file?: { mimeType: string; fileName: string },
+) {
+  if (kind === 'certification')
+    return prepareCertificateFile(data, file?.mimeType ?? '', file?.fileName ?? 'certificate');
+  if (file) return prepareSkillEvidence(data, file.mimeType, file.fileName);
+  return { ...(await compressEvidence(data)), mimeType: 'image/webp', fileName: 'evidence.webp' };
+}
+
 export class SqlBlobEvidenceStore implements EvidenceStore {
   private container;
   constructor(
@@ -258,16 +269,7 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
     file?: { mimeType: string; fileName: string },
   ) {
     await this.run(actor, claim, 'CHECK', revision);
-    const attachment =
-      this.kind === 'certification'
-        ? await prepareCertificateFile(data, file?.mimeType ?? '', file?.fileName ?? 'certificate')
-        : file
-          ? await prepareSkillEvidence(data, file.mimeType, file.fileName)
-          : {
-              ...(await compressEvidence(data)),
-              mimeType: 'image/webp',
-              fileName: 'evidence.webp',
-            };
+    const attachment = await prepareEvidenceAttachment(this.kind, data, file);
     const id = crypto.randomUUID(),
       extension =
         this.kind === 'certification'
@@ -332,7 +334,7 @@ export class SqlBlobEvidenceStore implements EvidenceStore {
 export class ManagedEvidenceStore extends SqlBlobEvidenceStore {
   private files: PrivateFileStorage;
   constructor(
-    private storageAccount: string,
+    storageAccount: string,
     config: PrivateStorageConfig,
     private fileKind: 'skill' | 'certification' = 'skill',
   ) {
@@ -347,16 +349,7 @@ export class ManagedEvidenceStore extends SqlBlobEvidenceStore {
     file?: { mimeType: string; fileName: string },
   ) {
     await this.run(actor, claim, 'CHECK', revision);
-    const prepared =
-      this.fileKind === 'certification'
-        ? await prepareCertificateFile(data, file?.mimeType ?? '', file?.fileName ?? 'certificate')
-        : file
-          ? await prepareSkillEvidence(data, file.mimeType, file.fileName)
-          : {
-              ...(await compressEvidence(data)),
-              mimeType: 'image/webp',
-              fileName: 'evidence.webp',
-            };
+    const prepared = await prepareEvidenceAttachment(this.fileKind, data, file);
     const id = crypto.randomUUID();
     try {
       await this.files.save(

@@ -369,7 +369,10 @@ export async function loadDashboardCard(
                 .sort(
                   (a, b) =>
                     (a.renewalDue ? -1 : priority[a.status]) -
-                    (b.renewalDue ? -1 : priority[b.status]),
+                      (b.renewalDue ? -1 : priority[b.status]) ||
+                    (a.renewalDue && b.renewalDue
+                      ? (a.expiryDate ?? '').localeCompare(b.expiryDate ?? '')
+                      : 0),
                 )
                 .slice(0, 3),
             }

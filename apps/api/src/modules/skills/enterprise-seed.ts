@@ -2,14 +2,14 @@ import { catalogueChange } from './skill-catalogue.js';
 import { hasStandardProficiency, proficiencyNames } from './proficiency.js';
 import type { CatalogueSkill } from './skill-catalogue.js';
 
-export interface SeedSkill {
+interface SeedSkill {
   code: string;
   name: string;
   category: string;
   description: string;
   criteria: { rank: number; description: string }[];
 }
-export interface EnterpriseSeed {
+interface EnterpriseSeed {
   version: 2;
   framework: {
     key: 'enterprise-v3';
@@ -47,7 +47,7 @@ export function validateEnterpriseSeed(input: unknown): EnterpriseSeed {
       skill.criteria.length !== 4
     )
       throw Error('Seed codes must run from SKL-001 through SKL-070 with four criteria.');
-    catalogueChange({ revision: 1, ...seedPayload(seed, skill) });
+    catalogueChange({ revision: 1, ...seedPayload(skill) });
     const name = skill.name.trim().toLowerCase();
     if (names.has(name)) throw Error('Seed skill names must be unique.');
     names.add(name);
@@ -56,7 +56,7 @@ export function validateEnterpriseSeed(input: unknown): EnterpriseSeed {
     throw Error('Expected ten catalogue categories.');
   return seed;
 }
-export function seedPayload(seed: EnterpriseSeed, skill: SeedSkill) {
+export function seedPayload(skill: SeedSkill) {
   return {
     businessCode: skill.code,
     name: skill.name,

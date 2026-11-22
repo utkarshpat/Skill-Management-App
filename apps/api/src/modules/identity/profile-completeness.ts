@@ -1,5 +1,5 @@
 import type { Profile } from './profile.js';
-export interface ProfileChecklistItem {
+interface ProfileChecklistItem {
   key: string;
   label: string;
   state: 'COMPLETE' | 'MISSING' | 'NEEDS_ATTENTION' | 'UNAVAILABLE';

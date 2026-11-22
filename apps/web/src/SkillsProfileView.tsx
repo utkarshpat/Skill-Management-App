@@ -201,7 +201,7 @@ export function SkillsProfileView({
             <div className="skills-list-tabs" role="group" aria-label="Skill views">
               {[
                 { id: 'all', label: 'All skills' },
-                { id: 'attention', label: 'To complete', count: drafts + attention },
+                { id: 'attention', label: 'Action needed', count: drafts + attention },
                 { id: 'reviewed', label: 'Approved', count: approved },
               ].map(item => (
                 <button
@@ -243,6 +243,7 @@ export function SkillsProfileView({
               value={status}
               onChange={e => {
                 setStatus(e.target.value);
+                if (e.target.value) setTab('all');
                 change();
               }}
             >

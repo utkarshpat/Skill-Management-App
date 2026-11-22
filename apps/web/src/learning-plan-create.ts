@@ -8,7 +8,7 @@ import {
 } from './learning-plan-draft';
 
 type Fetcher = (url: string, options?: RequestInit) => Promise<Response>;
-export interface LearningPlanCreatePayload {
+interface LearningPlanCreatePayload {
   action: 'CREATE';
   id: string;
   revision: 0;

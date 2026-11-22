@@ -72,8 +72,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
   const [loading, setLoading] = useState(true),
     [saving, setSaving] = useState(false),
     [error, setError] = useState('');
-  const [search, setSearch] = useState(''),
-    [recipientSearch, setRecipientSearch] = useState('');
+  const [recipientSearch, setRecipientSearch] = useState('');
   const [sending, setSending] = useState(false),
     [detail, setDetail] = useState<Recommendation>();
   const [name, setName] = useState(''),
@@ -85,7 +84,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
     [personId, setPersonId] = useState(''),
     [message, setMessage] = useState('');
 
-  const feedKey = JSON.stringify([view, page, search, attempt, focused]);
+  const feedKey = JSON.stringify([view, page, attempt, focused]);
   const feed = loadedFeed?.key === feedKey ? loadedFeed.value : undefined;
 
   useEffect(() => {
@@ -102,7 +101,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
     setFeed(undefined);
     setDetail(undefined);
     setError('');
-    const query = new URLSearchParams({ view, page: String(focused ? 1 : page), search });
+    const query = new URLSearchParams({ view, page: String(focused ? 1 : page), search: '' });
     if (focused) query.set('id', focused);
     authenticatedFetch('/api/certification-recommendations?' + query, { signal: c.signal })
       .then(r => readApiResponse<Feed>(r, 'Certification recommendations could not be loaded.'))
@@ -123,7 +122,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
       c.abort();
       responseOperation.current?.abort();
     };
-  }, [view, page, search, attempt, focused]);
+  }, [view, page, attempt, focused]);
 
   useEffect(() => {
     if (!sending) return;

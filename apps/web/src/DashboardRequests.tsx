@@ -16,7 +16,7 @@ export interface DashboardRequestsData {
   canCreate: boolean;
   recentRecords: RequestPreview[];
 }
-export const requestDashboardViews = [
+const requestDashboardViews = [
   { id: '', label: 'All', count: 'total' },
   { id: 'SUBMITTED', label: 'Submitted', count: 'submitted' },
   { id: 'IN_PROGRESS', label: 'In progress', count: 'inProgress' },

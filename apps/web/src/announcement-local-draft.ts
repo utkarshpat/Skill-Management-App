@@ -13,7 +13,7 @@ export interface LocalAnnouncementDraft {
   step?: 'details' | 'design';
   savedAt: number;
 }
-export const localAnnouncementKey = (actor: string) => 'announcement-draft:v1:' + actor;
+const localAnnouncementKey = (actor: string) => 'announcement-draft:v1:' + actor;
 export function readLocalAnnouncement(actor: string): LocalAnnouncementDraft | undefined {
   try {
     const json = localStorage.getItem(localAnnouncementKey(actor));

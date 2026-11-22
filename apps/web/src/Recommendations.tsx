@@ -1,3 +1,4 @@
+import { readApiResponse } from './api-response';
 import { displayProficiencyName } from './proficiency';
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router';
@@ -48,12 +49,8 @@ interface Feed {
   pageSize: number;
   canSend: boolean;
 }
-async function read<T>(response: Response): Promise<T> {
-  const data = await response.json().catch(() => undefined);
-  if (!response.ok)
-    throw Error(data?.error?.message ?? 'This action could not finish. Reload before retrying.');
-  return data;
-}
+const read = <T,>(response: Response) =>
+  readApiResponse<T>(response, 'This action could not finish. Reload before retrying.');
 const statusName = {
   PENDING: 'Awaiting response',
   DISCUSSION: 'Discussion requested',

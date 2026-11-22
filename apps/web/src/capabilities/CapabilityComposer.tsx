@@ -24,7 +24,6 @@ import { toast } from '../toast';
 import type { CertificationFields, CertificationRecord } from '../certifications/types';
 import type { SkillChoice } from '../SkillClaimWizard';
 import {
-  CertificateFilePreview,
   CertificateImageUploader,
   useCertificationImage,
 } from '../certifications/CertificationImage';

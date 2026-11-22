@@ -24,11 +24,11 @@ test('enterprise seed has 70 definitions, ten categories and four skill-specific
   assert.equal(seed.skills[69].code, 'SKL-070');
   assert.equal(seed.framework.levels[2].name, 'Experienced');
   assert.deepEqual(
-    seedPayload(seed, seed.skills[0]).levels.map(level => level.name),
+    seedPayload(seed.skills[0]).levels.map(level => level.name),
     proficiencyNames,
   );
   assert.equal(
-    seedPayload(seed, seed.skills[0]).levels[2].description,
+    seedPayload(seed.skills[0]).levels[2].description,
     seed.skills[0].criteria[2].description,
   );
   for (const edit of [
@@ -48,7 +48,7 @@ test('enterprise seed has 70 definitions, ten categories and four skill-specific
 test('alignment maps to common criteria, retains metadata and historical sources, and is idempotent', () => {
   const seed = validateEnterpriseSeed(source),
     skill: CatalogueSkill = {
-      ...seedPayload(seed, seed.skills[0]),
+      ...seedPayload(seed.skills[0]),
       id: '00000000-0000-4000-8000-000000000003',
       status: 'ARCHIVED',
       levels: seed.skills[0].criteria.map((criterion, index) => ({

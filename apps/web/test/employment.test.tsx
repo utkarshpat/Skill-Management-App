@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { EmploymentFields, EmploymentSummary, EmploymentChange } from '../src/EmploymentDetails';
+import { EmploymentFields, EmploymentSummary } from '../src/EmploymentDetails';
 test('employment form is optional, bounded and distinguishes work information from access', () => {
   const html = renderToStaticMarkup(
     <EmploymentFields value={{ jobTitle: 'Engineer', grade: 'G4' }} onChange={() => {}} />,
@@ -30,18 +30,4 @@ test('own summary distinguishes unassigned, unsupported, loading and failed valu
   const failed = renderToStaticMarkup(<EmploymentSummary failed />);
   assert.match(failed, /Unavailable/);
   assert.doesNotMatch(failed, /Not assigned|Loading/);
-});
-test('confirmation shows server-normalized before and after values including clearing', () => {
-  const html = renderToStaticMarkup(
-    <EmploymentChange
-      before={{ jobTitle: 'Engineer', grade: 'G4' }}
-      after={{ jobTitle: 'Lead', grade: null }}
-    />,
-  );
-  assert.match(html, /Engineer/);
-  assert.match(html, /Lead/);
-  assert.match(html, /G4/);
-  assert.match(html, /Not assigned/);
-  assert.match(html, /changes to/);
-  assert.match(html, /do not change effective access/);
 });

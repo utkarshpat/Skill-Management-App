@@ -2,7 +2,7 @@ import { AccessError } from '../../shared/errors.js';
 import type { LearningStore } from './learning.js';
 import type { QuizGenerator } from './practice.js';
 
-export interface PlannerInput {
+interface PlannerInput {
   goal: string;
   experience: string;
   dailyMinutes: number;
@@ -10,7 +10,7 @@ export interface PlannerInput {
   feedback: string;
   previous?: { title: string; steps: string[] };
 }
-export interface PlannerDraft {
+interface PlannerDraft {
   title: string;
   goal: string;
   steps: string[];

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { AccessError } from '../../shared/errors.js';
 import { date, type LearningStore, type LearningPlan } from './learning.js';
 import type { QuizGenerator } from './practice.js';
-export interface RecoveryInput {
+interface RecoveryInput {
   planId: string;
   revision: number;
   startDate: string;

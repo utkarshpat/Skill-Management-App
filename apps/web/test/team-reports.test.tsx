@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {
   coverageRows,
   csvCell,
-  fetchTeamReport,
   teamReportCsv,
   type TeamReportAnalytics,
 } from '../src/team-reports';
@@ -61,53 +60,4 @@ test('CSV cells neutralize spreadsheet formulas and preserve quotes, commas, mul
     assert.ok(csvCell(text).startsWith('"\''));
   assert.equal(csvCell('Cloud, "Azure"\nक्षमता'), '"Cloud, ""Azure""\nक्षमता"');
   assert.equal(csvCell(30), '"30"');
-});
-test('download rechecks current scope and uses fresh full analytics rather than a page preview', async () => {
-  const controller = new AbortController();
-  const result = await fetchTeamReport(
-    async (path, init) => {
-      assert.equal(path, '/api/skill-reviews/team?page=1&search=Cloud+%26+Data');
-      assert.equal(init?.signal, controller.signal);
-      return Response.json({
-        total: 30,
-        people: [{ id: 'page-only' }],
-        analytics: { ...analytics, members: 31 },
-      });
-    },
-    'gap',
-    3,
-    'Cloud & Data',
-    controller.signal,
-  );
-  assert.match(result.csv, /"Active members","31"/);
-  assert.doesNotMatch(result.csv, /page-only|private-member/);
-});
-test('revoked, changed, incomplete and aborted responses cannot produce a report', async () => {
-  for (const status of [401, 403, 409])
-    await assert.rejects(
-      fetchTeamReport(
-        async () => Response.json({ error: { message: 'Access changed' } }, { status }),
-        'summary',
-        1,
-        '',
-        new AbortController().signal,
-      ),
-      /Access changed/,
-    );
-  await assert.rejects(
-    fetchTeamReport(
-      async () => Response.json({ total: 12, people: [] }),
-      'summary',
-      1,
-      '',
-      new AbortController().signal,
-    ),
-    /no partial-page report/,
-  );
-  const c = new AbortController();
-  c.abort();
-  await assert.rejects(
-    fetchTeamReport(async () => Response.json({ analytics }), 'summary', 1, '', c.signal),
-  );
-  assert.deepEqual(coverageRows({ ...analytics, members: 0, coverage: [] }, 3), []);
 });

@@ -26,7 +26,7 @@ interface Feed {
   hasMoreAnnouncements?: boolean;
 }
 const key = (personId: string) => `skill-notifications-read:${personId}`;
-// Reminder pages repeat recent updates and active announcements, then add 30 reminders.
+// Reminder pages repeat recent updates and active announcements with each page of reminders.
 const readMarkerLimit = 1000;
 function readIds(personId: string): string[] {
   try {
@@ -470,7 +470,7 @@ export function Notifications({ id }: { id: string }) {
               )}
               <RefreshIndicator status={freshness} />
               {(reminderPage > 1 || feed.hasMoreReminders) && (
-                <div role="group" aria-label="Expiry reminder pages">
+                <div role="group" aria-label="Reminder pages">
                   <button
                     type="button"
                     disabled={loading || reminderPage === 1}

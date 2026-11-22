@@ -14,7 +14,7 @@ import { toast } from './toast';
 import type { RefreshStatus } from './activity-refresh';
 
 import { workspaceFreshness } from './workspace-freshness';
-export interface SidebarItem {
+interface SidebarItem {
   id: string;
   label: string;
   icon: LucideIcon;

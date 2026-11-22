@@ -5,7 +5,7 @@ import { can, type AccessStore } from '../access/index.js';
 import type { Provider, Message } from '../ai/index.js';
 import type { AiBudget } from '../ai/index.js';
 
-export interface GuideInput {
+interface GuideInput {
   question: string;
   section?: string;
   table?: string;

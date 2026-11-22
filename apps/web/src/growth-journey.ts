@@ -1,7 +1,7 @@
 import type { Plan, Task } from './Learning';
 import type { Claim } from './MySkills';
 
-export type GrowthJourneyNextStep =
+type GrowthJourneyNextStep =
   | { kind: 'CONTINUE_TASK'; task: Task }
   | { kind: 'RESUME_PLAN' }
   | { kind: 'OPEN_PLAN' }

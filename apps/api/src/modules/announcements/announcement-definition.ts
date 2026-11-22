@@ -14,7 +14,7 @@ export function canonicalExportFields(fields: readonly (keyof typeof exportField
   return [...new Set(fields.map(key => (key === 'primarySkill' ? 'capability' : key)))];
 }
 
-export const scopeKinds = ['DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT', 'PROJECT'] as const;
+const scopeKinds = ['DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT', 'PROJECT'] as const;
 const fieldTypes = ['text', 'longText', 'choice', 'radio', 'checkbox', 'date', 'rating'] as const;
 const slots = ['title', 'message', 'image', 'action'] as const;
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;

@@ -4,11 +4,12 @@ import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
 import type { Identity, IdentityConfig } from './auth.js';
 import { memoryCompanyAuthState, type CompanyAuthState } from './company-auth-state.js';
 import { errorType, logEvent } from '../../shared/logger.js';
+import { companyRecoveryPage } from './company-recovery-page.js';
 
 const flowCookie = '__Host-skill-oidc';
 const loginHintCookie = '__Host-skill-login-hint';
 const browserCookie = { httpOnly: true, secure: true, sameSite: 'lax', path: '/' } as const;
-export type CompanyOidcFlow = {
+type CompanyOidcFlow = {
   nonce: string;
   verifier: string;
   expiresAt: number;
@@ -98,14 +99,13 @@ export function registerCompanyCallback(
     res.redirect('/?signin=signed-out');
   });
   app.get('/api/auth/resume-complete', (req, res) => {
-    res.set('Cache-Control', 'no-store');
-    res
-      .type('text/plain')
-      .send(
-        req.query.signin
-          ? 'Sign-in could not finish. Return to the Skill Management App and try again.'
-          : 'Return to your original Skill Management App tab and select Resume workspace.',
-      );
+    const nonce = random();
+    res.set({
+      'Cache-Control': 'no-store',
+      'Referrer-Policy': 'no-referrer',
+      'Content-Security-Policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`,
+    });
+    res.type('html').send(companyRecoveryPage(Boolean(req.query.signin), nonce));
   });
 
   app.get('/api/auth/callback', async (req, res) => {

@@ -73,7 +73,7 @@ export interface Definition {
   imageAlt: string;
   imagePosition: 'left' | 'center' | 'right';
 }
-export interface RecordBase {
+interface RecordBase {
   id: string;
   revision: number;
   startsAt: string;

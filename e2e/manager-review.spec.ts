@@ -212,6 +212,59 @@ test('an exact legacy link opens the authorized certificate approval and a confl
   await approve.click();
   await expect.poll(() => writes).toEqual([record.revision, record.revision + 1]);
 });
+test('certification search can be cleared after zero results and notification links ignore the filter', async ({
+  page,
+}) => {
+  await fixture(page, { role: 'manager', realistic: true });
+  const record = { ...certificates(ids.person)[0], canReview: true, status: 'SUBMITTED' };
+  await page.route('**/api/certifications?**', route => {
+    const params = new URL(route.request().url()).searchParams;
+    const pageNumber = Number(params.get('page'));
+    const filtered = Boolean(params.get('search'));
+    return route.fulfill({
+      json: {
+        page: pageNumber,
+        pageSize: 1,
+        total: filtered ? 0 : 2,
+        records: filtered ? [] : [pageNumber === 1 ? { ...record, id: ids.person } : record],
+        canReview: true,
+      },
+    });
+  });
+  await page.route('**/api/notifications', route =>
+    route.fulfill({
+      json: {
+        personId: ids.person,
+        items: [
+          {
+            id: 'approval-needed',
+            at: new Date().toISOString(),
+            title: 'Certification approval requested',
+            body: 'A certification is ready for approval.',
+            href: '/skill-reviews?certification=' + record.id,
+            actionLabel: 'Open certification approval',
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto('/skill-reviews');
+  const search = page.getByRole('searchbox', { name: 'Search employee or certification' });
+  await search.fill('no-match');
+  await expect(page.getByText('No matching certifications')).toBeVisible();
+  await page.getByRole('button', { name: /^Notifications/ }).click();
+  await page.getByRole('link', { name: 'Open certification approval' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Open certification approval' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: /close/i }).click();
+  await expect(search).toHaveValue('no-match');
+  await page.getByRole('button', { name: 'Clear search', exact: true }).click();
+  await expect(search).toHaveValue('');
+  await expect(
+    page.getByRole('button', { name: 'Open certification approval', exact: true }),
+  ).toBeVisible();
+});
+
 test('employee history: view-only snapshots show saved proficiency and can reroute only the approved record set', async ({
   page,
 }) => {

@@ -650,6 +650,45 @@ test('capability dashboard shows only current own certificates with authorized r
   assert.ok('recentCertificates' in readOnly);
   assert.equal(readOnly.recentCertificates?.[0].renewalHref, undefined);
 });
+test('certificate preview prioritizes the earliest renewals even when they were recorded last', async () => {
+  const { state, person } = fixture([own('profile.view'), own('skill.view')]);
+  const dates = ['2026-12-20', '2026-12-12', '2026-12-01', '2026-11-21'];
+  const result = await loadDashboardCard(
+    'capability',
+    actor,
+    state,
+    person,
+    {
+      ...sources,
+      certifications: {
+        read: async () => ({
+          records: dates.map(
+            expiryDate =>
+              ({
+                id: expiryDate,
+                personId: actor,
+                certificationName: 'Cloud Architect',
+                provider: 'Oracle',
+                status: 'APPROVED',
+                expiryDate,
+              }) as never,
+          ),
+          total: dates.length,
+        }),
+        get: async () => assert.fail('Dashboard reads only the own portfolio.'),
+        change: async () => assert.fail('Dashboard is read only.'),
+        notifications: async () => [],
+      },
+    },
+    new Date('2026-11-22T00:00:00Z'),
+  );
+  assert.ok('recentCertificates' in result);
+  assert.deepEqual(
+    result.recentCertificates?.map(c => c.expiryDate),
+    ['2026-11-21', '2026-12-01', '2026-12-12'],
+  );
+});
+
 test('attention skips unauthorized sources and isolates a failed queue without inventing zero completion', async () => {
   const { state, person } = fixture([
     own('request.view'),

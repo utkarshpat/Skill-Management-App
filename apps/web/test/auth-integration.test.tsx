@@ -283,7 +283,7 @@ test('disabled SSO never invents a token or a signed-in account', async () => {
   await f.auth.initializeAuth();
   assert.equal(f.auth.signInConfigured, false);
   assert.equal(f.auth.signedIn(), false);
-  await assert.rejects(f.auth.profileToken(), /Please sign in/);
+  await assert.rejects(f.auth.authenticatedFetch('/api/workspace'), /Please sign in/);
   assert.equal(f.calls.initialize, 0);
 });
 
@@ -314,7 +314,7 @@ for (const interaction of [false, true]) {
         ? new InteractionRequiredAuthError('interaction', 'required')
         : Error('Network failed');
     };
-    await assert.rejects(f.auth.profileToken(), /Please sign in again/);
+    await assert.rejects(f.auth.authenticatedFetch('/api/workspace'), /Please sign in again/);
     assert.equal(f.calls.redirect.length, interaction ? 1 : 0);
   });
 }
@@ -415,7 +415,7 @@ test('SDK initialization can be retried after failure and never reports a usable
   assert.equal(f.calls.silent.length, 0);
   await f.auth.initializeAuth();
   assert.equal(attempts, 2);
-  assert.equal(await f.auth.profileToken(), 'test-access-token');
+  assert.ok((await f.auth.authenticatedFetch('/api/workspace')).ok);
 });
 
 test('SDK redirect/logout failures propagate rather than looking successful', async () => {

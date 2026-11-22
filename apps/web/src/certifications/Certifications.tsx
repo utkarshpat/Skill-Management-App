@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router';
 import { Plus } from 'lucide-react';
@@ -9,7 +9,6 @@ import { toast } from '../toast';
 import type { WorkspaceState } from '../Workspace';
 import { CapabilityComposer } from '../capabilities/DeferredCapabilityDialogs';
 import { CapabilitySubmissions } from '../capabilities/CapabilitySubmissions';
-import { CertificationReviewDialog } from './CertificationReviewDialog';
 import { RelatedCapabilities } from '../capabilities/RelatedCapabilities';
 import { CertificationImage } from './CertificationImage';
 import {
@@ -36,15 +35,12 @@ import {
 
 export function Certifications({
   actionsContainer,
-  personalOnly = false,
   workspace,
 }: {
-  personalOnly?: boolean;
   workspace?: WorkspaceState;
   actionsContainer?: HTMLDivElement | null;
 }) {
   const [params, setParams] = useSearchParams();
-  const view = params.get('tab') === 'queue' ? 'queue' : 'mine';
   const recommendationsTab = params.get('tab') === 'recommendations';
   const [data, setData] = useState<CertificationPage>(),
     [error, setError] = useState(''),
@@ -64,13 +60,8 @@ export function Certifications({
     return () => window.removeEventListener('notifications-remote-updated', refresh);
   }, []);
   const [viewing, setViewing] = useState<CertificationRecord>();
-  const [reviewing, setReviewing] = useState<CertificationRecord>(),
-    [submitting, setSubmitting] = useState<CertificationRecord>();
   const [renewalSource, setRenewalSource] = useState<CertificationRecord>();
   const [renewalFields, setRenewalFields] = useState<CertificationFields>();
-  const [submitError, setSubmitError] = useState(''),
-    [busy, setBusy] = useState(false);
-  const submissionLock = useRef(false);
   const [today, setToday] = useState(() => new Date().toISOString().slice(0, 10));
   useEffect(() => {
     const refreshDate = () => setToday(new Date().toISOString().slice(0, 10));
@@ -86,7 +77,7 @@ export function Certifications({
     setLoading(true);
     setError('');
     loadCertificationPortfolio(async page => {
-      const q = new URLSearchParams({ view, page: String(page), search: '' });
+      const q = new URLSearchParams({ view: 'mine', page: String(page), search: '' });
       return readApiResponse<CertificationPage>(
         await authenticatedFetch('/api/certifications?' + q, { signal: c.signal }),
         'Certifications could not be loaded.',
@@ -109,7 +100,7 @@ export function Certifications({
         if (!c.signal.aborted) setLoading(false);
       });
     return () => c.abort();
-  }, [view, attempt]);
+  }, [attempt]);
   const renewalId = certificationRenewalId(params.get('renew'));
   const editRecordId = certificationRenewalId(params.get('editRecord'));
   const recordId =
@@ -175,41 +166,9 @@ export function Certifications({
     next.set('renew', record.id);
     setParams(next, { replace: true });
   };
-  async function mutate(payload: object, message: string) {
-    await readApiResponse(
-      await authenticatedFetch('/api/certifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }),
-      'Save failed. Your entries are still here.',
-    );
-    toast.success(message);
-    setAttempt(n => n + 1);
-    window.dispatchEvent(new Event('notifications-updated'));
-  }
-  async function submit() {
-    if (!submitting || submissionLock.current) return;
-    submissionLock.current = true;
-    setBusy(true);
-    setSubmitError('');
-    try {
-      await mutate(
-        { action: 'SUBMIT', id: submitting.id, revision: submitting.revision },
-        'Certification submitted to your assigned current manager.',
-      );
-      setSubmitting(undefined);
-    } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : 'Submission failed.');
-    } finally {
-      submissionLock.current = false;
-      setBusy(false);
-    }
-  }
   const actions = (
     <div className="cert-header-actions">
       {data &&
-        view === 'mine' &&
         workspace?.capabilities.ownProfile &&
         workspace.capabilities.administration &&
         workspace.capabilities.manageUsers &&
@@ -230,7 +189,7 @@ export function Certifications({
   return (
     <div className="certifications-container">
       <CapabilitySubmissions onUpdated={() => setAttempt(v => v + 1)} />
-      {combined && (
+      {combined && !recordId && (
         <CapabilityComposer
           submissionId={combinedId}
           entry={combinedId || initialCredential || renewalSource ? undefined : 'certificate'}
@@ -269,26 +228,6 @@ export function Certifications({
         <div className="my-skills-actions">{actions}</div>
       )}
       {!recommendationsTab && actionsContainer && createPortal(actions, actionsContainer)}
-      {!personalOnly && (data?.canReview || view === 'queue') && (
-        <nav className="cert-nav-tabs" aria-label="Certification views">
-          <button
-            className={`cert-nav-tab-btn ${view === 'mine' && !recommendationsTab ? 'active' : ''}`}
-            aria-current={view === 'mine' && !recommendationsTab ? 'page' : undefined}
-            onClick={() => changeView('mine')}
-          >
-            My certifications
-          </button>
-          {!personalOnly && (data?.canReview || view === 'queue') && (
-            <button
-              className={`cert-nav-tab-btn ${view === 'queue' ? 'active' : ''}`}
-              aria-current={view === 'queue' ? 'page' : undefined}
-              onClick={() => changeView('queue')}
-            >
-              Assigned approvals
-            </button>
-          )}
-        </nav>
-      )}
       {error && (
         <section className="profile-panel" role="alert">
           <p>{error}</p>
@@ -325,10 +264,9 @@ export function Certifications({
           onSubmit={record => {
             editCredential(record);
           }}
-          onReview={setReviewing}
         />
       )}
-      {viewing && (
+      {viewing && !recordId && (
         <FormDialog
           title={viewing.certificationName}
           subtitle={viewing.provider}
@@ -394,10 +332,7 @@ export function Certifications({
               <strong>Validity:</strong> {credentialValidity(viewing.expiryDate, today)}
               {viewing.expiryDate && ` · Expiry ${viewing.expiryDate}`}
             </p>
-            <p>
-              Issued {viewing.certificationDate} · {credentialValidity(viewing.expiryDate, today)}
-              {viewing.expiryDate && ` (${viewing.expiryDate})`}
-            </p>
+            <p>Issued {viewing.certificationDate}</p>
             {viewing.credentialId && <p>Credential ID: {viewing.credentialId}</p>}
             {viewing.credentialUrl ? (
               <a href={viewing.credentialUrl} target="_blank" rel="noopener noreferrer">
@@ -428,50 +363,6 @@ export function Certifications({
             Manager review is separate from issuer validation, credential expiry and skill
             proficiency.
           </p>
-        </FormDialog>
-      )}
-      {reviewing && (
-        <CertificationReviewDialog
-          certification={reviewing}
-          onClose={() => setReviewing(undefined)}
-          onRefresh={() => {
-            setReviewing(undefined);
-            setAttempt(n => n + 1);
-          }}
-          onDecision={(record, action, feedback) =>
-            mutate(
-              { action, id: record.id, revision: record.revision, feedback },
-              'Certification approval saved.',
-            )
-          }
-        />
-      )}
-      {submitting && (
-        <FormDialog
-          title="Submit to your current manager?"
-          onClose={() => setSubmitting(undefined)}
-          busy={busy}
-        >
-          <p>
-            <strong>{submitting.certificationName}</strong>
-          </p>
-          <p>
-            Your current active manager will be assigned this review. The details become read-only
-            while awaiting a decision.
-          </p>
-          {submitError && <p role="alert">{submitError}</p>}
-          <div className="certification-dialog-footer">
-            <button
-              className="secondary-button"
-              disabled={busy}
-              onClick={() => setSubmitting(undefined)}
-            >
-              Keep as draft
-            </button>
-            <button className="primary-button" disabled={busy} onClick={() => void submit()}>
-              {busy ? 'Submitting…' : 'Submit to manager'}
-            </button>
-          </div>
         </FormDialog>
       )}
     </div>

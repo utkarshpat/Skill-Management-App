@@ -150,6 +150,7 @@ if (command !== 'check' && command !== 'migrate') {
           [115, '115_optional_approval_feedback.sql'],
           [116, '116_readable_activity_records.sql'],
           [117, '117_employee_excel_import.sql'],
+          [118, '118_skill_staleness_reminders.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

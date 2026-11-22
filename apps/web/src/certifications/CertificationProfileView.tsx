@@ -27,7 +27,6 @@ export function CertificationProfileView({
   canRenew = false,
   onRenew = () => {},
   onSubmit,
-  onReview,
 }: {
   records: CertificationRecord[];
   loading?: boolean;
@@ -39,7 +38,6 @@ export function CertificationProfileView({
   canRenew?: boolean;
   onRenew?: (record: CertificationRecord) => void;
   onSubmit: (record: CertificationRecord) => void;
-  onReview: (record: CertificationRecord) => void;
 }) {
   const records = allRecords.filter(r => !r.supersededById);
   const [query, setQuery] = useState(''),
@@ -189,7 +187,7 @@ export function CertificationProfileView({
             <div className="skills-list-tabs" role="group" aria-label="Certification views">
               {[
                 { id: 'all', label: 'All certifications' },
-                { id: 'attention', label: 'To complete', count: drafts + attention },
+                { id: 'attention', label: 'Action needed', count: drafts + attention },
                 { id: 'reviewed', label: 'Approved', count: approved },
               ].map(item => (
                 <button
@@ -226,6 +224,7 @@ export function CertificationProfileView({
               value={status}
               onChange={e => {
                 setStatus(e.target.value);
+                if (e.target.value) setTab('all');
                 setPage(1);
               }}
             >
@@ -308,10 +307,6 @@ export function CertificationProfileView({
                           <span className={'skills-status ' + record.status.toLowerCase()}>
                             {certificationStatusLabels[record.status]}
                           </span>
-                          {record.status === 'APPROVED' &&
-                            credentialValidity(record.expiryDate, today) === 'Expired' && (
-                              <span className="cert-review-validity cert-expired">Expired</span>
-                            )}
                         </td>
                         <td>
                           <span
@@ -382,17 +377,6 @@ export function CertificationProfileView({
                                 <Send size={14} />
                               </button>
                             )}
-                            {record.canReview && (
-                              <button
-                                className="skills-action-btn skills-action-review"
-                                aria-label={`Review ${record.certificationName}`}
-                                title="Open credential"
-                                disabled={loading}
-                                onClick={() => onReview(record)}
-                              >
-                                <ShieldCheck size={14} />
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -459,7 +443,7 @@ export function CertificationProfileView({
               ) : (
                 canManage && (
                   <button className="primary-button" disabled={loading} onClick={onAdd}>
-                    Add certification
+                    Add certificate
                   </button>
                 )
               )}

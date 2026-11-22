@@ -1,20 +1,11 @@
+import { readApiResponse } from './api-response';
 import { publishWorkspaceFreshness } from './workspace-freshness';
 import { isPhaseTwoPage, phaseTwoVisible } from './release-features';
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router';
-import {
-  ArrowUpRight,
-  Bell,
-  BookOpen,
-  CheckCircle2,
-  Clock3,
-  Inbox,
-  Layers,
-  Plus,
-  Sparkles,
-} from 'lucide-react';
+import { ArrowUpRight, Bell, BookOpen, Clock3, Inbox, Layers, Sparkles } from 'lucide-react';
 import { authenticatedFetch } from './auth';
-import { startActivityRefresh, type RefreshStatus } from './activity-refresh';
+import { startActivityRefresh } from './activity-refresh';
 import './dashboard.css';
 import { DashboardQuickActions } from './DashboardQuickActions';
 import {
@@ -77,15 +68,9 @@ interface CardData {
   cancelled?: number;
   canManage?: boolean;
 }
-async function read<T>(r: Response): Promise<T> {
-  const body = await r.json().catch(() => undefined);
-  if (!r.ok)
-    throw Object.assign(Error(body?.error?.message ?? 'This information could not be loaded.'), {
-      status: r.status,
-    });
-  return body;
-}
-export function openDashboardAssistant(card: Card['id']) {
+const read = <T,>(response: Response) =>
+  readApiResponse<T>(response, 'This information could not be loaded.');
+function openDashboardAssistant(card: Card['id']) {
   const prompts = {
     attention: phaseTwoVisible
       ? 'Help me prioritize my assigned requests, approvals and overdue learning tasks. Retrieve current authorized facts before advising.'
@@ -105,7 +90,6 @@ export function Dashboard() {
   const [manifest, setManifest] = useState<Manifest>(),
     [error, setError] = useState(''),
     [attempt, setAttempt] = useState(0);
-  const [freshness, setFreshness] = useState<RefreshStatus>();
   useEffect(() => {
     const c = new AbortController();
     let generation = 0,
@@ -150,7 +134,6 @@ export function Dashboard() {
       {
         pollMs: 300_000,
         onStatus: status => {
-          setFreshness(status);
           if (typeof window !== 'undefined') {
             publishWorkspaceFreshness(status);
           }

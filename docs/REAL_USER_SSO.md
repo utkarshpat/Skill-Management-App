@@ -68,7 +68,7 @@ browser profile.
 
 Hosted OIDC sessions expire eight hours after issuance. The legacy bearer-to-cookie exchange caps its session at the earlier of the bearer token expiry and eight hours. The backend OIDC flow requests `openid profile`. It makes no Graph call and requires no Graph `User.Read` permission. Deploy migration 113 before the matching app. From that deployment onwards, hosted sessions survive an App Service restart. The first deployment requires one fresh Microsoft sign-in because earlier sessions were stored in the process.
 
-If an open workspace loses its session, sign in in the new tab and select **Resume workspace** in the original tab. The original tab pauses access and retains mounted form state while verifying the same work account and refreshing permissions. A different account starts a fresh workspace.
+If an open workspace loses its session, use **Sign in with Microsoft** to sign in in the new tab. The original tab verifies the same work account, refreshes permissions and resumes with the open form or draft. If automatic recovery is unavailable, return to the original tab and select **Resume workspace**. A different account keeps the original tab paused and prompts for the correct account. If the original tab is closed, the sign-in page offers **Open a new workspace**.
 
 Company browser tabs identify the account whose workspace they loaded. If the Microsoft account changes in another tab, the server rejects requests from the stale workspace before reading or changing records. The original tab pauses and requires a fresh account check before continuing.
 

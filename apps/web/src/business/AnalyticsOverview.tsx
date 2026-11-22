@@ -7,7 +7,7 @@ const colours = ['#098b8c', '#61bdb5', '#829ade', '#b5a0e5', '#d19c58', '#a4bdc9
 const percent = (value: number, total: number) =>
   total > 0 ? Math.round((100 * value) / total) : 0;
 
-export function AnalyticsDonut({
+function AnalyticsDonut({
   items,
   onFilter,
   label,

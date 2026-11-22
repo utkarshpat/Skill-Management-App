@@ -11,7 +11,7 @@ export interface Session {
   task?: ReturnType<typeof taskSettings>;
   awaitingClarification?: boolean;
 }
-export interface PreparedConversation {
+interface PreparedConversation {
   id: string;
   message: string;
   history: Message[];

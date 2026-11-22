@@ -107,7 +107,7 @@ export function localAuditPage(
   };
 }
 // Business events target the assignment, while their snapshots identify the affected people.
-export function auditSubjects(event: {
+function auditSubjects(event: {
   action: string;
   before?: unknown;
   after?: unknown;

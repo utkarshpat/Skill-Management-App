@@ -1,6 +1,6 @@
 import type { DashboardQuickAction } from './DashboardQuickActions';
 
-export type DashboardCardId = 'attention' | 'learning' | 'capability' | 'requests';
+type DashboardCardId = 'attention' | 'learning' | 'capability' | 'requests';
 export interface DashboardCardDefinition {
   id: DashboardCardId;
   title: string;

@@ -1,4 +1,4 @@
-export interface DemoPerson {
+interface DemoPerson {
   id: string;
   displayName: string;
   employeeCode: string;

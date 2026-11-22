@@ -18,7 +18,7 @@ export interface EmployeeDirectoryRecord {
   team: string | null;
 }
 
-export interface EmployeeDirectoryQuery {
+interface EmployeeDirectoryQuery {
   // Constructed by the backend after token validation and local authorization.
   identity: Identity;
   stored: EmployeeDirectoryRecord;

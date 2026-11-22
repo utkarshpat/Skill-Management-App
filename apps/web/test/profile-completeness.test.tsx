@@ -5,7 +5,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { ProfileCompleteness, type ProfileCompletenessDetails } from '../src/ProfileCompleteness';
 import { PrimaryCapabilitySummary } from '../src/PrimaryCapability';
-import { EmploymentChange } from '../src/EmploymentDetails';
 const details: ProfileCompletenessDetails = {
   filled: 4,
   total: 6,
@@ -78,23 +77,4 @@ test('loading, failed and unavailable completeness never become a successful or 
   assert.match(html, /not a confirmed completeness score/);
   assert.match(html, /Unavailable/);
   assert.doesNotMatch(html, /100%|0%/);
-});
-test('preview uses reviewed capability names and explicit unassignment', () => {
-  const html = renderToStaticMarkup(
-    <EmploymentChange
-      before={{
-        primaryCapabilityId: 'old',
-        primaryCapabilityName: 'Cloud',
-        primaryCapabilityStatus: 'PUBLISHED',
-      }}
-      after={{
-        primaryCapabilityId: null,
-        primaryCapabilityName: null,
-        primaryCapabilityStatus: null,
-      }}
-    />,
-  );
-  assert.match(html, /Primary capability/);
-  assert.match(html, /Cloud/);
-  assert.match(html, /changes to.*Not assigned/s);
 });

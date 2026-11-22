@@ -54,7 +54,7 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function invalid(message = 'Check the practice request.'): never {
   throw new AccessError(400, message);
 }
-export function practiceIds(plan: unknown, task: unknown) {
+function practiceIds(plan: unknown, task: unknown) {
   if (typeof plan !== 'string' || !uuid.test(plan) || typeof task !== 'string' || !uuid.test(task))
     invalid('Choose a valid learning plan and task.');
   return { plan: plan.toLowerCase(), task: task.toLowerCase() };

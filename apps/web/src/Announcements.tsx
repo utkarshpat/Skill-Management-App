@@ -29,7 +29,7 @@ interface Feed {
   canPublish: boolean;
 }
 const notificationEvent = 'announcements-updated';
-export function refreshAnnouncements() {
+function refreshAnnouncements() {
   window.dispatchEvent(new Event(notificationEvent));
 }
 

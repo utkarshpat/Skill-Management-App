@@ -1,6 +1,5 @@
 import { Announcements } from './Announcements';
 import { AccessAudit } from './AccessAudit';
-import { organizationKindLabel } from './organization-labels';
 import type { Decision } from './EffectiveAccess';
 import type { Employment } from './EmploymentDetails';
 import { SidebarNavigation } from './SidebarNavigation';
@@ -27,7 +26,6 @@ import {
   ArrowUpRight,
   Plus,
   BookOpen,
-  ChevronRight,
   FolderTree,
   Search,
   Menu,
@@ -42,9 +40,6 @@ const BusinessAdministration = lazy(() =>
 );
 const OrganizationSetup = lazy(() =>
   import('./OrganizationSetup').then(module => ({ default: module.OrganizationSetup })),
-);
-const SkillCatalogue = lazy(() =>
-  import('./SkillCatalogue').then(module => ({ default: module.SkillCatalogue })),
 );
 const PeopleAccessWorkspace = lazy(() =>
   import('./PeopleAccessWorkspace').then(module => ({ default: module.PeopleAccessWorkspace })),
@@ -129,20 +124,6 @@ const currentView = (params: URLSearchParams): View => {
     ? (view as View)
     : 'people';
 };
-const actionLabel = (action: string) =>
-  ({
-    'organization.person.assigned': 'Assignment updated',
-    'organization.node.created': 'Organization added',
-    'organization.node.updated': 'Organization updated',
-    'person.created': 'Person added',
-    'person.updated': 'Person updated',
-    'claim.draft.created': 'Skill draft added',
-    'claim.draft.updated': 'Skill draft updated',
-    'skill.created': 'Skill created',
-    'skill.updated': 'Skill updated',
-    'role.created': 'Role created',
-    'role.updated': 'Role updated',
-  })[action] ?? action.replaceAll('.', ' ').replaceAll('_', ' ');
 export function AccessAdmin({
   personalPath,
   personalCapabilities,
@@ -285,6 +266,7 @@ export function AccessAdmin({
   useEffect(() => {
     if (personalTitle) return;
     const controller = new AbortController();
+    setError('');
     accessRead.current = { url: accessReadUrl, signal: controller.signal };
     authenticatedFetch(accessReadUrl, { signal: controller.signal })
       .then(async response => {
@@ -428,6 +410,12 @@ export function AccessAdmin({
   const canViewSkills =
     adminNavigationState?.canViewSkills ??
     Boolean(personalCapabilities?.catalogue || personalCapabilities?.manageCatalogue);
+  const scopedAccess = Boolean(workspaceContext?.capabilities.businessAdministration);
+  const unavailableView =
+    readyState &&
+    ((tab === 'people' && !canManageUsers) ||
+      (tab === 'profiles' && !scopedAccess) ||
+      (tab === 'audit' && !canViewAudit));
   const sections = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'organization', label: 'Organization', icon: FolderTree },
@@ -437,7 +425,7 @@ export function AccessAdmin({
   ] as const;
   const sidebarContent = (close: () => void = () => {}) => (
     <>
-      <Link className="admin-brand" to="/access">
+      <Link className="admin-brand" to="/access?view=overview" onClick={close}>
         <img src="/brand/sopra-steria.svg" alt="Sopra Steria" />
       </Link>
       <p className="nav-caption">SKILL MANAGEMENT APP</p>
@@ -461,10 +449,10 @@ export function AccessAdmin({
               id: id === 'overview' ? 'dashboard' : id,
               label: id === 'people' && !canManageUsers ? 'Access management' : label,
               icon,
-              active:
-                !personalTitle &&
-                (tab === id ||
-                  (id === 'people' && ['roles', 'assignments', 'profiles'].includes(tab))),
+              active: personalTitle
+                ? id === 'skills' && personalPath === '/skills'
+                : tab === id ||
+                  (id === 'people' && ['roles', 'assignments', 'profiles'].includes(tab)),
               onSelect: () => {
                 if (id === 'skills') {
                   navigate('/skills');
@@ -554,7 +542,7 @@ export function AccessAdmin({
                 </button>
               </>
             )}
-            {readyState && tab === 'audit' && (
+            {readyState && canViewAudit && tab === 'audit' && (
               <label className="list-search">
                 <Search size={16} aria-hidden="true" />
                 <input
@@ -579,15 +567,13 @@ export function AccessAdmin({
         {personalPath !== '/announcements' && (
           <Announcements onPublishAccess={setCanPublishAnnouncements} />
         )}
-        <main id="access-main" className="access-main">
+        <main id="access-main" className="access-main" tabIndex={-1}>
           {!personalTitle && ['people', 'roles', 'assignments', 'profiles'].includes(tab) && (
             <>
               <nav className="access-section-tabs" aria-label="People and access sections">
                 {[
                   ...(state?.canManageUsers ? [['people', 'People']] : []),
-                  ...(workspaceContext?.capabilities.businessAdministration
-                    ? [['profiles', 'Projects & scoped access']]
-                    : []),
+                  ...(scopedAccess ? [['profiles', 'Projects & scoped access']] : []),
                   ['roles', 'Templates'],
                 ].map(([id, label]) => (
                   <button
@@ -603,7 +589,7 @@ export function AccessAdmin({
                   </button>
                 ))}
               </nav>
-              {tab === 'profiles' && workspaceContext?.capabilities.businessAdministration && (
+              {tab === 'profiles' && scopedAccess && (
                 <Suspense fallback={<div role="status">Opening scoped access…</div>}>
                   <BusinessAdministration
                     onSaved={() => {
@@ -614,7 +600,7 @@ export function AccessAdmin({
               )}
             </>
           )}
-          {error && (
+          {!personalTitle && error && (
             <div className="access-message" role="alert">
               {error}
               <button
@@ -642,7 +628,7 @@ export function AccessAdmin({
               </button>
             </div>
           )}
-          {notice && (
+          {!personalTitle && notice && (
             <p className="access-message" role="status">
               {notice}
             </p>
@@ -659,6 +645,15 @@ export function AccessAdmin({
             <div className="admin-loading" role="status">
               Loading your administration workspace…
             </div>
+          )}
+          {unavailableView && (
+            <section className="profile-panel">
+              <h2>Access is not assigned</h2>
+              <p>Your current permissions do not include this page.</p>
+              <Link className="secondary-button" to="/workspace">
+                Return to your workspace
+              </Link>
+            </section>
           )}
           {readyState && state && (
             <>
@@ -728,20 +723,6 @@ export function AccessAdmin({
                 </>
               )}
 
-              {!personalTitle && tab === 'skills' && (
-                <Suspense fallback={<div role="status">Opening catalogue…</div>}>
-                  <SkillCatalogue
-                    amendmentsAllowed={Boolean(
-                      workspaceContext?.capabilities.amendments ||
-                      workspaceContext?.capabilities.approveAmendments,
-                    )}
-                    actionsContainer={pageActions}
-                    onChanged={() => {
-                      load().catch(err => setError(err.message));
-                    }}
-                  />
-                </Suspense>
-              )}
               {!personalTitle && tab === 'organization' && (
                 <Suspense fallback={<div role="status">Opening organization…</div>}>
                   <OrganizationSetup

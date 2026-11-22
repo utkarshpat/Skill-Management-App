@@ -1,7 +1,7 @@
 import test, { after, afterEach, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { act } from 'react';
-import { render, settle, closeBrowser, demoResponse, deferred } from './support/browser';
+import { render, settle, closeBrowser, demoResponse } from './support/browser';
 import { registerHooks } from 'node:module';
 import { MemoryRouter } from 'react-router';
 import { refreshDevelopmentLogin } from '../src/auth';
@@ -102,7 +102,7 @@ async function mount(path = '/certifications') {
   await settle();
 }
 
-test('credential portfolio opens read-only issuer details and navigates the authorized review view', async () => {
+test('credential portfolio opens and closes read-only issuer details', async () => {
   await mount();
   await click('View Azure Fundamentals credential');
   assert.match(document.querySelector('.form-dialog')!.textContent!, /Aditi|Azure Fundamentals/);
@@ -116,10 +116,6 @@ test('credential portfolio opens read-only issuer details and navigates the auth
   assert.match(document.querySelector('.form-dialog')!.textContent!, /Rohan Mehta/);
   await click('Close');
   assert.equal(document.querySelector('.form-dialog'), null);
-  await click('Assigned approvals');
-  assert.ok(requests.some(url => url.includes('view=queue')));
-  await click('My certifications');
-  assert.ok(requests.filter(url => url.includes('view=mine')).length >= 2);
 });
 
 test('portfolio filters search and reset without inventing empty certifications', async () => {

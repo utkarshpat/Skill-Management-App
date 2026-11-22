@@ -7,6 +7,7 @@ import {
 import type { Page } from '@playwright/test';
 import { commonLevels } from '../apps/web/src/proficiency';
 import { certificates } from './workforce-data';
+import { companyRecoveryPage } from '../apps/api/src/modules/identity/company-recovery-page';
 async function assistant(page: Page, role: 'employee' | 'manager' | 'admin' = 'employee') {
   await fixture(page, { role, realistic: true });
   await page.route('**/api/announcements/feed*', route =>
@@ -102,6 +103,7 @@ test('certificate details prepare a fresh editable question and keep private cre
   await page.goto(`/certifications?record=${certificate.id}`);
   const detail = page.getByRole('dialog', { name: certificate.certificationName });
   await detail.getByRole('button', { name: 'Ask Skill Genie' }).click();
+  await expect(page).toHaveURL(/\/certifications$/);
   await expect(detail).not.toBeVisible();
   const chat = page.getByRole('dialog', { name: 'AI assistant' });
   const composer = chat.getByRole('textbox', { name: 'Message AI assistant' });
@@ -586,9 +588,22 @@ test('AI skill actions open Add skill with the published skill and experience pr
   }
   expect(writes).toBe(0);
 });
-test('company sign-in recovery keeps an unsent draft in the original tab', async ({ page }) => {
+test('company sign-in recovery resumes in place for the original account and keeps its unsent draft', async ({
+  page,
+  context,
+}) => {
   await assistant(page);
   let sessionActive = true;
+  let sessionSubject = 'test-subject';
+  await context.route('**/api/auth/login?**', async route => {
+    const correctAccount = new URL(route.request().url()).searchParams.get('mode') === 'choose';
+    sessionActive = true;
+    sessionSubject = correctAccount ? 'test-subject' : 'different-subject';
+    await route.fulfill({
+      contentType: 'text/html',
+      body: companyRecoveryPage(false, 'test-nonce'),
+    });
+  });
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/auth/config')
@@ -601,7 +616,7 @@ test('company sign-in recovery keeps an unsent draft in the original tab', async
           cookieSession: true,
           backendSignIn: true,
           sessionActive,
-          sessionSubject: 'test-subject',
+          sessionSubject,
         },
       });
     if (!sessionActive && path === '/api/workspace')
@@ -618,12 +633,13 @@ test('company sign-in recovery keeps an unsent draft in the original tab', async
   await page.evaluate(() => window.dispatchEvent(new Event('workspace-access-updated')));
   const recovery = page.getByRole('dialog', { name: 'Sign in to resume your work' });
   await expect(recovery).toBeVisible();
-  await expect(recovery.getByRole('link', { name: 'Sign in with Microsoft' })).toHaveAttribute(
-    'target',
-    '_blank',
-  );
-  sessionActive = true;
-  await recovery.getByRole('button', { name: 'Resume workspace' }).click();
+  const signIn = recovery.getByRole('link', { name: 'Sign in with Microsoft' });
+  await expect(signIn).toHaveAttribute('target', '_blank');
+  const [wrongAccount] = await Promise.all([page.waitForEvent('popup'), signIn.click()]);
+  await expect(wrongAccount.getByRole('link', { name: 'Open a new workspace' })).toBeVisible();
+  await expect(recovery.getByRole('alert')).toContainText('Choose the same work account');
+  await wrongAccount.close();
+  await Promise.all([page.waitForEvent('popup'), signIn.click()]);
   await expect(recovery).toBeHidden();
   await expect(input).toHaveValue('Help me check my draft skill');
 });

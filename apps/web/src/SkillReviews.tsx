@@ -1,3 +1,4 @@
+import { readApiResponse } from './api-response';
 import { displayProficiencyName } from './proficiency';
 import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
@@ -29,18 +30,11 @@ import {
 import './review-workbench.css';
 import { reviewView } from './review-navigation';
 
-async function result<T>(response: Response): Promise<T> {
-  const data = await response.json().catch(() => undefined);
-  if (!response.ok)
-    throw Object.assign(
-      Error(
-        data?.error?.message ??
-          'This action could not finish. Reload to check the current state before retrying.',
-      ),
-      { status: response.status },
-    );
-  return data;
-}
+const result = <T,>(response: Response) =>
+  readApiResponse<T>(
+    response,
+    'This action could not finish. Reload to check the current state before retrying.',
+  );
 const accessDenied = (reason: unknown) =>
   [401, 403].includes((reason as { status?: number } | undefined)?.status ?? 0);
 interface ReviewQueue {

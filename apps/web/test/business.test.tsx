@@ -8,7 +8,6 @@ import {
   updateBusinessFilters,
   businessCoverageRows,
   businessPeriod,
-  businessPeoplePage,
 } from '../src/business/business-model';
 import { personalNavigationItems, isSupportedWorkspacePath } from '../src/WorkspaceNavigation';
 
@@ -26,18 +25,6 @@ test('activity presets use UTC year and day boundaries, including positive-offse
   assert.deepEqual(businessPeriod('all', now), { from: '', to: '' });
 });
 
-test('people comparison ranks only supplied page rows without mutating the server page', () => {
-  const rows = [
-    { employee: 'First alphabetically', currentCertifications: 1, reviewedSkills: 2 },
-    { employee: 'Current page holder', currentCertifications: 3, reviewedSkills: 1 },
-    { employee: 'Tie with more skills', currentCertifications: 3, reviewedSkills: 4 },
-  ];
-  assert.deepEqual(
-    businessPeoplePage(rows).map(row => row.employee),
-    ['Tie with more skills', 'Current page holder', 'First alphabetically'],
-  );
-  assert.equal(rows[0].employee, 'First alphabetically');
-});
 test('business record dates show readable dates and escaped attribution only for an existing event', () => {
   const html = renderToStaticMarkup(<BusinessRecordDate value="2026-10-11" by="Reviewer <QA>" />);
   assert.match(html, /11 Oct 2026/);

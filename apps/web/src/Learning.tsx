@@ -7,7 +7,6 @@ import { lazy, Suspense, useEffect, useState, useRef, type ReactNode } from 'rea
 import { useSearchParams } from 'react-router';
 import { learningView, learningTabSearch } from './learning-navigation';
 import {
-  BookOpen,
   CalendarDays,
   Clock3,
   Plus,

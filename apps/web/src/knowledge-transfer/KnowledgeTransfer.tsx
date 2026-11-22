@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { ThemeSwitcher } from '../Theme';
-import { safeDocUrl, sourceUrl, type Knowledge, type Table, type ChatMessage } from './types';
+import { safeDocUrl, sourceUrl, type Knowledge, type ChatMessage } from './types';
 import './knowledge-transfer.css';
 
 const schemaId = 'database-schema-erd',

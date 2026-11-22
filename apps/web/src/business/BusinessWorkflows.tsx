@@ -109,10 +109,6 @@ interface Preview {
   details: Record<string, unknown>;
   revision: number;
 }
-const read = <T,>(operation: string, query = '') =>
-  authenticatedFetch('/api/business/workflow/' + operation + query).then(r =>
-    readApiResponse<T>(r, 'Business workflow could not be loaded.'),
-  );
 export function BusinessWorkflows({
   context,
   view,

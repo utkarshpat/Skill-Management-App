@@ -177,7 +177,7 @@ function assignments(value: unknown): Assignment[] {
     };
   });
 }
-export function validateAssignmentChanges(
+function validateAssignmentChanges(
   next: Assignment[],
   previous: Assignment[],
   individual: boolean,

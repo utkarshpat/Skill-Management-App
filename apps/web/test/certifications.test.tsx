@@ -208,18 +208,13 @@ test('skills-style certification profile keeps review and expiry separate and ob
       onEdit={() => {}}
       onRenew={() => {}}
       onSubmit={() => {}}
-      onReview={() => {}}
     />,
   );
   assert.match(html, /Total certifications: 2/);
   assert.match(html, /Approved: 1/);
   assert.match(html, /Filter certification approval status/);
   assert.match(html, /Filter credential validity/);
-  assert.match(html, /Expired/);
-  assert.match(
-    html,
-    /Approved<\/span><span class="cert-review-validity cert-expired">Expired<\/span>/,
-  );
+  assert.match(html, /Approved<\/span><\/td><td><span class="cert-expired">Expired<\/span>/);
   assert.match(html, /Certification profile overview/);
   assert.doesNotMatch(html, /Edit Azure Fundamentals draft/);
   assert.doesNotMatch(html, /Submit Azure Fundamentals for approval/);

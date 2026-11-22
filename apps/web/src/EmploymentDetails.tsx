@@ -1,8 +1,4 @@
-import {
-  PrimaryCapabilitySummary,
-  primaryCapabilityLabel,
-  type PrimaryCapabilityDetails,
-} from './PrimaryCapability';
+import { PrimaryCapabilitySummary, type PrimaryCapabilityDetails } from './PrimaryCapability';
 export interface Employment extends PrimaryCapabilityDetails {
   jobTitle?: string | null;
   grade?: string | null;
@@ -78,44 +74,5 @@ export function EmploymentSummary({
         grant access.
       </p>
     </>
-  );
-}
-export function EmploymentChange({
-  before,
-  after,
-}: {
-  before?: Employment | null;
-  after?: Employment;
-}) {
-  return (
-    <div className="employment-change">
-      <h3>Work information changes</h3>
-      <dl>
-        {(['jobTitle', 'grade'] as const).map(key => (
-          <div key={key}>
-            <dt>{key === 'jobTitle' ? 'Business job title' : 'Grade'}</dt>
-            <dd>
-              <span>{before?.[key] || 'Not assigned'}</span>
-              <span aria-hidden="true"> → </span>
-              <span className="sr-only"> changes to </span>
-              <strong>{after?.[key] || 'Not assigned'}</strong>
-            </dd>
-          </div>
-        ))}
-        <div>
-          <dt>Primary capability</dt>
-          <dd>
-            <span>{primaryCapabilityLabel(before ?? undefined)}</span>
-            <span aria-hidden="true"> → </span>
-            <span className="sr-only"> changes to </span>
-            <strong>{primaryCapabilityLabel(after)}</strong>
-            {after?.primaryCapabilityId && after.primaryCapabilityStatus !== 'PUBLISHED' && (
-              <span> - preserved; needs attention</span>
-            )}
-          </dd>
-        </div>
-      </dl>
-      <p className="access-help">Descriptive only. These fields do not change effective access.</p>
-    </div>
   );
 }

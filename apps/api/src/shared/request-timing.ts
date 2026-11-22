@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { channel, tracingChannel } from 'node:diagnostics_channel';
 import { performance } from 'node:perf_hooks';
 
-export type DatabasePhase = 'token' | 'connect' | 'acquire' | 'checkout' | 'operation';
+type DatabasePhase = 'token' | 'connect' | 'acquire' | 'checkout' | 'operation';
 export type TimedProcedure =
   | 'ResolveAccessIdentity'
   | 'ReadActorAccessContext'

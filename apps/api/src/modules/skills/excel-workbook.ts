@@ -4,7 +4,7 @@ import { AccessError } from '../../shared/errors.js';
 
 type Cell = string | number | boolean | null;
 
-export interface ExcelSheet {
+interface ExcelSheet {
   name: string;
   columns: readonly string[];
   legacyLeadingColumn?: string;

@@ -320,6 +320,24 @@ export class SqlClaimsStore implements ClaimsStore {
       throw claimError(error);
     }
   }
+  async stalenessNotifications(actorId: string, reminderPage: number) {
+    return withRuntimeDatabase(async pool => {
+      const { recordset } = await pool
+        .request()
+        .input('account_id', sql.UniqueIdentifier, this.accountId)
+        .input('actor_id', sql.UniqueIdentifier, actorId)
+        .input('page', sql.Int, reminderPage)
+        .execute<{ id: string; at: Date; title: string; body: string; href: string }>(
+          'dbo.ReadSkillStalenessNotifications',
+        );
+      return recordset.map(row => ({ ...row, at: row.at.toISOString() }));
+    }).catch(error => {
+      const number = (error as { number?: number })?.number;
+      if (number === 2812) return []; // Allow notification reads during a rolling deployment.
+      if (number === 51003) throw claimError(error);
+      throw error;
+    });
+  }
   async notifications(actorId: string) {
     return withRuntimeDatabase(async pool => {
       const { recordsets } = await pool

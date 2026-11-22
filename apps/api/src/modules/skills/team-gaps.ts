@@ -2,7 +2,7 @@ import { AccessError } from '../../shared/errors.js';
 import type { TeamCapability } from './claims.js';
 
 type Analytics = NonNullable<TeamCapability['analytics']>;
-export interface SkillRequirement {
+interface SkillRequirement {
   skill: string;
   level: number;
   headcount: number;
@@ -106,7 +106,7 @@ export function skillProfiles(analytics: Analytics, index = indexCoverage(analyt
     );
 }
 
-export function requirementGaps(
+function requirementGaps(
   analytics: Analytics,
   requirements: SkillRequirement[],
   name: (id: string) => string,

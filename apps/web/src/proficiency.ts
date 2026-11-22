@@ -19,7 +19,7 @@ export function commonLevels(): ProficiencyCriterion[] {
     description: proficiencyCriteria[index],
   }));
 }
-export interface ProficiencyCriterion {
+interface ProficiencyCriterion {
   rank: number;
   name: string;
   description: string;

@@ -13,7 +13,7 @@ export interface PracticeQuiz {
   createdAt: string;
   questions: PracticeQuestion[];
 }
-export interface PracticeReview extends PracticeQuestion {
+interface PracticeReview extends PracticeQuestion {
   answer: number;
   correctIndex: number;
   explanation: string;

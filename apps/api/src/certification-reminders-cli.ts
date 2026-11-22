@@ -4,10 +4,15 @@ import { closeRuntimeDatabase } from './shared/database.js';
 try {
   const account = process.env.ACCESS_ACCOUNT_ID;
   if (!account) throw Error('Scheduled account configuration is required.');
+  const reminders = new SqlCertificationReminders(account);
   const jobs = [
     {
       event: 'certification.reminders.completed',
-      run: () => new SqlCertificationReminders(account).run(),
+      run: () => reminders.run(),
+    },
+    {
+      event: 'skill.staleness-reminders.completed',
+      run: () => reminders.runSkillStaleness(),
     },
     {
       event: 'announcements.retention.completed',

@@ -67,16 +67,21 @@ export async function loadNotificationFeed(
   });
   const reminders = items.filter(item => item.id.startsWith('cert-expiry-'));
   const announcements = items.filter(item => item.id.startsWith('announcement-'));
+  const staleSkills = items.filter(item => item.id.startsWith('skill-stale-'));
   const recent = items.filter(
-    item => !item.id.startsWith('cert-expiry-') && !item.id.startsWith('announcement-'),
+    item =>
+      !['cert-expiry-', 'announcement-', 'skill-stale-'].some(prefix => item.id.startsWith(prefix)),
   );
   recent.sort((a, b) => b.at.localeCompare(a.at));
   return {
     ...base,
-    items: [...recent.slice(0, 30), ...announcements, ...reminders.slice(0, 30)].sort((a, b) =>
-      b.at.localeCompare(a.at),
-    ),
-    hasMoreReminders: reminders.length > 30,
+    items: [
+      ...recent.slice(0, 30),
+      ...announcements,
+      ...reminders.slice(0, 30),
+      ...staleSkills.slice(0, 30),
+    ].sort((a, b) => b.at.localeCompare(a.at)),
+    hasMoreReminders: reminders.length > 30 || staleSkills.length > 30,
     partial: failedSources.length > 0,
     failedSources,
   };

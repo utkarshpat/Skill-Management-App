@@ -1,5 +1,5 @@
-export type ExceptionScope = 'OWN' | 'ORGANIZATION';
-export interface ExceptionPermission {
+type ExceptionScope = 'OWN' | 'ORGANIZATION';
+interface ExceptionPermission {
   code: string;
   label: string;
   implemented?: boolean;

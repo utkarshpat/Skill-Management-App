@@ -1,9 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { MemoryRouter } from 'react-router';
 import {
-  PersonalCapabilityNavigation,
+  personalNavigationItems,
   administrationShellFor,
   catalogueNavigationVisible,
   catalogueRouteAllowed,
@@ -19,24 +17,6 @@ test('personal and AI link destinations retain the admin shell only with adminis
   }
   assert.equal(administrationShellFor('/access', false), true);
   assert.equal(personalPageTitle('/access'), undefined);
-});
-test('personal navigation highlights the selected skill link and requires independent own permissions', () => {
-  const render = (ownProfile: boolean, ownSkills: boolean) =>
-    renderToStaticMarkup(
-      <MemoryRouter>
-        <PersonalCapabilityNavigation
-          capabilities={{ ownProfile, ownSkills }}
-          pathname="/my-skills"
-          onNavigate={() => {}}
-        />
-      </MemoryRouter>,
-    );
-  const granted = render(true, true);
-  assert.match(granted, /aria-current="page"[^>]*href="\/my-skills"/);
-  assert.match(granted, /href="\/profile"/);
-  const denied = render(true, false);
-  assert.doesNotMatch(denied, /href="\/my-skills"|aria-current="page"/);
-  assert.equal(render(false, false), '');
 });
 test('catalogue navigation visibility retains the intended manager/reviewer restriction', () => {
   assert.equal(catalogueRouteAllowed({ catalogue: true }), true);
@@ -72,4 +52,14 @@ test('supported deep links are explicit and unknown paths do not masquerade as t
     '/requests/other',
   ])
     assert.equal(isSupportedWorkspacePath(path), false, path);
+});
+
+test('personal navigation derives the active destination from own permissions', () => {
+  const items = personalNavigationItems({ ownProfile: true, ownSkills: true }, '/my-skills');
+  assert.ok(items.some(item => item.href === '/my-skills' && item.active));
+  assert.ok(items.some(item => item.href === '/profile'));
+  assert.deepEqual(
+    personalNavigationItems({ ownProfile: false, ownSkills: false }, '/my-skills'),
+    [],
+  );
 });

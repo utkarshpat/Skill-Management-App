@@ -16,7 +16,7 @@ const own = (permissions: string[]): TemplatePermission[] =>
 const organization = (permissions: string[]): TemplatePermission[] =>
   permissions.map(permission => ({ permission, scope: 'ORGANIZATION', effect: 'ALLOW' }));
 
-export const permissionBundles = [
+const permissionBundles = [
   {
     id: 'basic',
     name: 'Basic user',

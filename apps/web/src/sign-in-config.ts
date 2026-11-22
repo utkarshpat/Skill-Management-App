@@ -1,4 +1,4 @@
-export interface SignInConfig {
+interface SignInConfig {
   tenantId: string;
   apiClientId: string;
   webClientId: string;

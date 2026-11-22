@@ -40,7 +40,7 @@ export interface Grant {
   revokedAt?: string;
 }
 
-export interface AccessDecision {
+interface AccessDecision {
   allowed: boolean;
   reason:
     | 'ALLOW'
@@ -109,40 +109,4 @@ export function authorize(
   if (applicable.some(grant => grant.effect === 'DENY')) return deny('EXPLICIT_DENY');
   if (applicable.some(grant => grant.effect === 'ALLOW')) return { allowed: true, reason: 'ALLOW' };
   return deny('DEFAULT_DENY');
-}
-
-export interface ReportingRelationship {
-  accountId: string;
-  employeeId: string;
-  managerId: string;
-  validFrom: string;
-  validUntil?: string;
-}
-
-/** Never falls back to a hard-coded manager. Missing/ambiguous reporting data blocks routing. */
-export function resolveNPlusOne(
-  accountId: string,
-  employeeId: string,
-  relationships: readonly ReportingRelationship[],
-  at: Date,
-): string | undefined {
-  if (!Number.isFinite(at.getTime())) return undefined;
-  const current = relationships.filter(
-    item =>
-      item.accountId === accountId &&
-      item.employeeId === employeeId &&
-      isValid(
-        {
-          ...item,
-          userId: employeeId,
-          permission: '',
-          source: 'ROLE',
-          effect: 'ALLOW',
-          scope: { kind: 'OWN' },
-        },
-        at.getTime(),
-      ),
-  );
-  if (current.length !== 1 || current[0].managerId === employeeId) return undefined;
-  return current[0].managerId;
 }

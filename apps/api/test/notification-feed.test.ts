@@ -83,17 +83,22 @@ test('notification permission failures fail closed and synchronous failures are 
   assert.equal(feed.partial, true);
 });
 
-test('expiry reminder pages stay visible alongside a full activity feed', async () => {
-  const activity = Array.from({ length: 35 }, (_, i) => item('activity-' + i));
-  const reminders = Array.from({ length: 31 }, (_, i) => item('cert-expiry-' + i));
-  const feed = await loadNotificationFeed({ personId: 'owner', items: activity }, [
-    { name: 'certifications', load: async () => reminders },
-  ]);
-  assert.equal(feed.items.length, 60);
-  assert.equal(feed.hasMoreReminders, true);
-  assert.ok(feed.items.some(entry => entry.id === 'cert-expiry-29'));
-  assert.ok(!feed.items.some(entry => entry.id === 'cert-expiry-30'));
-});
+for (const [source, prefix] of [
+  ['certifications', 'cert-expiry-'],
+  ['skill-staleness', 'skill-stale-'],
+]) {
+  test(`${source} reminder pages stay visible alongside a full activity feed`, async () => {
+    const activity = Array.from({ length: 35 }, (_, i) => item('activity-' + i));
+    const reminders = Array.from({ length: 31 }, (_, i) => item(prefix + i));
+    const feed = await loadNotificationFeed({ personId: 'owner', items: activity }, [
+      { name: source, load: async () => reminders },
+    ]);
+    assert.equal(feed.items.length, 60);
+    assert.equal(feed.hasMoreReminders, true);
+    assert.ok(feed.items.some(entry => entry.id === prefix + 29));
+    assert.ok(!feed.items.some(entry => entry.id === prefix + 30));
+  });
+}
 
 test('active announcement links remain accessible alongside full activity and reminder pages', async () => {
   const activity = Array.from({ length: 35 }, (_, i) => ({

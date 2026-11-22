@@ -2,27 +2,17 @@ import { Announcements } from './Announcements';
 import { SidebarNavigation } from './SidebarNavigation';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router';
-import {
-  Megaphone,
-  BookOpen,
-  ChevronRight,
-  Compass,
-  LayoutDashboard,
-  LineChart,
-  Menu,
-  ShieldCheck,
-  UserRound,
-} from 'lucide-react';
+import { BookOpen, LayoutDashboard, LineChart, Menu, ShieldCheck } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { subscribeWorkspaceUpdates } from './cross-tab-updates';
 import { Sidebar } from './Sidebar';
 import { NavigationDrawer } from './NavigationDrawer';
 import { NavbarAccount } from './NavbarAccount';
-import { phaseTwoVisible } from './release-features';
 import {
   catalogueNavigationVisible,
   catalogueRouteAllowed,
-  personalPortfolioLabel,
+  personalNavigationItems,
+  personalPageTitle,
 } from './WorkspaceNavigation';
 const PersonalProfile = lazy(() =>
   import('./PersonalProfile').then(module => ({ default: module.PersonalProfile })),
@@ -158,71 +148,46 @@ export function Workspace({
   }, [pathname]);
   const name = state?.person.displayName ?? 'Workspace member';
   const firstName = state ? name.trim().split(/\s+/)[0] || 'there' : 'there';
-  const sections = [
+  const capabilities = state?.capabilities;
+  const personalItems = personalNavigationItems(
+    capabilities && { ...capabilities, canPublishAnnouncements },
+    pathname,
+  ).map(item => (item.id === 'business' ? { ...item, icon: LineChart } : item));
+  const sidebarItems = [
+    ...personalItems,
     {
-      id: 'business',
-      label: 'Analytics',
-      href: '/business',
-      icon: LineChart,
-      visible: state?.capabilities.businessOperations || state?.capabilities.issuerApprovals,
-    },
-    {
-      id: 'skill-reviews',
-      label: 'Approvals',
-      href: '/skill-reviews',
-      icon: ShieldCheck,
-      visible: state?.capabilities.reviewSkills || state?.capabilities.issuerApprovals,
-    },
-    {
-      id: 'overview',
+      id: 'dashboard',
       label: 'Dashboard',
       href: '/workspace',
       icon: LayoutDashboard,
-      visible: true,
+      active: view === 'overview',
     },
-    {
-      id: 'announcements',
-      label: 'Announcements',
-      href: '/announcements',
-      icon: Megaphone,
-      visible: state?.capabilities.ownProfile && canPublishAnnouncements,
-    },
-    {
-      id: 'profile',
-      label: 'My profile',
-      href: '/profile',
-      icon: UserRound,
-      visible: state?.capabilities.ownProfile,
-    },
-    {
-      id: 'my-skills',
-      label: personalPortfolioLabel(state?.capabilities),
-      href: state?.capabilities.ownSkills ? '/my-skills' : '/certifications',
-      icon: Compass,
-      visible: state?.capabilities.ownSkills || state?.capabilities.certifications,
-    },
-    {
-      id: 'requests',
-      label: 'Requests',
-      href: '/requests',
-      icon: ShieldCheck,
-      visible: phaseTwoVisible && state?.capabilities.requests,
-    },
-    {
-      id: 'learning',
-      label: 'Learn & Grow',
-      href: '/learning',
-      icon: BookOpen,
-      visible: phaseTwoVisible && state?.capabilities.learning,
-    },
-    {
-      id: 'skills',
-      label: 'Skill catalogue',
-      href: '/skills',
-      icon: BookOpen,
-      visible: catalogueNavigationVisible(state?.capabilities),
-    },
+    ...(catalogueNavigationVisible(capabilities)
+      ? [
+          {
+            id: 'skills',
+            label: 'Skill catalogue',
+            href: '/skills',
+            icon: BookOpen,
+            active: view === 'skills',
+          },
+        ]
+      : []),
   ];
+  const orderedSections = [
+    'business',
+    'skill-reviews',
+    'dashboard',
+    'announcements',
+    'profile',
+    'my-skills',
+    'requests',
+    'learning',
+    'skills',
+  ];
+  sidebarItems.sort(
+    (left, right) => orderedSections.indexOf(left.id) - orderedSections.indexOf(right.id),
+  );
   const permitted =
     view === 'overview' ||
     (view === 'announcements' && Boolean(state?.capabilities.ownProfile)) ||
@@ -232,7 +197,7 @@ export function Workspace({
         ? Boolean(state?.capabilities.ownSkills)
         : view === 'skills'
           ? catalogueRouteAllowed(state?.capabilities)
-          : sections.some(section => section.id === view && section.visible));
+          : personalItems.some(item => item.id === view));
   const businessAccess = state?.capabilities.businessOperations;
   const leadAccess = state?.capabilities.issuerApprovals;
   const leadAnalyticsSelected =
@@ -267,7 +232,7 @@ export function Workspace({
   );
   const sidebarContent = (close: () => void = () => {}) => (
     <>
-      <Link className="admin-brand" to="/workspace">
+      <Link className="admin-brand" to="/workspace" onClick={close}>
         <img src="/brand/sopra-steria.svg" alt="Sopra Steria" />
       </Link>
       <p className="nav-caption">SKILL MANAGEMENT APP</p>
@@ -276,15 +241,7 @@ export function Workspace({
         label="Personal workspace sections"
         onNavigate={close}
         items={[
-          ...sections
-            .filter(section => section.visible)
-            .map(({ id, label, href, icon }) => ({
-              id: id === 'overview' ? 'dashboard' : id,
-              label,
-              href,
-              icon,
-              active: view === id || (id === 'my-skills' && view === 'certifications'),
-            })),
+          ...sidebarItems,
           ...(state?.capabilities.administration
             ? [
                 {
@@ -302,7 +259,7 @@ export function Workspace({
   if (
     state &&
     view === 'business' &&
-    !sections[0].visible &&
+    !personalItems.some(item => item.id === 'business') &&
     catalogueRouteAllowed(state.capabilities) &&
     state.capabilities.amendments
   ) {
@@ -311,6 +268,36 @@ export function Workspace({
     if (ticket) next.set('draftTicket', ticket);
     return <Navigate replace to={'/skills?' + next} />;
   }
+  const pageActions = embedded ? (actionsContainer ?? null) : actions;
+  const content = state && permitted && (
+    <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
+      {analytics}
+      {view === 'announcements' && (
+        <Announcements page onPublishAccess={announcementPublishAccess} />
+      )}
+      {view === 'overview' && <Dashboard />}
+      {view === 'profile' && <PersonalProfile workspace={state} />}
+      {(view === 'my-skills' || view === 'certifications') && (
+        <CapabilityPortfolio workspace={state} actionsContainer={pageActions} />
+      )}
+      {view === 'requests' && <Requests actionsContainer={pageActions} />}
+      {view === 'learning' && <Learning actionsContainer={pageActions} />}
+      {view === 'skill-reviews' && (
+        <SkillReviews
+          certificationsAllowed={Boolean(state.capabilities.certifications)}
+          issuerOnly={!state.capabilities.reviewSkills && state.capabilities.issuerApprovals}
+        />
+      )}
+      {view === 'skills' && (
+        <SkillCatalogue
+          actionsContainer={pageActions}
+          amendmentsAllowed={Boolean(
+            state.capabilities.amendments || state.capabilities.approveAmendments,
+          )}
+        />
+      )}
+    </Suspense>
+  );
   if (embedded)
     return (
       <>
@@ -329,42 +316,7 @@ export function Workspace({
             <p>Your current permissions do not include this page.</p>
           </section>
         )}
-        {state && permitted && (
-          <>
-            <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
-              {analytics}
-              {view === 'announcements' && (
-                <Announcements page onPublishAccess={announcementPublishAccess} />
-              )}
-              {view === 'overview' && <Dashboard />}
-              {view === 'profile' && <PersonalProfile workspace={state} />}
-              {(view === 'my-skills' || view === 'certifications') && (
-                <CapabilityPortfolio
-                  workspace={state}
-                  actionsContainer={actionsContainer ?? null}
-                />
-              )}
-              {view === 'requests' && <Requests actionsContainer={actionsContainer} />}
-              {view === 'learning' && <Learning actionsContainer={actionsContainer} />}
-              {view === 'skill-reviews' && (
-                <SkillReviews
-                  certificationsAllowed={Boolean(state.capabilities.certifications)}
-                  issuerOnly={
-                    !state.capabilities.reviewSkills && state.capabilities.issuerApprovals
-                  }
-                />
-              )}
-              {view === 'skills' && (
-                <SkillCatalogue
-                  actionsContainer={actionsContainer ?? null}
-                  amendmentsAllowed={Boolean(
-                    state.capabilities.amendments || state.capabilities.approveAmendments,
-                  )}
-                />
-              )}
-            </Suspense>
-          </>
-        )}
+        {content}
       </>
     );
   return (
@@ -397,11 +349,11 @@ export function Workspace({
               </strong>
             </div>
             <h1>
-              {view === 'requests'
-                ? 'Requests & incidents'
-                : sections.find(
-                    section => section.id === (view === 'certifications' ? 'my-skills' : view),
-                  )?.label}
+              {view === 'overview'
+                ? 'Dashboard'
+                : view === 'learning'
+                  ? 'Learn & Grow'
+                  : personalPageTitle(pathname, capabilities)}
             </h1>
           </div>
           <div className="page-actions" role="group" aria-label="Page actions" ref={setActions} />
@@ -438,39 +390,7 @@ export function Workspace({
               </Link>
             </section>
           )}
-          {state && permitted && (
-            <>
-              <Suspense fallback={<p role="status">Loading this workspace page…</p>}>
-                {analytics}
-                {view === 'announcements' && (
-                  <Announcements page onPublishAccess={announcementPublishAccess} />
-                )}
-                {view === 'overview' && <Dashboard />}
-                {view === 'profile' && <PersonalProfile workspace={state} />}
-                {(view === 'my-skills' || view === 'certifications') && (
-                  <CapabilityPortfolio workspace={state} actionsContainer={actions} />
-                )}
-                {view === 'requests' && <Requests actionsContainer={actions} />}
-                {view === 'learning' && <Learning actionsContainer={actions} />}
-                {view === 'skill-reviews' && (
-                  <SkillReviews
-                    certificationsAllowed={Boolean(state.capabilities.certifications)}
-                    issuerOnly={
-                      !state.capabilities.reviewSkills && state.capabilities.issuerApprovals
-                    }
-                  />
-                )}
-                {view === 'skills' && (
-                  <SkillCatalogue
-                    actionsContainer={actions}
-                    amendmentsAllowed={Boolean(
-                      state.capabilities.amendments || state.capabilities.approveAmendments,
-                    )}
-                  />
-                )}
-              </Suspense>
-            </>
-          )}
+          {content}
         </main>
       </div>
     </div>

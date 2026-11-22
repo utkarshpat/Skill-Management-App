@@ -74,7 +74,7 @@ function isPermissionsOverview(message: string) {
   ].includes(normalized);
 }
 
-export interface GenerationOptions {
+interface GenerationOptions {
   maxOutputTokens: number;
   responseSchema?: { name: string; schema: Record<string, unknown> };
   onUsage?: (usage: TokenUsage) => void;

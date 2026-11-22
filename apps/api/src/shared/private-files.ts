@@ -10,13 +10,13 @@ export interface PrivateStorageConfig {
   connection?: string;
   container?: string;
 }
-export interface FileAccess {
+interface FileAccess {
   actor: string;
   context: 'skill' | 'certification' | 'intake' | 'submission' | 'business-skill' | 'business-cert';
   record: string;
   submission?: string;
 }
-export interface StoredUpload {
+interface StoredUpload {
   id: string;
   revision: number;
   data: Buffer;

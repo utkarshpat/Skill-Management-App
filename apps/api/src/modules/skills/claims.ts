@@ -88,6 +88,10 @@ export interface ClaimsStore {
   notifications?(
     actorId: string,
   ): Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
+  stalenessNotifications?(
+    actorId: string,
+    reminderPage: number,
+  ): Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
 }
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export interface ReviewDetail {

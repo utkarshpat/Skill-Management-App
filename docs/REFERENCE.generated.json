@@ -1,6 +1,6 @@
 {
   "version": "2026-11-20",
-  "revision": "5e6d2a0e97d83631",
+  "revision": "5aa326808b9ff700",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -119,7 +119,8 @@
       "114_approval_queue_exports_response_versions.sql",
       "115_optional_approval_feedback.sql",
       "116_readable_activity_records.sql",
-      "117_employee_excel_import.sql"
+      "117_employee_excel_import.sql",
+      "118_skill_staleness_reminders.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -7251,6 +7252,67 @@
           }
         ],
         "domain": "Identity foundation"
+      },
+      "SkillStalenessReminder": {
+        "source": "118_skill_staleness_reminders.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "118_skill_staleness_reminders.sql"
+          },
+          "claim_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "claim_id uniqueidentifier NOT NULL",
+            "source": "118_skill_staleness_reminders.sql"
+          },
+          "claim_revision": {
+            "type": "int",
+            "nullable": false,
+            "declaration": "claim_revision int NOT NULL",
+            "source": "118_skill_staleness_reminders.sql"
+          },
+          "created_at": {
+            "type": "datetime2(7)",
+            "nullable": false,
+            "declaration": "created_at datetime2(7) NOT NULL",
+            "source": "118_skill_staleness_reminders.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "claim_id",
+          "claim_revision"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id",
+              "claim_id"
+            ],
+            "target": "SkillClaimDraft",
+            "targetColumns": [
+              "account_id",
+              "claim_id"
+            ],
+            "source": "118_skill_staleness_reminders.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "CONSTRAINT PK_SkillStalenessReminder PRIMARY KEY(account_id,claim_id,claim_revision)",
+            "source": "118_skill_staleness_reminders.sql"
+          },
+          {
+            "sql": "CONSTRAINT FK_SkillStalenessReminder_Claim FOREIGN KEY(account_id,claim_id) REFERENCES dbo.SkillClaimDraft(account_id,claim_id) ON DELETE CASCADE",
+            "source": "118_skill_staleness_reminders.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Skills & claims"
       }
     },
     "views": {
@@ -8693,6 +8755,18 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@kind varchar(20),\n @operation varchar(12),@payload nvarchar(max)=N'{}',@revision int=NULL",
       "source": "database/migrations/117_employee_excel_import.sql"
+    },
+    {
+      "name": "GenerateSkillStalenessReminders",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier",
+      "source": "database/migrations/118_skill_staleness_reminders.sql"
+    },
+    {
+      "name": "ReadSkillStalenessNotifications",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1",
+      "source": "database/migrations/118_skill_staleness_reminders.sql"
     }
   ],
   "groups": {
@@ -8738,6 +8812,7 @@
       "SkillClaimDraft",
       "SkillClaimNotification",
       "SkillClaimEvidence",
+      "SkillStalenessReminder",
       "CertificationRecord",
       "CertificationReminderSchedule",
       "CertificationExpiryReminder",

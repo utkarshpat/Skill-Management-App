@@ -37,6 +37,7 @@ export interface HttpDependencies {
   skillNotifications?: (
     actorId: string,
   ) => Promise<{ id: string; at: string; title: string; body: string; href: string }[]>;
+  skillStalenessNotifications?: HttpDependencies['certificationExpiryNotifications'];
   certificationNotifications?: (
     actorId: string,
     reminderPage?: number,
@@ -245,6 +246,14 @@ export function registerRoutes(
           {
             name: 'reviews',
             load: () => dependencies?.skillNotifications?.(person.id) ?? Promise.resolve([]),
+          },
+          {
+            name: 'skill-staleness',
+            load: () =>
+              can(state, person, 'skill.view', true) && can(state, person, 'profile.view', true)
+                ? (dependencies?.skillStalenessNotifications?.(person.id, reminderPage) ??
+                  Promise.resolve([]))
+                : Promise.resolve([]),
           },
           {
             name: 'certifications',

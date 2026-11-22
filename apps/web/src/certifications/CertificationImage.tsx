@@ -2,7 +2,7 @@ import { certificatePreviewUrl } from './certificate-preview-url';
 import { CertificateFilePreview } from './CertificateFilePreview';
 export { CertificateFilePreview } from './CertificateFilePreview';
 import { useEffect, useRef, useState } from 'react';
-import { FileText, ImagePlus, Upload } from 'lucide-react';
+import { ImagePlus, Upload } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { prepareCertificateFile } from './certificate-file';

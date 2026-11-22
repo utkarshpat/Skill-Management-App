@@ -57,7 +57,7 @@ export function registerLearningRoutes(
     res.locals.learningActor = person.id;
     next();
   });
-  app.get('/api/learning', async (req, res) => {
+  app.get('/api/learning', async (_req, res) => {
     try {
       if (!deps?.learning) throw new AccessError(503, 'Learning storage is not configured.');
       res.json({

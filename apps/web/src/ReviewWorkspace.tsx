@@ -13,6 +13,21 @@ import './review-workbench.css';
 import './certifications/certifications.css';
 const SkillReviews = lazy(() => import('./SkillReviews').then(m => ({ default: m.SkillReviews })));
 
+async function findCertificationApproval(id: string, signal: AbortSignal, firstPage = 1) {
+  for (let page = firstPage; ; page++) {
+    const filters = new URLSearchParams({ view: 'queue', page: String(page) });
+    const result = await readApiResponse<CertificationPage>(
+      await authenticatedFetch('/api/certifications?' + filters, {
+        signal,
+        headers: { 'X-Certification-View': 'review-only' },
+      }),
+      'This certificate approval could not be loaded.',
+    );
+    const match = result.records.find(record => record.id.toLowerCase() === id.toLowerCase());
+    if (match || !result.pageSize || page * result.pageSize >= result.total) return match;
+  }
+}
+
 export function ReviewWorkspace({
   certificationsAllowed = false,
   issuerOnly = false,
@@ -56,7 +71,7 @@ export function ReviewWorkspace({
   );
 }
 function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'recommendations' }) {
-  const [data, setData] = useState<CertificationPage>();
+  const [data, setData] = useState<CertificationPage & { requestedSearch: string }>();
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState('');
   const [analytics, setAnalytics] = useState<{
@@ -75,6 +90,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
   const [search, setSearch] = useState(''),
     [query, setQuery] = useState('');
   const [error, setError] = useState(''),
+    [linkError, setLinkError] = useState(''),
     [loading, setLoading] = useState(true),
     [opening, setOpening] = useState(false);
   const [credential, setCredential] = useState<CertificationRecord>();
@@ -82,6 +98,11 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
     location = useLocation(),
     consumed = useRef<string>(undefined);
   const linked = view === 'queue' ? params.get('certification')?.toLowerCase() : undefined;
+  const useFirstPage = page === 1 && !query;
+  const firstPage =
+    useFirstPage && !loading && !error && data?.page === 1 && !data.requestedSearch
+      ? data
+      : undefined;
 
   useEffect(() => {
     if (search.trim() === query) return;
@@ -103,7 +124,6 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
     const controller = new AbortController();
     setError('');
     setLoading(true);
-    setCredential(undefined);
     const params = new URLSearchParams({ view: 'queue', page: String(page), search: query });
     authenticatedFetch('/api/certifications?' + params, {
       signal: controller.signal,
@@ -113,7 +133,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
         readApiResponse<CertificationPage>(r, 'Certification approval queue could not be loaded.'),
       )
       .then(value => {
-        if (!controller.signal.aborted) setData(value);
+        if (!controller.signal.aborted) setData({ ...value, requestedSearch: query });
       })
       .catch(e => {
         if (!controller.signal.aborted) {
@@ -130,24 +150,45 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
   }, [page, query, attempt, view]);
   // Notification links open only records the authorized approval queue returns.
   useEffect(() => {
-    if (!linked || loading || error) return;
+    setLinkError('');
+    if (!linked) return;
     const navigation = location.key + ':' + linked;
     if (consumed.current === navigation) return;
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(linked)) {
       consumed.current = navigation;
       return;
     }
-    if (!data || data.page !== page) return;
-    const match = data.records.find(record => record.id.toLowerCase() === linked);
-    if (match) {
+    const open = (match?: CertificationRecord) => {
       consumed.current = navigation;
-      setCredential(match);
-    } else if (!query && page * data.pageSize < data.total) setPage(n => n + 1);
-    else {
-      consumed.current = navigation;
-      toast.info('This certification is no longer awaiting your decision.');
+      if (match) setCredential(match);
+      else toast.info('This certification is no longer awaiting your decision.');
+    };
+    if (useFirstPage) {
+      if (!firstPage) return;
+      const match = firstPage.records.find(record => record.id.toLowerCase() === linked);
+      if (match || firstPage.pageSize >= firstPage.total) {
+        open(match);
+        return;
+      }
     }
-  }, [linked, loading, error, data, query, page, location.key]);
+    const controller = new AbortController();
+    setOpening(true);
+    findCertificationApproval(linked, controller.signal, useFirstPage ? 2 : 1)
+      .then(match => {
+        if (!controller.signal.aborted) open(match);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setLinkError('This certificate approval could not be loaded.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setOpening(false);
+      });
+    return () => {
+      controller.abort();
+      setOpening(false);
+    };
+  }, [linked, location.key, attempt, useFirstPage, firstPage]);
   useEffect(() => {
     if (view === 'queue') return;
     const controller = new AbortController();
@@ -189,7 +230,9 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
       ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date)
       : 'Date unavailable';
   };
-  const showLegacyQueue = Boolean(error) || Boolean(data?.records.length);
+  const showLegacyQueue = Boolean(
+    error || linkError || data?.records.length || query || search || credential || opening,
+  );
   const hasNext = Boolean(data && page * data.pageSize < data.total);
   if (view === 'queue' && !showLegacyQueue) return null;
 
@@ -245,9 +288,9 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
                 )}
               </div>
             </div>
-            {error && (
+            {(linkError || error) && (
               <div className="assigned-review-error" role="alert">
-                <span>{error}</span>
+                <span>{linkError || error}</span>
                 <button className="secondary-button" onClick={() => setAttempt(n => n + 1)}>
                   Retry
                 </button>
@@ -386,21 +429,7 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
           <CertificationReviewDialog
             certification={credential}
             onReopen={setCredential}
-            refreshForAssistant={async signal => {
-              const filters = new URLSearchParams({
-                view: 'queue',
-                page: String(page),
-                search: query,
-              });
-              const latest = await readApiResponse<CertificationPage>(
-                await authenticatedFetch('/api/certifications?' + filters, {
-                  signal,
-                  headers: { 'X-Certification-View': 'review-only' },
-                }),
-                'This certificate approval could not be refreshed.',
-              );
-              return latest.records.find(record => record.id === credential.id);
-            }}
+            refreshForAssistant={signal => findCertificationApproval(credential.id, signal)}
             onClose={() => setCredential(undefined)}
             onRefresh={() => {
               setCredential(undefined);

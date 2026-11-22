@@ -4,7 +4,7 @@ export interface Column {
   declaration: string;
   source: string;
 }
-export interface ForeignKey {
+interface ForeignKey {
   columns: string[];
   target: string;
   targetColumns: string[];

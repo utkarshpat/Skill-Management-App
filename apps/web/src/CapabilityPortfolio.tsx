@@ -42,7 +42,7 @@ export function CapabilityPortfolio({
       )}
       <Suspense fallback={<p role="status">Loading your portfolio…</p>}>
         {showCertifications ? (
-          <Certifications actionsContainer={actionsContainer} personalOnly workspace={workspace} />
+          <Certifications actionsContainer={actionsContainer} workspace={workspace} />
         ) : (
           <SkillCertificates enabled={Boolean(workspace.capabilities.certifications)}>
             <MySkills

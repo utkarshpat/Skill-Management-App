@@ -202,11 +202,14 @@ function companyLoginPath(mode: 'silent' | 'choose' | 'default') {
   const options = new URLSearchParams({ mode, returnTo });
   return '/api/auth/login?' + options;
 }
-export function companyResumePath() {
+export function companyResumePath(chooseAccount = false) {
   if (!backendSignIn || !companySubject) return undefined;
   return (
     '/api/auth/login?' +
-    new URLSearchParams({ mode: 'default', returnTo: '/api/auth/resume-complete' })
+    new URLSearchParams({
+      mode: chooseAccount ? 'choose' : 'default',
+      returnTo: '/api/auth/resume-complete',
+    })
   );
 }
 export async function resumeCompanySession() {
@@ -282,10 +285,6 @@ export async function signOut() {
     await microsoft.initialize();
   }
   await microsoft.client?.logoutRedirect({ account: microsoft.client.getActiveAccount() });
-}
-export async function profileToken() {
-  await initializeAuth();
-  return acquireProfileToken();
 }
 async function acquireProfileToken() {
   const client = microsoft.client;

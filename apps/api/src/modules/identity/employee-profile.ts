@@ -9,7 +9,7 @@ import {
   type EmployeeDirectoryRecord,
 } from './employee-directory.js';
 
-export interface EmployeeProfileDependencies {
+interface EmployeeProfileDependencies {
   access?: AccessStore;
   resolveIdentity: (identity: Identity) => Promise<string | undefined>;
   directory: EmployeeDirectoryProvider;

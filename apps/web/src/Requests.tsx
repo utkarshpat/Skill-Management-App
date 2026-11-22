@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   XCircle,
-  Send,
 } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { RequestActionDialog, type RequestAction } from './RequestActionDialog';

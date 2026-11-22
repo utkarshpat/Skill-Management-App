@@ -96,7 +96,7 @@ export function hasResolvedDirectReports(state: LocalAccessState, person: LocalP
     )
   );
 }
-export interface EffectiveDecision {
+interface EffectiveDecision {
   action: string;
   implemented: boolean;
   allowed: boolean;
@@ -117,7 +117,7 @@ export interface EffectiveDecision {
   constraints: string[];
 }
 /** Resource fields are resolved by the account-bound claims store, never HTTP input. */
-export interface ReviewResource {
+interface ReviewResource {
   id: string;
   revision: number;
   personId?: string;

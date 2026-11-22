@@ -3,9 +3,6 @@
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { FormDialog } from '../src/FormDialog';
-import { CertificationDialog } from '../src/certifications/CertificationDialog';
-import type { CertificationRecord } from '../src/certifications/types';
-import '../src/certifications/certifications.css';
 import { SkillClaimWizard, type SkillDraft } from '../src/SkillClaimWizard';
 import '../src/styles.css';
 import '../src/ui.css';
@@ -16,10 +13,7 @@ const text = Array.from(
   (_, i) => `Long field line ${i + 1}: ${'unbroken'.repeat(18)}`,
 ).join('\n');
 function Preview() {
-  const [kind, setKind] = useState<'plain' | 'wizard' | 'certification' | undefined>();
-  const [saved, setSaved] = useState<CertificationRecord>();
-  const [canSubmit, setCanSubmit] = useState(true);
-  const [failSave, setFailSave] = useState(false);
+  const [kind, setKind] = useState<'plain' | 'wizard' | undefined>();
   const [page, setPage] = useState(2);
   const [draft, setDraft] = useState<SkillDraft>({
     id: crypto.randomUUID(),
@@ -37,44 +31,6 @@ function Preview() {
     <main>
       <h1>Local dialog scroll fixtures</h1>
       <p>Synthetic long content. No changes are saved.</p>
-      <button onClick={() => setKind('certification')}>Open certification wizard</button>
-      <label>
-        <input type="checkbox" checked={canSubmit} onChange={e => setCanSubmit(e.target.checked)} />
-        Manager available
-      </label>
-      <label>
-        <input type="checkbox" checked={failSave} onChange={e => setFailSave(e.target.checked)} />
-        Simulate save failure
-      </label>
-      {saved && (
-        <p>
-          Fixture saved: {saved.certificationName} ({saved.status}), revision {saved.revision}
-        </p>
-      )}
-      {kind === 'certification' && (
-        <CertificationDialog
-          initial={saved}
-          canSubmit={canSubmit}
-          onClose={() => setKind(undefined)}
-          onSave={async (id, revision, fields, submit) => {
-            if (failSave) throw new Error('Synthetic save failure. Your entries are still here.');
-            setSaved({
-              ...fields,
-              id,
-              revision: revision + 1,
-              personId: 'fixture',
-              name: 'Fixture',
-              employeeCode: 'TEST',
-              status: submit ? 'SUBMITTED' : 'DRAFT',
-              feedback: '',
-              canEdit: !submit,
-              canSubmit: !submit && canSubmit,
-              canReview: false,
-            });
-            return revision + 1;
-          }}
-        />
-      )}
       <button onClick={() => setKind('plain')}>Open long popup</button>
       <button
         onClick={() => {

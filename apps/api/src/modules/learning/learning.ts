@@ -1,5 +1,5 @@
 import { AccessError } from '../../shared/errors.js';
-export interface LearningTask {
+interface LearningTask {
   id: string;
   title: string;
   plannedDate: string;

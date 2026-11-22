@@ -38,6 +38,7 @@ const migrations = [
   [115, '115_optional_approval_feedback.sql'],
   [116, '116_readable_activity_records.sql'],
   [117, '117_employee_excel_import.sql'],
+  [118, '118_skill_staleness_reminders.sql'],
 ];
 const literal = value => "N'" + value.replaceAll("'", "''") + "'";
 export function transactionMigration(
@@ -145,7 +146,8 @@ complete, run 04_091_search_people_administration.sql first.
 28. Apply 28_115_optional_approval_feedback.sql after 114 before deploying the matching app. Approval comments become optional. Rejection and change requests still require feedback.
 29. Apply 29_116_readable_activity_records.sql after 115 to show readable record names in the authorized Activity log.
 30. Apply 30_117_employee_excel_import.sql after 116 before using employee workbook imports.
-31. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
+31. Apply 31_118_skill_staleness_reminders.sql after 117 before deploying scheduled skill reminders.
+32. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
    request topic/recipient discovery, current assigned-manager review and People & Access search.
 
 Publishing follows existing effective Business Analytics or Admin assignments. Select an eligible concrete audience when publishing.

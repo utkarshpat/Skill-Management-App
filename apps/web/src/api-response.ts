@@ -1,4 +1,4 @@
-export interface ApiResponseError extends Error {
+interface ApiResponseError extends Error {
   status: number;
 }
 

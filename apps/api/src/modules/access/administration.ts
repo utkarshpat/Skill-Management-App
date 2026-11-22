@@ -13,7 +13,7 @@ export interface DirectoryQuery {
   nodeKind?: 'DELIVERY_UNIT' | 'PORTFOLIO' | 'DEPARTMENT' | 'TEAM';
   parentId?: string;
 }
-export interface DirectoryItem {
+interface DirectoryItem {
   id: string;
   name: string;
   employeeCode?: string;
