@@ -74,3 +74,116 @@
   font-size: 12px;
   margin: 4px 0;
 }
+.people-search-summary {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+}
+.people-search-headline {
+  margin: 0 !important;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.people-search-preview {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.people-search-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+}
+.people-search-preview-name {
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.people-search-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.people-search-badge-ok {
+  color: #0e6f52;
+  background: color-mix(in srgb, #14966e 12%, var(--surface));
+}
+.people-search-badge-partial {
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.people-search-primary-btn {
+  background: #11878a !important;
+  color: #ffffff !important;
+  border-color: #11878a !important;
+  font-weight: 600;
+}
+.people-search-coverage {
+  display: grid;
+  gap: 6px;
+  min-width: 170px;
+}
+.people-search-coverage-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.people-search-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--raised);
+  overflow: hidden;
+}
+.people-search-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #11878a;
+}
+.people-search-bar-ok {
+  background: #14966e;
+}
+.people-search-criteria {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.people-search-criterion {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+}
+.people-search-criterion small {
+  margin: 0;
+  font-size: 11px;
+}
+.people-search-criterion-hit {
+  background: color-mix(in srgb, #14966e 9%, var(--surface));
+  border-color: color-mix(in srgb, #14966e 26%, var(--line));
+}
+.people-search-criterion-miss {
+  background: var(--raised);
+  color: var(--muted);
+}

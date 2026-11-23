@@ -222,19 +222,27 @@ async function mount(query = '') {
   await settle();
 }
 
-test('analytics users with demand access can navigate to matching and back', async () => {
+test('analytics never renders a separate demand tab and routes matching through AI Find people', async () => {
   canDemandView = true;
   await mount();
-  const tabs = document.querySelector<HTMLElement>('nav[aria-label="Analytics sections"]')!;
-  assert.equal(tabs.querySelector('[aria-current="page"]')?.textContent, 'Analytics');
-  await click('Demand & matching', tabs);
-  assert.equal(tabs.querySelector('[aria-current="page"]')?.textContent, 'Demand & matching');
-  assert.equal(document.querySelector('.bo-record-heading h2')?.textContent, 'Demand & matching');
-  await click('Analytics', tabs);
-  assert.equal(tabs.querySelector('[aria-current="page"]')?.textContent, 'Analytics');
+  assert.equal(document.querySelector('nav[aria-label="Analytics sections"]'), null);
+  assert.ok(queries.length > 0);
+  let detail: { autoSend?: boolean; prompt?: string } | undefined;
+  const onRequest = (event: Event) => {
+    detail = (event as CustomEvent<{ autoSend?: boolean; prompt?: string }>).detail;
+  };
+  window.addEventListener('assistant-context-request', onRequest);
+  try {
+    await click('Find people');
+  } finally {
+    window.removeEventListener('assistant-context-request', onRequest);
+  }
+  assert.equal(detail?.autoSend, true);
+  assert.match(detail?.prompt ?? '', /Use conversational search, not a saved demand form/);
 });
 
-test('the demand tab stays hidden when access is unavailable, including on a direct link', async () => {
+test('direct links to ?tab=demand stay on analytics without rendering a demand page', async () => {
+  canDemandView = true;
   await mount('?tab=demand');
   assert.equal(document.querySelector('nav[aria-label="Analytics sections"]'), null);
   assert.ok(queries.length > 0);

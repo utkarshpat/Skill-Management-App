@@ -137,20 +137,22 @@ export function AssistantPeopleResults({ query }: { query: PeopleQuery }) {
       </label>
       {data && (
         <>
-          <p>
-            <strong>{data.eligibleTotal} people meet every requirement</strong>
-            {query.headcount > 1 ? ` · ${query.headcount} requested` : ''}
-          </p>
-          <p className="people-search-note">
-            {query.scopeId
-              ? (data.context.scopes.find(s => s.id === query.scopeId)?.label ??
-                'Selected authorized scope')
-              : 'All authorized scopes'}{' '}
-            {query.hierarchyId
-              ? ` · ${data.context.hierarchy?.find(n => n.id === query.hierarchyId)?.name ?? 'Selected authorized placement'}`
-              : ''}
-            · Updated {new Date(data.context.asOf).toLocaleString()}
-          </p>
+          <div className="people-search-summary">
+            <p className="people-search-headline">
+              <strong>{data.eligibleTotal} people meet every requirement</strong>
+              {query.headcount > 1 ? ` · ${query.headcount} requested` : ''}
+            </p>
+            <p className="people-search-note">
+              {query.scopeId
+                ? (data.context.scopes.find(s => s.id === query.scopeId)?.label ??
+                  'Selected authorized scope')
+                : 'All authorized scopes'}{' '}
+              {query.hierarchyId
+                ? ` · ${data.context.hierarchy?.find(n => n.id === query.hierarchyId)?.name ?? 'Selected authorized placement'}`
+                : ''}
+              · Updated {new Date(data.context.asOf).toLocaleString()}
+            </p>
+          </div>
           <div className="people-search-requirements">
             {data.requirements.map((r, i) => (
               <span key={i} title={peopleCriterionLabel(r.criterion)}>
@@ -166,33 +168,74 @@ export function AssistantPeopleResults({ query }: { query: PeopleQuery }) {
                     <tr>
                       <th>Employee</th>
                       <th>Requirements matched</th>
-                      <th>Match reasons & gaps</th>
+                      <th>Match reasons &amp; gaps</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.rows.map(row => (
-                      <tr key={row.id}>
-                        <td>
-                          <strong>{row.employee}</strong>
-                          <small>{row.employeeCode}</small>
-                        </td>
-                        <td>
-                          {row.matched}/{data.required}
-                          <small>{row.eligible ? 'Meets all requirements' : 'Partial match'}</small>
-                        </td>
-                        <td>
-                          {row.criteria.map((c, i) => (
-                            <div key={i}>
-                              {c.matched ? '✓' : '—'} {c.name}:{' '}
-                              {c.matched ? 'Matched' : 'Not established'}
-                              <small title={peopleCriterionLabel(c.criterion)}>
-                                {peopleCriterionLabel(c.criterion)}
-                              </small>
+                    {data.rows.map(row => {
+                      const pct =
+                        data.required > 0
+                          ? Math.min(100, Math.round((row.matched / data.required) * 100))
+                          : 0;
+                      return (
+                        <tr key={row.id}>
+                          <td>
+                            <strong>{row.employee}</strong>
+                            <small>{row.employeeCode}</small>
+                          </td>
+                          <td>
+                            <div className="people-search-coverage">
+                              <div className="people-search-coverage-top">
+                                <strong>
+                                  {row.matched}/{data.required}
+                                </strong>
+                                <span
+                                  className={
+                                    row.eligible
+                                      ? 'people-search-badge people-search-badge-ok'
+                                      : 'people-search-badge people-search-badge-partial'
+                                  }
+                                >
+                                  {row.eligible ? 'Meets all requirements' : 'Partial match'}
+                                </span>
+                              </div>
+                              <div className="people-search-bar" aria-hidden="true">
+                                <span
+                                  className={
+                                    row.eligible
+                                      ? 'people-search-bar-fill people-search-bar-ok'
+                                      : 'people-search-bar-fill'
+                                  }
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
                             </div>
-                          ))}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td>
+                            <ul className="people-search-criteria">
+                              {row.criteria.map((c, i) => (
+                                <li
+                                  key={i}
+                                  className={
+                                    c.matched
+                                      ? 'people-search-criterion people-search-criterion-hit'
+                                      : 'people-search-criterion people-search-criterion-miss'
+                                  }
+                                >
+                                  <span>
+                                    {c.matched ? '✓' : '—'} {c.name}:{' '}
+                                    {c.matched ? 'Matched' : 'Not established'}
+                                  </span>
+                                  <small title={peopleCriterionLabel(c.criterion)}>
+                                    {peopleCriterionLabel(c.criterion)}
+                                  </small>
+                                </li>
+                              ))}
+                            </ul>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -202,15 +245,31 @@ export function AssistantPeopleResults({ query }: { query: PeopleQuery }) {
             </>
           ) : (
             <>
-              <ul>
-                {data.rows.slice(0, 3).map(row => (
-                  <li key={row.id}>
-                    {row.employee} · {row.matched}/{data.required} requirements
-                  </li>
-                ))}
-              </ul>
+              {data.rows.length > 0 ? (
+                <ul className="people-search-preview">
+                  {data.rows.slice(0, 3).map(row => (
+                    <li key={row.id} className="people-search-preview-row">
+                      <span className="people-search-preview-name">{row.employee}</span>
+                      <span
+                        className={
+                          row.eligible
+                            ? 'people-search-badge people-search-badge-ok'
+                            : 'people-search-badge people-search-badge-partial'
+                        }
+                      >
+                        {row.matched}/{data.required} requirements
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="people-search-note">
+                  No people match these filters. Refine the requirements in chat.
+                </p>
+              )}
               <div className="people-search-actions">
                 <button
+                  className="people-search-primary-btn"
                   onClick={() => {
                     setLoaded(undefined);
                     setAttempt(n => n + 1);

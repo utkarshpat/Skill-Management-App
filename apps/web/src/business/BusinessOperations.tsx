@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
-import { BusinessWorkflows } from './BusinessWorkflows';
 import {
   businessFilters,
   businessScopeChoices,
@@ -45,7 +44,7 @@ import { ExcelBulkActions } from '../ExcelBulkActions';
 import { CredentialCoverage } from './CredentialCoverage';
 
 export function BusinessOperations() {
-  const [params, setParams] = useSearchParams(),
+  const [params] = useSearchParams(),
     [context, setContext] = useState<BusinessContext>(),
     [error, setError] = useState('');
   const tab = params.get('tab') ?? 'insights';
@@ -63,18 +62,6 @@ export function BusinessOperations() {
     return () => abort.abort();
   }, []);
 
-  const tabs = context
-    ? [
-        ...(context.canView
-          ? [
-              ['insights', 'Analytics'],
-              ...(context.canDemandView ? [['demand', 'Demand & matching']] : []),
-            ]
-          : []),
-      ]
-    : [];
-  const selected = tabs.some(([id]) => id === tab) ? tab : tabs[0]?.[0];
-
   if (context && tab === 'amendments' && (context.canAmend || context.canApprove)) {
     const next = new URLSearchParams({ tab: 'amendments' });
     const ticket = params.get('draftTicket');
@@ -89,40 +76,6 @@ export function BusinessOperations() {
 
   return (
     <div className="bo-page">
-      {context?.canDemandView && (
-        <header className="bo-heading bo-heading-compact">
-          <h2 className="sr-only">Business analytics</h2>
-          <nav className="bo-tabs" aria-label="Analytics sections">
-            {tabs.map(([id, label]) => (
-              <button
-                key={id}
-                aria-current={selected === id ? 'page' : undefined}
-                onClick={() => setParams(updateBusinessFilters(params, { tab: id }))}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-
-          {selected === 'demand' && (
-            <button
-              className="secondary-button"
-              onClick={() =>
-                window.dispatchEvent(
-                  new CustomEvent('assistant-context-request', {
-                    detail: {
-                      prompt:
-                        'Summarize my current authorized business analytics: skill coverage, credential renewals and gaps. State scope and as-of time.',
-                    },
-                  }),
-                )
-              }
-            >
-              <Sparkles size={16} /> Ask AI
-            </button>
-          )}
-        </header>
-      )}
       {error && (
         <p className="bo-error" role="alert">
           {error}
@@ -133,10 +86,7 @@ export function BusinessOperations() {
         <div className="bo-skeleton" aria-label="Loading authorized workspace" />
       )}
 
-      {context && selected === 'insights' && <Insights context={context} />}
-      {context && selected === 'demand' && (
-        <BusinessWorkflows key={selected} context={context} view="demand" />
-      )}
+      {context && <Insights context={context} />}
     </div>
   );
 }
