@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { startActivityRefresh } from './activity-refresh';
@@ -42,6 +42,9 @@ export function Announcements({
   onPublishAccess?: (allowed: boolean) => void;
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const ticket = page ? location.state?.announcementDraftTicket : undefined;
+  const draftTicket = typeof ticket === 'string' ? ticket : undefined;
   const requestedId = page ? (searchParams.get('announcement') ?? '') : '';
   const [loadedLink, setLoadedLink] = useState<string>();
   const handledLink = useRef('');
@@ -444,6 +447,7 @@ export function Announcements({
                 view={view}
                 onViewChange={setView}
                 onUpdated={refreshAnnouncements}
+                draftTicket={draftTicket}
               >
                 {(pendingItems.length > 0 || feedPage > 1 || feed.hasMore) && (
                   <section className="announcement-for-you" aria-label="For you">
@@ -454,7 +458,12 @@ export function Announcements({
               </AnnouncementManager>
             </Suspense>
           ) : (
-            cards
+            <>
+              {draftTicket && (
+                <p role="status">Your current access does not allow creating announcements.</p>
+              )}
+              {cards}
+            </>
           )}
         </section>
       )}

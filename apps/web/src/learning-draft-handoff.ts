@@ -1,14 +1,14 @@
 import type { LearningPlanDraftInput } from './learning-plan-draft';
 // Ephemeral, single-use handoff. Nothing is stored across sign-out or reload.
-export class LearningDraftHandoff {
+export class DraftHandoff<T> {
   private pending?: {
     actorId: string;
     ticket: string;
-    draft: LearningPlanDraftInput;
+    draft: T;
     expires: number;
   };
-  offer(actorId: string, draft: LearningPlanDraftInput, now = Date.now()) {
-    if (!actorId) throw Error('Learning identity is unavailable.');
+  offer(actorId: string, draft: T, now = Date.now()) {
+    if (!actorId) throw Error('Your workspace identity is unavailable.');
     const ticket = crypto.randomUUID();
     this.pending = { actorId, ticket, draft: structuredClone(draft), expires: now + 300_000 };
     return ticket;
@@ -27,4 +27,5 @@ export class LearningDraftHandoff {
     this.pending = undefined;
   }
 }
+export class LearningDraftHandoff extends DraftHandoff<LearningPlanDraftInput> {}
 export const learningDraftHandoff = new LearningDraftHandoff();

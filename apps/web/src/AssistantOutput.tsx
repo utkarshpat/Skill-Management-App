@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { AssistantRichText } from './AssistantRichText';
+import type { AnnouncementDraftInput } from './announcement-draft-handoff';
 export interface Artifact {
   kind:
     | 'task_draft'
@@ -8,9 +9,11 @@ export interface Artifact {
     | 'incident_draft'
     | 'amendment_draft'
     | 'demand_draft'
+    | 'announcement_draft'
     | 'practice_quiz';
   title: string;
   skill?: { id: string; name: string };
+  announcement?: Pick<AnnouncementDraftInput, 'audienceLabel' | 'cta'>;
   summary: string;
   body: string;
   steps: string[];
@@ -23,8 +26,10 @@ export function AssistantOutput({
   onReviewRequest,
   onReviewPlan,
   onReviewBusiness,
+  onReviewAnnouncement,
 }: {
   artifact: Artifact;
+  onReviewAnnouncement?: (draft: AnnouncementDraftInput) => void;
   onReviewBusiness?: (draft: {
     kind: 'amendment_draft' | 'demand_draft';
     title: string;
@@ -56,6 +61,34 @@ export function AssistantOutput({
   const quiz = artifact.kind === 'practice_quiz',
     question = artifact.questions[page];
   const score = artifact.questions.filter((q, index) => answers[index] === q.correctIndex).length;
+  if (artifact.kind === 'announcement_draft' && artifact.announcement) {
+    const { audienceLabel, cta } = artifact.announcement;
+    return (
+      <section className="assistant-artifact" aria-label={artifact.title}>
+        <small>Announcement draft · Not published</small>
+        <h3>{artifact.title}</h3>
+        <p>{artifact.body}</p>
+        <p>Suggested audience: {audienceLabel || 'Not specified'}</p>
+        <p>Registration button: {cta}</p>
+        {onReviewAnnouncement && (
+          <button
+            type="button"
+            className="admin-primary"
+            onClick={() =>
+              onReviewAnnouncement({
+                title: artifact.title,
+                message: artifact.body,
+                audienceLabel,
+                cta,
+              })
+            }
+          >
+            Open announcement draft
+          </button>
+        )}
+      </section>
+    );
+  }
   return (
     <section className="assistant-artifact" aria-label={artifact.title}>
       <small>

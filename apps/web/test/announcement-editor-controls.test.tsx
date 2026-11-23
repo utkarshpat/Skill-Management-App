@@ -4,6 +4,9 @@ import { act } from 'react';
 import { render, settle, closeBrowser, demoResponse } from './support/browser';
 import { component, refreshDevelopmentLogin, click, fill } from './support/interactions';
 import type { Definition } from '../src/announcement-model';
+const { announcementDraftHandoff, resolveAnnouncementAudience } = component<
+  typeof import('../src/announcement-draft-handoff')
+>('announcement-draft-handoff.ts');
 const { announcementStyle } =
   component<typeof import('../src/AnnouncementContent')>('AnnouncementContent.tsx');
 const { AnnouncementManager } =
@@ -15,6 +18,108 @@ afterEach(async () => {
   mock.restoreAll();
 });
 after(closeBrowser);
+
+test('an audience suggestion never chooses between different matching scopes or widens the audience', () => {
+  const data = {
+    grants: [{ id: 'grant', kind: 'ORGANIZATION' }],
+    scopes: [
+      { kind: 'DEPARTMENT', id: 'nhs-1', label: 'NHS accounts', grantId: 'grant' },
+      { kind: 'DEPARTMENT', id: 'nhs-2', label: 'NHS accounts', grantId: 'grant' },
+      { kind: 'ORGANIZATION', id: 'org', label: 'Everyone', grantId: 'grant' },
+    ],
+    items: [],
+    aiAvailable: true,
+    canExport: false,
+  };
+  assert.equal(resolveAnnouncementAudience(data, 'NHS accounts'), undefined);
+  assert.equal(resolveAnnouncementAudience(data, 'NHS'), undefined);
+  assert.equal(resolveAnnouncementAudience(data, 'Everyone'), undefined);
+});
+
+test('Skill Genie opens a prefilled signup preview without saving or replacing a local draft', async () => {
+  mock.getter(globalThis, 'localStorage', () => window.localStorage);
+  const actorId = 'assistant-preview';
+  const calls: string[] = [];
+  mock.method(globalThis, 'fetch', async (input: unknown, init?: RequestInit) => {
+    const path = String(input);
+    if (path === '/api/dev-login') return demoResponse();
+    calls.push(path);
+    if (path === '/api/announcements/manage')
+      return Response.json({
+        actorId,
+        grants: [{ id: 'grant', kind: 'DEPARTMENT', scopeId: 'nhs' }],
+        scopes: [{ id: 'nhs', kind: 'DEPARTMENT', grantId: 'grant', label: 'NHS accounts' }],
+        items: [],
+        aiAvailable: true,
+      });
+    if (path === '/api/announcements/draft') {
+      const body = JSON.parse(String(init?.body));
+      assert.equal(body.preview, true);
+      assert.equal(body.definition.title, 'Are You Interested?');
+      assert.equal(body.definition.message, 'Register for UK Gold Heist');
+      assert.equal(body.definition.cta, 'Register');
+      assert.deepEqual(body.definition.fields, []);
+      assert.deepEqual(body.definition.audience, [{ kind: 'DEPARTMENT', id: 'nhs' }]);
+      return Response.json({ id: 'preview', audienceCount: 2, receipt: 'receipt' });
+    }
+    throw Error('Unexpected request ' + path);
+  });
+  const incoming = {
+    title: 'Are You Interested?',
+    message: 'Register for UK Gold Heist',
+    audienceLabel: 'NHS accounts',
+    cta: 'Register',
+  };
+  await refreshDevelopmentLogin();
+  const onViewChange = () => {};
+  const onUpdated = () => {};
+  view = await render(
+    <AnnouncementManager view="announcements" onViewChange={onViewChange} onUpdated={onUpdated} />,
+  );
+  await settle();
+  await click('New announcement');
+  await fill('Title', 'Existing local draft');
+  await click('Back to announcements');
+  await settle();
+  // Reload the actor-bound editor to pick up the draft persisted on close.
+  await view.unmount();
+  view = await render(
+    <AnnouncementManager view="announcements" onViewChange={onViewChange} onUpdated={onUpdated} />,
+  );
+  await settle();
+  assert.match(document.body.textContent ?? '', /Existing local draft/);
+
+  const draftTicket = announcementDraftHandoff.offer(actorId, incoming);
+  await view.update(
+    <AnnouncementManager
+      view="announcements"
+      onViewChange={onViewChange}
+      onUpdated={onUpdated}
+      draftTicket={draftTicket}
+    />,
+  );
+  await settle();
+  assert.ok(
+    document.querySelector('[aria-label="Step 2 of 2 - Design & preview"]'),
+    document.body.textContent ?? '',
+  );
+  assert.match(document.body.textContent ?? '', /Are You Interested\?/);
+  assert.ok(calls.every(path => path === '/api/announcements/manage'));
+  const publish = () =>
+    Array.from(document.querySelectorAll('button')).find(
+      button => button.textContent?.trim() === 'Publish announcement',
+    );
+  assert.equal(publish()?.disabled, true);
+  await click('Check audience');
+  assert.equal(publish()?.disabled, false);
+  await click('Basic details');
+  await click('Back to announcements');
+  await settle();
+  assert.match(
+    document.querySelector('[aria-label="Local announcement draft"]')?.textContent ?? '',
+    /Existing local draft/,
+  );
+});
 
 test('designer tokens compile to bounded typography, corners and connected button treatment', () => {
   const style = announcementStyle({

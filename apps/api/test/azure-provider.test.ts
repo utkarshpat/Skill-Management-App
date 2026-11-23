@@ -361,6 +361,89 @@ test('Azure file inputs preserve explicitly selected image/PDF autofill and curr
   assert.equal(calls, 3);
 });
 
+test('Azure chat keeps clarification context when encrypted tool replay exceeds the text budget', async () => {
+  const access = await LocalAccessStore.open();
+  const actor = access.snapshot().people[0].id;
+  const request = 'Draft an announcement titled Are You Interested?';
+  const clarification = 'Who is the audience, and what should the registration action be?';
+  const details = 'NHS accounts audience hai, bas single Register button for UK Gold Heist.';
+  const confirmation = 'I have the title, audience and registration button.';
+  const followUp = 'ha to banao preview';
+  const draft = {
+    title: 'Are You Interested?',
+    message: 'Register for UK Gold Heist.',
+    audienceLabel: 'NHS accounts',
+    cta: 'Register',
+  };
+  for (const oversized of [false, true]) {
+    const reasoning = {
+      type: 'reasoning',
+      id: 'rs',
+      summary: [],
+      encrypted_content: 'synthetic-state'.repeat(oversized ? 20000 : 3000),
+    };
+    let round = 0;
+    const provider = configuredProvider(
+      env,
+      async (_url, init) => {
+        const { input, tools } = JSON.parse(String(init?.body));
+        assert.match(input[0].content, /present_announcement_draft/);
+        assert.ok(
+          tools.some((tool: { name: string }) => tool.name === 'present_announcement_draft'),
+        );
+        if (++round === 1) return completed([message(clarification)]);
+        if (round === 2) return completed([message(confirmation)]);
+        assert.deepEqual(input.slice(1, 6), [
+          { role: 'user', content: request },
+          { role: 'assistant', content: clarification },
+          { role: 'user', content: details },
+          { role: 'assistant', content: confirmation },
+          { role: 'user', content: followUp },
+        ]);
+        if (round === 3)
+          return completed([
+            reasoning,
+            { type: 'function_call', call_id: 'call', name: 'own_profile', arguments: '{}' },
+          ]);
+        assert.deepEqual(input[6], reasoning);
+        assert.equal(input[8].type, 'function_call_output');
+        assert.equal(input[8].call_id, 'call');
+        return completed([
+          {
+            type: 'function_call',
+            call_id: 'draft',
+            name: 'present_announcement_draft',
+            arguments: JSON.stringify(draft),
+          },
+        ]);
+      },
+      async () => 'synthetic',
+    );
+    const service = new AssistantService(access, undefined, provider);
+    const first = await service.chat(actor, { message: request });
+    await service.chat(actor, { message: details, conversationId: first.conversationId });
+    const next = service.chat(actor, { message: followUp, conversationId: first.conversationId });
+    if (oversized) {
+      await assert.rejects(next, /too much context/);
+      assert.equal(round, 3);
+    } else {
+      const result = await next;
+      assert.deepEqual(result.artifact, {
+        kind: 'announcement_draft',
+        title: draft.title,
+        body: draft.message,
+        announcement: { audienceLabel: draft.audienceLabel, cta: draft.cta },
+        summary: result.reply,
+        steps: [],
+        questions: [],
+      });
+      assert.equal(result.conversationId, first.conversationId);
+      assert.doesNotMatch(JSON.stringify(result), /synthetic-state|encrypted_content/);
+      assert.equal(round, 4);
+    }
+  }
+});
+
 test('Azure agent tools still resolve the authenticated actor and discard a reply after revocation', async () => {
   const access = await LocalAccessStore.open();
   const state = access.snapshot(),

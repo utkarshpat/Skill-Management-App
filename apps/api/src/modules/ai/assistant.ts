@@ -17,8 +17,17 @@ import type {
 import { ToolRegistry, type ToolDefinition } from './tool-registry.js';
 import type { OrganizationStore, OwnOrganization } from '../organization/index.js';
 import { azureResponsesProvider } from './azure.js';
-import { hasUnsupportedCodeOutput, workflowOnlyInstructions } from './workflow-chat-policy.js';
-import { presentation, presentationTool } from './output.js';
+import {
+  announcementDraftInstructions,
+  hasUnsupportedCodeOutput,
+  workflowOnlyInstructions,
+} from './workflow-chat-policy.js';
+import {
+  announcementDraftTool,
+  announcementPresentation,
+  presentation,
+  presentationTool,
+} from './output.js';
 import { assistantCapabilities } from './capabilities.js';
 import {
   ConversationMemory,
@@ -717,6 +726,7 @@ export class AssistantService {
     if (!person || !this.registry.permits(initial, person, 'own_profile'))
       throw new AccessError(403, 'Assistant access is not assigned.');
     const settings = rememberedTask ?? conversationTaskSettings(history);
+    const announcementInstructions = announcementDraftInstructions(history);
     const precedingReply = history.at(-2);
     const precedingRequest = history.at(-3);
     const ownSkillDraft =
@@ -734,6 +744,7 @@ export class AssistantService {
           ' ' +
           workflowOnlyInstructions +
           ` Configured AI provider metadata: provider=${this.provider.name}; deployment=${this.provider.deployment ?? 'not exposed'}. A deployment may be an alias and does not prove the underlying model version. Explain only these facts if asked, in the latest user message language.` +
+          announcementInstructions +
           (/\b(amendment|catalogue|catalog)\b/i.test(history.at(-1)!.content)
             ? ' ' + catalogueGuidanceInstructions
             : '') +
@@ -751,6 +762,7 @@ export class AssistantService {
     const skillReads = new Map<string, Awaited<ReturnType<ToolRegistry['execute']>>>();
     const maxReads = ownSkillDraft ? 12 : 4;
     const maxReadRounds = ownSkillDraft ? 5 : 3;
+    const usesAzureReplay = this.provider.name === 'azure';
     let peopleSearch: { query: import('../business/index.js').PeopleSearchQuery } | undefined;
     let executions = 0;
     const recheck = async (name: string) => {
@@ -831,7 +843,9 @@ export class AssistantService {
       const available = finalRound
         ? ownSkillDraft && skillChoices.size
           ? [presentationTool]
-          : []
+          : announcementInstructions && !ownSkillDraft
+            ? [announcementDraftTool]
+            : []
         : [
             ...(ownSkillDraft
               ? reads.filter(tool =>
@@ -839,11 +853,30 @@ export class AssistantService {
                 )
               : reads),
             ...(settings.kind === 'answer' ? [] : [presentationTool]),
+            ...(announcementInstructions && !ownSkillDraft ? [announcementDraftTool] : []),
           ];
       if (finalRound)
         messages[0].content +=
           '\nFinal response: use the facts already read. No more lookups, writes or invented catalogue options. Ask a focused question if information is missing.';
-      if (Buffer.byteLength(JSON.stringify({ messages, available }), 'utf8') > 32000)
+      // Azure replays encrypted reasoning verbatim. Bound that transport state
+      // separately so it doesn't consume the conversation and tool text budget.
+      let replayBytes = 0;
+      const requestText = JSON.stringify(
+        { messages, available },
+        function (this: { type?: unknown }, key, value) {
+          if (
+            usesAzureReplay &&
+            key === 'encrypted_content' &&
+            this.type === 'reasoning' &&
+            typeof value === 'string'
+          ) {
+            replayBytes += Buffer.byteLength(JSON.stringify(value), 'utf8') - 2;
+            return '';
+          }
+          return value;
+        },
+      );
+      if (Buffer.byteLength(requestText, 'utf8') > 32_000 || replayBytes > 256 * 1024)
         throw new AccessError(
           422,
           'This task needs too much context. Start a new conversation or ask a smaller question.',
@@ -873,7 +906,9 @@ export class AssistantService {
           ...(peopleSearch ? { peopleSearch } : {}),
         };
       }
-      const output = answer.calls.find(call => call.function.name === 'present_output');
+      const output = answer.calls.find(call =>
+        ['present_output', 'present_announcement_draft'].includes(call.function.name),
+      );
       const finalSkillCard =
         ownSkillDraft && skillChoices.size > 0 && Boolean(output) && answer.calls.length === 1;
       if (finalRound && !finalSkillCard) {
@@ -892,7 +927,7 @@ export class AssistantService {
         );
       }
       if (output) {
-        if (!available.some(tool => tool.function.name === 'present_output'))
+        if (!available.some(tool => tool.function.name === output.function.name))
           throw new AccessError(403, 'This response type was not requested.');
         if (answer.calls.length !== 1) {
           if (ownSkillDraft) return clarifySkillDraft();
@@ -907,7 +942,10 @@ export class AssistantService {
         } catch {
           throw new AccessError(502, 'AI returned an invalid card. Please try again.');
         }
-        const artifact = presentation(payload);
+        const artifact =
+          output.function.name === 'present_announcement_draft'
+            ? announcementPresentation(payload)
+            : presentation(payload);
         if (ownSkillDraft && artifact.kind !== 'skill_draft') return clarifySkillDraft();
         if (
           artifact.kind === 'practice_quiz' &&
@@ -934,9 +972,14 @@ export class AssistantService {
         )
           throw new AccessError(403, 'Current permissions do not allow a personal skill draft.');
         if (artifact.kind !== 'practice_quiz') {
-          const body = [artifact.title, artifact.summary, artifact.body, ...artifact.steps].join(
-            '\n',
-          );
+          const body = [
+            artifact.title,
+            artifact.summary,
+            artifact.body,
+            ...artifact.steps,
+            artifact.announcement?.audienceLabel,
+            artifact.announcement?.cta,
+          ].join('\n');
           if (hasUnsupportedCodeOutput(body))
             return {
               reply: await localizedWorkflowRefusal(),

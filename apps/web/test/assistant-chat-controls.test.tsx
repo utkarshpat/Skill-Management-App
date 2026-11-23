@@ -8,11 +8,18 @@ const { useLocation } = createRequire(import.meta.url)(
 ) as typeof import('react-router');
 function LocationProbe() {
   const location = useLocation();
-  return <output data-location>{location.pathname + location.search}</output>;
+  return (
+    <output data-location data-announcement-ticket={location.state?.announcementDraftTicket}>
+      {location.pathname + location.search}
+    </output>
+  );
 }
 import type { Artifact } from '../src/AssistantOutput';
 const { learningDraftHandoff } = component<typeof import('../src/learning-draft-handoff')>(
   'learning-draft-handoff.ts',
+);
+const { announcementDraftHandoff } = component<typeof import('../src/announcement-draft-handoff')>(
+  'announcement-draft-handoff.ts',
 );
 const { businessDraftHandoff } = component<typeof import('../src/business/business-draft-handoff')>(
   'business/business-draft-handoff.ts',
@@ -64,6 +71,7 @@ beforeEach(async () => {
   actionFailure = false;
   actions = [];
   learningDraftHandoff.clear();
+  announcementDraftHandoff.clear();
   businessDraftHandoff.clear();
   navigationFailure = false;
   configured = true;
@@ -85,6 +93,7 @@ beforeEach(async () => {
     }
     if (url === '/api/workflows/options')
       return Response.json({ canRequest: false, canIncident: false });
+    if (url === '/api/announcements/feed?pending=1') return Response.json({ canPublish: grants });
     if (url === '/api/assistant/navigation')
       return navigationFailure ? Response.json({}, { status: 403 }) : Response.json(navigation());
     if (url === '/api/assistant/conversations')
@@ -281,6 +290,37 @@ test('assistant page action rechecks current permission and never navigates afte
     { destination: '/requests', action: 'open_page' },
   ]);
   assert.match(document.body.textContent!, /Your chat stays here/);
+});
+
+test('assistant announcement action refuses revoked access and opens the prefilled route when allowed', async () => {
+  await mount();
+  artifact = {
+    kind: 'announcement_draft',
+    title: 'Are You Interested?',
+    body: 'Register for UK Gold Heist',
+    summary: 'Ready to review.',
+    announcement: { audienceLabel: 'NHS accounts', cta: 'Register' },
+    steps: [],
+    questions: [],
+  };
+  await change(input(), 'ha to banao preview');
+  await click('Send AI message');
+  await click('Open announcement draft');
+  assert.equal(location().pathname, '/');
+  assert.match(document.body.textContent!, /current access does not allow creating announcements/);
+  grants = true;
+  await click('Open announcement draft');
+  assert.equal(location().pathname, '/announcements');
+  const ticket =
+    document.querySelector<HTMLOutputElement>('[data-location]')?.dataset.announcementTicket;
+  assert.ok(ticket);
+  assert.deepEqual(announcementDraftHandoff.take('aditi', ticket), {
+    title: artifact.title,
+    message: artifact.body,
+    audienceLabel: 'NHS accounts',
+    cta: 'Register',
+  });
+  assert.equal(announcementDraftHandoff.take('aditi', ticket), undefined);
 });
 
 test('assistant learning handoff requires the same current actor and remains an unsaved single-use draft', async () => {

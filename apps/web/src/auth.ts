@@ -1,6 +1,7 @@
 import { businessDraftHandoff } from './business/business-draft-handoff';
 import { InflightReads } from './inflight-reads';
 import { learningDraftHandoff } from './learning-draft-handoff';
+import { announcementDraftHandoff } from './announcement-draft-handoff';
 import { notifyResponse, notify } from './toast';
 import { createMicrosoftSession } from './microsoft-session';
 import { discoverDevelopmentLogin, parseDemoLogin, type DemoLoginState } from './development-login';
@@ -100,6 +101,7 @@ const demoSessionSync = () =>
   (sessionSync ??= connectDemoSessionChanges(() => {
     reads.invalidate();
     learningDraftHandoff.clear();
+    announcementDraftHandoff.clear();
     businessDraftHandoff.clear();
     window.location.reload();
   }));
@@ -130,6 +132,7 @@ export async function unlockDemoPeople(accessCode: string) {
 }
 export async function directSignIn(personId: string, accessCode?: string) {
   learningDraftHandoff.clear();
+  announcementDraftHandoff.clear();
   businessDraftHandoff.clear();
   try {
     sessionStorage.removeItem('pending-learning-draft');
@@ -244,6 +247,7 @@ export async function signIn({ chooseAccount = false } = {}) {
 export async function signOut() {
   reads.invalidate();
   learningDraftHandoff.clear();
+  announcementDraftHandoff.clear();
   businessDraftHandoff.clear();
   try {
     sessionStorage.removeItem('pending-learning-draft');

@@ -9,13 +9,50 @@ export interface Presentation {
     | 'incident_draft'
     | 'amendment_draft'
     | 'demand_draft'
+    | 'announcement_draft'
     | 'practice_quiz';
   title: string;
   skill?: { id: string; name: string };
+  announcement?: { audienceLabel: string; cta: string };
   summary: string;
   body: string;
   steps: string[];
   questions: { prompt: string; options: string[]; correctIndex: number; explanation: string }[];
+}
+export const announcementDraftTool: ToolDefinition = {
+  type: 'function',
+  function: {
+    name: 'present_announcement_draft',
+    description:
+      'Offer a prefilled in-app signup announcement for review. Does not save or publish.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['title', 'message', 'audienceLabel', 'cta'],
+      properties: {
+        title: { type: 'string', maxLength: 120 },
+        message: { type: 'string', maxLength: 1000 },
+        audienceLabel: { type: 'string', maxLength: 160 },
+        cta: { type: 'string', maxLength: 45 },
+      },
+    },
+  },
+};
+
+export function announcementPresentation(value: unknown): Presentation {
+  const item = record(value, ['title', 'message', 'audienceLabel', 'cta']);
+  return {
+    kind: 'announcement_draft',
+    title: text(item.title, 120),
+    body: text(item.message, 1000),
+    announcement: {
+      audienceLabel: text(item.audienceLabel, 160, true),
+      cta: text(item.cta, 45),
+    },
+    summary: 'Your draft is ready to review. Nothing has been published.',
+    steps: [],
+    questions: [],
+  };
 }
 export const presentationTool: ToolDefinition = {
   type: 'function',

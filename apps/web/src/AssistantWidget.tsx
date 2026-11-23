@@ -1,5 +1,10 @@
 import { businessDraftHandoff, type BusinessDraft } from './business/business-draft-handoff';
 import { learningDraftHandoff } from './learning-draft-handoff';
+import {
+  announcementDraftHandoff,
+  type AnnouncementDraftInput,
+} from './announcement-draft-handoff';
+import { readApiResponse } from './api-response';
 import { phaseTwoVisible } from './release-features';
 import { AssistantSession } from './assistant-session';
 import { assistantContextPrompt } from './assistant-context';
@@ -83,6 +88,42 @@ export function AssistantWidget() {
     canDraftAmendment?: boolean;
     suggestions?: { label: string; destination: string; prompt: string }[];
   }>({ pages: [], canReviewOwnSkill: false });
+  async function reviewAnnouncement(draft: AnnouncementDraftInput) {
+    if (actionBusy || busy || historyBusy) return;
+    setActionBusy(true);
+    setError('');
+    setActionNotice('');
+    const pending = new AbortController();
+    actionController.current = pending;
+    try {
+      const [current, feed] = await Promise.all([
+        authenticatedFetch('/api/assistant/navigation', { signal: pending.signal }).then(response =>
+          readApiResponse<{ actorId?: string }>(response, 'Could not verify workspace identity.'),
+        ),
+        authenticatedFetch('/api/announcements/feed?pending=1', { signal: pending.signal }).then(
+          response =>
+            readApiResponse<{ canPublish: boolean }>(
+              response,
+              'Could not check announcement access.',
+            ),
+        ),
+      ]);
+      if (pending.signal.aborted) return;
+      if (!current.actorId || current.actorId !== navigation.actorId || !feed.canPublish)
+        throw Error('Your current access does not allow creating announcements.');
+      const ticket = announcementDraftHandoff.offer(current.actorId, draft);
+      collapse();
+      navigate('/announcements', { state: { announcementDraftTicket: ticket } });
+    } catch (error) {
+      if (!pending.signal.aborted)
+        setError(error instanceof Error ? error.message : 'Could not open announcement draft.');
+    } finally {
+      if (actionController.current === pending) {
+        actionController.current = null;
+        setActionBusy(false);
+      }
+    }
+  }
   async function reviewBusiness(draft: BusinessDraft) {
     if (actionBusy || busy || historyBusy) return;
     setActionBusy(true);
@@ -836,6 +877,7 @@ export function AssistantWidget() {
                         ? draft => void reviewBusiness(draft)
                         : undefined
                     }
+                    onReviewAnnouncement={draft => void reviewAnnouncement(draft)}
                     onReviewRequest={draft => void reviewRequest(draft)}
                     onReviewPlan={
                       navigation.canManageLearning === true

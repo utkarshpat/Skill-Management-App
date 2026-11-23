@@ -25,6 +25,10 @@ import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { FormDialog } from './FormDialog';
 import {
+  announcementDraftHandoff,
+  resolveAnnouncementAudience,
+} from './announcement-draft-handoff';
+import {
   announcementStyle,
   AnnouncementBannerContent,
   AnnouncementCard,
@@ -107,11 +111,13 @@ export function AnnouncementManager({
   view,
   onViewChange,
   onUpdated,
+  draftTicket,
   children,
 }: {
   view: 'announcements' | 'responses';
   onViewChange: (view: 'announcements' | 'responses') => void;
   onUpdated: () => void;
+  draftTicket?: string;
   children?: ReactNode;
 }) {
   const [data, setData] = useState<Management>();
@@ -121,6 +127,8 @@ export function AnnouncementManager({
   const [start, setStart] = useState(() => localDate(new Date()));
   const [end, setEnd] = useState(() => localDate(new Date(Date.now() + 86_400_000)));
   const [page, setPage] = useState<'list' | 'edit' | 'preview'>('list');
+  const [assistantEditing, setAssistantEditing] = useState(false);
+  const handledTicket = useRef<string | undefined>(undefined);
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 700px)').matches);
   const [designing, setDesigning] = useState(false);
   const [designError, setDesignError] = useState('');
@@ -175,7 +183,7 @@ export function AnnouncementManager({
     if (actor) setLocalDraft(readLocalAnnouncement(actor));
   }, [actor]);
   useEffect(() => {
-    if (!actor || page === 'list' || !grantId) return;
+    if (!actor || page === 'list' || !grantId || assistantEditing) return;
     const value: LocalAnnouncementDraft = {
       schema: 1,
       grantId,
@@ -204,7 +212,19 @@ export function AnnouncementManager({
       clearTimeout(timer);
       if (localSnapshot.current?.value === value) writeLocalAnnouncement(actor, value);
     };
-  }, [actor, page, grantId, draft?.id, draft?.revision, definition, start, end, image, prompt]);
+  }, [
+    actor,
+    page,
+    grantId,
+    draft?.id,
+    draft?.revision,
+    definition,
+    start,
+    end,
+    image,
+    prompt,
+    assistantEditing,
+  ]);
   useEffect(() => {
     const persist = () => {
       const snapshot = localSnapshot.current;
@@ -254,6 +274,7 @@ export function AnnouncementManager({
             }
           : undefined,
       );
+      setAssistantEditing(false);
       setGrantId(localDraft.grantId);
       setDefinition(withCanonicalExportFields(localDraft.definition));
       setStart(localDraft.start);
@@ -370,6 +391,7 @@ export function AnnouncementManager({
     data?.scopes.filter(scope => scope.grantId === grantId) ?? [],
   );
   const configure = (entry?: Draft, copy = false) => {
+    setAssistantEditing(false);
     setError('');
     setDesignError('');
     setNote('');
@@ -402,9 +424,51 @@ export function AnnouncementManager({
     );
     setPrompt('');
     setReceipt(undefined);
+    setAudienceCount(undefined);
+    setPreviewImage(undefined);
+    setPreviewForm(false);
+    setPreviewView('banner');
+    setPreviewBannerDismissed(false);
     setLocalStatus('');
     setPage('edit');
   };
+  useEffect(() => {
+    if (!draftTicket || handledTicket.current === draftTicket || !data || busy) return;
+    // Leave an open editor alone; the handoff can be picked up when it is closed.
+    if (page !== 'list') return;
+    handledTicket.current = draftTicket;
+    const incoming = data.actorId && announcementDraftHandoff.take(data.actorId, draftTicket);
+    if (!incoming || !data.grants.length) {
+      setError(
+        data.grants.length
+          ? 'This announcement handoff expired. Open the draft again from Skill Genie.'
+          : 'Your current access does not allow creating announcements.',
+      );
+      return;
+    }
+    const selection = resolveAnnouncementAudience(data, incoming.audienceLabel);
+    configure();
+    setAssistantEditing(true);
+    onViewChange('announcements');
+    setGrantId(selection?.grantId ?? data.grants[0].id);
+    setDefinition({
+      ...empty,
+      title: incoming.title,
+      message: incoming.message,
+      cta: incoming.cta,
+      audience: selection?.audience ?? [],
+    });
+    if (selection) {
+      setPreviewView('form');
+      setPage('preview');
+    } else {
+      setNote(
+        incoming.audienceLabel
+          ? `“${incoming.audienceLabel}” did not uniquely match an audience you can publish to. Select the intended audience below.`
+          : 'Select an audience below before previewing the announcement.',
+      );
+    }
+  }, [draftTicket, data, busy, page, onViewChange]);
   const payload = () => ({
     id: draft?.id,
     revision: draft?.revision ?? 0,
@@ -442,7 +506,7 @@ export function AnnouncementManager({
         localSnapshot.current = undefined;
         setPage('list');
         onUpdated();
-        clearLocal();
+        if (!assistantEditing) clearLocal();
         setManagementPage(1);
         refresh();
         setNote('Announcement published for the selected schedule.');
@@ -948,11 +1012,15 @@ export function AnnouncementManager({
                     <span role="status">
                       {receipt
                         ? `${audienceCount ?? 0} eligible employees in the selected audience.`
-                        : 'Check the current design before publishing.'}
+                        : 'Check the audience before publishing.'}
                     </span>
                   </>
                 ) : (
-                  <span>You can save a draft at any time.</span>
+                  <span>
+                    {assistantEditing
+                      ? 'Use Save draft to keep these edits.'
+                      : 'You can save a draft at any time.'}
+                  </span>
                 )}
               </div>
               <div>
@@ -1097,7 +1165,10 @@ export function AnnouncementManager({
                           scope.kind === selected.kind,
                       );
                       setGrantId(event.target.value);
-                      update({ audience: root ? [{ id: root.id, kind: root.kind }] : [] });
+                      update({
+                        audience:
+                          !assistantEditing && root ? [{ id: root.id, kind: root.kind }] : [],
+                      });
                     }}
                   >
                     {data?.grants.map(grant => (
