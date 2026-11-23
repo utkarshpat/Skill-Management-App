@@ -7,7 +7,7 @@ import {
   sandboxDesign,
   checkAnnouncementBindings,
 } from '../src/modules/announcements/announcement-sandbox.js';
-import { workflowChatShortcut } from '../src/modules/ai/workflow-chat-policy.js';
+import { workflowOnlyInstructions } from '../src/modules/ai/workflow-chat-policy.js';
 const configuration = { kind: 'FORM', fields: [{ id: 'batch', type: 'choice' }], options: [] };
 const html =
   '<section><h2 id="ann-title"></h2><p id="ann-message"></p><button id="ann-open">Register</button><form id="ann-form"><label for="ann-name">Name</label><input id="ann-name"><label for="ann-email">Email</label><input id="ann-email"><label for="ann-employee-id">Employee ID</label><input id="ann-employee-id"><label for="ann-field-batch">Batch</label><select id="ann-field-batch"></select><button id="ann-submit">Register</button></form></section>';
@@ -151,7 +151,7 @@ test('sandbox rejects active markup, external resources, forged bindings and inc
     }),
   );
 });
-test('trusted bridge CSP hash matches its exact script and general chat routes announcement requests', async () => {
+test('trusted bridge CSP hash matches its exact script and assistant keeps announcement workflow guidance', async () => {
   const page = await readFile(
     new URL('../../web/public/announcement-sandbox.html', import.meta.url),
     'utf8',
@@ -162,10 +162,6 @@ test('trusted bridge CSP hash matches its exact script and general chat routes a
   assert.ok(page.includes("script-src '" + hash + "'"));
   assert.match(page, /connect-src 'none'/);
   assert.match(page, /form-action 'none'/);
-  assert.match(
-    workflowChatShortcut([{ role: 'user', content: 'announcement banane me help kar sakte ho?' }], {
-      name: 'azure',
-    })!,
-    /Design & preview/,
-  );
+  assert.match(workflowOnlyInstructions, /Announcements\/forms\/polls use Design & preview/);
+  assert.match(workflowOnlyInstructions, /latest user message/);
 });

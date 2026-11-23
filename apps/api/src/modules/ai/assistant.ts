@@ -17,14 +17,9 @@ import type {
 import { ToolRegistry, type ToolDefinition } from './tool-registry.js';
 import type { OrganizationStore, OwnOrganization } from '../organization/index.js';
 import { azureResponsesProvider } from './azure.js';
-import {
-  workflowChatShortcut,
-  workflowOnlyInstructions,
-  workflowChatReply,
-} from './workflow-chat-policy.js';
+import { hasUnsupportedCodeOutput, workflowOnlyInstructions } from './workflow-chat-policy.js';
 import { presentation, presentationTool } from './output.js';
-import { assistantCapabilities, capabilityGreeting } from './capabilities.js';
-import { catalogueGuidance, catalogueGuidanceRequest } from './catalogue-guidance.js';
+import { assistantCapabilities } from './capabilities.js';
 import {
   ConversationMemory,
   coreInstructions,
@@ -58,21 +53,6 @@ interface ToolCall {
 }
 type Tool = ToolDefinition;
 const permissionsOverviewPrompt = 'Explain my current permissions and the actions available to me';
-
-function isPermissionsOverview(message: string) {
-  const normalized = message
-    .normalize('NFKC')
-    .trim()
-    .replace(/\s+/g, ' ')
-    .replace(/[.?!]+$/, '')
-    .toLowerCase();
-  return [
-    permissionsOverviewPrompt.toLowerCase(),
-    'what can i do',
-    'what are my current permissions',
-    'explain my current permissions',
-  ].includes(normalized);
-}
 
 interface GenerationOptions {
   maxOutputTokens: number;
@@ -627,43 +607,8 @@ export class AssistantService {
         tools: this.registry.available(quotaState, quotaPerson),
       });
       signal.throwIfAborted();
-      const shortcut = isPermissionsOverview(history.at(-1)!.content)
-        ? capabilityGreeting(capabilities)
-        : workflowChatShortcut(history, this.provider);
-      const catalogueRequest = catalogueGuidanceRequest(history.at(-1)!.content);
-      const catalogueTool = (
-        catalogueRequest?.kind === 'skill'
-          ? ['catalogue_search', 'skill_claim_options']
-          : catalogueRequest
-            ? ['credential_catalogue_search', 'business_amendment_options']
-            : []
-      ).find(tool => this.registry.permits(quotaState, quotaPerson, tool));
-      if (!shortcut && !catalogueRequest) release = await this.budget.acquire(actorId);
-      const result = catalogueRequest
-        ? await catalogueGuidance(
-            catalogueRequest,
-            catalogueTool
-              ? async search => {
-                  const { data } = await this.registry.execute(
-                    actorId,
-                    catalogueTool,
-                    { search, page: 1 },
-                    signal,
-                  );
-                  if (catalogueTool !== 'business_amendment_options') return data;
-                  const entries = (
-                    data as {
-                      certifications?: { name: string; provider?: string; active?: boolean }[];
-                    }
-                  ).certifications;
-                  return { credentials: entries?.filter(entry => entry.active === true) };
-                }
-              : undefined,
-            capabilities,
-          )
-        : shortcut
-          ? { reply: shortcut, sources: [], mode: 'read-only' }
-          : await this.respond(actorId, request, signal, meter, prepared?.task);
+      release = await this.budget.acquire(actorId);
+      const result = await this.respond(actorId, request, signal, meter, prepared?.task);
       const recheckDelivery = async () => {
         signal.throwIfAborted();
         const fresh = await readActorAccess(this.store, actorId),
@@ -788,6 +733,7 @@ export class AssistantService {
           coreInstructions +
           ' ' +
           workflowOnlyInstructions +
+          ` Configured AI provider metadata: provider=${this.provider.name}; deployment=${this.provider.deployment ?? 'not exposed'}. A deployment may be an alias and does not prove the underlying model version. Explain only these facts if asked, in the latest user message language.` +
           (/\b(amendment|catalogue|catalog)\b/i.test(history.at(-1)!.content)
             ? ' ' + catalogueGuidanceInstructions
             : '') +
@@ -801,13 +747,6 @@ export class AssistantService {
       ...history,
     ];
     const sources: { label: string; url: string }[] = [];
-    const clarifySkillDraft = () => ({
-      reply:
-        'Let’s draft one skill claim at a time. What’s one concrete thing you built or contributed to, and which tools did you use? I’ll use that to find a published skill that fits.',
-      sources,
-      mode: 'read-only' as const,
-      artifact: undefined,
-    });
     const skillChoices = new Map<string, { id: string; name: string }>();
     const skillReads = new Map<string, Awaited<ReturnType<ToolRegistry['execute']>>>();
     const maxReads = ownSkillDraft ? 12 : 4;
@@ -825,6 +764,46 @@ export class AssistantService {
       )
         throw new AccessError(403, 'Business scope changed during this reply. Please ask again.');
       return { state, person: current };
+    };
+    const localizedReply = async (instruction: string, maxOutputTokens = 180) => {
+      const recordUsage = meter.begin();
+      const generated = await this.provider!.complete(
+        [
+          {
+            role: 'system',
+            content:
+              coreInstructions +
+              ' ' +
+              workflowOnlyInstructions +
+              ' ' +
+              instruction +
+              ' Match the latest user message language; use English if unclear.',
+          },
+          { role: 'user', content: history.at(-1)!.content },
+        ],
+        [],
+        signal,
+        { maxOutputTokens, onUsage: recordUsage },
+      );
+      if (generated.usage) recordUsage(generated.usage);
+      await recheck('own_profile');
+      signal.throwIfAborted();
+      if (!generated.content.trim() || hasUnsupportedCodeOutput(generated.content))
+        throw new AccessError(502, 'The assistant could not safely answer. Please try again.');
+      return generated.content;
+    };
+    const clarifySkillDraft = async () => ({
+      reply: await localizedReply(
+        'No published skill has been verified for the draft yet. Ask one focused question for a concrete work contribution and tools used; do not claim a match or produce a draft.',
+      ),
+      sources,
+      mode: 'read-only' as const,
+      artifact: undefined,
+    });
+    const localizedWorkflowRefusal = async () => {
+      return localizedReply(
+        'The previous attempted answer was outside supported workflows. Give a brief helpful refusal and redirect to relevant implemented app workflows. Do not include code, SQL, commands or examples.',
+      );
     };
     // Reserve a final response round after the permitted reads.
     for (let round = 0; round <= maxReadRounds; round++) {
@@ -848,10 +827,6 @@ export class AssistantService {
         messages[0].content.split('\nEffective capability context:')[0] +
         '\nEffective capability context: ' +
         JSON.stringify({ asOfUtc: new Date().toISOString().slice(0, 10), ...context });
-      if (round === 0 && /^(hello|hi|hey|hii)[!.\s]*$/i.test(history.at(-1)!.content)) {
-        await recheck('own_profile');
-        return { reply: capabilityGreeting(context), sources, mode: 'read-only' };
-      }
       const reads = this.registry.available(current.state, current.person);
       const available = finalRound
         ? ownSkillDraft && skillChoices.size
@@ -884,8 +859,15 @@ export class AssistantService {
       if (!answer.calls.length) {
         if (!answer.content.trim() || answer.content.length > 12000)
           throw new AccessError(502, 'AI returned an invalid answer.');
+        if (hasUnsupportedCodeOutput(answer.content))
+          return {
+            reply: await localizedWorkflowRefusal(),
+            sources,
+            mode: 'read-only',
+            ...(peopleSearch ? { peopleSearch } : {}),
+          };
         return {
-          reply: workflowChatReply(answer.content),
+          reply: answer.content,
           sources,
           mode: 'read-only',
           ...(peopleSearch ? { peopleSearch } : {}),
@@ -955,8 +937,12 @@ export class AssistantService {
           const body = [artifact.title, artifact.summary, artifact.body, ...artifact.steps].join(
             '\n',
           );
-          const safe = workflowChatReply(body);
-          if (safe !== body) return { reply: safe, sources: [], mode: 'read-only' };
+          if (hasUnsupportedCodeOutput(body))
+            return {
+              reply: await localizedWorkflowRefusal(),
+              sources: [],
+              mode: 'read-only',
+            };
         }
         if (artifact.kind === 'skill_draft') {
           const matches = [...skillChoices.values()].filter(
@@ -964,8 +950,9 @@ export class AssistantService {
           );
           if (matches.length !== 1 || !artifact.body)
             return {
-              reply:
-                'I couldn’t verify a published skill for this draft. Tell me which catalogue skill you want to claim and describe your experience with it.',
+              reply: await localizedReply(
+                'No exact published catalogue skill was verified for this draft. Briefly explain that and ask the user which published skill they intend to claim, or what experience details would help find a match. Do not claim a match.',
+              ),
               sources,
               mode: 'read-only',
             };
@@ -1010,18 +997,10 @@ export class AssistantService {
           for (const { id, name } of skills) skillChoices.set(id, { id, name });
         }
         if (call.function.name === 'business_people_search') {
-          const result = data as import('../business/index.js').PeopleSearchResult;
+          const people = data as import('../business/index.js').PeopleSearchResult;
           await recheck('business_people_search');
           signal.throwIfAborted();
-          const hindi = /[\u0900-\u097F]|\b(bhai|chahiye|dikhao)\b/i.test(history.at(-1)!.content);
-          return {
-            reply: hindi
-              ? `${result.eligibleTotal} log ${result.required === 1 ? 'is requirement ko' : `saari ${result.required} requirements ko`} match karte hain. View results mein matching reasons aur gaps dekho${result.context?.canExport ? '; CSV ya Excel bhi download kar sakte ho' : ''}. Availability assess nahi ki gayi hai.`
-              : `${result.eligibleTotal} people meet ${result.required === 1 ? 'the requirement' : `all ${result.required} requirements`}. View results for match reasons and gaps${result.context?.canExport ? ', or download CSV/Excel' : ''}. Staffing availability is not assessed.`,
-            sources: [...sources, source],
-            mode: 'read-only',
-            peopleSearch: { query: result.query },
-          };
+          peopleSearch = { query: people.query };
         }
         if (!sources.some(item => item.label === source.label && item.url === source.url))
           sources.push(source);

@@ -246,15 +246,3 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
     assistantWrites: false,
   };
 }
-
-export function capabilityGreeting(context: ReturnType<typeof assistantCapabilities>) {
-  const items = context.pages.map(page => `- ${page.label}`);
-  if (context.canDraftOwnSkill)
-    items.push('- Draft your own skill description for review and saving in My skills');
-  if (context.canManageLearning)
-    items.push('- Draft learning tasks or create a practice quiz (choose 1–20 questions)');
-  const learning = context.learningPractice
-    ? ' Learning plans are saved in Learn & Grow. Task-linked practice attempts are stored in History.'
-    : '';
-  return `Hello, I’m Skill Genie. Based on your current access, I can help you with:\n\n${items.join('\n')}\n\nI can guide you through permitted pages and prepare drafts. Changes must be reviewed and saved in the app.${learning}`;
-}

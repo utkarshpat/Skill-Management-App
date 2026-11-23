@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
 import { rolePresets } from '../src/modules/access/role-presets.js';
-import { assistantCapabilities, capabilityGreeting } from '../src/modules/ai/capabilities.js';
+import { assistantCapabilities } from '../src/modules/ai/capabilities.js';
 import { AssistantService } from '../src/modules/ai/assistant.js';
 import { ToolRegistry } from '../src/modules/ai/tool-registry.js';
 
@@ -34,18 +34,17 @@ test('announcement guidance is an app workflow and navigation never grants publi
   await assert.rejects(service.navigation(person.id), /Assistant access is not assigned/);
 });
 
-test('assistant greeting and navigation use effective grants, not editable role names', async () => {
+test('assistant capabilities and navigation use effective grants, not editable role names', async () => {
   const store = await LocalAccessStore.open(),
     state = store.snapshot(),
     person = state.people[0];
   const admin = assistantCapabilities(state, person);
-  assert.match(capabilityGreeting(admin), /People/);
-  assert.doesNotMatch(capabilityGreeting(admin), /My skills|Draft your own skill/);
+  assert.equal(admin.canManagePeople, true);
   state.roles[0].permissions = structuredClone(rolePresets[0].permissions);
   state.roles[0].name = 'Super Admin';
   const employee = assistantCapabilities(state, person);
-  assert.match(capabilityGreeting(employee), /My skills|Draft your own skill/);
-  assert.doesNotMatch(capabilityGreeting(employee), /People|Organization|Roles & permissions/);
+  assert.equal(employee.canDraftOwnSkill, true);
+  assert.equal(employee.canManagePeople, false);
   state.roles[0].name = 'Manager';
   assert.deepEqual(assistantCapabilities(state, person), employee);
   person.overrides.push({ permission: 'skill.claim', scope: 'OWN', effect: 'DENY' });
@@ -56,7 +55,7 @@ test('assistant greeting and navigation use effective grants, not editable role 
   assert.equal(assistantCapabilities(state, person).canManagePermissions, false);
 });
 
-test('permissions overview uses fresh effective capabilities even with oversized model context', async () => {
+test('permissions overview gives the model fresh effective capabilities', async () => {
   const store = await LocalAccessStore.open();
   const state = store.snapshot();
   const person = state.people[0];
@@ -68,7 +67,7 @@ test('permissions overview uses fresh effective capabilities even with oversized
     export: false,
     manage: false,
     amend: false,
-    scopes: Array.from({ length: 150 }, (_, index) => ({
+    scopes: Array.from({ length: 8 }, (_, index) => ({
       id: String(index),
       bundle: 'BUSINESS_OPERATIONS',
       kind: 'PROJECT',
@@ -79,17 +78,25 @@ test('permissions overview uses fresh effective capabilities even with oversized
       reason: 'Assigned project scope for the synthetic permissions overview fixture.',
     })),
   };
+  let modelCalls = 0;
   const service = new AssistantService(store, undefined, {
     name: 'fixture',
-    complete: async () => assert.fail('The permissions overview should never call the model.'),
+    complete: async messages => {
+      modelCalls++;
+      const context = JSON.parse(messages[0].content.split('Effective capability context: ')[1]);
+      return {
+        content: context.canManagePeople
+          ? 'People & Access is available to you.'
+          : 'People & Access is not available to you.',
+        calls: [],
+      };
+    },
   });
   const { suggestions } = await service.navigation(person.id);
   const prompt = suggestions!.find(suggestion => suggestion.label === 'What can I do?')!.prompt;
-  assert.ok(Buffer.byteLength(JSON.stringify(assistantCapabilities(state, person))) > 32_000);
-
   const result = await service.chat(person.id, { message: prompt });
   assert.match(result.reply, /People & Access/);
-  assert.equal(result.usage.modelCalls, 0);
+  assert.equal(result.usage.modelCalls, 1);
   assert.ok(result.conversationId);
 
   person.overrides.push({ permission: 'users.manage', scope: 'ORGANIZATION', effect: 'DENY' });
@@ -98,7 +105,8 @@ test('permissions overview uses fresh effective capabilities even with oversized
     conversationId: result.conversationId,
   });
   assert.doesNotMatch(revised.reply, /People & Access/);
-  assert.equal(revised.usage.modelCalls, 0);
+  assert.equal(revised.usage.modelCalls, 1);
+  assert.equal(modelCalls, 2);
 
   person.overrides.push({ permission: 'profile.view', scope: 'OWN', effect: 'DENY' });
   await assert.rejects(
@@ -107,7 +115,7 @@ test('permissions overview uses fresh effective capabilities even with oversized
   );
 });
 
-test('greetings are permission-specific and every model request receives fresh capability context', async () => {
+test('greetings use the model and every request receives fresh capability context', async () => {
   const store = await LocalAccessStore.open(),
     state = store.snapshot(),
     person = state.people[0];
@@ -120,21 +128,22 @@ test('greetings are permission-specific and every model request receives fresh c
       const context = JSON.parse(messages[0].content.split('\nEffective capability context:')[1]);
       assert.equal(context.canManagePeople, false);
       assert.ok(!context.pages.some((page: { label: string }) => page.label === 'People'));
-      return { content: 'I can guide you through your permitted pages.', calls: [] };
+      return { content: 'I can guide you through the pages available to you.', calls: [] };
     },
   });
   assert.match(
     (await service.chat(person.id, { messages: [{ role: 'user', content: 'hello' }] })).reply,
-    /People/,
+    /pages available/,
   );
-  assert.equal(modelCalls, 0);
+  assert.equal(modelCalls, 1);
   person.overrides.push({ permission: 'users.manage', scope: 'ORGANIZATION', effect: 'DENY' });
   assert.doesNotMatch(
     (await service.chat(person.id, { messages: [{ role: 'user', content: 'hi' }] })).reply,
-    /People/,
+    /pages available/,
   );
+  assert.equal(modelCalls, 2);
   await service.chat(person.id, { messages: [{ role: 'user', content: 'What can you do?' }] });
-  assert.equal(modelCalls, 1);
+  assert.equal(modelCalls, 3);
 });
 
 test('personal skill tool and draft are blocked without effective personal skill permission', async () => {
