@@ -28,19 +28,25 @@ export const announcementDraftTool: ToolDefinition = {
     parameters: {
       type: 'object',
       additionalProperties: false,
-      required: ['title', 'message', 'audienceLabel', 'cta'],
+      required: ['title', 'message', 'audienceLabel', 'cta', 'summary'],
       properties: {
         title: { type: 'string', maxLength: 120 },
         message: { type: 'string', maxLength: 1000 },
         audienceLabel: { type: 'string', maxLength: 160 },
         cta: { type: 'string', maxLength: 45 },
+        summary: {
+          type: 'string',
+          maxLength: 300,
+          description:
+            'Chat reply in the language and script of the latest user message (English if unclear). Tell the user they can open the draft for review; do not claim it was opened, saved or published.',
+        },
       },
     },
   },
 };
 
 export function announcementPresentation(value: unknown): Presentation {
-  const item = record(value, ['title', 'message', 'audienceLabel', 'cta']);
+  const item = record(value, ['title', 'message', 'audienceLabel', 'cta', 'summary']);
   return {
     kind: 'announcement_draft',
     title: text(item.title, 120),
@@ -49,7 +55,7 @@ export function announcementPresentation(value: unknown): Presentation {
       audienceLabel: text(item.audienceLabel, 160, true),
       cta: text(item.cta, 45),
     },
-    summary: 'Your draft is ready to review. Nothing has been published.',
+    summary: text(item.summary, 300),
     steps: [],
     questions: [],
   };

@@ -361,7 +361,7 @@ test('Azure file inputs preserve explicitly selected image/PDF autofill and curr
   assert.equal(calls, 3);
 });
 
-test('Azure chat keeps clarification context when encrypted tool replay exceeds the text budget', async () => {
+test('Azure chat carries clarification context and delivers a localized announcement card after all reads', async () => {
   const access = await LocalAccessStore.open();
   const actor = access.snapshot().people[0].id;
   const request = 'Draft an announcement titled Are You Interested?';
@@ -374,6 +374,7 @@ test('Azure chat keeps clarification context when encrypted tool replay exceeds 
     message: 'Register for UK Gold Heist.',
     audienceLabel: 'NHS accounts',
     cta: 'Register',
+    summary: 'Draft ready hai. Review ke liye kholo; abhi publish nahi hua.',
   };
   for (const oversized of [false, true]) {
     const reasoning = {
@@ -408,6 +409,20 @@ test('Azure chat keeps clarification context when encrypted tool replay exceeds 
         assert.deepEqual(input[6], reasoning);
         assert.equal(input[8].type, 'function_call_output');
         assert.equal(input[8].call_id, 'call');
+        if (round <= 5)
+          return completed(
+            Array.from({ length: round === 5 ? 2 : 1 }, (_, index) => ({
+              type: 'function_call',
+              call_id: `read-${round}-${index}`,
+              name: 'own_profile',
+              arguments: '{}',
+            })),
+          );
+        assert.deepEqual(
+          tools.map((tool: { name: string }) => tool.name),
+          ['present_announcement_draft'],
+        );
+        assert.match(tools[0].parameters.properties.summary.description, /latest user message/);
         return completed([
           {
             type: 'function_call',
@@ -428,18 +443,19 @@ test('Azure chat keeps clarification context when encrypted tool replay exceeds 
       assert.equal(round, 3);
     } else {
       const result = await next;
+      assert.equal(result.reply, draft.summary);
       assert.deepEqual(result.artifact, {
         kind: 'announcement_draft',
         title: draft.title,
         body: draft.message,
         announcement: { audienceLabel: draft.audienceLabel, cta: draft.cta },
-        summary: result.reply,
+        summary: draft.summary,
         steps: [],
         questions: [],
       });
       assert.equal(result.conversationId, first.conversationId);
       assert.doesNotMatch(JSON.stringify(result), /synthetic-state|encrypted_content/);
-      assert.equal(round, 4);
+      assert.equal(round, 6);
     }
   }
 });

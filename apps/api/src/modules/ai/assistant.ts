@@ -910,13 +910,21 @@ export class AssistantService {
         ['present_output', 'present_announcement_draft'].includes(call.function.name),
       );
       const finalSkillCard =
-        ownSkillDraft && skillChoices.size > 0 && Boolean(output) && answer.calls.length === 1;
-      if (finalRound && !finalSkillCard) {
+        ownSkillDraft &&
+        skillChoices.size > 0 &&
+        output?.function.name === presentationTool.function.name &&
+        answer.calls.length === 1;
+      const announcementCard =
+        output?.function.name === announcementDraftTool.function.name &&
+        answer.calls.length === 1 &&
+        available.includes(announcementDraftTool);
+      if (finalRound && !finalSkillCard && !announcementCard) {
         if (ownSkillDraft) return clarifySkillDraft();
         throw new AccessError(422, 'Please ask a more focused question.');
       }
       if (
         !finalSkillCard &&
+        !announcementCard &&
         (answer.calls.length > maxReads ||
           (!ownSkillDraft && executions + answer.calls.length > maxReads))
       ) {
