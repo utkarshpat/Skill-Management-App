@@ -2,7 +2,9 @@ parameters:
   - name: appServiceConnection
     displayName: Dev Azure Resource Manager service connection
     type: string
-    default: disabled
+    default: skill-management-app-dev
+    values:
+      - skill-management-app-dev
 
   - name: productionAppServiceConnection
     displayName: Production Azure Resource Manager service connection
@@ -185,6 +187,7 @@ stages:
             parameters:
               target: Production
               serviceConnection: ${{ parameters.productionAppServiceConnection }}
+              requiresApproval: true
               resourceGroup: ${{ parameters.productionResourceGroup }}
               appName: ${{ parameters.productionAppName }}
               appUrl: ${{ parameters.productionUrl }}

@@ -3,6 +3,9 @@ parameters:
     type: string
   - name: serviceConnection
     type: string
+  - name: requiresApproval
+    type: boolean
+    default: false
   - name: resourceGroup
     type: string
   - name: appName
@@ -11,21 +14,23 @@ parameters:
     type: string
 
 jobs:
-  - job: ApproveDeployment
-    displayName: Approve deployment to ${{ parameters.target }}
-    pool: server
-    timeoutInMinutes: 1500
-    steps:
-      - task: ManualValidation@1
-        timeoutInMinutes: 1440
-        inputs:
-          notifyUsers: ''
-          instructions: Verify the commit, test results and database migration readiness before deploying this run to ${{ parameters.target }}.
-          onTimeout: reject
+  - ${{ if eq(parameters.requiresApproval, true) }}:
+      - job: ApproveDeployment
+        displayName: Approve deployment to ${{ parameters.target }}
+        pool: server
+        timeoutInMinutes: 1500
+        steps:
+          - task: ManualValidation@1
+            timeoutInMinutes: 1440
+            inputs:
+              notifyUsers: ''
+              instructions: Verify the commit, test results and database migration readiness before deploying this run to ${{ parameters.target }}.
+              onTimeout: reject
 
   - job: DeployApp
     displayName: Deploy the tested runtime to ${{ parameters.target }}
-    dependsOn: ApproveDeployment
+    ${{ if eq(parameters.requiresApproval, true) }}:
+      dependsOn: ApproveDeployment
     steps:
       - checkout: none
       - download: current
