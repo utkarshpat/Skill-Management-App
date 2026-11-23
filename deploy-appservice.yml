@@ -52,7 +52,19 @@ jobs:
             fi
             remote_build=$(az webapp config appsettings list --resource-group "$APP_RESOURCE_GROUP" --name "$APP_NAME" --query "[?name=='SCM_DO_BUILD_DURING_DEPLOYMENT' || name=='ENABLE_ORYX_BUILD'].value" -o tsv)
             if grep -Eiq '^(true|1)$' <<< "$remote_build"; then
-              echo 'Disable App Service remote build before deploying the compiled runtime.' >&2
+              echo 'Disabling App Service remote build before deploying the compiled runtime.'
+              if ! az webapp config appsettings set \
+                --resource-group "$APP_RESOURCE_GROUP" \
+                --name "$APP_NAME" \
+                --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false ENABLE_ORYX_BUILD=false \
+                --output none; then
+                echo 'Could not disable App Service remote build. The service connection needs App Service configuration write access.' >&2
+                exit 1
+              fi
+              remote_build=$(az webapp config appsettings list --resource-group "$APP_RESOURCE_GROUP" --name "$APP_NAME" --query "[?name=='SCM_DO_BUILD_DURING_DEPLOYMENT' || name=='ENABLE_ORYX_BUILD'].value" -o tsv)
+            fi
+            if grep -Eiq '^(true|1)$' <<< "$remote_build"; then
+              echo 'App Service remote build is still enabled; refusing to deploy the compiled runtime.' >&2
               exit 1
             fi
         env:
