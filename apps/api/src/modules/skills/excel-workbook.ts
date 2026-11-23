@@ -59,6 +59,22 @@ export async function writeExcel(
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
 
+function readRichText(value: unknown): string | undefined {
+  if (
+    value &&
+    typeof value === 'object' &&
+    'richText' in value &&
+    Array.isArray(value.richText) &&
+    value.richText.every(
+      (part: unknown) =>
+        part && typeof part === 'object' && 'text' in part && typeof part.text === 'string',
+    )
+  ) {
+    return value.richText.map((part: { text: string }) => part.text).join('');
+  }
+  return undefined;
+}
+
 export async function readExcel(file: Buffer, sheets: readonly ExcelSheet[]) {
   if (file.length > excelUploadLimit) throw new AccessError(413, 'Excel file exceeds 2 MB.');
   const { default: library } = await import('exceljs');
@@ -125,28 +141,24 @@ export async function readExcel(file: Buffer, sheets: readonly ExcelSheet[]) {
           !('sharedFormula' in value) &&
           !('error' in value) &&
           'text' in value &&
-          typeof value.text === 'string' &&
           'hyperlink' in value &&
           typeof value.hyperlink === 'string' &&
           // ExcelJS can present a formula's cached result as hyperlink display text.
           !('formula' in cell.model) &&
-          !('sharedFormula' in cell.model)
+          !('sharedFormula' in cell.model) &&
+          (typeof value.text === 'string' || readRichText(value.text) !== undefined)
         ) {
-          values[column] = value.text;
+          values[column] =
+            typeof value.text === 'string' ? value.text : (readRichText(value.text) ?? '');
         } else if (
           value &&
           typeof value === 'object' &&
           !('formula' in value) &&
           !('sharedFormula' in value) &&
           !('error' in value) &&
-          'richText' in value &&
-          Array.isArray(value.richText) &&
-          value.richText.every(
-            (part: unknown) =>
-              part && typeof part === 'object' && 'text' in part && typeof part.text === 'string',
-          )
+          readRichText(value) !== undefined
         ) {
-          values[column] = value.richText.map((part: { text: string }) => part.text).join('');
+          values[column] = readRichText(value) ?? '';
         } else {
           throw new AccessError(
             400,

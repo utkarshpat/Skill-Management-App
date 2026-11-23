@@ -212,11 +212,15 @@ test('portfolio add actions open the right step and preserve the linked draft wh
   await expect(
     page.getByRole('heading', { name: 'Skills & Certifications', exact: true }),
   ).toBeVisible();
-  const portfolio = page.getByRole('navigation', { name: 'Skills and certifications sections' });
-  await portfolio.getByRole('link', { name: 'Certifications', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'My certification profile' })).toBeVisible();
-  await portfolio.getByRole('link', { name: 'Skills', exact: true }).click();
-  await page.getByRole('button', { name: 'Add certificate', exact: true }).click();
+  const portfolio = page.getByRole('group', { name: 'Portfolio type' });
+  await portfolio.getByRole('button', { name: /^Certifications\b/ }).click();
+  await expect(page.getByRole('combobox', { name: 'Filter credential validity' })).toBeVisible();
+  await portfolio.getByRole('button', { name: /^Skills\b/ }).click();
+  const addCertificate = page
+    .getByRole('group', { name: 'Page actions' })
+    .getByRole('button', { name: 'Add certificate', exact: true });
+  await expect(addCertificate).toHaveClass(/\badmin-primary\b/);
+  await addCertificate.click();
   const certificateEntry = page.getByRole('dialog', { name: 'Add certificate', exact: true });
   await expect(
     certificateEntry.getByRole('button', { name: 'Certificates', exact: true }),
@@ -302,10 +306,7 @@ test('certification renewal summaries exclude rejected credentials and links sti
   const dialog = page.getByRole('dialog', { name: record.certificationName });
   await expect(dialog).toContainText('Not approved');
   await dialog.getByRole('button', { name: 'Close', exact: true }).click();
-  const renewal = page.getByRole('heading', { name: 'Renewal attention' }).locator('..');
-  await expect(renewal.getByRole('button', { name: /^Expired\b/ }).locator('strong')).toHaveText(
-    '0',
-  );
+  await expect(page.getByText('No renewals due in the next 90 days.')).toBeVisible();
 });
 
 test('renewal from either portfolio tab preselects the same approved skill', async ({ page }) => {

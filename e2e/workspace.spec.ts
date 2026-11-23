@@ -250,10 +250,10 @@ test('workforce: employee filters delivered skills and reads approval feedback',
   await fixture(page, { role: 'employee', realistic: true });
   await page.goto('/my-skills');
   await expect(page.getByRole('button', { name: 'View SQL claim' })).toBeVisible();
-  await page.getByRole('searchbox', { name: 'Search your skills' }).fill('Python');
+  await page.getByRole('searchbox', { name: 'Search skills and certifications' }).fill('Python');
   await expect(page.getByRole('button', { name: 'View SQL claim' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Edit Python draft' })).toBeVisible();
-  await page.getByRole('button', { name: 'Clear skill filters' }).click();
+  await page.getByRole('button', { name: 'Clear portfolio filters' }).click();
   await page.getByRole('button', { name: 'View SQL claim' }).click();
   await expect(
     page.getByText('Rohan confirmed the query optimisation and data-quality work.'),
@@ -351,14 +351,14 @@ test('workforce: expired reviewed credential remains visible with renewal contex
   await expect(dialog.getByText('Credential ID: MS-PL300-1042', { exact: true })).toBeVisible();
   await expect(dialog.getByText(/^Expired.*2026-07-10$/)).toBeVisible();
   await expect(
-    dialog.getByText('Manager feedback: Credential details reviewed by Rohan Mehta.', {
+    dialog.getByText('Credential details reviewed by Rohan Mehta.', {
       exact: true,
     }),
   ).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Approve', exact: true })).toHaveCount(0);
 });
 
-test('portfolio uses a full-width switch and matching responsive skill and certificate cards', async ({
+test('portfolio combines skills and certificates with one type switch and shared status filters', async ({
   page,
 }) => {
   await fixture(page, { role: 'employee', realistic: true });
@@ -387,44 +387,33 @@ test('portfolio uses a full-width switch and matching responsive skill and certi
     }),
   );
   await page.goto('/my-skills');
-  await page
-    .getByRole('group', { name: 'Skill views' })
-    .getByRole('button', { name: /^Approved/ })
-    .click();
-  await page.getByRole('combobox', { name: 'Filter skill status' }).selectOption('SUBMITTED');
-  await expect(page.getByRole('button', { name: /^Power BI/ }).first()).toBeVisible();
-  const sections = page.getByRole('navigation', { name: 'Skills and certifications sections' });
-  const skills = sections.getByRole('link', { name: 'Skills', exact: true });
-  const certifications = sections.getByRole('link', { name: 'Certifications', exact: true });
-  await expect(skills).toHaveAttribute('aria-current', 'page');
-  await expect(sections).toHaveCSS('display', 'grid');
-  const switchSize = (await sections.boundingBox())!;
-  const skillsSize = (await page.getByRole('region', { name: 'My skills profile' }).boundingBox())!;
-  expect(switchSize.width).toBeCloseTo(skillsSize.width, 0);
-  expect(switchSize.height).toBeLessThan(54);
-  expect((await skills.boundingBox())!.width).toBeCloseTo(
-    (await certifications.boundingBox())!.width,
-    0,
-  );
+  const sections = page.getByRole('group', { name: 'Portfolio type' });
+  const all = sections.getByRole('button', { name: /^All\b/ });
+  const certifications = sections.getByRole('button', { name: /^Certifications\b/ });
+  const pending = page.getByRole('listitem', { name: 'Pending AWS credential' });
+  const skill = page.getByRole('button', { name: 'View SQL claim' });
+  await expect(all).toHaveAttribute('aria-pressed', 'true');
+  await expect(skill).toBeVisible();
+  await expect(pending).toBeVisible();
+  const chips = page.getByRole('group', { name: 'Status quick filters' });
+  await chips.getByRole('button', { name: /^Needs action/ }).click();
+  await expect(pending).toBeVisible();
+  await expect(skill).toHaveCount(0);
+  await chips.getByRole('button', { name: /^Approved/ }).click();
+  await expect(pending).toHaveCount(0);
+  await expect(skill).toBeVisible();
+  await page.getByRole('button', { name: 'Clear portfolio filters' }).click();
   await certifications.click();
-  await expect(certifications).toHaveAttribute('aria-current', 'page');
+  await expect(certifications).toHaveAttribute('aria-pressed', 'true');
+  await expect(skill).toHaveCount(0);
   const expired = page.getByRole('listitem', { name: 'Microsoft Power BI Data Analyst' });
   await expect(expired.getByText('Expired', { exact: true })).toHaveCount(1);
-  const list = page.getByRole('list', { name: 'Your certificates list' });
-  await expect(list).toBeVisible();
-  const certificationSize = (await page
-    .getByRole('region', { name: 'My certification profile' })
-    .boundingBox())!;
-  expect(certificationSize.width).toBeCloseTo(switchSize.width, 0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page
-    .getByRole('group', { name: 'Certification views' })
-    .getByRole('button', { name: /^Approved/ })
-    .click();
-  await page
-    .getByRole('combobox', { name: 'Filter certification approval status' })
-    .selectOption('SUBMITTED');
-  await expect(page.getByRole('listitem', { name: 'Pending AWS credential' })).toBeVisible();
+  await page.getByRole('button', { name: /^Pending:.*Filter pending items/ }).click();
+  await expect(pending).toBeVisible();
+  await expect(expired).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    .toBe(true);
 });
 
 test('admin home opens the dashboard, catalogue marks the active destination, and unavailable tabs explain access', async ({

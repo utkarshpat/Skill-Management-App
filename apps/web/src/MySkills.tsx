@@ -74,9 +74,13 @@ async function body<T>(response: Response): Promise<T> {
 export function MySkills({
   actionsContainer,
   canImportCertificates = false,
+  unified = false,
+  initialType = 'all',
 }: {
   actionsContainer?: HTMLElement | null;
   canImportCertificates?: boolean;
+  unified?: boolean;
+  initialType?: 'all' | 'skill' | 'cert';
 }) {
   const certificateContext = useOwnCertificates();
   const location = useLocation(),
@@ -407,14 +411,15 @@ export function MySkills({
     }
   }
   const showCertificateBulkAction = Boolean(canImportCertificates && certificateContext?.data);
-  const actions = (state?.canClaim || showCertificateBulkAction) && (
+  const canAddCertificate = Boolean(certificateContext?.data?.canManage);
+  const actions = (state?.canClaim || canAddCertificate || showCertificateBulkAction) && (
     <>
       {showCertificateBulkAction && (
         <ExcelBulkActions kind="certifications" showImport onImported={certificateContext?.retry} />
       )}
-      {state?.canClaim && certificateContext?.data?.canManage && (
+      {canAddCertificate && (
         <button
-          className="secondary-button"
+          className="admin-primary"
           disabled={busy || loading}
           onClick={() => {
             setIntakeEntry({ certificate: true });
@@ -504,10 +509,27 @@ export function MySkills({
           state && (
             <SkillsProfileView
               initialStatus={new URLSearchParams(location.search).get('status') ?? ''}
+              unified={Boolean(unified && certificateContext)}
+              initialType={initialType}
               onAdd={() => setCombined(true)}
+              onAddCertificate={
+                canAddCertificate
+                  ? () => {
+                      setIntakeEntry({ certificate: true });
+                      setCombined(true);
+                    }
+                  : undefined
+              }
               claims={state.claims}
               certificates={certificateContext?.data?.records}
+              certificatesToday={certificateContext?.today}
+              canManageCertificates={canAddCertificate}
+              canRenewCertificates={Boolean(
+                certificateContext?.data?.canManage && certificateContext?.data?.canUploadImage,
+              )}
               onCertificate={certificateContext?.open}
+              onEditCertificate={certificateContext?.edit}
+              onRenewCertificate={certificateContext?.renew}
               extraInsights={<CertificateRenewalSummary />}
               canClaim={state.canClaim}
               loading={loading || busy}

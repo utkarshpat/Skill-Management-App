@@ -1,6 +1,7 @@
 import { displayProficiencyName } from './proficiency';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createSkillProfileIndex, filterSkillProfile } from './skill-profile-index';
+import { UnifiedPortfolioView } from './UnifiedPortfolioView';
 
 import {
   Layers,
@@ -68,6 +69,14 @@ export function SkillsProfileView({
   onCertificate,
   extraInsights,
   initialStatus = '',
+  unified = false,
+  initialType = 'all',
+  certificatesToday,
+  canManageCertificates = false,
+  canRenewCertificates = false,
+  onAddCertificate,
+  onEditCertificate,
+  onRenewCertificate,
 }: {
   claims: Claim[];
   certificates?: CertificationRecord[];
@@ -80,7 +89,39 @@ export function SkillsProfileView({
   onSubmit: (claim: Claim) => void;
   onAdd?: () => void;
   initialStatus?: string;
+  unified?: boolean;
+  initialType?: 'all' | 'skill' | 'cert';
+  certificatesToday?: string;
+  canManageCertificates?: boolean;
+  canRenewCertificates?: boolean;
+  onAddCertificate?: () => void;
+  onEditCertificate?: (record: CertificationRecord) => void;
+  onRenewCertificate?: (record: CertificationRecord) => void;
 }) {
+  if (unified) {
+    return (
+      <UnifiedPortfolioView
+        claims={claims}
+        certificates={certificates}
+        certificatesToday={certificatesToday}
+        canClaim={canClaim}
+        canManageCertificates={canManageCertificates}
+        canRenewCertificates={canRenewCertificates}
+        loading={loading}
+        initialStatus={initialStatus}
+        initialType={initialType}
+        extraInsights={extraInsights}
+        onView={onView}
+        onEdit={onEdit}
+        onSubmit={onSubmit}
+        onAdd={onAdd}
+        onAddCertificate={onAddCertificate}
+        onCertificate={onCertificate}
+        onEditCertificate={onEditCertificate}
+        onRenewCertificate={onRenewCertificate}
+      />
+    );
+  }
   const [query, setQuery] = useState(''),
     [category, setCategory] = useState(''),
     [status, setStatus] = useState(''),

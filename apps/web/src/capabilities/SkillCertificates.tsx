@@ -16,6 +16,7 @@ import { loadCertificationPortfolio } from '../certifications/certification-port
 import {
   certificationFields,
   certificationRenewalFields,
+  certificationRenewalId,
   certificationStatusLabels,
   credentialValidity,
 } from '../certifications/certification-model';
@@ -30,6 +31,8 @@ type CertificateContext = {
   error: string;
   today: string;
   open: (id: string) => void;
+  edit: (record: CertificationRecord) => void;
+  renew: (record: CertificationRecord) => void;
   retry: () => void;
 };
 const OwnCertificates = createContext<CertificateContext | undefined>(undefined);
@@ -42,7 +45,7 @@ export function SkillCertificates({
   enabled: boolean;
   children: ReactNode;
 }) {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const location = useLocation();
   const [data, setData] = useState<CertificationPage>();
   const [loading, setLoading] = useState(enabled),
@@ -119,7 +122,7 @@ export function SkillCertificates({
       });
     return () => abort.abort();
   }, [enabled, attempt]);
-  async function open(id: string, renewal = false) {
+  async function open(id: string, renewal = false, editMode = false) {
     detailRequest.current?.abort();
     const abort = new AbortController();
     detailRequest.current = abort;
@@ -134,6 +137,10 @@ export function SkillCertificates({
         'This certificate could not open. Please try again.',
       );
       if (abort.signal.aborted) return;
+      if (renewal && (!data?.canManage || !data.canUploadImage)) {
+        setViewing(result.record);
+        return;
+      }
       if (renewal && result.record.activeRenewalId) {
         setDetailError('A renewal is already in progress. Open it to continue.');
         const renewalResult = await readApiResponse<{ record: CertificationRecord }>(
@@ -160,6 +167,9 @@ export function SkillCertificates({
       ) {
         setRenewing(true);
         setEditing(result.record);
+      } else if (editMode && data?.canManage && result.record.canEdit) {
+        setRenewing(false);
+        setEditing(result.record);
       } else setViewing(result.record);
     } catch (e) {
       if (!abort.signal.aborted) setDetailError((e as Error).message);
@@ -168,19 +178,21 @@ export function SkillCertificates({
     }
   }
   useEffect(() => {
-    const target = params.get('renew') || params.get('record') || params.get('certification');
+    const renewalId = certificationRenewalId(params.get('renew'));
+    const editId = certificationRenewalId(params.get('editRecord'));
+    const target =
+      renewalId ??
+      editId ??
+      certificationRenewalId(params.get('record') ?? params.get('certification'));
     const navigation = location.key + ':' + target;
-    if (
-      !enabled ||
-      !data ||
-      loading ||
-      !target ||
-      !/^[a-f0-9-]{36}$/i.test(target) ||
-      consumed.current === navigation
-    )
-      return;
+    if (!enabled || !data || loading || !target || consumed.current === navigation) return;
     consumed.current = navigation;
-    void open(target, params.has('renew'));
+    void open(target, Boolean(renewalId), Boolean(!renewalId && editId));
+    if (location.pathname === '/certifications') {
+      const next = new URLSearchParams(params);
+      for (const key of ['renew', 'editRecord', 'record', 'certification']) next.delete(key);
+      setParams(next, { replace: true });
+    }
   }, [params, enabled, data, loading, location.key]);
   const close = () => {
     detailRequest.current?.abort();
@@ -198,6 +210,11 @@ export function SkillCertificates({
               error,
               today,
               open: id => void open(id),
+              edit: record => {
+                setRenewing(false);
+                setEditing(record);
+              },
+              renew: record => void open(record.id, true),
               retry: () => setAttempt(v => v + 1),
             }
           : undefined
@@ -320,9 +337,12 @@ export function SkillCertificates({
                   )}
                   {viewing.notes && <p>{viewing.notes}</p>}
                   {viewing.feedback && (
-                    <p tabIndex={-1} data-genie-section="feedback">
-                      Manager feedback: {viewing.feedback}
-                    </p>
+                    <section className="cert-feedback">
+                      <h3>Manager feedback</h3>
+                      <p tabIndex={-1} data-genie-section="feedback">
+                        {viewing.feedback}
+                      </p>
+                    </section>
                   )}
                   <RelatedCapabilities kind="CERTIFICATION" id={viewing.id} />
                 </div>
@@ -352,6 +372,7 @@ export function SkillCertificates({
           onClose={() => setEditing(undefined)}
           onSaved={() => {
             setEditing(undefined);
+            setAttempt(v => v + 1);
           }}
         />
       )}

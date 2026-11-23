@@ -220,7 +220,7 @@ test('uncertain-save reconciliation stays locked on ambiguous reads, safely hand
 
 test('repeat submission and certificate notifications open once per navigation without reopening after background refresh', async () => {
   const target = '00000000-0000-4000-8000-000000000002';
-  for (const kind of ['submission', 'record', 'renew', 'certification']) {
+  for (const kind of ['submission', 'record', 'renew', 'certification', 'editRecord']) {
     const source = await fs.readFile(
       new URL(
         `../src/capabilities/${kind === 'submission' ? 'CapabilitySubmissions' : 'SkillCertificates'}.tsx`,
@@ -228,7 +228,11 @@ test('repeat submission and certificate notifications open once per navigation w
       ),
       'utf8',
     );
-    const start = source.indexOf('  useEffect(() => {\n    const target = params.get(');
+    const start = source.indexOf(
+      kind === 'submission'
+        ? '  useEffect(() => {\n    const target = params.get('
+        : '  useEffect(() => {\n    const renewalId = certificationRenewalId(',
+    );
     const end = source.indexOf(kind === 'submission' ? '  const done =' : '  const close =', start);
     assert.ok(start > 0 && end > start);
     const code = compile(source.slice(start, end));
@@ -246,8 +250,10 @@ test('repeat submission and certificate notifications open once per navigation w
       records: [] as { id: string }[],
       useEffect: (fn: () => void) => fn(),
       setOpened: (id: string) => opens.push(id),
-      open: (id: string, renewal: boolean) => {
+      certificationRenewalId: (value: string | null) => value ?? undefined,
+      open: (id: string, renewal: boolean, edit: boolean) => {
         assert.equal(renewal, kind === 'renew');
+        assert.equal(edit, kind === 'editRecord');
         opens.push(id);
       },
     };

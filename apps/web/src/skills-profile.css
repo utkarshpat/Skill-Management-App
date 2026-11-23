@@ -271,7 +271,9 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .skills-item-card:hover {
   border-color: var(--accent-ink);
@@ -815,6 +817,206 @@
   color: var(--muted);
   font-size: 14px;
   margin: 0 0 18px;
+}
+.skills-metric-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.skills-metric.attention {
+  background: linear-gradient(
+    110deg,
+    var(--surface),
+    color-mix(in srgb, var(--skill-attention) 8%, var(--surface))
+  );
+  border-color: color-mix(in srgb, var(--skill-attention) 20%, var(--line));
+}
+.skills-metric.attention .skills-metric-icon {
+  background: color-mix(in srgb, var(--skill-attention) 12%, var(--surface));
+  color: var(--skill-attention);
+}
+.portfolio-toolbar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.portfolio-type-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.portfolio-type-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.portfolio-type-tabs button:hover {
+  color: var(--heading);
+}
+.portfolio-type-tabs button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--heading);
+  box-shadow: var(--shadow-sm);
+}
+.portfolio-type-tabs button > span {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.portfolio-type-tabs button[aria-pressed='true'] > span {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.portfolio-status-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.portfolio-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.portfolio-status-chip:hover {
+  border-color: var(--accent-ink);
+  color: var(--heading);
+}
+.portfolio-status-chip[aria-pressed='true'] {
+  border-color: var(--accent-ink);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.portfolio-status-chip > span {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.portfolio-status-chip[aria-pressed='true'] > span {
+  background: var(--surface);
+  color: var(--accent-ink);
+}
+.portfolio-filters {
+  grid-template-columns: minmax(200px, 1.4fr) repeat(2, minmax(0, 1fr)) auto;
+}
+.portfolio-filters .skills-query {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0 10px;
+  color: var(--muted);
+  min-width: 0;
+  background: var(--surface);
+  height: 36px;
+  box-sizing: border-box;
+}
+.portfolio-filters .skills-query:focus-within {
+  border-color: var(--accent-ink);
+}
+.portfolio-filters .skills-query svg {
+  flex-shrink: 0;
+}
+.portfolio-filters .skills-query input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.portfolio-filters .skills-query input::-webkit-search-cancel-button {
+  display: none;
+}
+.portfolio-filters .skills-query button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--muted);
+  cursor: pointer;
+}
+.portfolio-filters .skills-query button:hover {
+  color: var(--ink);
+}
+.portfolio-type-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.portfolio-type-badge.skill {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.portfolio-type-badge.cert {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+.skills-item-icon.cert {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+.portfolio-empty-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
 }
 @media (max-width: 1450px) {
   .skills-content-grid {

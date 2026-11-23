@@ -273,7 +273,7 @@ body .dashboard-card header {
 .access-main,
 .catalogue-main {
   padding-top: 26px;
-  padding-bottom: 136px;
+  padding-bottom: var(--assistant-scroll-clearance);
 }
 .admin-metrics {
   gap: 16px;

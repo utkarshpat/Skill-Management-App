@@ -74,7 +74,7 @@ test('Excel exports preserve text identifiers and reject formula cells on upload
 });
 
 test('Excel imports display text from email links, URL links and formatted text', async () => {
-  const columns = ['Work Email', 'Credential URL', 'Certification'];
+  const columns = ['Work Email', 'Credential URL', 'Certification', 'Formatted Link'];
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Import');
   sheet.addRow(columns);
@@ -82,6 +82,10 @@ test('Excel imports display text from email links, URL links and formatted text'
     { text: 'sample@example.test', hyperlink: 'mailto:other@example.test' },
     { text: 'https://example.test/certificate', hyperlink: 'https://example.test/other' },
     { richText: [{ font: { bold: true }, text: 'Azure' }, { text: ' Fundamentals' }] },
+    {
+      text: { richText: [{ font: { bold: true }, text: 'ada' }, { text: '@example.test' }] },
+      hyperlink: 'mailto:ada@example.test',
+    },
   ]);
   const result = await readExcel(Buffer.from(await workbook.xlsx.writeBuffer()), [
     { name: 'Import', columns },
@@ -93,20 +97,10 @@ test('Excel imports display text from email links, URL links and formatted text'
         'Work Email': 'sample@example.test',
         'Credential URL': 'https://example.test/certificate',
         Certification: 'Azure Fundamentals',
+        'Formatted Link': 'ada@example.test',
       },
     },
   ]);
-  const formatted = new ExcelJS.Workbook();
-  const formattedSheet = formatted.addWorksheet(people[0].name);
-  formattedSheet.addRow(people[0].columns);
-  formattedSheet.addRow([
-    '007013',
-    { richText: [{ text: 'Ada ' }, { text: 'Lovelace' }] },
-    { text: 'ada@example.test', hyperlink: 'mailto:ada@example.test' },
-  ]);
-  const parsedFormatted = await readExcel(Buffer.from(await formatted.xlsx.writeBuffer()), people);
-  assert.equal(parsedFormatted[people[0].name][0].values[people[0].columns[1]], 'Ada Lovelace');
-  assert.equal(parsedFormatted[people[0].name][0].values[people[0].columns[2]], 'ada@example.test');
 });
 
 test('Excel import requires current access and a preview for the exact workbook', async t => {

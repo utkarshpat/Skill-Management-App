@@ -62,3 +62,73 @@ test('skill profile exposes editing only for editable statuses and suppresses mu
   );
   assert.match(readOnly, /View Skill 0 claim/);
 });
+
+test('unified portfolio shows Skills, Certifications, Pending and Needs attention KPIs with merged Needs action chip', () => {
+  const html = renderToStaticMarkup(
+    <MemoryRouter>
+      <SkillsProfileView
+        unified
+        claims={claims}
+        certificates={[
+          {
+            id: 'cert-1',
+            revision: 1,
+            personId: 'p1',
+            name: 'Aditi',
+            employeeCode: 'E1',
+            certificationName: 'Azure Administrator',
+            provider: 'Microsoft',
+            category: 'Cloud & DevOps',
+            certificationDate: '2025-01-10',
+            expiryDate: '2026-11-30',
+            credentialId: 'AZ-104',
+            credentialUrl: '',
+            notes: '',
+            status: 'APPROVED',
+            feedback: '',
+            canEdit: false,
+            canSubmit: false,
+            canReview: false,
+          },
+          {
+            id: 'cert-2',
+            revision: 1,
+            personId: 'p1',
+            name: 'Aditi',
+            employeeCode: 'E1',
+            certificationName: 'AWS Practitioner',
+            provider: 'AWS',
+            category: 'Cloud & DevOps',
+            certificationDate: '2026-06-01',
+            expiryDate: null,
+            credentialId: 'AWS-1',
+            credentialUrl: '',
+            notes: '',
+            status: 'SUBMITTED',
+            feedback: '',
+            canEdit: false,
+            canSubmit: false,
+            canReview: false,
+          },
+        ]}
+        certificatesToday="2026-11-23"
+        canClaim
+        canManageCertificates
+        loading={false}
+        onView={() => {}}
+        onEdit={() => {}}
+        onSubmit={() => {}}
+        onCertificate={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  assert.match(html, /Skills: 5/);
+  assert.match(html, /Certifications: 2/);
+  assert.match(html, /Pending: 2/);
+  assert.match(html, /Needs attention: 4/);
+  assert.match(html, /Needs action<span>6<\/span>/);
+  assert.match(html, /Approved<span>2<\/span>/);
+  assert.doesNotMatch(html, /Total skills:/);
+  assert.match(html, /Azure Administrator/);
+  assert.match(html, /AWS Practitioner/);
+});

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Link, Navigate, useLocation } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { SkillCertificates } from './capabilities/SkillCertificates';
 import type { WorkspaceState } from './Workspace';
 import './capability-workspace.css';
@@ -19,8 +19,7 @@ export function CapabilityPortfolio({
   const tab = params.get('tab');
   const { ownSkills, certifications } = workspace.capabilities;
   const certificateRoute = pathname === '/certifications';
-  const showCertifications =
-    !ownSkills || (certifications && (certificateRoute || tab === 'recommendations'));
+  const showStandaloneCertifications = !ownSkills || (certifications && tab === 'recommendations');
   if (certificateRoute && tab === 'queue') {
     const target = new URLSearchParams({ type: 'certifications' });
     const certification = params.get('certification');
@@ -28,34 +27,24 @@ export function CapabilityPortfolio({
     return <Navigate to={`/skill-reviews?${target}`} replace />;
   }
   return (
-    <>
-      {ownSkills && certifications && (
-        <nav className="capability-tabs" aria-label="Skills and certifications sections">
-          <Link to="/my-skills" aria-current={!showCertifications ? 'page' : undefined}>
-            Skills
-          </Link>
-          <Link to="/certifications" aria-current={showCertifications ? 'page' : undefined}>
-            Certifications
-          </Link>
-        </nav>
+    <Suspense fallback={<p role="status">Loading your portfolio…</p>}>
+      {showStandaloneCertifications ? (
+        <Certifications actionsContainer={actionsContainer} workspace={workspace} />
+      ) : (
+        <SkillCertificates enabled={Boolean(certifications)}>
+          <MySkills
+            actionsContainer={actionsContainer}
+            unified={Boolean(ownSkills && certifications)}
+            initialType={certificateRoute && certifications ? 'cert' : 'all'}
+            canImportCertificates={Boolean(
+              workspace.capabilities.ownProfile &&
+              workspace.capabilities.administration &&
+              workspace.capabilities.manageUsers &&
+              workspace.capabilities.viewAudit,
+            )}
+          />
+        </SkillCertificates>
       )}
-      <Suspense fallback={<p role="status">Loading your portfolio…</p>}>
-        {showCertifications ? (
-          <Certifications actionsContainer={actionsContainer} workspace={workspace} />
-        ) : (
-          <SkillCertificates enabled={Boolean(workspace.capabilities.certifications)}>
-            <MySkills
-              actionsContainer={actionsContainer}
-              canImportCertificates={Boolean(
-                workspace.capabilities.ownProfile &&
-                workspace.capabilities.administration &&
-                workspace.capabilities.manageUsers &&
-                workspace.capabilities.viewAudit,
-              )}
-            />
-          </SkillCertificates>
-        )}
-      </Suspense>
-    </>
+    </Suspense>
   );
 }

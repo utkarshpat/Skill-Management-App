@@ -63,12 +63,12 @@ test('workspace end content can scroll above the floating Skill Genie launcher',
     if (path === '/my-skills') {
       const categories = page.getByRole('heading', { name: 'Top categories' }).locator('..');
       await categories.getByRole('button', { name: /^Databases/ }).click();
-      await expect(page.getByLabel('Filter skill category')).toHaveValue('Databases');
-      await page.getByRole('button', { name: 'Clear skill filters' }).click();
+      await expect(page.getByLabel('Filter portfolio category')).toHaveValue('Databases');
+      await page.getByRole('button', { name: 'Clear portfolio filters' }).click();
     } else {
-      const renewal = page.getByRole('heading', { name: 'Renewal attention' }).locator('..');
-      await renewal.getByRole('button', { name: /^Expired\b/ }).click();
-      await renewal.getByRole('button', { name: /^Expires soon\b/ }).click();
+      const validity = page.getByRole('combobox', { name: 'Filter credential validity' });
+      await validity.selectOption('Expired');
+      await validity.selectOption('Expires soon');
     }
   }
   await page.goto('/learning');
@@ -711,7 +711,9 @@ test('company sign-in recovery resumes in place for the original account and kee
   await expect(signIn).toHaveAttribute('target', '_blank');
   const [wrongAccount] = await Promise.all([page.waitForEvent('popup'), signIn.click()]);
   await expect(wrongAccount.getByRole('link', { name: 'Open a new workspace' })).toBeVisible();
-  await expect(recovery.getByRole('alert')).toContainText('Choose the same work account');
+  await expect(
+    recovery.getByRole('alert').filter({ hasText: 'Choose the same work account' }),
+  ).toBeVisible();
   await wrongAccount.close();
   await Promise.all([page.waitForEvent('popup'), signIn.click()]);
   await expect(recovery).toBeHidden();
