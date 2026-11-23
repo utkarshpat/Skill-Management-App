@@ -62,6 +62,90 @@ interface ToolCall {
 }
 type Tool = ToolDefinition;
 const permissionsOverviewPrompt = 'Explain my current permissions and the actions available to me';
+const workspaceOrigin = 'https://workspace.invalid';
+
+function permittedCurrentPage(value: string | undefined, pages: { label: string; url: string }[]) {
+  if (!value) return undefined;
+  try {
+    const target = new URL(value, workspaceOrigin);
+    if (target.origin !== workspaceOrigin || target.hash || target.username || target.password)
+      return undefined;
+    const exact = target.pathname + target.search;
+    const match =
+      pages.find(page => page.url === exact) ??
+      pages.find(page => {
+        const allowed = new URL(page.url, workspaceOrigin);
+        return allowed.pathname === target.pathname && !allowed.search;
+      });
+    return match ? { label: match.label, url: match.url } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function authorizedAssistantDestination(value: string, pages: { label: string; url: string }[]) {
+  if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return undefined;
+  try {
+    const target = new URL(value, workspaceOrigin);
+    if (target.origin !== workspaceOrigin || target.hash || target.username || target.password)
+      return undefined;
+    const exact = target.pathname + target.search,
+      exactPage = pages.find(page => page.url === exact);
+    if (exactPage) return { ...exactPage, url: exact };
+    const page = pages.find(candidate => candidate.url === target.pathname);
+    if (!page) return undefined;
+    const params = target.searchParams,
+      isUuid = (id: string | null) =>
+        Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+    let url: string | undefined;
+    if (target.pathname === '/requests' && params.size === 1 && isUuid(params.get('record')))
+      url = `/requests?record=${encodeURIComponent(params.get('record')!)}`;
+    else if (target.pathname === '/my-skills' && params.size === 1 && isUuid(params.get('claim')))
+      url = `/my-skills?claim=${encodeURIComponent(params.get('claim')!)}`;
+    else if (
+      target.pathname === '/my-skills' &&
+      params.size === 1 &&
+      isUuid(params.get('submission'))
+    )
+      url = `/my-skills?submission=${encodeURIComponent(params.get('submission')!)}`;
+    else if (
+      target.pathname === '/certifications' &&
+      params.size === 1 &&
+      isUuid(params.get('record'))
+    )
+      url = `/certifications?record=${encodeURIComponent(params.get('record')!)}`;
+    else if (
+      target.pathname === '/skill-reviews' &&
+      params.size === 1 &&
+      isUuid(params.get('claim'))
+    )
+      url = `/skill-reviews?claim=${encodeURIComponent(params.get('claim')!)}`;
+    else if (
+      target.pathname === '/skill-reviews' &&
+      params.size === 2 &&
+      params.get('tab') === 'queue' &&
+      isUuid(params.get('submission'))
+    )
+      url = `/skill-reviews?submission=${encodeURIComponent(params.get('submission')!)}&tab=queue`;
+    else if (
+      target.pathname === '/skill-reviews' &&
+      params.size === 2 &&
+      params.get('type') === 'certifications' &&
+      isUuid(params.get('certification'))
+    )
+      url = `/skill-reviews?type=certifications&certification=${encodeURIComponent(params.get('certification')!)}`;
+    else if (
+      target.pathname === '/skill-reviews' &&
+      params.size === 1 &&
+      params.get('type') === 'certifications'
+    )
+      url = '/skill-reviews?type=certifications';
+    if (!url) return undefined;
+    return { ...page, url };
+  } catch {
+    return undefined;
+  }
+}
 
 interface GenerationOptions {
   maxOutputTokens: number;
@@ -569,7 +653,7 @@ export class AssistantService {
       !['open_page', 'review_own_skill'].includes(String(body.action))
     )
       throw new AccessError(400, 'Invalid assistant action.');
-    const page = capabilities.pages.find(page => page.url === body.destination);
+    const page = authorizedAssistantDestination(body.destination, capabilities.pages);
     if (
       !page ||
       (body.action === 'review_own_skill' &&
@@ -629,6 +713,7 @@ export class AssistantService {
         meter,
         prepared?.task,
         internal?.workflowDraft === true,
+        prepared?.currentPage,
       );
       const recheckDelivery = async () => {
         signal.throwIfAborted();
@@ -727,6 +812,7 @@ export class AssistantService {
     meter: UsageMeter,
     rememberedTask?: ReturnType<typeof conversationTaskSettings>,
     workflowDraft = false,
+    currentPageHint?: string,
   ) {
     const history = conversation(input);
     if (!this.provider)
@@ -773,8 +859,8 @@ export class AssistantService {
     const sources: { label: string; url: string }[] = [];
     const skillChoices = new Map<string, { id: string; name: string }>();
     const skillReads = new Map<string, Awaited<ReturnType<ToolRegistry['execute']>>>();
-    const maxReads = ownSkillDraft ? 12 : 4;
-    const maxReadRounds = ownSkillDraft ? 5 : 3;
+    const maxReads = ownSkillDraft ? 12 : 8;
+    const maxReadRounds = ownSkillDraft ? 5 : 6;
     const usesAzureReplay = this.provider.name === 'azure';
     let peopleSearch: { query: import('../business/index.js').PeopleSearchQuery } | undefined;
     let executions = 0;
@@ -832,13 +918,14 @@ export class AssistantService {
     };
     // Reserve a final response round after the permitted reads.
     for (let round = 0; round <= maxReadRounds; round++) {
-      const finalRound = round === maxReadRounds || (ownSkillDraft && executions >= maxReads);
+      const finalRound = round === maxReadRounds || executions >= maxReads;
       const current = await recheck('own_profile');
       signal.throwIfAborted();
       const fullContext = assistantCapabilities(current.state, current.person);
       const requested = history.at(-1)!.content.toLowerCase();
       const context = {
         ...fullContext,
+        currentPage: permittedCurrentPage(currentPageHint, fullContext.pages),
         guidance: fullContext.guidance
           .filter(guide =>
             guide.action
@@ -938,8 +1025,7 @@ export class AssistantService {
       if (
         !finalSkillCard &&
         !announcementCard &&
-        (answer.calls.length > maxReads ||
-          (!ownSkillDraft && executions + answer.calls.length > maxReads))
+        answer.calls.length > (ownSkillDraft ? maxReads : maxReads * 2)
       ) {
         if (ownSkillDraft) return clarifySkillDraft();
         throw new AccessError(
@@ -1003,7 +1089,10 @@ export class AssistantService {
           ].join('\n');
           if (hasUnsupportedCodeOutput(body)) {
             if (workflowDraft)
-              throw new AccessError(502, 'AI did not return a valid note. You can write it manually.');
+              throw new AccessError(
+                502,
+                'AI did not return a valid note. You can write it manually.',
+              );
             return {
               reply: await localizedWorkflowRefusal(),
               sources: [],
@@ -1053,7 +1142,19 @@ export class AssistantService {
           await recheck(call.function.name);
           signal.throwIfAborted();
         } else {
-          if (executions >= maxReads) return clarifySkillDraft();
+          if (executions >= maxReads) {
+            if (ownSkillDraft) return clarifySkillDraft();
+            messages.push({
+              role: 'tool',
+              content: JSON.stringify({
+                unavailable:
+                  'The read-only lookup capacity for this reply has been reached. Answer from facts already retrieved and state what could not be checked.',
+              }),
+              tool_call_id: call.id,
+              tool_name: call.function.name,
+            });
+            continue;
+          }
           executions++;
           result = await this.registry.execute(actorId, call.function.name, args, signal);
           if (key !== undefined) skillReads.set(key, result);

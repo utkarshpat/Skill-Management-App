@@ -213,7 +213,8 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
   return {
     pages,
     guidance,
-    canDraftDemand: can(state, person, 'demand.create'),
+    // Analytics now uses conversational matching. There is no demand form for draft handoff.
+    canDraftDemand: false,
     canDraftAmendment: can(state, person, 'skill.catalogue.propose'),
     businessPolicy: person.business
       ? {

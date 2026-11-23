@@ -42,11 +42,20 @@ test('assistant navigation follows current permissions and forbids actor selecto
   assert.ok(available.pages?.some(page => page.url === '/my-skills'));
   assert.ok(!available.pages?.some(page => page.url.startsWith('/access')));
   await service.navigation(actor, { destination: '/my-skills', action: 'review_own_skill' });
+  const id = 'a7b7353e-601e-4f8d-a42c-9b77982363de';
+  const record = '/my-skills?claim=' + id;
+  assert.equal(
+    (await service.navigation(actor, { destination: record, action: 'open_page' })).destination,
+    record,
+  );
   for (const destination of [
     '/access?view=people',
     '/my-skills?personId=other',
     'https://evil.invalid',
     '/my-skills#other',
+    '/my-skills?claim=invalid',
+    record + '&personId=other',
+    '/skill-reviews?claim=' + id,
   ])
     await assert.rejects(service.navigation(actor, { destination, action: 'open_page' }));
   await assert.rejects(
@@ -59,6 +68,7 @@ test('assistant navigation follows current permissions and forbids actor selecto
   );
   await service.navigation(actor, { destination: '/my-skills', action: 'open_page' });
   state.people[0].overrides.push({ permission: 'skill.view', scope: 'OWN', effect: 'DENY' });
+  await assert.rejects(service.navigation(actor, { destination: record, action: 'open_page' }));
   await assert.rejects(
     service.navigation(actor, { destination: '/my-skills', action: 'open_page' }),
     /permissions/,

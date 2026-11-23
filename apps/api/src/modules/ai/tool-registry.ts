@@ -65,6 +65,26 @@ interface RegisteredTool {
   read: (context: ToolContext) => Promise<object>;
 }
 
+function assistantRecordDestination(value: unknown) {
+  if (typeof value !== 'string') return undefined;
+  const id = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+  return [
+    new RegExp(`^/requests\\?record=${id}$`, 'i'),
+    new RegExp(`^/my-skills\\?claim=${id}$`, 'i'),
+    new RegExp(`^/my-skills\\?submission=${id}$`, 'i'),
+    new RegExp(`^/certifications\\?record=${id}$`, 'i'),
+    new RegExp(`^/skill-reviews\\?claim=${id}$`, 'i'),
+    new RegExp(`^/skill-reviews\\?submission=${id}&tab=queue$`, 'i'),
+    new RegExp(`^/skill-reviews\\?type=certifications&certification=${id}$`, 'i'),
+  ].some(pattern => pattern.test(value))
+    ? value
+    : undefined;
+}
+
+function withAssistantNavigation(data: Record<string, unknown>, destination: string | undefined) {
+  return destination ? { ...data, assistantNavigation: destination } : data;
+}
+
 const definition = (name: string, description: string): ToolDefinition => ({
   type: 'function',
   function: {
@@ -236,12 +256,21 @@ export class ToolRegistry {
                 view === 'mine' ? 'MINE' : 'QUEUE',
                 {},
               );
-              return {
+              const data = {
                 records: (value.records ?? []).slice(0, 20),
                 hasMore: (value.records ?? []).length > 20,
                 policy:
                   'One request may contain multiple skill and credential items. A linked certificate does not automatically establish proficiency; approval decisions remain independent.',
               };
+              const onlyRecord = value.records?.length === 1 ? value.records[0] : undefined;
+              return withAssistantNavigation(
+                data,
+                onlyRecord
+                  ? view === 'mine'
+                    ? `/my-skills?submission=${encodeURIComponent(onlyRecord.id)}`
+                    : `/skill-reviews?submission=${encodeURIComponent(onlyRecord.id)}&tab=queue`
+                  : undefined,
+              );
             },
           },
         );
@@ -333,7 +362,7 @@ export class ToolRegistry {
               )
                 throw new AccessError(403, 'Review assignments changed. Refresh the queue.');
             }
-            return {
+            const data = {
               total: result.total,
               page,
               pageSize: 25,
@@ -369,6 +398,15 @@ export class ToolRegistry {
               policy:
                 'Total includes retained renewal history. Superseded records are not current holdings or renewal attention. Approved is an internal decision, not issuer verification or proof of current validity. Expiry is independent. Expires soon means within 90 days, including today. Page results are not aggregate validity counts. Reminder milestones are evaluated on notification reads; do not promise background email or scheduled delivery.',
             };
+            const onlyRecord = result.records.length === 1 ? result.records[0] : undefined;
+            return withAssistantNavigation(
+              data,
+              onlyRecord
+                ? view === 'mine'
+                  ? `/certifications?record=${encodeURIComponent(onlyRecord.id)}`
+                  : `/skill-reviews?type=certifications&certification=${encodeURIComponent(onlyRecord.id)}`
+                : undefined,
+            );
           },
         });
       }
@@ -812,7 +850,7 @@ export class ToolRegistry {
             priority: '',
             category: '',
           });
-          return {
+          const data = {
             ...result,
             items: result.items.map(r => ({
               id: r.id,
@@ -827,6 +865,11 @@ export class ToolRegistry {
             })),
             hasMore: result.page * result.pageSize < result.total,
           };
+          const first = result.items.length === 1 ? result.items[0] : undefined;
+          return withAssistantNavigation(
+            data,
+            first ? `/requests?record=${encodeURIComponent(first.id)}` : undefined,
+          );
         },
       });
 
@@ -865,30 +908,33 @@ export class ToolRegistry {
 
         read: async ({ person, args }) => {
           const d = await workflows.detail(person.id, String(args.id));
-          return {
-            record: {
-              reference: d.record.reference,
-              title: d.record.title,
-              description: d.record.description.slice(0, 600),
-              descriptionShortened: d.record.description.length > 600,
-              kind: d.record.kind,
-              status: d.record.status,
-              category: d.record.category,
-              recipient: d.record.recipientName,
-              canComment: d.record.canComment,
-              canCancel: d.record.canCancel,
-              canStart: d.record.canStart,
-              canResolve: d.record.canResolve,
-              canReassign: d.record.canReassign,
+          return withAssistantNavigation(
+            {
+              record: {
+                reference: d.record.reference,
+                title: d.record.title,
+                description: d.record.description.slice(0, 600),
+                descriptionShortened: d.record.description.length > 600,
+                kind: d.record.kind,
+                status: d.record.status,
+                category: d.record.category,
+                recipient: d.record.recipientName,
+                canComment: d.record.canComment,
+                canCancel: d.record.canCancel,
+                canStart: d.record.canStart,
+                canResolve: d.record.canResolve,
+                canReassign: d.record.canReassign,
+              },
+              events: d.events.slice(-3).map(e => ({
+                action: e.action,
+                body: e.body.slice(0, 300),
+                actor: e.actorName,
+                at: e.at,
+              })),
+              totalEvents: d.events.length,
             },
-            events: d.events.slice(-3).map(e => ({
-              action: e.action,
-              body: e.body.slice(0, 300),
-              actor: e.actorName,
-              at: e.at,
-            })),
-            totalEvents: d.events.length,
-          };
+            `/requests?record=${encodeURIComponent(String(args.id))}`,
+          );
         },
       });
 
@@ -1160,26 +1206,30 @@ export class ToolRegistry {
             claims.read(person.id, 1),
             claims.summary?.(person.id),
           ]);
-          return {
-            total: own.total,
-            summary,
-            page: own.page,
-            pageSize: own.pageSize,
-            canClaim: own.canClaim,
-            hasMore: own.total > own.pageSize,
-            policy:
-              'This preview does not measure proficiency gaps. Missing or unreviewed claims mean proficiency is not established, not low ability. Recommend development opportunities rather than inventing an evidenced gap. Presence flags describe saved fields only, not evidence quality or verification. Translate metadata into natural language; do not print internal flag names or JSON. Use actual claimedRank, never infer rank from a label or invent a maximum level. Narrative and evidence contents are excluded; do not infer that they are absent. Synthetic QA examples must not become professional achievements.',
-            skills: own.claims.map(claim => ({
-              skill: claim.skillName,
-              proficiency: claim.levelName,
-              claimedRank: claim.rank,
-              status: claim.status,
-              hasProjects: Boolean(claim.projects?.trim()),
-              hasEvidenceReferences: Boolean(claim.evidence?.trim()),
-              verification: claim.status === 'APPROVED' ? 'MANAGER_REVIEWED' : 'UNVERIFIED',
-            })),
-            source: 'My skill claims',
-          };
+          const onlyClaim = own.claims.length === 1 ? own.claims[0] : undefined;
+          return withAssistantNavigation(
+            {
+              total: own.total,
+              summary,
+              page: own.page,
+              pageSize: own.pageSize,
+              canClaim: own.canClaim,
+              hasMore: own.total > own.pageSize,
+              policy:
+                'This preview does not measure proficiency gaps. Missing or unreviewed claims mean proficiency is not established, not low ability. Recommend development opportunities rather than inventing an evidenced gap. Presence flags describe saved fields only, not evidence quality or verification. Translate metadata into natural language; do not print internal flag names or JSON. Use actual claimedRank, never infer rank from a label or invent a maximum level. Narrative and evidence contents are excluded; do not infer that they are absent. Synthetic QA examples must not become professional achievements.',
+              skills: own.claims.map(claim => ({
+                skill: claim.skillName,
+                proficiency: claim.levelName,
+                claimedRank: claim.rank,
+                status: claim.status,
+                hasProjects: Boolean(claim.projects?.trim()),
+                hasEvidenceReferences: Boolean(claim.evidence?.trim()),
+                verification: claim.status === 'APPROVED' ? 'MANAGER_REVIEWED' : 'UNVERIFIED',
+              })),
+              source: 'My skill claims',
+            },
+            onlyClaim ? `/my-skills?claim=${encodeURIComponent(onlyClaim.id)}` : undefined,
+          );
         },
       });
 
@@ -1195,18 +1245,22 @@ export class ToolRegistry {
 
         read: async ({ person }) => {
           const queue = await claims.reviews!(person.id, 1);
-          return {
-            total: queue.total,
-            page: queue.page,
-            hasMore: queue.total > queue.pageSize,
-            claims: queue.claims.slice(0, 10).map(claim => ({
-              skill: claim.skillName,
-              person: claim.personName,
-              proficiency: claim.levelName,
-              status: claim.status,
-            })),
-            source: 'Assigned skill approvals',
-          };
+          const onlyClaim = queue.claims.length === 1 ? queue.claims[0] : undefined;
+          return withAssistantNavigation(
+            {
+              total: queue.total,
+              page: queue.page,
+              hasMore: queue.total > queue.pageSize,
+              claims: queue.claims.slice(0, 10).map(claim => ({
+                skill: claim.skillName,
+                person: claim.personName,
+                proficiency: claim.levelName,
+                status: claim.status,
+              })),
+              source: 'Assigned skill approvals',
+            },
+            onlyClaim ? `/skill-reviews?claim=${encodeURIComponent(onlyClaim.id)}` : undefined,
+          );
         },
       });
 
@@ -1433,6 +1487,10 @@ export class ToolRegistry {
     const context = await check();
 
     const data = await tool!.read(context);
+    const internalData = data as Record<string, unknown>,
+      navigation = assistantRecordDestination(internalData.assistantNavigation),
+      publicData = { ...internalData };
+    delete publicData.assistantNavigation;
 
     const fresh = await check(); // Revocation during retrieval must prevent context reaching the model.
     if (name.startsWith('business_') || name === 'credential_expiry') {
@@ -1442,6 +1500,9 @@ export class ToolRegistry {
         throw new AccessError(403, 'Business scope changed during retrieval. Ask again.');
     }
 
-    return { data, source: tool!.source };
+    return {
+      data: publicData,
+      source: navigation ? { ...tool!.source, url: navigation } : tool!.source,
+    };
   }
 }

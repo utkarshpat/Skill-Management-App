@@ -631,6 +631,7 @@ export function AssistantWidget() {
         body: JSON.stringify({
           message: outgoing,
           conversationId: conversationId.current,
+          currentPage: location.pathname + location.search,
         }),
         signal: pending.signal,
       });

@@ -44,6 +44,15 @@ test('skill output offers an in-place review only when the authorized review han
   assert.doesNotMatch(allowed, /href=|Edit draft|Copy draft/);
 });
 
+test('record links retain the exact destination only when its workspace page is available', () => {
+  const page = { label: 'My skills', url: '/my-skills' };
+  const url = '/my-skills?claim=a7b7353e-601e-4f8d-a42c-9b77982363de';
+  assert.deepEqual(assistantNavigationTargets('', [{ url }], [page]), [{ ...page, url }]);
+  assert.deepEqual(assistantNavigationTargets('', [{ url }], []), []);
+  assert.equal(canonicalAssistantDestination(url + '&personId=other'), undefined);
+  assert.equal(canonicalAssistantDestination('/my-skills?claim=invalid'), undefined);
+});
+
 test('learning AI navigation requires the exact currently permitted page', () => {
   const learning = { label: 'Learning & development', url: '/learning' };
   assert.deepEqual(assistantNavigationTargets('[Learning](/learning)', [], [learning]), [learning]);

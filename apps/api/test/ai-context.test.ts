@@ -435,7 +435,7 @@ test('token metering includes tool rounds and failed attempts without exposing p
   assert.equal((recorded as { inputTokens: number | null }).inputTokens, null);
 });
 
-test('three read rounds have a tool-free final answer without allowing another action', async () => {
+test('six read rounds have a tool-free final answer without allowing another action', async () => {
   const access = await LocalAccessStore.open(),
     actor = access.snapshot().people[0].id;
   let round = 0;
@@ -443,7 +443,7 @@ test('three read rounds have a tool-free final answer without allowing another a
   const service = new AssistantService(access, undefined, {
     name: 'fixture',
     complete: async (_messages, tools) => {
-      const final = ++round === 4;
+      const final = ++round === 7;
       if (final) assert.deepEqual(tools, []);
       return final && !attemptExtra
         ? { content: 'Grounded next steps from the authorized reads.', calls: [] }
@@ -461,14 +461,67 @@ test('three read rounds have a tool-free final answer without allowing another a
   });
   const result = await service.chat(actor, { message: 'Suggest next steps from current facts' });
   assert.match(result.reply, /Grounded next steps/);
-  assert.equal(round, 4);
+  assert.equal(round, 7);
   attemptExtra = true;
   round = 0;
   await assert.rejects(
     service.chat(actor, { message: 'Suggest next steps from current facts' }),
     /focused question/,
   );
-  assert.equal(round, 4);
+  assert.equal(round, 7);
+});
+
+test('a permitted page hint preserves cross-page tools and a denied page hint is omitted', async () => {
+  const access = await LocalAccessStore.open(),
+    actor = access.snapshot().people[0].id;
+  let page: unknown;
+  const service = new AssistantService(access, undefined, {
+    name: 'fixture',
+    complete: async (messages, tools) => {
+      const context = messages[0].content.split('Effective capability context: ')[1];
+      page = JSON.parse(context).currentPage;
+      assert.ok(tools.some(tool => tool.function.name === 'own_profile'));
+      return { content: 'Profile information is available.', calls: [] };
+    },
+  });
+  await service.chat(actor, {
+    message: 'What can I see in my profile?',
+    currentPage: '/workspace?ignored=1',
+  });
+  assert.deepEqual(page, { label: 'Dashboard', url: '/workspace' });
+  await service.chat(actor, {
+    message: 'What can I see in my profile?',
+    currentPage: '/access?view=unknown',
+  });
+  assert.equal(page, undefined);
+});
+
+test('an over-budget batch returns a final answer from the reads that ran', async () => {
+  const access = await LocalAccessStore.open(),
+    actor = access.snapshot().people[0].id;
+  let rounds = 0;
+  const service = new AssistantService(access, undefined, {
+    name: 'fixture',
+    complete: async (messages, tools) => {
+      if (++rounds === 1)
+        return {
+          content: '',
+          calls: Array.from({ length: 9 }, (_, index) => ({
+            id: 'read-' + index,
+            type: 'function' as const,
+            function: { name: 'own_profile', arguments: '{}' },
+          })),
+        };
+      assert.deepEqual(tools, []);
+      const reads = messages.filter(message => message.role === 'tool');
+      assert.equal(reads.length, 9);
+      assert.equal(reads.filter(read => JSON.parse(read.content).unavailable).length, 1);
+      return { content: 'I checked the profile. One lookup could not be completed.', calls: [] };
+    },
+  });
+  const result = await service.chat(actor, { message: 'What is in my profile?' });
+  assert.match(result.reply, /One lookup could not be completed/);
+  assert.equal(rounds, 2);
 });
 
 test('oversized tool context is rejected without truncating signed provider parts or making another call', async () => {
