@@ -132,3 +132,47 @@ test('unified portfolio shows Skills, Certifications, Pending and Needs attentio
   assert.match(html, /Azure Administrator/);
   assert.match(html, /AWS Practitioner/);
 });
+
+test('unified portfolio does not double-count pending expiring certifications in Needs attention', () => {
+  const html = renderToStaticMarkup(
+    <MemoryRouter>
+      <SkillsProfileView
+        unified
+        claims={[]}
+        certificates={[
+          {
+            id: 'cert-pending-expiring',
+            revision: 1,
+            personId: 'p1',
+            name: 'Aditi',
+            employeeCode: 'E1',
+            certificationName: 'Pending Expiring Cert',
+            provider: 'Microsoft',
+            category: 'Cloud & DevOps',
+            certificationDate: '2025-01-10',
+            expiryDate: '2026-11-30',
+            credentialId: 'AZ-999',
+            credentialUrl: '',
+            notes: '',
+            status: 'SUBMITTED',
+            feedback: '',
+            canEdit: false,
+            canSubmit: false,
+            canReview: false,
+          },
+        ]}
+        certificatesToday="2026-11-23"
+        canClaim
+        canManageCertificates
+        loading={false}
+        onView={() => {}}
+        onEdit={() => {}}
+        onSubmit={() => {}}
+        onCertificate={() => {}}
+      />
+    </MemoryRouter>,
+  );
+  assert.match(html, /Pending: 1/);
+  assert.match(html, /Needs attention: 0/);
+  assert.match(html, /Needs action<span>1<\/span>/);
+});

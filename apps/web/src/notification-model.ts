@@ -53,6 +53,12 @@ export function notificationDestination(href: string | null) {
   return actions[url.pathname];
 }
 
+export function notificationUpdateMatches(event: Event, kinds: string[]) {
+  const detail = (event as CustomEvent<{ kinds?: string[] }>).detail;
+  if (!detail?.kinds) return true;
+  return detail.kinds.some(kind => kinds.includes(kind));
+}
+
 export function notificationDay(at: string, now = new Date()) {
   const date = new Date(at);
   if (!Number.isFinite(date.getTime())) return 'Earlier updates';

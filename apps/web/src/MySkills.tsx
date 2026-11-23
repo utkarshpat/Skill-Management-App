@@ -19,6 +19,7 @@ import {
 import { Link, useLocation, useNavigate } from 'react-router';
 import type { ClaimReviewDecision } from './ClaimReviewAccess';
 import { skillDateError } from './skill-dates';
+import { notificationUpdateMatches } from './notification-model';
 import { toast } from './toast';
 import {
   fetchOwnSkillProfile,
@@ -152,12 +153,15 @@ export function MySkills({
       if (recoveryRequest.current) setRecoveryRetry(value => value + 1);
       else void load();
     };
+    const refreshRemote = (event: Event) => {
+      if (notificationUpdateMatches(event, ['Skills & approvals', 'Profile & access'])) refresh();
+    };
     window.addEventListener('own-skills-updated', refresh);
-    window.addEventListener('notifications-remote-updated', refresh);
+    window.addEventListener('notifications-remote-updated', refreshRemote);
     return () => {
       profileRequests.current.abort();
       window.removeEventListener('own-skills-updated', refresh);
-      window.removeEventListener('notifications-remote-updated', refresh);
+      window.removeEventListener('notifications-remote-updated', refreshRemote);
     };
   }, []);
   useEffect(() => {

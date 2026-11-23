@@ -1,7 +1,11 @@
 import './support/phase-two';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { notificationDestination, notificationDay } from '../src/notification-model';
+import {
+  notificationDestination,
+  notificationDay,
+  notificationUpdateMatches,
+} from '../src/notification-model';
 test('notification actions target implemented internal destinations without granting workflow actions', () => {
   assert.equal(notificationDestination('/requests?record=123')?.label, 'View request');
   assert.equal(
@@ -24,7 +28,10 @@ test('notification actions target implemented internal destinations without gran
   assert.equal(notificationDestination('/profile')?.label, 'View profile');
 });
 test('combined outcomes, catalogue requests and renewal updates have distinct actionable destinations', () => {
-  assert.equal(notificationDestination('/my-skills?submission=123')?.label, 'View approval outcome');
+  assert.equal(
+    notificationDestination('/my-skills?submission=123')?.label,
+    'View approval outcome',
+  );
   assert.equal(
     notificationDestination('/skill-reviews?submission=123')?.label,
     'Open approval request',
@@ -70,4 +77,27 @@ test('announcement notifications open the scoped announcement page', () => {
   assert.equal(destination?.kind, 'Announcements');
   assert.equal(destination?.label, 'Open announcement');
   assert.equal(notificationDestination('/announcements/other'), undefined);
+});
+
+test('notificationUpdateMatches filters unrelated remote updates while keeping plain events compatible', () => {
+  assert.equal(
+    notificationUpdateMatches(new Event('notifications-remote-updated'), ['Skills & approvals']),
+    true,
+  );
+  assert.equal(
+    notificationUpdateMatches(
+      new CustomEvent('notifications-remote-updated', { detail: { kinds: ['Announcements'] } }),
+      ['Skills & approvals', 'Profile & access'],
+    ),
+    false,
+  );
+  assert.equal(
+    notificationUpdateMatches(
+      new CustomEvent('notifications-remote-updated', {
+        detail: { kinds: ['Announcements', 'Skills & approvals'] },
+      }),
+      ['Skills & approvals', 'Profile & access'],
+    ),
+    true,
+  );
 });

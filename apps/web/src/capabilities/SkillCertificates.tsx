@@ -23,6 +23,7 @@ import {
 import type { CertificationPage, CertificationRecord } from '../certifications/types';
 import { CapabilityComposer } from './DeferredCapabilityDialogs';
 import { uniqueCertificates } from './SupportingCertificates';
+import { notificationUpdateMatches } from '../notification-model';
 import { RelatedCapabilities } from './RelatedCapabilities';
 
 type CertificateContext = {
@@ -70,12 +71,15 @@ export function SkillCertificates({
   }, []);
   useEffect(() => {
     const refresh = () => setAttempt(v => v + 1);
+    const refreshRemote = (event: Event) => {
+      if (notificationUpdateMatches(event, ['Skills & approvals', 'Profile & access'])) refresh();
+    };
     window.addEventListener('own-skills-updated', refresh);
-    window.addEventListener('notifications-remote-updated', refresh);
+    window.addEventListener('notifications-remote-updated', refreshRemote);
     return () => {
       detailRequest.current?.abort();
       window.removeEventListener('own-skills-updated', refresh);
-      window.removeEventListener('notifications-remote-updated', refresh);
+      window.removeEventListener('notifications-remote-updated', refreshRemote);
     };
   }, []);
   useEffect(() => {

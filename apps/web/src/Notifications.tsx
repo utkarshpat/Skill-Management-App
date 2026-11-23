@@ -68,6 +68,8 @@ export function Notifications({ id }: { id: string }) {
     const controller = new AbortController();
     let running = false,
       signature: string | undefined,
+      previousPersonId: string | undefined,
+      previousItems = new Map<string, { raw: string; kind: string }>(),
       publishedUpdate: Event | undefined;
     const load = async () => {
       if (running || document.visibilityState === 'hidden') return;
@@ -103,11 +105,33 @@ export function Notifications({ id }: { id: string }) {
           setError('');
           if (body.partial) return false;
           const next = JSON.stringify([body.personId, body.items]);
+          const nextItems = new Map(
+            body.items.map(item => [
+              item.id,
+              {
+                raw: JSON.stringify(item),
+                kind: notificationDestination(item.href)?.kind ?? 'Other',
+              },
+            ]),
+          );
           if (signature !== undefined && signature !== next) {
-            publishedUpdate = new Event('notifications-remote-updated');
+            let detail: { kinds: string[] } | undefined;
+            if (previousPersonId === body.personId) {
+              const changed = new Set<string>();
+              for (const [itemId, entry] of nextItems) {
+                if (previousItems.get(itemId)?.raw !== entry.raw) changed.add(entry.kind);
+              }
+              for (const [itemId, entry] of previousItems) {
+                if (!nextItems.has(itemId)) changed.add(entry.kind);
+              }
+              if (changed.size) detail = { kinds: [...changed] };
+            }
+            publishedUpdate = new CustomEvent('notifications-remote-updated', { detail });
             window.dispatchEvent(publishedUpdate);
           }
           signature = next;
+          previousPersonId = body.personId;
+          previousItems = nextItems;
         }
       } catch (error) {
         if (!controller.signal.aborted) {

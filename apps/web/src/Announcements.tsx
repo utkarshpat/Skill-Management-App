@@ -111,8 +111,8 @@ export function Announcements({
         .catch(error => {
           if (!signal.aborted) {
             setFeedError(error.message);
-            onPublishAccess?.(false);
             if (error.status === 401 || error.status === 403) {
+              onPublishAccess?.(false);
               setFeed(undefined);
               setDialog(undefined);
             }

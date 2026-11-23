@@ -168,9 +168,11 @@ export function AnnouncementManager({
   const [responsePage, setResponsePage] = useState(1);
   const [clock, setClock] = useState(Date.now());
   useEffect(() => {
+    if (page !== 'list') return;
+    setClock(Date.now());
     const timer = setInterval(() => setClock(Date.now()), 30000);
     return () => clearInterval(timer);
-  }, []);
+  }, [page]);
   const [confirmClose, setConfirmClose] = useState<string>();
 
   const [localDraft, setLocalDraft] = useState<LocalAnnouncementDraft>();
@@ -292,13 +294,20 @@ export function AnnouncementManager({
   const refresh = () => setManagementAttempt(value => value + 1);
   useEffect(() => {
     let active = true;
-    setData(undefined);
     api<Management>('/manage' + (managementPage > 1 ? '?page=' + managementPage : ''))
       .then(value => {
         if (active) setData(value);
       })
       .catch(error => {
-        if (active) setError(error.message);
+        if (active) {
+          if ([401, 403].includes((error as { status?: number }).status ?? 0)) {
+            setData(undefined);
+            setResponses(undefined);
+            setReceipt(undefined);
+            setPage('list');
+          }
+          setError(error.message);
+        }
       });
     return () => {
       active = false;

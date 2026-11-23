@@ -139,6 +139,7 @@ export function UnifiedPortfolioView({
   const isSkillAttention = (claim: Claim) =>
     claim.status === 'DRAFT' || claim.status === 'CHANGES_REQUESTED' || claim.status === 'REJECTED';
   const isCertAttention = (record: CertificationRecord) => {
+    if (record.status === 'SUBMITTED') return false;
     if (
       record.status === 'DRAFT' ||
       record.status === 'CHANGES_REQUESTED' ||
@@ -258,19 +259,24 @@ export function UnifiedPortfolioView({
   const rows = filtered.slice((current - 1) * size, current * size);
   const totalAll = claims.length + activeCertificates.length;
 
-  const reset = () => {
+  const clearSubFilters = () => {
     setQuery('');
     setCategory('');
-    setStatus('');
     setRank('');
     setValidity('');
-    setStatusChip('');
     setPage(1);
+  };
+
+  const reset = () => {
+    clearSubFilters();
+    setStatus('');
+    setStatusChip('');
   };
 
   const selectType = (next: PortfolioType) => {
     setTypeFilter(next);
     setCategory('');
+    setStatus('');
     setRank('');
     setValidity('');
     setPage(1);
@@ -358,9 +364,9 @@ export function UnifiedPortfolioView({
           aria-label={`Pending: ${pendingCount}. Filter pending items`}
           aria-pressed={status === 'SUBMITTED' && !statusChip}
           onClick={() => {
+            clearSubFilters();
             setStatusChip('');
             setStatus(prev => (prev === 'SUBMITTED' ? '' : 'SUBMITTED'));
-            setPage(1);
           }}
         >
           <div>
@@ -379,9 +385,9 @@ export function UnifiedPortfolioView({
           aria-label={`Needs attention: ${attentionCount}. Filter items needing attention`}
           aria-pressed={statusChip === 'attention'}
           onClick={() => {
+            clearSubFilters();
             setStatus('');
             setStatusChip(prev => (prev === 'attention' ? '' : 'attention'));
-            setPage(1);
           }}
         >
           <div>
