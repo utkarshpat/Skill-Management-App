@@ -1,5 +1,4 @@
 import { test, expect, fixture, ids } from './browser-fixture';
-import { workflowChatShortcut } from '../apps/api/src/modules/ai/workflow-chat-policy';
 import type { Locator, Page } from '@playwright/test';
 import { commonLevels } from '../apps/web/src/proficiency';
 import { certificates } from './workforce-data';
@@ -822,7 +821,7 @@ test('red mascot stays transparent in both admin themes', async ({ page }, info)
   }
 });
 
-test('assistant: workflow scope, local coding refusal and configured deployment are displayed without code blocks', async ({
+test('assistant: workflow and deployment replies are displayed without code blocks', async ({
   page,
 }) => {
   await assistant(page);
@@ -832,10 +831,9 @@ test('assistant: workflow scope, local coding refusal and configured deployment 
     sent.push(body);
     return r.fulfill({
       json: {
-        reply: workflowChatShortcut([{ role: 'user', content: body.message }], {
-          name: 'azure',
-          deployment: 'team-deployment',
-        }),
+        reply: String(body.message).includes('factorial')
+          ? 'Main Skill Management App workflows mein madad kar sakta hoon, lekin general code generate nahi kar sakta.'
+          : 'Configured AI provider: azure. Deployment: team-deployment. Yeh server-configured deployment name hai.',
         sources: [],
         conversationId: ids.person,
         usage: { modelCalls: 0, totalTokens: 0 },
@@ -851,7 +849,7 @@ test('assistant: workflow scope, local coding refusal and configured deployment 
   ).toBeVisible();
   await input.fill('tum mujhe factorial ka js code do');
   await panel.getByRole('button', { name: 'Send AI message' }).click();
-  await expect(panel).toContainText('General coding ke liye code generate nahi kar sakta');
+  await expect(panel).toContainText('general code generate nahi kar sakta');
   await expect(panel.locator('pre')).toHaveCount(0);
   await input.fill('konsa ai model se response kr rhe ho');
   await panel.getByRole('button', { name: 'Send AI message' }).click();
