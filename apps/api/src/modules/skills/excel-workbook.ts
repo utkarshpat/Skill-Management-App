@@ -112,11 +112,31 @@ export async function readExcel(file: Buffer, sheets: readonly ExcelSheet[]) {
       if (rowNumber === 1) return;
       const values: Record<string, Cell> = {};
       sheet.columns.forEach((column, index) => {
-        const value = row.getCell(index + 1 + offset).value;
+        const cell = row.getCell(index + 1 + offset);
+        const value = cell.value;
         if (value instanceof Date && Number.isFinite(value.getTime())) {
           values[column] = value.toISOString().slice(0, 10);
         } else if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) {
           values[column] = value as Cell;
+        } else if (
+          value &&
+          typeof value === 'object' &&
+          'hyperlink' in value &&
+          typeof value.hyperlink === 'string' &&
+          typeof value.text === 'string' &&
+          // ExcelJS can present a formula's cached result as hyperlink display text.
+          !('formula' in cell.model) &&
+          !('sharedFormula' in cell.model)
+        ) {
+          values[column] = value.text;
+        } else if (
+          value &&
+          typeof value === 'object' &&
+          'richText' in value &&
+          Array.isArray(value.richText) &&
+          value.richText.every(run => typeof run?.text === 'string')
+        ) {
+          values[column] = value.richText.map(run => run.text).join('');
         } else {
           throw new AccessError(
             400,

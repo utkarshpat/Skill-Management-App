@@ -57,11 +57,39 @@ test('Excel exports preserve text identifiers and reject formula cells on upload
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(people[0].name);
   sheet.addRow(people[0].columns);
-  sheet.addRow(['007012', { formula: '1+1', result: 2 }]);
-  await assert.rejects(
-    readExcel(Buffer.from(await workbook.xlsx.writeBuffer()), people),
-    /use plain cell values/,
-  );
+  const cell = sheet.getCell('B2');
+  for (const invalid of [{ formula: '1+1', result: 2 }, { error: '#VALUE!' as const }]) {
+    cell.value = invalid;
+    await assert.rejects(
+      readExcel(Buffer.from(await workbook.xlsx.writeBuffer()), people),
+      /use plain cell values/,
+    );
+  }
+});
+
+test('Excel imports display text from email links, URL links and formatted text', async () => {
+  const columns = ['Work Email', 'Credential URL', 'Certification'];
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet('Import');
+  sheet.addRow(columns);
+  sheet.addRow([
+    { text: 'sample@example.test', hyperlink: 'mailto:other@example.test' },
+    { text: 'https://example.test/certificate', hyperlink: 'https://example.test/other' },
+    { richText: [{ font: { bold: true }, text: 'Azure' }, { text: ' Fundamentals' }] },
+  ]);
+  const result = await readExcel(Buffer.from(await workbook.xlsx.writeBuffer()), [
+    { name: 'Import', columns },
+  ]);
+  assert.deepEqual(result.Import, [
+    {
+      row: 2,
+      values: {
+        'Work Email': 'sample@example.test',
+        'Credential URL': 'https://example.test/certificate',
+        Certification: 'Azure Fundamentals',
+      },
+    },
+  ]);
 });
 
 test('Excel import requires current access and a preview for the exact workbook', async t => {

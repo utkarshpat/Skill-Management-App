@@ -123,6 +123,7 @@ test('claim HTTP distinguishes own learning, exact assigned approval, stale snap
   let evidenceEnabled = true,
     mime = 'application/pdf',
     hasFile = true;
+  let downloadError: AccessError | undefined;
   const evidence: EvidenceStore = {
     read: async () => ({
       revision: 2,
@@ -139,7 +140,10 @@ test('claim HTTP distinguishes own learning, exact assigned approval, stale snap
           ]
         : [],
     }),
-    image: async () => Buffer.from('proof'),
+    image: async () => {
+      if (downloadError) throw downloadError;
+      return Buffer.from('proof');
+    },
     upload: async (actor, record, revision, data, file) => {
       assert.equal(actor, manager);
       assert.equal(record, id);
@@ -280,6 +284,15 @@ test('claim HTTP distinguishes own learning, exact assigned approval, stale snap
     assert.equal(file.headers.get('x-content-type-options'), 'nosniff');
     assert.match(file.headers.get('content-disposition')!, /attachment/);
     assert.equal(await file.text(), 'proof');
+    for (const status of [403, 404, 503]) {
+      downloadError = new AccessError(status, 'Evidence unavailable.');
+      const response = await get(`${prefix}/${id}/evidence/${id}`);
+      assert.equal(response.status, status);
+      assert.equal(response.headers.get('content-disposition'), null);
+      assert.match(response.headers.get('content-type')!, /^application\/json\b/);
+      assert.deepEqual(await response.json(), { error: { message: 'Evidence unavailable.' } });
+    }
+    downloadError = undefined;
   }
   mime = 'text/html';
   assert.equal((await get(`/api/my-skills/${id}/evidence/${id}`)).status, 503);

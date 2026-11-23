@@ -4,7 +4,7 @@ import {
   catalogueGuidance,
   catalogueGuidanceRequest,
 } from '../apps/api/src/modules/ai/catalogue-guidance';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { commonLevels } from '../apps/web/src/proficiency';
 import { certificates } from './workforce-data';
 import { companyRecoveryPage } from '../apps/api/src/modules/identity/company-recovery-page';
@@ -35,6 +35,80 @@ async function assistant(page: Page, role: 'employee' | 'manager' | 'admin' = 'e
     }),
   );
 }
+
+async function expectClearOfLauncherAtEnd(page: Page, content: Locator) {
+  const launcher = page.getByRole('button', { name: 'Open AI assistant' });
+  await expect(launcher).toBeVisible();
+  await expect(content).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect
+    .poll(async () => {
+      const bounds = (await content.boundingBox())!;
+      return (await launcher.boundingBox())!.y - (bounds.y + bounds.height);
+    })
+    .toBeGreaterThanOrEqual(12);
+}
+
+test('workspace end content can scroll above the floating Skill Genie launcher', async ({
+  page,
+}) => {
+  await assistant(page);
+  for (const path of ['/my-skills', '/certifications']) {
+    await page.goto(path);
+    await expectClearOfLauncherAtEnd(
+      page,
+      page.getByRole('heading', { name: 'Your next step' }).locator('..'),
+    );
+
+    if (path === '/my-skills') {
+      const categories = page.getByRole('heading', { name: 'Top categories' }).locator('..');
+      await categories.getByRole('button', { name: /^Databases/ }).click();
+      await expect(page.getByLabel('Filter skill category')).toHaveValue('Databases');
+      await page.getByRole('button', { name: 'Clear skill filters' }).click();
+    } else {
+      const renewal = page.getByRole('heading', { name: 'Renewal attention' }).locator('..');
+      await renewal.getByRole('button', { name: /^Expired\b/ }).click();
+      await renewal.getByRole('button', { name: /^Expires soon\b/ }).click();
+    }
+  }
+  await page.goto('/learning');
+  const recommendations = page.locator('#learning-recommendations');
+  await expect(recommendations.getByRole('heading', { name: 'Recommended for you' })).toBeVisible();
+  await expectClearOfLauncherAtEnd(page, recommendations);
+});
+
+test('approvals can open team analytics above the floating Skill Genie launcher', async ({
+  page,
+}) => {
+  await assistant(page, 'manager');
+  await page.route('**/api/capability-submissions?view=queue', route =>
+    route.fulfill({ json: { records: [] } }),
+  );
+  await page.route('**/api/skill-reviews/team?*', route =>
+    route.fulfill({
+      json: {
+        total: 0,
+        pageSize: 25,
+        people: [],
+        skills: [],
+        certifications: [],
+        analytics: {
+          members: 0,
+          reviewed: 0,
+          pending: 0,
+          coverage: [],
+          levels: [],
+          categories: [],
+        },
+      },
+    }),
+  );
+  await page.goto('/skill-reviews');
+  const analytics = page.getByRole('button', { name: 'Explore team analytics' });
+  await expectClearOfLauncherAtEnd(page, analytics);
+  await analytics.click();
+  await expect(page).toHaveURL(/tab=analytics/);
+});
 
 test('catalogue empty search offers Genie matches and opens the authorized amendment page', async ({
   page,

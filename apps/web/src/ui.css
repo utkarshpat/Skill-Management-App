@@ -16,6 +16,11 @@
   --line: #dfe2e7;
   --accent-soft: #fff0f2;
   --accent-ink: #a41520;
+  --assistant-mascot-width: min(104px, 28vw);
+  --assistant-launcher-height: calc(var(--assistant-mascot-width) * 1.225);
+  --assistant-scroll-clearance: calc(
+    var(--assistant-launcher-height) + env(safe-area-inset-bottom, 0px) + 16px
+  );
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
@@ -1059,14 +1064,20 @@ input[type='checkbox'] {
   font: inherit;
   min-height: 42px;
 }
+html:has(.assistant-launcher:not([hidden])) {
+  scroll-padding-block-end: var(--assistant-scroll-clearance);
+}
+.admin-content .access-main {
+  padding-block-end: var(--assistant-scroll-clearance);
+}
 .assistant-launcher {
-  --mascot-width: min(104px, 28vw);
+  --mascot-width: var(--assistant-mascot-width);
   --greeting-cycle: 8s;
   position: fixed;
   right: max(18px, env(safe-area-inset-right));
   bottom: env(safe-area-inset-bottom, 0px);
   width: calc(var(--mascot-width) * 1.195);
-  height: calc(var(--mascot-width) * 1.225);
+  height: var(--assistant-launcher-height);
   padding: 0;
   border: 0;
   color: var(--ai-ink);

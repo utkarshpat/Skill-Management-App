@@ -122,20 +122,13 @@ export function registerClaimsRoutes(
         const mime = item.mimeType ?? 'image/webp';
         if (!['image/webp', 'application/pdf'].includes(mime))
           throw new AccessError(503, 'Unsupported stored evidence.');
-        res.setHeader('X-Content-Type-Options', 'nosniff');
+        const data = await dependencies.evidenceStore.image(res.locals.claimActor, claimId, fileId);
         res.setHeader(
           'Content-Disposition',
           `attachment; filename="evidence"; filename*=UTF-8''${encodeURIComponent(item.fileName ?? 'evidence.webp')}`,
         );
         res.type(mime);
-        await streamPrivateFile(
-          res,
-          await dependencies.evidenceStore.image(
-            res.locals.claimActor,
-            reviewIdentifier(req.params.claim),
-            reviewIdentifier(req.params.image),
-          ),
-        );
+        await streamPrivateFile(res, data);
       } catch (e) {
         if (e instanceof AccessError) {
           res.status(e.status).json({ error: { message: e.message } });
