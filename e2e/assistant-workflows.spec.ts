@@ -1,9 +1,5 @@
 import { test, expect, fixture, ids } from './browser-fixture';
 import { workflowChatShortcut } from '../apps/api/src/modules/ai/workflow-chat-policy';
-import {
-  catalogueGuidance,
-  catalogueGuidanceRequest,
-} from '../apps/api/src/modules/ai/catalogue-guidance';
 import type { Locator, Page } from '@playwright/test';
 import { commonLevels } from '../apps/web/src/proficiency';
 import { certificates } from './workforce-data';
@@ -127,14 +123,18 @@ test('catalogue empty search offers Genie matches and opens the authorized amend
     return route.fulfill({ json: { pages, status: { configured: true, provider: 'azure' } } });
   });
   await page.route('**/api/assistant', async route => {
-    const request = catalogueGuidanceRequest(route.request().postDataJSON().message);
-    expect(request).toEqual({ kind: 'skill', search: 'Oracle Cloud Security' });
-    const result = await catalogueGuidance(
-      request!,
-      async search => ({ skills: search === request!.search ? [] : [{ name: 'Oracle Cloud' }] }),
-      { pages, canDraftAmendment: true },
-    );
-    return route.fulfill({ json: { ...result, conversationId: ids.person } });
+    expect(route.request().postDataJSON().message).toContain('Oracle Cloud Security');
+    return route.fulfill({
+      json: {
+        reply:
+          'I did not find an exact match in the published catalogue.\n\n**Published matches**\n\n- Oracle Cloud\n\n**Next step**\n\nIf the skill is still missing, propose a catalogue amendment for review.',
+        sources: [
+          { label: 'Skill catalogue', url: '/skills' },
+          { label: 'Catalogue amendments', url: target },
+        ],
+        conversationId: ids.person,
+      },
+    });
   });
   await page.goto('/skills');
   await page.getByLabel('Search skills', { exact: true }).fill('Oracle Cloud Security');
