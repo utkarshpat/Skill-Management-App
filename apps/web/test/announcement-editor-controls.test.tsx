@@ -12,10 +12,19 @@ const { announcementStyle } =
 const { AnnouncementManager } =
   component<typeof import('../src/AnnouncementManager')>('AnnouncementManager.tsx');
 let view: Awaited<ReturnType<typeof render>> | undefined;
+let originalLocalStorage: PropertyDescriptor | undefined;
+let localStorageOverride = false;
 afterEach(async () => {
   await view?.unmount();
   view = undefined;
   mock.restoreAll();
+  if (localStorageOverride) {
+    if (originalLocalStorage)
+      Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
+    else Reflect.deleteProperty(globalThis, 'localStorage');
+    originalLocalStorage = undefined;
+    localStorageOverride = false;
+  }
 });
 after(closeBrowser);
 
@@ -37,7 +46,12 @@ test('an audience suggestion never chooses between different matching scopes or 
 });
 
 test('Skill Genie opens a prefilled signup preview without saving or replacing a local draft', async () => {
-  mock.getter(globalThis, 'localStorage', () => window.localStorage);
+  originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: window.localStorage,
+  });
+  localStorageOverride = true;
   const actorId = 'assistant-preview';
   const calls: string[] = [];
   mock.method(globalThis, 'fetch', async (input: unknown, init?: RequestInit) => {
