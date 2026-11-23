@@ -32,6 +32,7 @@ export function ReviewWorkspace({
   certificationsAllowed?: boolean;
   issuerOnly?: boolean;
 }) {
+  const [certQueueCount, setCertQueueCount] = useState(0);
   if (issuerOnly)
     return (
       <>
@@ -56,7 +57,12 @@ export function ReviewWorkspace({
       <SkillReviews
         unified
         includeCombined
-        queueContent={certificationsAllowed ? <CertificationReviewPanel view="queue" /> : undefined}
+        compactEmpty={certQueueCount > 0}
+        queueContent={
+          certificationsAllowed ? (
+            <CertificationReviewPanel view="queue" onPendingCount={setCertQueueCount} />
+          ) : undefined
+        }
         teamContent={
           certificationsAllowed ? <CertificationReviewPanel view="analytics" /> : undefined
         }
@@ -67,7 +73,13 @@ export function ReviewWorkspace({
     </Suspense>
   );
 }
-function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'recommendations' }) {
+function CertificationReviewPanel({
+  view,
+  onPendingCount,
+}: {
+  view: 'queue' | 'analytics' | 'recommendations';
+  onPendingCount?: (count: number) => void;
+}) {
   const [data, setData] = useState<CertificationPage & { requestedSearch: string }>();
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState('');
@@ -230,6 +242,10 @@ function CertificationReviewPanel({ view }: { view: 'queue' | 'analytics' | 'rec
   const showLegacyQueue = Boolean(
     error || linkError || data?.records.length || query || search || credential || opening,
   );
+  useEffect(() => {
+    if (view !== 'queue' || !onPendingCount) return;
+    onPendingCount(data?.total ?? 0);
+  }, [view, data?.total, onPendingCount]);
   const hasNext = Boolean(data && page * data.pageSize < data.total);
   if (view === 'queue' && !showLegacyQueue) return null;
 

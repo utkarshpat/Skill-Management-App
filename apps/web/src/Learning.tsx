@@ -6,15 +6,7 @@ import { createPortal } from 'react-dom';
 import { lazy, Suspense, useEffect, useState, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { learningView, learningTabSearch } from './learning-navigation';
-import {
-  CalendarDays,
-  Clock3,
-  Plus,
-  Check,
-  ArrowLeft,
-  ArrowRight,
-  Sparkles,
-} from 'lucide-react';
+import { CalendarDays, Clock3, Plus, Check, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
 import { FormDialog } from './FormDialog';
@@ -317,26 +309,36 @@ export function Learning({ actionsContainer }: { actionsContainer?: HTMLElement 
       {!state && !error && <p role="status">Loading learning…</p>}
       <section className="learning-workbench learning-home-workbench">
         <nav className="learning-tabs" aria-label="Learning views">
-          {[
-            'My learning',
-            'Learning paths',
-            'Goals',
-            'Growth journey',
-            'Recommendations',
-            'Today',
-            'Calendar',
-            'Backlog',
-          ].map(name => (
-            <button
-              key={name}
-              className="secondary-button"
-              aria-current={tab === name ? 'page' : undefined}
-              onClick={() => setTab(name)}
-            >
-              {name}
-              {name === 'Backlog' && backlog.length > 0 ? ' (' + backlog.length + ')' : ''}
-            </button>
-          ))}
+          <div className="learning-tabs-group">
+            {['My learning', 'Learning paths', 'Goals', 'Growth journey', 'Recommendations'].map(
+              name => (
+                <button
+                  key={name}
+                  className="secondary-button"
+                  aria-current={tab === name ? 'page' : undefined}
+                  onClick={() => setTab(name)}
+                >
+                  {name}
+                </button>
+              ),
+            )}
+          </div>
+          <div className="learning-tabs-group learning-tabs-schedule" aria-label="Schedule views">
+            <span className="learning-tabs-group-label" aria-hidden="true">
+              Schedule
+            </span>
+            {['Today', 'Calendar', 'Backlog'].map(name => (
+              <button
+                key={name}
+                className="secondary-button"
+                aria-current={tab === name ? 'page' : undefined}
+                onClick={() => setTab(name)}
+              >
+                {name}
+                {name === 'Backlog' && backlog.length > 0 ? ' (' + backlog.length + ')' : ''}
+              </button>
+            ))}
+          </div>
         </nav>
         {tab === 'Recommendations' && (
           <Suspense fallback={<p role="status">Loading recommendations…</p>}>

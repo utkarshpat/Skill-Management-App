@@ -123,6 +123,7 @@ export function registerClaimsRoutes(
         if (!['image/webp', 'application/pdf'].includes(mime))
           throw new AccessError(503, 'Unsupported stored evidence.');
         const data = await dependencies.evidenceStore.image(res.locals.claimActor, claimId, fileId);
+        res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader(
           'Content-Disposition',
           `attachment; filename="evidence"; filename*=UTF-8''${encodeURIComponent(item.fileName ?? 'evidence.webp')}`,

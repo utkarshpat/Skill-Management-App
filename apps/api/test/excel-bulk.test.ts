@@ -57,14 +57,20 @@ test('Excel exports preserve text identifiers and reject formula cells on upload
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(people[0].name);
   sheet.addRow(people[0].columns);
-  const cell = sheet.getCell('B2');
-  for (const invalid of [{ formula: '1+1', result: 2 }, { error: '#VALUE!' as const }]) {
-    cell.value = invalid;
-    await assert.rejects(
-      readExcel(Buffer.from(await workbook.xlsx.writeBuffer()), people),
-      /use plain cell values/,
-    );
-  }
+  sheet.addRow(['007012', { formula: '1+1', result: 2 }]);
+  await assert.rejects(
+    readExcel(Buffer.from(await workbook.xlsx.writeBuffer()), people),
+    /use plain cell values/,
+  );
+
+  const errors = new ExcelJS.Workbook();
+  const errorsSheet = errors.addWorksheet(people[0].name);
+  errorsSheet.addRow(people[0].columns);
+  errorsSheet.addRow(['007012', { error: '#VALUE!' as const }]);
+  await assert.rejects(
+    readExcel(Buffer.from(await errors.xlsx.writeBuffer()), people),
+    /use plain cell values/,
+  );
 });
 
 test('Excel imports display text from email links, URL links and formatted text', async () => {
@@ -90,6 +96,17 @@ test('Excel imports display text from email links, URL links and formatted text'
       },
     },
   ]);
+  const formatted = new ExcelJS.Workbook();
+  const formattedSheet = formatted.addWorksheet(people[0].name);
+  formattedSheet.addRow(people[0].columns);
+  formattedSheet.addRow([
+    '007013',
+    { richText: [{ text: 'Ada ' }, { text: 'Lovelace' }] },
+    { text: 'ada@example.test', hyperlink: 'mailto:ada@example.test' },
+  ]);
+  const parsedFormatted = await readExcel(Buffer.from(await formatted.xlsx.writeBuffer()), people);
+  assert.equal(parsedFormatted[people[0].name][0].values[people[0].columns[1]], 'Ada Lovelace');
+  assert.equal(parsedFormatted[people[0].name][0].values[people[0].columns[2]], 'ada@example.test');
 });
 
 test('Excel import requires current access and a preview for the exact workbook', async t => {

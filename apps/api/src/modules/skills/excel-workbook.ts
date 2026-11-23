@@ -121,9 +121,13 @@ export async function readExcel(file: Buffer, sheets: readonly ExcelSheet[]) {
         } else if (
           value &&
           typeof value === 'object' &&
+          !('formula' in value) &&
+          !('sharedFormula' in value) &&
+          !('error' in value) &&
+          'text' in value &&
+          typeof value.text === 'string' &&
           'hyperlink' in value &&
           typeof value.hyperlink === 'string' &&
-          typeof value.text === 'string' &&
           // ExcelJS can present a formula's cached result as hyperlink display text.
           !('formula' in cell.model) &&
           !('sharedFormula' in cell.model)
@@ -132,11 +136,17 @@ export async function readExcel(file: Buffer, sheets: readonly ExcelSheet[]) {
         } else if (
           value &&
           typeof value === 'object' &&
+          !('formula' in value) &&
+          !('sharedFormula' in value) &&
+          !('error' in value) &&
           'richText' in value &&
           Array.isArray(value.richText) &&
-          value.richText.every(run => typeof run?.text === 'string')
+          value.richText.every(
+            (part: unknown) =>
+              part && typeof part === 'object' && 'text' in part && typeof part.text === 'string',
+          )
         ) {
-          values[column] = value.richText.map(run => run.text).join('');
+          values[column] = value.richText.map((part: { text: string }) => part.text).join('');
         } else {
           throw new AccessError(
             400,

@@ -98,6 +98,17 @@ test('Evidence HTTP binds actor, hides blob keys and rejects anonymous, forged, 
     assert.equal(pdfRead.headers.get('content-type'), 'application/pdf');
     assert.equal(pdfRead.headers.get('x-content-type-options'), 'nosniff');
     assert.ok(pdfRead.headers.get('content-disposition')?.includes('proof.pdf'));
+
+    const originalImage = evidenceStore.image;
+    evidenceStore.image = async () => {
+      throw new AccessError(404, 'Evidence blob missing');
+    };
+    const missingRead = await fetch(url + '/' + image, { headers });
+    assert.equal(missingRead.status, 404);
+    assert.equal(missingRead.headers.get('content-disposition'), null);
+    assert.match(missingRead.headers.get('content-type') ?? '', /application\/json/);
+    assert.deepEqual(await missingRead.json(), { error: { message: 'Evidence blob missing' } });
+    evidenceStore.image = originalImage;
     assert.equal((await fetch(url.replace(claim, 'bad-id'), { headers })).status, 400);
     assert.equal(
       (
