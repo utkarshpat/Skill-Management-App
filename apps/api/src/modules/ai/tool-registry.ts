@@ -159,7 +159,7 @@ export class ToolRegistry {
           function: {
             name: 'business_people_search',
             description:
-              'Read-only people matching without creating a demand. Resolve canonical published skill and certificate IDs with business_demand_options first. Ask essential unclear requirements and summarize scope. Uses reviewed four-level skills and current approved credentials. Missing evidence is not established, not inability; availability is not assessed. eligibleTotal and total are exact, rows are a page. The app renders verified results and export actions.',
+              'Read-only people matching without creating a demand. Resolve canonical published skill and certificate IDs with business_matching_options first. Ask essential unclear requirements and summarize scope. Uses reviewed four-level skills and current approved credentials. Missing evidence is not established, not inability; availability is not assessed. eligibleTotal and total are exact, rows are a page. The app renders verified results and export actions.',
             parameters: {
               type: 'object',
               additionalProperties: false,

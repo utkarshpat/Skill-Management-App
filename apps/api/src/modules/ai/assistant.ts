@@ -94,54 +94,45 @@ function authorizedAssistantDestination(value: string, pages: { label: string; u
     if (exactPage) return { ...exactPage, url: exact };
     const page = pages.find(candidate => candidate.url === target.pathname);
     if (!page) return undefined;
+    const reviewSkillsPage = pages.find(
+      candidate => candidate.url === '/skill-reviews?type=certifications',
+    );
     const params = target.searchParams,
       isUuid = (id: string | null) =>
         Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
-    let url: string | undefined;
     if (target.pathname === '/requests' && params.size === 1 && isUuid(params.get('record')))
-      url = `/requests?record=${encodeURIComponent(params.get('record')!)}`;
-    else if (target.pathname === '/my-skills' && params.size === 1 && isUuid(params.get('claim')))
-      url = `/my-skills?claim=${encodeURIComponent(params.get('claim')!)}`;
-    else if (
-      target.pathname === '/my-skills' &&
-      params.size === 1 &&
-      isUuid(params.get('submission'))
-    )
-      url = `/my-skills?submission=${encodeURIComponent(params.get('submission')!)}`;
-    else if (
-      target.pathname === '/certifications' &&
-      params.size === 1 &&
-      isUuid(params.get('record'))
-    )
-      url = `/certifications?record=${encodeURIComponent(params.get('record')!)}`;
-    else if (
-      target.pathname === '/skill-reviews' &&
-      params.size === 1 &&
-      isUuid(params.get('claim'))
-    )
-      url = `/skill-reviews?claim=${encodeURIComponent(params.get('claim')!)}`;
-    else if (
-      target.pathname === '/skill-reviews' &&
-      params.size === 2 &&
-      params.get('tab') === 'queue' &&
-      isUuid(params.get('submission'))
-    )
-      url = `/skill-reviews?submission=${encodeURIComponent(params.get('submission')!)}&tab=queue`;
-    else if (
-      target.pathname === '/skill-reviews' &&
-      params.size === 2 &&
-      params.get('type') === 'certifications' &&
-      isUuid(params.get('certification'))
-    )
-      url = `/skill-reviews?type=certifications&certification=${encodeURIComponent(params.get('certification')!)}`;
-    else if (
-      target.pathname === '/skill-reviews' &&
-      params.size === 1 &&
-      params.get('type') === 'certifications'
-    )
-      url = '/skill-reviews?type=certifications';
-    if (!url) return undefined;
-    return { ...page, url };
+      return { ...page, url: `/requests?record=${encodeURIComponent(params.get('record')!)}` };
+    if (target.pathname === '/my-skills' && params.size === 1 && isUuid(params.get('claim')))
+      return { ...page, url: `/my-skills?claim=${encodeURIComponent(params.get('claim')!)}` };
+    if (target.pathname === '/my-skills' && params.size === 1 && isUuid(params.get('submission')))
+      return {
+        ...page,
+        url: `/my-skills?submission=${encodeURIComponent(params.get('submission')!)}`,
+      };
+    if (target.pathname === '/certifications' && params.size === 1 && isUuid(params.get('record')))
+      return {
+        ...page,
+        url: `/certifications?record=${encodeURIComponent(params.get('record')!)}`,
+      };
+    if (target.pathname === '/skill-reviews' && reviewSkillsPage) {
+      if (params.size === 1 && isUuid(params.get('claim')))
+        return { ...page, url: `/skill-reviews?claim=${encodeURIComponent(params.get('claim')!)}` };
+      if (params.size === 2 && params.get('tab') === 'queue' && isUuid(params.get('submission')))
+        return {
+          ...page,
+          url: `/skill-reviews?submission=${encodeURIComponent(params.get('submission')!)}&tab=queue`,
+        };
+      if (
+        params.size === 2 &&
+        params.get('type') === 'certifications' &&
+        isUuid(params.get('certification'))
+      )
+        return {
+          ...reviewSkillsPage,
+          url: `/skill-reviews?type=certifications&certification=${encodeURIComponent(params.get('certification')!)}`,
+        };
+    }
+    return undefined;
   } catch {
     return undefined;
   }

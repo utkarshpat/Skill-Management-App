@@ -77,6 +77,31 @@ test('assistant navigation follows current permissions and forbids actor selecto
   await assert.rejects(service.navigation(actor), /not assigned/);
 });
 
+test('issuer-only approval access cannot open direct-manager claim or certification review links', async () => {
+  const access = await LocalAccessStore.open(),
+    state = access.snapshot(),
+    actor = state.people[0].id;
+  state.roles[0].permissions = structuredClone(rolePresets[0].permissions);
+  state.people[0].issuerApprovals = true;
+  access.snapshot = () => structuredClone(state);
+  const service = new AssistantService(access, undefined, undefined);
+  const available = await service.navigation(actor);
+  assert.ok(available.pages?.some(page => page.url === '/skill-reviews'));
+  assert.ok(!available.pages?.some(page => page.url === '/skill-reviews?type=certifications'));
+  await service.navigation(actor, { destination: '/skill-reviews', action: 'open_page' });
+  const id = 'a7b7353e-601e-4f8d-a42c-9b77982363de';
+  for (const destination of [
+    '/skill-reviews?type=certifications',
+    `/skill-reviews?type=certifications&certification=${id}`,
+    `/skill-reviews?claim=${id}`,
+    `/skill-reviews?submission=${id}&tab=queue`,
+  ])
+    await assert.rejects(
+      service.navigation(actor, { destination, action: 'open_page' }),
+      /permissions/,
+    );
+});
+
 test('navigation HTTP binds verified identity and rechecks permissions at the explicit click boundary', async () => {
   const access = await LocalAccessStore.open(),
     state = access.snapshot(),

@@ -70,7 +70,7 @@ test('catalogue guidance uses the authenticated published catalogue and model-ge
     signal(),
   );
   assert.match(reply.reply, /TypeScript is an exact published catalogue skill/);
-  assert.equal(reply.usage.modelCalls, 4);
+  assert.equal(reply.usage.modelCalls, 7);
 });
 
 test('published catalogue search binds actor, projects compact fields and rejects foreign selectors', async () => {

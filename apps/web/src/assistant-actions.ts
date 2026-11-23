@@ -49,8 +49,6 @@ export function canonicalAssistantDestination(input: string): string | undefined
   const exact = path + parsed.search;
   if (exact === '/') return '/profile';
   if (exact === '/access') return '/access?view=overview';
-  if (input === '/') return '/profile';
-  if (input === '/access') return '/access?view=overview';
   if (
     [
       '/workspace',
@@ -63,7 +61,6 @@ export function canonicalAssistantDestination(input: string): string | undefined
       '/learning',
       '/requests',
       '/business',
-      '/skill-reviews?type=certifications',
     ].includes(exact)
   )
     return exact;
@@ -87,12 +84,20 @@ export function assistantNavigationTargets(
       requested.map(canonicalAssistantDestination).filter((url): url is string => Boolean(url)),
     ),
   ];
+  const hasReviewSkills = pages.some(page => page.url === '/skill-reviews?type=certifications');
+  const ownerPageUrl = (url: string) => {
+    if (url.startsWith('/skill-reviews?type=certifications&certification='))
+      return '/skill-reviews?type=certifications';
+    if (url === '/skill-reviews?type=certifications') return '/skill-reviews?type=certifications';
+    if (url.startsWith('/skill-reviews?')) return hasReviewSkills ? '/skill-reviews' : undefined;
+    return url.split('?')[0];
+  };
   return pages.flatMap(page =>
     urls
       .filter(
         url =>
           url === page.url ||
-          (url.split('?')[0] === page.url && !pages.some(item => item.url === url)),
+          (ownerPageUrl(url) === page.url && !pages.some(item => item.url === url)),
       )
       .map(url => ({ ...page, url })),
   );

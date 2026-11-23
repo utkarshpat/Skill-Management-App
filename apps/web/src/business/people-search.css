@@ -121,6 +121,10 @@
   color: #0e6f52;
   background: color-mix(in srgb, #14966e 12%, var(--surface));
 }
+:root[data-theme='dark'] .people-search-badge-ok {
+  color: #6ee7b7;
+  background: color-mix(in srgb, #14966e 22%, var(--surface));
+}
 .people-search-badge-partial {
   color: var(--muted);
   background: var(--surface);

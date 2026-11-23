@@ -411,7 +411,7 @@ test('Azure chat carries clarification context and delivers a localized announce
         assert.equal(input[8].call_id, 'call');
         if (round <= 5)
           return completed(
-            Array.from({ length: round === 5 ? 2 : 1 }, (_, index) => ({
+            Array.from({ length: round === 5 ? 6 : 1 }, (_, index) => ({
               type: 'function_call',
               call_id: `read-${round}-${index}`,
               name: 'own_profile',

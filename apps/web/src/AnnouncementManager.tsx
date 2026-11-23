@@ -520,6 +520,7 @@ export function AnnouncementManager({
         refresh();
         setNote('Announcement published for the selected schedule.');
       } else {
+        setAssistantEditing(false);
         setReceipt(undefined);
         setDraft({ ...payload(), ...saved });
         setNote('Draft saved.');

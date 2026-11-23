@@ -51,6 +51,30 @@ test('record links retain the exact destination only when its workspace page is 
   assert.deepEqual(assistantNavigationTargets('', [{ url }], []), []);
   assert.equal(canonicalAssistantDestination(url + '&personId=other'), undefined);
   assert.equal(canonicalAssistantDestination('/my-skills?claim=invalid'), undefined);
+
+  const approvals = { label: 'Approvals', url: '/skill-reviews' };
+  const certApprovals = {
+    label: 'Certification approvals',
+    url: '/skill-reviews?type=certifications',
+  };
+  const certRecord =
+    '/skill-reviews?type=certifications&certification=a7b7353e-601e-4f8d-a42c-9b77982363de';
+  const claimRecord = '/skill-reviews?claim=a7b7353e-601e-4f8d-a42c-9b77982363de';
+  assert.deepEqual(
+    assistantNavigationTargets('', [{ url: certRecord }, { url: claimRecord }], [approvals]),
+    [],
+  );
+  assert.deepEqual(
+    assistantNavigationTargets(
+      '',
+      [{ url: certRecord }, { url: claimRecord }],
+      [approvals, certApprovals],
+    ),
+    [
+      { ...approvals, url: claimRecord },
+      { ...certApprovals, url: certRecord },
+    ],
+  );
 });
 
 test('learning AI navigation requires the exact currently permitted page', () => {
