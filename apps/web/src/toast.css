@@ -9,6 +9,17 @@
   width: min(460px, calc(100vw - 32px));
   pointer-events: none;
 }
+
+/* Keep modal notifications out of the footer, where their dismiss button can
+   otherwise intercept Cancel or the primary action. */
+.form-dialog > .app-toast-stack {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  bottom: auto;
+  left: auto;
+  transform: none;
+}
 .app-toast {
   --tone: #147b70;
   display: flex;
