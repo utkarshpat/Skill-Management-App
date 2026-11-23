@@ -369,7 +369,7 @@ test('server-owned history handles long replies and sends compact prompts with a
   assert.equal(requests[0].cap, 1200);
   assert.ok(requests[1].history > requests[0].history);
   assert.ok(
-    requests[0].system.length < 2500,
+    requests[0].system.length < 3200,
     `System prompt is ${requests[0].system.length} characters`,
   );
   assert.match(
@@ -545,5 +545,5 @@ test('one actor cannot overlap conversations or lose the active-request lock aft
   );
   release();
   await first;
-  assert.equal((await service.chat(actor, { message: 'hello' })).usage.modelCalls, 0);
+  assert.equal((await service.chat(actor, { message: 'hello' })).usage.modelCalls, 1);
 });

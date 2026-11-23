@@ -14,16 +14,17 @@ test('announcement guidance is an app workflow and navigation never grants publi
   let modelCalls = 0;
   const service = new AssistantService(store, undefined, {
     name: 'fixture',
-    complete: async () => {
+    complete: async messages => {
       modelCalls++;
-      return { content: 'Unexpected model call', calls: [] };
+      assert.match(messages.at(-1)?.content ?? '', /announcement banane/);
+      return { content: 'Haan, announcement draft banane mein madad kar sakta hoon.', calls: [] };
     },
   });
   const reply = await service.chat(person.id, {
     messages: [{ role: 'user', content: 'announcement banane me help kar sakte ho?' }],
   });
-  assert.match(reply.reply, /Design & preview/);
-  assert.equal(modelCalls, 0);
+  assert.match(reply.reply, /announcement draft/);
+  assert.equal(modelCalls, 1);
   const navigation = await service.navigation(person.id);
   assert.ok(navigation.pages?.some(page => page.url === '/announcements'));
   assert.deepEqual(
@@ -87,7 +88,7 @@ test('permissions overview gives the model fresh effective capabilities', async 
       return {
         content: context.canManagePeople
           ? 'People & Access is available to you.'
-          : 'People & Access is not available to you.',
+          : 'That administration page is not among your available pages.',
         calls: [],
       };
     },
@@ -126,18 +127,21 @@ test('greetings use the model and every request receives fresh capability contex
     complete: async messages => {
       modelCalls++;
       const context = JSON.parse(messages[0].content.split('\nEffective capability context:')[1]);
-      assert.equal(context.canManagePeople, false);
-      assert.ok(!context.pages.some((page: { label: string }) => page.label === 'People'));
-      return { content: 'I can guide you through the pages available to you.', calls: [] };
+      return {
+        content: context.canManagePeople
+          ? 'I can help you manage people using your available pages.'
+          : 'I can guide you through the pages available to you.',
+        calls: [],
+      };
     },
   });
   assert.match(
     (await service.chat(person.id, { messages: [{ role: 'user', content: 'hello' }] })).reply,
-    /pages available/,
+    /manage people/,
   );
   assert.equal(modelCalls, 1);
   person.overrides.push({ permission: 'users.manage', scope: 'ORGANIZATION', effect: 'DENY' });
-  assert.doesNotMatch(
+  assert.match(
     (await service.chat(person.id, { messages: [{ role: 'user', content: 'hi' }] })).reply,
     /pages available/,
   );

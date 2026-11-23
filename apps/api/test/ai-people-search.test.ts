@@ -68,7 +68,7 @@ test('conversational matching binds actor, supplies a server-backed result query
               },
             ],
           }
-        : { content: 'No recorded matches meet these requirements.', calls: [] },
+        : { content: 'No people meet these requirements based on the current records.', calls: [] },
   };
   const service = new AssistantService(
     access,

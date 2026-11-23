@@ -17,7 +17,7 @@ const option = {
 };
 const signal = () => AbortSignal.timeout(5000);
 
-test('catalogue guidance uses the authenticated published catalogue without a model call', async () => {
+test('catalogue guidance uses the authenticated published catalogue and model-generated language', async () => {
   const access = await LocalAccessStore.open();
   const state = access.snapshot();
   state.roles[0].permissions = structuredClone(rolePresets[0].permissions);
@@ -44,7 +44,18 @@ test('catalogue guidance uses the authenticated published catalogue without a mo
     undefined,
     {
       name: 'fixture',
-      complete: async () => assert.fail('Guide uses published results directly.'),
+      complete: async (_messages, tools) => {
+        if (tools.some(tool => tool.function.name === 'catalogue_search'))
+          return {
+            content: '',
+            calls: [{
+              id: 'catalogue',
+              type: 'function' as const,
+              function: { name: 'catalogue_search', arguments: JSON.stringify({ search: 'TypeScript' }) },
+            }],
+          };
+        return { content: 'TypeScript is an exact published catalogue skill.', calls: [] };
+      },
     },
     undefined,
     undefined,
@@ -58,8 +69,8 @@ test('catalogue guidance uses the authenticated published catalogue without a mo
     },
     signal(),
   );
-  assert.match(reply.reply, /TypeScript \(exact name\)/);
-  assert.equal(reply.usage.modelCalls, 0);
+  assert.match(reply.reply, /TypeScript is an exact published catalogue skill/);
+  assert.equal(reply.usage.modelCalls, 4);
 });
 
 test('published catalogue search binds actor, projects compact fields and rejects foreign selectors', async () => {
@@ -315,6 +326,13 @@ test('skill drafts get twelve distinct reads, reuse duplicate searches and reser
       {
         name: 'fixture',
         complete: async (_messages, tools) => {
+          if (!tools.some(tool => tool.function.name === 'present_output')) {
+            assert.deepEqual(tools, []);
+            return {
+              content: 'I could not verify a published skill with that exact name. Which catalogue skill do you mean?',
+              calls: [],
+            };
+          }
           const current = round++;
           if (current < 5)
             return {
@@ -334,10 +352,7 @@ test('skill drafts get twelve distinct reads, reuse duplicate searches and reser
                 },
               })),
             };
-          assert.deepEqual(
-            tools.map(tool => tool.function.name),
-            ['present_output'],
-          );
+          assert.deepEqual(tools.map(tool => tool.function.name), ['present_output']);
           return {
             content: '',
             calls: [
@@ -384,7 +399,7 @@ test('skill drafts get twelve distinct reads, reuse duplicate searches and reser
       });
     } else {
       assert.ok(!result.artifact);
-      assert.match(result.reply, /couldn’t verify a published skill/);
+      assert.match(result.reply, /could not verify a published skill/i);
     }
   }
 });
@@ -402,6 +417,8 @@ test('a vague skill-claim follow-up gets a clarifying reply when the model reque
     {
       name: 'fixture',
       complete: async (_messages, tools) => {
+        if (!tools.length)
+          return { content: 'What’s one concrete thing you built and which tools did you use?', calls: [] };
         if (rounds++ === 0)
           return {
             content: 'Which published skill are you claiming and what did you build?',
