@@ -7,7 +7,9 @@ const announcement = '33333333-3333-4333-8333-333333333333';
 const person = { name: 'Test Employee', email: 'employee@soprasteria.com', employeeId: '710904' };
 const interval = { startsAt: '2000-01-01T00:00:00Z', endsAt: '2099-01-01T00:00:00Z' };
 
-test('publisher uploads a poster and publishes the previewed poll', async ({ page }) => {
+test('publisher uploads a poster, retries the AI design and publishes the previewed poll', async ({
+  page,
+}) => {
   await fixture(page, { role: 'admin' });
   await page.route('**/api/announcements/feed*', route =>
     route.fulfill({ json: { items: [], person, canPublish: true } }),
@@ -19,11 +21,36 @@ test('publisher uploads a poster and publishes the previewed poll', async ({ pag
         grants: [{ id: grant, kind: 'PROJECT', scopeId: scope }],
         scopes: [{ id: scope, label: 'NHS IT Projects', kind: 'PROJECT', grantId: grant }],
         items: [],
-        aiAvailable: false,
+        aiAvailable: true,
       },
     }),
   );
   let request;
+  const designRequests: string[] = [];
+  const prompt = 'Use a blue and red background with green vote buttons';
+  await page.route('**/api/announcements/design', route => {
+    designRequests.push(route.request().postDataJSON().prompt);
+    if (designRequests.length === 1)
+      return route.fulfill({ status: 422, json: { error: 'AI design did not pass validation.' } });
+    return route.fulfill({
+      json: {
+        id: '44444444-4444-4444-8444-444444444444',
+        feedback: prompt,
+        reply: 'Updated the background and vote buttons.',
+        design: {
+          format: 'sandbox-v1',
+          html: '<section class="ann-card"><h2 id="ann-title"></h2><p id="ann-message"></p><button id="ann-vote-0" type="button"></button><button id="ann-vote-1" type="button"></button></section>',
+          css: '.ann-card { background: linear-gradient(135deg, #1e3a8a, #991b1b); color: white; } button { background: #166534; color: white; }',
+          bindings: [
+            { elementId: 'ann-title', kind: 'content', key: 'title' },
+            { elementId: 'ann-message', kind: 'content', key: 'message' },
+            { elementId: 'ann-vote-0', kind: 'vote', key: '0' },
+            { elementId: 'ann-vote-1', kind: 'vote', key: '1' },
+          ],
+        },
+      },
+    });
+  });
   await page.route('**/api/announcements/draft', route => {
     request = route.request().postDataJSON();
     return route.fulfill({
@@ -66,9 +93,38 @@ test('publisher uploads a poster and publishes the previewed poll', async ({ pag
   await expect(dialog.locator('.announcement-strip img')).toHaveCount(0);
   await dialog.locator('.announcement-strip').getByRole('button', { name: 'Open poll' }).click();
   await dialog.locator('.announcement-poster').getByRole('button', { name: 'Open poll' }).click();
+  const designPrompt = dialog.getByLabel('Message the design assistant');
+  await designPrompt.fill(prompt);
+  await designPrompt.press('Enter');
+  await expect(dialog.getByRole('alert')).toContainText('You can keep using the current preview.');
+  await expect(designPrompt).toHaveValue(prompt);
   await dialog.getByRole('button', { name: 'Azure' }).click();
   await expect(dialog.getByText('Preview vote accepted. Nothing was submitted.')).toBeVisible();
-  await dialog.getByRole('button', { name: 'Publish announcement' }).click();
+  await dialog.getByRole('button', { name: 'Retry design' }).click();
+  await expect(dialog.getByText('Updated the background and vote buttons.')).toBeVisible();
+  await expect(designPrompt).toHaveValue('');
+  expect(designRequests).toEqual([prompt, prompt]);
+  const sandbox = dialog.frameLocator('iframe[title="Training topic design"]');
+  const vote = sandbox.getByRole('button', { name: 'SQL' });
+  await expect(vote).toHaveCSS('background-color', 'rgb(22, 101, 52)');
+  await expect(sandbox.locator('.ann-card')).toHaveCSS('background-image', /linear-gradient/);
+  await vote.click();
+  await expect(dialog.getByText('Preview vote accepted. Nothing was submitted.')).toBeVisible();
+  await dialog.getByText('Adjust appearance', { exact: true }).click();
+  await dialog.getByLabel('Button color').selectOption('navy');
+  await dialog.getByRole('button', { name: 'Apply appearance' }).click();
+  await expect(vote).toHaveCSS('background-color', 'rgb(24, 34, 53)');
+  await dialog.getByRole('button', { name: 'Compare previous' }).click();
+  await expect(vote).toHaveCSS('background-color', 'rgb(22, 101, 52)');
+  await expect(dialog.getByRole('button', { name: 'Save draft' })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Show current design' }).click();
+  await expect(vote).toHaveCSS('background-color', 'rgb(24, 34, 53)');
+  await dialog.getByRole('button', { name: 'Undo design change' }).click();
+  await expect(vote).toHaveCSS('background-color', 'rgb(22, 101, 52)');
+  const publish = dialog.getByRole('button', { name: 'Publish announcement' });
+  await expect(publish).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Check audience' }).click();
+  await publish.click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText('Announcement published for the selected schedule.')).toBeVisible();
   expect(request).toMatchObject({
@@ -82,9 +138,92 @@ test('publisher uploads a poster and publishes the previewed poll', async ({ pag
       popup: true,
       options: ['Azure', 'SQL'],
       exports: ['grade'],
+      selectedVersion: '44444444-4444-4444-8444-444444444444',
       audience: [{ id: scope, kind: 'PROJECT' }],
     },
   });
+});
+
+test('publisher styles a standard form with AI unavailable and saves the design', async ({
+  page,
+}) => {
+  await fixture(page, { role: 'admin' });
+  await page.route('**/api/announcements/feed*', route =>
+    route.fulfill({ json: { items: [], person, canPublish: true } }),
+  );
+  await page.route('**/api/announcements/manage', route =>
+    route.fulfill({
+      json: {
+        actorId: grant,
+        grants: [{ id: grant, kind: 'PROJECT', scopeId: scope }],
+        scopes: [{ id: scope, label: 'NHS IT Projects', kind: 'PROJECT', grantId: grant }],
+        items: [],
+        aiAvailable: false,
+      },
+    }),
+  );
+  await page.route('**/api/announcements/draft', route =>
+    route.fulfill({
+      json: route.request().postDataJSON().preview
+        ? { id: announcement, audienceCount: 12, receipt: 'fixture-receipt' }
+        : { id: announcement, revision: 1, state: 'DRAFT' },
+    }),
+  );
+  await page.goto('/announcements');
+  await page.getByRole('button', { name: 'New announcement' }).click();
+  const dialog = page.locator('dialog.announcement-manager');
+  await dialog.getByLabel('Title', { exact: true }).fill('Training registration');
+  await dialog.getByRole('button', { name: 'Add field' }).click();
+  await dialog.getByLabel('Field 1 label').fill('Preferred time');
+  await dialog.getByRole('button', { name: 'Add field' }).click();
+  await dialog.getByLabel('Field 2 label').fill('Comments');
+  await dialog.getByRole('button', { name: 'Continue to preview', exact: true }).click();
+  await dialog.getByText('Adjust appearance', { exact: true }).click();
+  await dialog.getByLabel('Background').selectOption('blue-red');
+  await dialog.getByLabel('Button color').selectOption('green');
+  await dialog.getByLabel('Spacing').selectOption('compact');
+  await dialog.getByLabel('Form layout').selectOption('two');
+  await dialog.getByRole('button', { name: 'Apply appearance' }).click();
+  const preview = dialog.getByRole('region', { name: 'Live announcement preview' });
+  await expect(preview.locator('.announcement-card')).toHaveCSS(
+    'background-image',
+    /linear-gradient/,
+  );
+  await expect(preview.locator('.announcement-card')).toHaveCSS('padding-top', '14px');
+  await expect(preview.getByRole('heading', { name: 'Training registration' })).toHaveCSS(
+    'color',
+    'rgb(255, 255, 255)',
+  );
+  const appearancePanel = await preview.locator('.announcement-appearance').boundingBox();
+  const previewStage = await preview.locator('.announcement-preview-stage').boundingBox();
+  expect(appearancePanel!.y + appearancePanel!.height).toBeLessThan(previewStage!.y);
+  await preview.getByRole('button', { name: 'Mobile' }).click();
+  const fieldPositions = async () => {
+    const first = await preview.getByRole('textbox', { name: 'Preferred time' }).boundingBox();
+    const second = await preview.getByRole('textbox', { name: 'Comments' }).boundingBox();
+    return { stacked: second!.y > first!.y, sideBySide: second!.x > first!.x };
+  };
+  await expect.poll(fieldPositions).toEqual({ stacked: true, sideBySide: false });
+  if (page.viewportSize()!.width > 800) {
+    await preview.getByRole('button', { name: 'Desktop' }).click();
+    await expect.poll(fieldPositions).toEqual({ stacked: false, sideBySide: true });
+  }
+  await expect(preview.getByRole('button', { name: 'Register' })).toHaveCSS(
+    'background-color',
+    'rgb(22, 101, 52)',
+  );
+  await preview.getByRole('button', { name: 'Register' }).click();
+  await expect(dialog.getByText('Preview response accepted. Nothing was submitted.')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Publish announcement' })).toBeDisabled();
+  const request = page.waitForRequest(request =>
+    request.url().endsWith('/api/announcements/draft'),
+  );
+  await dialog.getByRole('button', { name: 'Save draft' }).click();
+  expect((await request).postDataJSON().definition.design).toMatchObject({
+    format: 'appearance-v1',
+    appearance: { background: 'blue-red', button: 'green', spacing: 'compact', columns: 'two' },
+  });
+  await expect(dialog.getByText('Draft saved.', { exact: true })).toBeVisible();
 });
 
 test('employee opens a scoped form from the banner and submits only custom fields', async ({

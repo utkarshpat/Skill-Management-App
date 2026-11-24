@@ -1,5 +1,5 @@
 import { announcementNotifications } from './announcement-notifications.js';
-import { announcementBindings, checkAnnouncementBindings } from './announcement-sandbox.js';
+import { announcementDesignBindings, checkAnnouncementBindings } from './announcement-sandbox.js';
 import {
   announcementDesignContext,
   announcementDesignResponse,
@@ -264,7 +264,8 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
     res.json(await store.execute(actor, 'DRAFT', key, { ...payload, publish }));
   });
   app.post('/api/announcements/design', async (req, res) => {
-    if (!store.provider || !store.budget) throw new AccessError(503, 'AI design is unavailable.');
+    const { provider, budget } = store;
+    if (!provider || !budget) throw new AccessError(503, 'AI design is unavailable.');
     const input = record(req.body),
       def = definition(input.definition);
     const key = input.id ? id(input.id) : undefined;
@@ -272,7 +273,7 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
       actor = res.locals.actor as string;
     await store.execute(actor, 'DESIGN', key, { grantId });
     const prompt = text(input.prompt, 1000);
-    const release = await store.budget.acquire(actor);
+    const release = await budget.acquire(actor);
     const disconnected = new AbortController();
     const close = () => disconnected.abort();
     res.once('close', close);
@@ -281,78 +282,107 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
     const signal = AbortSignal.any([timeout, disconnected.signal]);
     const started = Date.now();
     try {
-      const result = await completeWithinBudget(
-        store.budget,
-        actor,
-        store.provider,
-        [
+      const context = announcementDesignContext(def, input.viewport);
+      const allowInlineImage = context.configuration.image.available && !def.imagePopup;
+      const designSchedule =
+        input.startsAt !== undefined && input.endsAt !== undefined
+          ? schedule(input.startsAt, input.endsAt)
+          : undefined;
+      const generate = (validationError?: string) =>
+        completeWithinBudget(
+          budget,
+          actor,
+          provider,
+          [
+            {
+              role: 'system',
+              content: announcementDesignSystemPrompt,
+            },
+            {
+              role: 'user',
+              content: JSON.stringify({
+                ...context,
+                schedule: designSchedule,
+                prompt,
+                ...(validationError
+                  ? {
+                      repair: {
+                        validationError,
+                        instruction:
+                          'Fix the validation issue and keep the requested styling. For a style change, return empty html and valid replacement CSS.',
+                      },
+                    }
+                  : {}),
+              }),
+            },
+          ],
+          [],
+          signal,
           {
-            role: 'system',
-            content: announcementDesignSystemPrompt,
+            maxOutputTokens: 6000,
+            responseSchema: announcementDesignResponse,
+            onUsage: usage =>
+              logEvent('info', 'announcements.design.usage', {
+                inputTokens: usage.inputTokens,
+                outputTokens: usage.outputTokens,
+                cachedInputTokens: usage.cachedInputTokens,
+                totalTokens: usage.totalTokens,
+              }),
           },
-          {
-            role: 'user',
-            content: JSON.stringify({
-              ...announcementDesignContext(def, input.viewport),
-              schedule:
-                input.startsAt !== undefined && input.endsAt !== undefined
-                  ? schedule(input.startsAt, input.endsAt)
-                  : undefined,
-              prompt,
-            }),
-          },
-        ],
-        [],
-        signal,
-        {
-          maxOutputTokens: 6000,
-          responseSchema: announcementDesignResponse,
-          onUsage: usage =>
-            logEvent('info', 'announcements.design.usage', {
-              inputTokens: usage.inputTokens,
-              outputTokens: usage.outputTokens,
-              cachedInputTokens: usage.cachedInputTokens,
-              totalTokens: usage.totalTokens,
-            }),
-        },
-      );
-      if (disconnected.signal.aborted) return;
-      signal.throwIfAborted();
-      await store.execute(actor, 'DESIGN', key, { grantId });
-      if (disconnected.signal.aborted) return;
-      signal.throwIfAborted();
-      if (result.calls.length) throw new AccessError(502, 'AI returned an unsupported design.');
-      let validated;
-      let reply: string;
-      try {
-        const candidate = record(
-          JSON.parse(result.content.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')),
         );
-        if (candidate.format === 'sandbox-v1') {
-          const bindings = announcementBindings(def);
-          if (input.viewport && record(input.viewport).hasImage === true) {
-            bindings.push({ elementId: 'ann-image', kind: 'image', key: 'image' });
+      let validationError: string | undefined;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const result = await generate(validationError);
+        if (disconnected.signal.aborted) return;
+        signal.throwIfAborted();
+        await store.execute(actor, 'DESIGN', key, { grantId });
+        if (disconnected.signal.aborted) return;
+        signal.throwIfAborted();
+        if (result.calls.length) throw new AccessError(502, 'AI returned an unsupported design.');
+        try {
+          const candidate = record(
+            JSON.parse(result.content.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')),
+          );
+          let validated;
+          if (candidate.format === 'sandbox-v1') {
+            const html =
+              typeof candidate.html === 'string' && !candidate.html.trim()
+                ? context.selected?.format === 'sandbox-v1'
+                  ? context.selected.html
+                  : context.starterHtml
+                : text(candidate.html, 30_000);
+            validated = design({
+              ...candidate,
+              html,
+              bindings: announcementDesignBindings(def, html, allowInlineImage),
+            });
+          } else {
+            validated = design(candidate);
           }
-          validated = design({ ...candidate, bindings });
-        } else {
-          validated = design(candidate);
+          checkAnnouncementBindings({ ...def, design: validated });
+          const reply =
+            candidate.message === undefined
+              ? 'Design updated. Try the preview, or tell me what to refine next.'
+              : text(candidate.message, 600, false);
+          logEvent('info', 'announcements.design.completed', {
+            attempt,
+            durationMs: Date.now() - started,
+          });
+          res.json({ id: randomUUID(), feedback: prompt, reply, design: validated });
+          return;
+        } catch (error) {
+          validationError =
+            error instanceof AccessError ? error.message : 'Return a valid design JSON object.';
+          logEvent('warn', 'announcements.design.invalid_output', {
+            attempt,
+            durationMs: Date.now() - started,
+          });
         }
-        checkAnnouncementBindings({ ...def, design: validated });
-        reply =
-          candidate.message === undefined
-            ? 'Design updated. Try the preview, or tell me what to refine next.'
-            : text(candidate.message, 600, false);
-      } catch {
-        logEvent('warn', 'announcements.design.invalid_output', {
-          durationMs: Date.now() - started,
-        });
-        throw new AccessError(
-          422,
-          'AI design did not pass validation. Revise the prompt and try again.',
-        );
       }
-      logEvent('info', 'announcements.design.completed', { durationMs: Date.now() - started });
-      res.json({ id: randomUUID(), feedback: prompt, reply, design: validated });
+      throw new AccessError(
+        422,
+        'AI design did not pass validation after retrying. Try describing one design change at a time.',
+      );
     } catch (error) {
       if (disconnected.signal.aborted) return;
       if (timeout.aborted) {

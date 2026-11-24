@@ -71,8 +71,8 @@
 }
 .announcement-poster {
   display: grid;
-  gap: 12px;
-  padding: clamp(14px, 3vw, 24px);
+  gap: var(--announcement-gap, 12px);
+  padding: var(--announcement-padding, clamp(14px, 3vw, 24px));
   padding-inline-end: max(44px, 3vw);
   color: var(--ink);
   background: var(--surface);
@@ -326,11 +326,84 @@
   }
 }
 
-html[data-theme] :is(.announcement-strip, .announcement-card)[style] .admin-primary {
+html[data-theme]
+  :is(.announcement-strip, .announcement-card)[style*='--announcement-button-background']
+  .admin-primary {
   background: var(--announcement-button-background, var(--announcement-accent));
   color: var(--announcement-button-color, var(--announcement-surface));
   border: 1px solid var(--announcement-button-border, transparent);
   border-radius: min(var(--announcement-radius, 12px), 16px);
+}
+:is(
+  .announcement-card,
+  .announcement-strip,
+  .announcement-poster
+)[style*='--announcement-manual-background'] {
+  background: var(--announcement-manual-background);
+  color: var(--announcement-manual-ink);
+}
+:is(.announcement-card, .announcement-poster)[style*='--announcement-manual-background'] h3 {
+  color: var(--announcement-manual-ink);
+}
+html[data-theme]
+  :is(
+    .announcement-card,
+    .announcement-strip,
+    .announcement-poster
+  )[style*='--announcement-manual-button']
+  :is(.admin-primary, .announcement-poll button) {
+  background: var(--announcement-manual-button);
+  color: #fff;
+  border-color: transparent;
+}
+.announcement-appearance {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.announcement-appearance-region {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 8px;
+}
+.announcement-appearance-region .announcement-appearance {
+  flex: 1 0 auto;
+  min-width: min(100%, 160px);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.announcement-appearance-region .announcement-appearance[open] {
+  flex-basis: 100%;
+}
+.announcement-appearance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.announcement-appearance-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.announcement-appearance summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.announcement-appearance-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr));
+  align-items: end;
+  gap: 10px;
+  margin-top: 10px;
+}
+.announcement-appearance-controls label {
+  display: grid;
+  gap: 4px;
+}
+.announcement-appearance-controls select {
+  width: 100%;
+  min-width: 0;
 }
 
 .announcement-page-cards {
@@ -702,6 +775,7 @@ html[data-theme] :is(.announcement-strip, .announcement-card)[style] .admin-prim
 .announcement-identity div {
   padding: 0.65rem 0.75rem;
   background: var(--raised);
+  color: var(--ink);
   border-radius: 8px;
   min-width: 0;
 }
@@ -798,6 +872,7 @@ html[data-theme] :is(.announcement-strip, .announcement-card)[style] .admin-prim
 }
 .announcement-preview-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   min-width: 0;
@@ -949,7 +1024,7 @@ html[data-theme] :is(.announcement-strip, .announcement-card)[style] .admin-prim
   height: 100%;
 }
 .announcement-studio-preview {
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
 }
 .announcement-studio-heading h3 {
   margin: 0 0 4px;

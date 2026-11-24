@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { authenticatedFetch } from './auth';
 import type { Definition, Person } from './announcement-model';
+import { sandboxAppearanceCss } from './announcement-appearance';
 import { useTheme } from './Theme';
 
 export function AnnouncementSandbox({
@@ -57,12 +58,13 @@ export function AnnouncementSandbox({
   };
   const render = () => {
     const value = current.current;
+    const design = value.definition.design;
     port.current?.postMessage({
       type: 'announcement.render',
       channel: channel.current,
-      html: value.definition.design?.html,
-      css: value.definition.design?.css,
-      bindings: value.definition.design?.bindings ?? [],
+      html: design?.html,
+      css: [design?.css, sandboxAppearanceCss(design?.appearance)].filter(Boolean).join('\n'),
+      bindings: design?.bindings ?? [],
       definition: {
         title: value.definition.title,
         message: value.definition.message,

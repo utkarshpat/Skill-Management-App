@@ -1,5 +1,6 @@
 import { exportFields, record, type Definition } from './announcement-definition.js';
-import { announcementBindings } from './announcement-sandbox.js';
+import { announcementBindings, checkAnnouncementBindings } from './announcement-sandbox.js';
+import { AccessError } from '../../shared/errors.js';
 
 export const announcementDesignResponse = {
   name: 'announcement_design',
@@ -18,13 +19,14 @@ export const announcementDesignResponse = {
 
 export const announcementDesignSystemPrompt = String.raw`
 You are the announcement UI designer in a two-step employee platform builder. Basic details are already configured. Design a polished, branded HTML/CSS interface, then iteratively refine it in conversation.
-You have freedom over layout, typography, spacing, gradients, cards, borders, responsive CSS and decorative elements INSIDE the sandbox. Do not use a fixed template or the old four-slot format.
+You have freedom over layout, typography, spacing, gradients, cards, borders, responsive CSS and decorative elements INSIDE the sandbox. Do not use the old four-slot format.
 The publisher sees preview left/chat right on desktop and preview above chat on phones. Design the recipient popup and response form as a single content-sized composition for 390px mobile and a desktop dialog up to 680px. Use media queries and body[data-surface="form"]. Let the content determine height. Avoid full-viewport heights, large minimum heights, fake windows, duplicate title bars and secondary close controls. The app supplies the dialog close button.
 The app renders its own compact banner with a dismiss control on the left, title/details in the middle that scroll when enabled and overflowing, and a fixed action on the right. Do not recreate the banner inside the HTML. A poll launches from the banner action and its choices belong inside the popup.
 Use system fonts, teal #126b70, navy #182235, violet #6445c2, readable contrast, clear focus states, 44px touch targets and reduced-motion support. Make a coherent designer-quality composition, not just a colored default form.
 The configured schedule is announcement visibility, not event timing. Never invent employee data, dates, counters, approvals or success claims.
 
 Return ONLY JSON: {"format":"sandbox-v1","html":"...","css":"...","message":"brief plain-text explanation"}.
+For a visual-only change such as colors, gradients, spacing or CTA styling, return an empty html string and complete replacement CSS. The server reuses a compatible selected sandbox-v1 layout or uses starterHtml. Style the existing structure and IDs. Use #ann-submit for the visible form CTA and [id^="ann-vote-"] for poll choices. A request for multiple background colors can use a CSS gradient. Keep text and controls readable.
 HTML is a body fragment (not a complete document); CSS is separate. Maximum HTML 30,000 characters, CSS 20,000, message 600, bindings 50, HTML nodes 1,000 and nesting depth 30.
 Every HTML id must be unique and start ann-, followed by ASCII letters/digits/underscores/hyphens. Include one HTML element with the exact elementId for each required item in configuration.bindings. The server builds the bindings. Decorative IDs may use ann-decoration-*; classes may use ann-*.
 Never invent field IDs or add unbound buttons/inputs/forms. Unknown mappings are rejected by the backend.
@@ -46,6 +48,90 @@ Use the selected design as the current source. Recent conversation contains comp
 Keep the HTML and CSS concise. Reuse styles across repeated controls and add decoration only where it improves the design.
 `.trim();
 
+const escapeLabel = (value: string) =>
+  value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+
+export function announcementStarterHtml(def: Definition, showImage: boolean) {
+  const heading = '<header><h2 id="ann-title"></h2><p id="ann-message"></p></header>';
+  const imageAlt = escapeLabel(def.imageAlt).replaceAll('"', '&quot;');
+  const image = showImage ? '<img id="ann-image" alt="' + imageAlt + '">' : '';
+  if (def.kind === 'POLL') {
+    const votes = def.options.map(
+      (_option, index) => '<button type="button" id="ann-vote-' + index + '"></button>',
+    );
+    return (
+      '<section class="ann-card">' +
+      heading +
+      image +
+      '<div class="ann-fields">' +
+      votes.join('') +
+      '</div></section>'
+    );
+  }
+  const identity = [
+    ['name', 'Name'],
+    ['email', 'Work email'],
+    ['employee-id', 'Employee ID'],
+  ].map(
+    ([key, label]) =>
+      '<div><label for="ann-' +
+      key +
+      '">' +
+      label +
+      '</label><output id="ann-' +
+      key +
+      '"></output></div>',
+  );
+  const fields = def.fields.map(field => {
+    const fieldId = 'ann-field-' + field.id;
+    if (field.type === 'radio') return '<fieldset id="' + fieldId + '"></fieldset>';
+    const tag =
+      field.type === 'longText'
+        ? 'textarea'
+        : ['choice', 'rating'].includes(field.type)
+          ? 'select'
+          : 'input';
+    const input =
+      tag === 'input'
+        ? '<input id="' + fieldId + '">'
+        : '<' + tag + ' id="' + fieldId + '"></' + tag + '>';
+    return (
+      '<div><label for="' +
+      fieldId +
+      '">' +
+      escapeLabel(field.label) +
+      '</label>' +
+      input +
+      '</div>'
+    );
+  });
+  const action = escapeLabel(def.cta);
+  return (
+    '<section class="ann-card">' +
+    heading +
+    image +
+    '<button type="button" id="ann-open">' +
+    action +
+    '</button><form id="ann-form"><div class="ann-fields">' +
+    [...identity, ...fields].join('') +
+    '</div><button type="submit" id="ann-submit">' +
+    action +
+    '</button></form></section>'
+  );
+}
+
+function compatibleSelectedDesign(def: Definition, showInlineImage: boolean) {
+  const selected = def.design;
+  if (selected?.format !== 'sandbox-v1') return selected;
+  if (!showInlineImage && selected.bindings?.some(binding => binding.kind === 'image')) return;
+  try {
+    checkAnnouncementBindings(def);
+    return selected;
+  } catch (error) {
+    if (!(error instanceof AccessError)) throw error;
+  }
+}
+
 export function announcementDesignContext(def: Definition, value: unknown) {
   const viewport = record(value);
   const focus =
@@ -58,8 +144,12 @@ export function announcementDesignContext(def: Definition, value: unknown) {
     typeof viewport.height === 'number' && Number.isInteger(viewport.height)
       ? Math.min(2160, Math.max(480, viewport.height))
       : 900;
+  const showInlineImage = viewport.hasImage === true && !def.imagePopup;
+  const compatible = compatibleSelectedDesign(def, showInlineImage);
+  const selected = compatible?.format === 'appearance-v1' ? undefined : compatible;
   return {
     useCase: def.useCase,
+    starterHtml: announcementStarterHtml(def, showInlineImage),
     configuration: {
       kind: def.kind,
       bindings: announcementBindings(def),
@@ -67,6 +157,7 @@ export function announcementDesignContext(def: Definition, value: unknown) {
       message: def.message,
       cta: def.cta,
       fields: def.fields,
+      appearance: compatible?.appearance,
       pollOptions: def.options,
       identityFields: ['Name', 'Work Email', 'Employee ID'],
       identityMode: 'prefilled-read-only',
@@ -119,12 +210,12 @@ export function announcementDesignContext(def: Definition, value: unknown) {
             failure: 'keep-options-available-for-retry',
             responseCollection: 'publisher-review-and-authorized-excel-export',
           },
-    selected: def.design
+    selected: selected
       ? {
-          format: def.design.format,
-          html: def.design.html,
-          css: def.design.css,
-          bindings: def.design.bindings,
+          format: selected.format,
+          html: selected.html,
+          css: selected.css,
+          bindings: selected.bindings,
         }
       : undefined,
     recentConversation: def.versions.slice(-5).map(version => ({

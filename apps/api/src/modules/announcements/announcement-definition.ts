@@ -17,6 +17,25 @@ export function canonicalExportFields(fields: readonly (keyof typeof exportField
 const scopeKinds = ['DELIVERY_UNIT', 'PORTFOLIO', 'DEPARTMENT', 'PROJECT'] as const;
 const fieldTypes = ['text', 'longText', 'choice', 'radio', 'checkbox', 'date', 'rating'] as const;
 const slots = ['title', 'message', 'image', 'action'] as const;
+const appearanceOptions = {
+  background: ['teal', 'blue-red', 'neutral'],
+  button: ['teal', 'green', 'navy'],
+  spacing: ['compact', 'comfortable'],
+  columns: ['one', 'two'],
+} as const;
+const legacyDesignTokens = {
+  color: '#126b70',
+  background: '#f7f8f6',
+  align: 'left',
+  layout: 'stack',
+  formLayout: 'single',
+  density: 'comfortable',
+  buttonWidth: 'content',
+  visualStyle: 'clean',
+  headingScale: 'balanced',
+  cornerStyle: 'soft',
+  buttonStyle: 'solid',
+};
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const fieldId = /^[\w-]{1,36}$/;
 
@@ -67,9 +86,37 @@ export function schedule(start: unknown, end: unknown) {
 
 export function design(value: unknown) {
   const candidate = record(value);
+  const appearance = candidate.appearance === undefined ? undefined : record(candidate.appearance);
+  if (appearance !== undefined) {
+    requireValue(
+      candidate.appearance === appearance &&
+        Object.entries(appearance).every(
+          ([key, value]) =>
+            Object.hasOwn(appearanceOptions, key) &&
+            (
+              appearanceOptions[key as keyof typeof appearanceOptions] as readonly unknown[]
+            ).includes(value),
+        ),
+      'Choose supported announcement appearance options.',
+    );
+  }
+  const styling = appearance === undefined ? {} : { appearance };
+  if (candidate.format === 'appearance-v1') {
+    requireValue(appearance, 'Choose announcement appearance options.');
+    return {
+      ...styling,
+      format: 'appearance-v1' as const,
+      order: [...slots],
+      html: '',
+      css: '',
+      ...legacyDesignTokens,
+      bindings: undefined,
+    };
+  }
   if (candidate.format === 'sandbox-v1' || candidate.bindings !== undefined) {
     return {
       ...sandboxDesign(candidate),
+      ...styling,
       order: [],
       color: '#126b70',
       background: '#ffffff',
@@ -96,19 +143,7 @@ export function design(value: unknown) {
   requireValue(new Set(order).size === slots.length, 'Use each design slot exactly once.');
   const style = /^section\s*\{([^{}]+)\}$/.exec(css);
   requireValue(style, 'Design CSS must use one section rule.');
-  const tokens = {
-    color: '#126b70',
-    background: '#f7f8f6',
-    align: 'left',
-    layout: 'stack',
-    formLayout: 'single',
-    density: 'comfortable',
-    buttonWidth: 'content',
-    visualStyle: 'clean',
-    headingScale: 'balanced',
-    cornerStyle: 'soft',
-    buttonStyle: 'solid',
-  };
+  const tokens = { ...legacyDesignTokens };
   const seen = new Set();
   for (const line of style[1]
     .split(';')
@@ -140,11 +175,12 @@ export function design(value: unknown) {
     } else throw new AccessError(400, 'Design CSS contains an unsupported declaration.');
   }
   return {
+    ...styling,
     html,
     css,
     order,
     ...tokens,
-    format: undefined as 'sandbox-v1' | undefined,
+    format: undefined as 'sandbox-v1' | 'appearance-v1' | undefined,
     bindings: undefined as DesignBinding[] | undefined,
   };
 }

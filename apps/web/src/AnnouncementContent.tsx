@@ -10,42 +10,58 @@ import { Pause, Play, X } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { endpoint, type Definition, type Person } from './announcement-model';
 import { AnnouncementSandbox } from './AnnouncementSandbox';
+import { appearanceValues } from './announcement-appearance';
 
 const slots = ['title', 'message', 'image', 'action'];
 
 export function announcementStyle({ design }: Definition) {
-  return design
-    ? ({
-        '--announcement-accent': design.color,
-        '--announcement-surface': design.background,
-        textAlign: design.align,
-        '--announcement-form-columns':
-          design.formLayout === 'two-column'
-            ? 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))'
-            : 'minmax(0, 1fr)',
-        '--announcement-gap': design.density === 'compact' ? '8px' : '14px',
-        '--announcement-padding': design.density === 'compact' ? '14px' : '24px',
-        '--announcement-button-width': design.buttonWidth === 'full' ? '100%' : 'auto',
-        '--announcement-radius':
-          design.cornerStyle === 'rounded'
-            ? '24px'
-            : design.cornerStyle === 'square'
-              ? '4px'
-              : '12px',
-        '--announcement-title-size':
-          design.headingScale === 'hero'
-            ? '1.85rem'
-            : design.headingScale === 'compact'
-              ? '1.15rem'
-              : '1.45rem',
-        '--announcement-button-background':
-          design.buttonStyle === 'outline' ? 'transparent' : design.color,
-        '--announcement-button-color':
-          design.buttonStyle === 'outline' ? design.color : design.background,
-        '--announcement-button-border':
-          design.buttonStyle === 'outline' ? design.color : 'transparent',
-      } as CSSProperties)
-    : undefined;
+  if (!design) return;
+  const appearance = design.appearance && appearanceValues(design.appearance);
+  return {
+    ...(design.format !== 'appearance-v1' && {
+      '--announcement-accent': design.color,
+      '--announcement-surface': design.background,
+      textAlign: design.align,
+      '--announcement-form-columns':
+        design.formLayout === 'two-column'
+          ? 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))'
+          : 'minmax(0, 1fr)',
+      '--announcement-gap': design.density === 'compact' ? '8px' : '14px',
+      '--announcement-padding': design.density === 'compact' ? '14px' : '24px',
+      '--announcement-button-width': design.buttonWidth === 'full' ? '100%' : 'auto',
+      '--announcement-radius':
+        design.cornerStyle === 'rounded'
+          ? '24px'
+          : design.cornerStyle === 'square'
+            ? '4px'
+            : '12px',
+      '--announcement-title-size':
+        design.headingScale === 'hero'
+          ? '1.85rem'
+          : design.headingScale === 'compact'
+            ? '1.15rem'
+            : '1.45rem',
+      '--announcement-button-background':
+        design.buttonStyle === 'outline' ? 'transparent' : design.color,
+      '--announcement-button-color':
+        design.buttonStyle === 'outline' ? design.color : design.background,
+      '--announcement-button-border':
+        design.buttonStyle === 'outline' ? design.color : 'transparent',
+    }),
+    '--announcement-manual-background': appearance?.background?.fill,
+    '--announcement-manual-ink': appearance?.background?.ink,
+    '--announcement-manual-button': appearance?.button?.fill,
+    ...(appearance?.space && {
+      '--announcement-gap': appearance.space.gap,
+      '--announcement-padding': appearance.space.padding,
+    }),
+    ...(appearance?.columns && {
+      '--announcement-form-columns':
+        appearance.columns === 'two'
+          ? 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))'
+          : 'minmax(0, 1fr)',
+    }),
+  } as CSSProperties;
 }
 
 export function AnnouncementBannerContent({
@@ -152,7 +168,10 @@ export function AnnouncementPoster({
   }, [image, protectedImage]);
   const source = protectedImage ? (loaded?.source === image ? loaded.url : undefined) : image;
   return (
-    <section className="announcement-poster">
+    <section
+      className="announcement-poster"
+      style={definition.design?.appearance ? announcementStyle(definition) : undefined}
+    >
       <h3>{definition.title}</h3>
       {source && <img src={source} alt={definition.imageAlt} />}
       {!source && loaded?.source === image && <p role="status">Image unavailable.</p>}

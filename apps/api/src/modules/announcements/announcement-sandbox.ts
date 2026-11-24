@@ -37,6 +37,24 @@ export function announcementBindings(def: Configuration): DesignBinding[] {
         }))),
   ] as DesignBinding[];
 }
+export function announcementDesignBindings(def: Configuration, html: string, allowImage: boolean) {
+  const bindings = announcementBindings(def);
+  if (!allowImage || html.length > 30_000) return bindings;
+  const pending = [...parseFragment(html).childNodes];
+  while (pending.length) {
+    const node = pending.pop()!;
+    if (!('tagName' in node)) continue;
+    if (
+      node.tagName === 'img' &&
+      node.attrs.some(attr => attr.name === 'id' && attr.value === 'ann-image')
+    ) {
+      bindings.push({ elementId: 'ann-image', kind: 'image', key: 'image' });
+      break;
+    }
+    pending.push(...node.childNodes);
+  }
+  return bindings;
+}
 const tags = new Set(
   'div span section main article header footer nav aside h1 h2 h3 h4 h5 h6 p strong em b i u s small sup sub blockquote ul ol li dl dt dd figure figcaption img table caption thead tbody tfoot tr th td colgroup col br hr label input output textarea select option optgroup button form fieldset legend details summary'.split(
     ' ',

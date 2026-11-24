@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Monitor,
   Smartphone,
+  Undo2,
 } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
@@ -41,12 +42,14 @@ import {
   exportColumns,
   fields,
   type AnswerField,
+  type Appearance,
   type Draft,
   type JournalEntry,
   type Management,
   type Definition,
   type Version,
 } from './announcement-model';
+import { backgrounds, buttons, columns, spacing } from './announcement-appearance';
 
 const empty: Definition = {
   kind: 'FORM',
@@ -91,6 +94,68 @@ function announcementSchedule(start: string, end: string) {
   return { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() };
 }
 const sample = { name: 'Preview Employee', email: 'employee@example.com', employeeId: '000001' };
+const standardDesign = {
+  format: 'appearance-v1',
+  order: ['title', 'message', 'image', 'action'],
+  color: '#126b70',
+  background: '#ffffff',
+  align: 'left',
+  layout: 'stack',
+  html: '',
+  css: '',
+} as const;
+
+function AppearanceControls({
+  current,
+  allowColumns,
+  busy,
+  onApply,
+}: {
+  current?: Appearance;
+  allowColumns: boolean;
+  busy: boolean;
+  onApply: (appearance: Appearance) => void;
+}) {
+  const [values, setValues] = useState<Appearance>(current ?? {});
+  const controls = [
+    ['background', 'Background', backgrounds],
+    ['button', 'Button color', buttons],
+    ['spacing', 'Spacing', spacing],
+    ...(allowColumns ? ([['columns', 'Form layout', columns]] as const) : []),
+  ] as const;
+  return (
+    <div className="announcement-appearance-controls">
+      {controls.map(([name, label, options]) => (
+        <label key={name}>
+          {label}
+          <select
+            disabled={busy}
+            value={values[name] ?? ''}
+            onChange={event => {
+              const selection = event.target.value;
+              setValues(previous => ({ ...previous, [name]: selection || undefined }));
+            }}
+          >
+            <option value="">Design default</option>
+            {Object.entries(options).map(([key, option]) => (
+              <option key={key} value={key}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+      <button
+        type="button"
+        className="secondary-button"
+        disabled={busy || controls.every(([name]) => values[name] === current?.[name])}
+        onClick={() => onApply(values)}
+      >
+        Apply appearance
+      </button>
+    </div>
+  );
+}
 async function api<T>(url: string, data?: object) {
   return readApiResponse<T>(
     await authenticatedFetch(
@@ -131,6 +196,13 @@ export function AnnouncementManager({
   const handledTicket = useRef<string | undefined>(undefined);
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 700px)').matches);
   const [designing, setDesigning] = useState(false);
+  const [designUndo, setDesignUndo] = useState<(string | undefined)[]>([]);
+  const [showPreviousDesign, setShowPreviousDesign] = useState(false);
+  const comparing = showPreviousDesign && designUndo.length > 0;
+  const previousVersion = definition.versions.find(version => version.id === designUndo.at(-1));
+  const previewDefinition = comparing
+    ? { ...definition, selectedVersion: previousVersion?.id, design: previousVersion?.design }
+    : definition;
   const [designError, setDesignError] = useState('');
   const previewPane = useRef<HTMLDivElement>(null);
   const conversation = useRef<HTMLDivElement>(null);
@@ -278,6 +350,8 @@ export function AnnouncementManager({
           : undefined,
       );
       setAssistantEditing(false);
+      setDesignUndo([]);
+      setShowPreviousDesign(false);
       setGrantId(localDraft.grantId);
       setDefinition(withCanonicalExportFields(localDraft.definition));
       setStart(localDraft.start);
@@ -388,24 +462,63 @@ export function AnnouncementManager({
       setPage('list');
       refresh();
     });
-  const update = (changes: Partial<Definition>) =>
+  const update = (changes: Partial<Definition>) => {
+    const changesControls = changes.fields || changes.options || changes.kind;
+    if (changesControls) {
+      setDesignUndo([]);
+      setShowPreviousDesign(false);
+    }
     setDefinition(previous => ({
       ...previous,
       ...changes,
-      ...(changes.fields || changes.options || changes.kind
+      ...(changesControls && previous.design?.format !== 'appearance-v1'
         ? { selectedVersion: undefined, design: undefined }
         : {}),
     }));
-  const selectVersion = (version?: Version) =>
+  };
+  const selectVersion = (version?: Version, versions = definition.versions) => {
+    if (version?.id === definition.selectedVersion) return;
+    setShowPreviousDesign(false);
+    setDesignUndo(previous =>
+      [...previous, definition.selectedVersion]
+        .filter(id => !id || versions.some(entry => entry.id === id))
+        .slice(-15),
+    );
     update({
+      versions,
       selectedVersion: version?.id,
       design: version?.design,
     });
+    setNote('Design updated. Check the audience again before publishing.');
+  };
+  const addVersion = (version: Version) =>
+    selectVersion(version, [...definition.versions.slice(-14), version]);
+  const undoDesign = () => {
+    setShowPreviousDesign(false);
+    setDesignUndo(history => history.slice(0, -1));
+    update({ selectedVersion: previousVersion?.id, design: previousVersion?.design });
+    setNote('Previous design restored. Check the audience again before publishing.');
+  };
+  const applyAppearance = (appearance: Appearance) => {
+    addVersion({
+      id: crypto.randomUUID(),
+      feedback: 'Appearance adjusted',
+      design: {
+        ...standardDesign,
+        order: [...standardDesign.order],
+        ...definition.design,
+        appearance: Object.fromEntries(Object.entries(appearance).filter(([, value]) => value)),
+      },
+    });
+    setPreviewView('form');
+  };
   const columns = orderAudienceScopes(
     data?.scopes.filter(scope => scope.grantId === grantId) ?? [],
   );
   const configure = (entry?: Draft, copy = false) => {
     setAssistantEditing(false);
+    setDesignUndo([]);
+    setShowPreviousDesign(false);
     setError('');
     setDesignError('');
     setNote('');
@@ -553,13 +666,8 @@ export function AnnouncementManager({
         },
         definition: { ...definition, designViewport: 'both', image: undefined },
       });
-      update({
-        versions: [...definition.versions.slice(-14), version],
-        selectedVersion: version.id,
-        design: version.design,
-      });
+      addVersion(version);
       setPrompt('');
-      setNote('Design updated. Try it in the preview or continue refining.');
     } catch (error) {
       if ([401, 403].includes((error as { status?: number }).status ?? 0)) throw error;
       setDesignError((error as Error).message);
@@ -1020,6 +1128,7 @@ export function AnnouncementManager({
                       className="secondary-button"
                       disabled={busy}
                       onClick={() => {
+                        setShowPreviousDesign(false);
                         setPage('edit');
                         setNote('');
                       }}
@@ -1044,7 +1153,7 @@ export function AnnouncementManager({
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={busy}
+                  disabled={busy || comparing}
                   onClick={() => void save('draft')}
                 >
                   Save draft
@@ -1056,14 +1165,16 @@ export function AnnouncementManager({
                     disabled={busy}
                     onClick={() => void continueToDesign()}
                   >
-                    {definition.imagePopup ? 'Continue to preview' : 'Continue to AI design'}
+                    {definition.imagePopup || !data?.aiAvailable
+                      ? 'Continue to preview'
+                      : 'Continue to AI design'}
                   </button>
                 ) : (
                   <>
                     <button
                       type="button"
                       className="secondary-button"
-                      disabled={busy}
+                      disabled={busy || comparing}
                       onClick={() => void save('preview')}
                     >
                       Check audience
@@ -1071,7 +1182,7 @@ export function AnnouncementManager({
                     <button
                       type="button"
                       className="admin-primary"
-                      disabled={busy || !receipt || !audienceCount}
+                      disabled={busy || comparing || !receipt || !audienceCount}
                       onClick={() => void save('publish')}
                     >
                       {Date.parse(start) > Date.now()
@@ -1572,17 +1683,60 @@ export function AnnouncementManager({
                     </button>
                   </nav>
                 </div>
+                <div className="announcement-appearance-region">
+                  <details className="announcement-appearance">
+                    <summary>Adjust appearance</summary>
+                    <AppearanceControls
+                      key={definition.selectedVersion ?? 'default'}
+                      current={definition.design?.appearance}
+                      allowColumns={
+                        definition.kind === 'FORM' && definition.design?.format !== 'sandbox-v1'
+                      }
+                      busy={busy || comparing}
+                      onApply={applyAppearance}
+                    />
+                    {definition.kind === 'FORM' && definition.design?.format === 'sandbox-v1' && (
+                      <p className="announcement-note">The AI design controls the form columns.</p>
+                    )}
+                  </details>
+                  {designUndo.length > 0 && (
+                    <div className="announcement-appearance-actions">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={busy}
+                        onClick={() => setShowPreviousDesign(value => !value)}
+                      >
+                        {comparing ? 'Show current design' : 'Compare previous'}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={busy}
+                        onClick={undoDesign}
+                      >
+                        <Undo2 size={16} aria-hidden="true" />
+                        Undo design change
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className={'announcement-preview-stage' + (mobile ? ' is-mobile' : '')}>
                   <div className="announcement-preview-topbar">
                     <span>Skill Management App</span>
-                    <small>{mobile ? 'Mobile' : 'Desktop'} · Preview</small>
+                    <small>
+                      {mobile ? 'Mobile' : 'Desktop'} · {comparing ? 'Previous design' : 'Preview'}
+                    </small>
                   </div>
                   {previewView === 'banner' ? (
                     <>
                       {!previewBannerDismissed && (
-                        <div className="announcement-strip" style={announcementStyle(definition)}>
+                        <div
+                          className="announcement-strip"
+                          style={announcementStyle(previewDefinition)}
+                        >
                           <AnnouncementBannerContent
-                            definition={definition}
+                            definition={previewDefinition}
                             onDismiss={() => setPreviewBannerDismissed(true)}
                             action={
                               <button
@@ -1621,13 +1775,13 @@ export function AnnouncementManager({
                       <div className="announcement-preview-window">
                         {previewView === 'popup' && definition.imagePopup && previewAsset ? (
                           <AnnouncementPoster
-                            definition={definition}
+                            definition={previewDefinition}
                             image={previewAsset}
                             onOpen={() => setPreviewView('form')}
                           />
                         ) : (
                           <AnnouncementCard
-                            definition={definition}
+                            definition={previewDefinition}
                             person={sample}
                             onSubmit={() =>
                               setNote('Preview response accepted. Nothing was submitted.')
@@ -1645,7 +1799,7 @@ export function AnnouncementManager({
                                 />
                               ) : previewView === 'form' || previewForm ? (
                                 <AnnouncementForm
-                                  definition={definition}
+                                  definition={previewDefinition}
                                   person={sample}
                                   onSubmit={() =>
                                     setNote('Preview response accepted. Nothing was submitted.')
@@ -1698,16 +1852,23 @@ export function AnnouncementManager({
                   </div>
                   {definition.versions.map((version, index) => (
                     <div className="announcement-chat-turn" key={version.id}>
-                      <div className="announcement-chat-message is-user">
-                        <strong>You</strong>
-                        <p>{version.feedback}</p>
-                      </div>
+                      {!version.design.appearance && (
+                        <div className="announcement-chat-message is-user">
+                          <strong>You</strong>
+                          <p>{version.feedback}</p>
+                        </div>
+                      )}
                       <div className="announcement-chat-message is-assistant">
-                        <strong>Design assistant - version {index + 1}</strong>
-                        <p>
-                          {version.reply ||
-                            'Design updated. Try the preview or tell me what to refine next.'}
-                        </p>
+                        <strong>
+                          {version.design.appearance ? 'Appearance adjusted' : 'Design assistant'} -
+                          version {index + 1}
+                        </strong>
+                        {!version.design.appearance && (
+                          <p>
+                            {version.reply ||
+                              'Design updated. Try the preview or tell me what to refine next.'}
+                          </p>
+                        )}
                         <button
                           type="button"
                           className="secondary-button"
@@ -1829,15 +1990,18 @@ export function AnnouncementManager({
                       <button
                         type="button"
                         className="secondary-button"
-                        onClick={() =>
+                        disabled={busy}
+                        onClick={() => {
+                          setDesignUndo([]);
+                          setShowPreviousDesign(false);
                           update({
                             versions: definition.versions.filter(
                               version => version.id !== definition.selectedVersion,
                             ),
                             selectedVersion: undefined,
                             design: undefined,
-                          })
-                        }
+                          });
+                        }}
                       >
                         Discard selected design
                       </button>

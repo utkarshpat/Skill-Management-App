@@ -211,6 +211,43 @@ test('designs compile only trusted slots and style tokens, and answers reject fo
   );
 });
 
+test('manual appearance round-trips through the selected design and rejects unsupported options', () => {
+  const appearance = {
+    background: 'blue-red',
+    button: 'green',
+    spacing: 'compact',
+    columns: 'two',
+  };
+  const selected = definition({
+    ...dev,
+    versions: [
+      {
+        id: actor,
+        feedback: 'Appearance adjusted',
+        design: { format: 'appearance-v1', appearance },
+      },
+    ],
+    selectedVersion: actor,
+  });
+  assert.deepEqual(selected.design?.appearance, appearance);
+  assert.deepEqual(selected.design?.order, ['title', 'message', 'image', 'action']);
+  assert.deepEqual(announcementDesignContext(selected, {}).configuration.appearance, appearance);
+  assert.equal(announcementDesignContext(selected, {}).selected, undefined);
+  assert.deepEqual(design({ html, css, appearance }).appearance, appearance);
+  for (const invalid of [
+    { button: 'red' },
+    { background: 3 },
+    { extra: 'green' },
+    ['green'],
+    null,
+  ]) {
+    assert.throws(
+      () => design({ format: 'appearance-v1', appearance: invalid }),
+      /Choose supported announcement appearance options/,
+    );
+  }
+});
+
 test('forms with a missing bound control fail with a validation error', () => {
   assert.throws(
     () =>
@@ -283,6 +320,9 @@ test('publish is bound to a scoped preview and AI receives selected design and r
   let aiInput = '';
   let aiMessage: string | undefined = 'I used a clear layout and a connected registration action.';
   let useSandbox = false;
+  let styleOnly = false;
+  const blueRedGreen =
+    '.ann-card { background: linear-gradient(135deg, #1e3a8a, #991b1b); color: white; } #ann-submit { background: #166534; color: white; }';
   registerWithPreviewKey(
     app,
     {
@@ -302,6 +342,18 @@ test('publish is bound to a scoped preview and AI receives selected design and r
           complete: async (messages, _tools, _signal, options) => {
             aiInput = String(messages[1].content);
             assert.deepEqual(options?.responseSchema, announcementDesignResponse);
+            if (styleOnly) {
+              const context = JSON.parse(aiInput);
+              return {
+                content: JSON.stringify({
+                  format: 'sandbox-v1',
+                  html: context.repair ? '' : '<p id="ann-title"></p>',
+                  css: blueRedGreen,
+                  message: 'Updated the background and registration button.',
+                }),
+                calls: [],
+              };
+            }
             if (useSandbox)
               return {
                 content: JSON.stringify({
@@ -382,6 +434,17 @@ test('publish is bound to a scoped preview and AI receives selected design and r
       publish: true,
     });
     assert.equal(changed.status, 409);
+    const recolored = await post('draft', {
+      ...initial,
+      definition: {
+        ...updated,
+        versions: [{ ...version, design: { ...version.design, appearance: { button: 'green' } } }],
+      },
+      id,
+      receipt,
+      publish: true,
+    });
+    assert.equal(recolored.status, 409);
     assert.equal(operations.includes('DRAFT'), false);
     const published = await post('draft', {
       ...initial,
@@ -416,6 +479,22 @@ test('publish is bound to a scoped preview and AI receives selected design and r
         kind: 'field',
         key: 'batch',
       },
+    );
+    styleOnly = true;
+    const themed = await post('design', {
+      ...initial,
+      definition: { ...dev, imagePopup: true },
+      viewport: { hasImage: true },
+      prompt: 'add blue red bg theme and green cta vutton',
+    });
+    assert.equal(themed.status, 200);
+    const themedDesign = (await themed.json()).design;
+    assert.equal(themedDesign.css, blueRedGreen);
+    assert.match(themedDesign.html, /<button type="submit" id="ann-submit">[^<]+<\/button>/);
+    assert.ok(!themedDesign.bindings.some((binding: { kind: string }) => binding.kind === 'image'));
+    assert.equal(
+      JSON.parse(aiInput).repair.validationError,
+      'A design binding points to a missing element.',
     );
   } finally {
     await new Promise<void>((resolve, reject) =>
@@ -453,6 +532,232 @@ test('poll context preserves configured vote actions and clamps viewport metadat
     announcementDesignContext(config, { previewWidth: Number.NaN }).viewport.currentPreviewWidth,
     680,
   );
+});
+
+test('AI design variations keep configured controls and validate every result before delivery', async t => {
+  const app = express();
+  app.use(express.json());
+  const attempts: { starterHtml: string; repair?: { validationError: string } }[] = [];
+  const operations: string[] = [];
+  let responseHtml = '';
+  let responseCss = '';
+  let repairCss: string | undefined;
+  let reservations = 0;
+  let settlements = 0;
+  let releases = 0;
+  let denyAfterCall = Number.POSITIVE_INFINITY;
+  let limit = Number.POSITIVE_INFINITY;
+  registerWithPreviewKey(
+    app,
+    {
+      verify: async () => ({ tenantId: grant, objectId: actor, workEmail: 'employee@example.com' }),
+      resolveAccess: async () => actor,
+      announcements: {
+        execute: async <T>(_actor: string, operation: string): Promise<T> => {
+          operations.push(operation);
+          if (attempts.length >= denyAfterCall) throw new AccessError(403, 'Access changed.');
+          return { ok: true } as T;
+        },
+        provider: {
+          name: 'fixture',
+          complete: async messages => {
+            attempts.push(JSON.parse(String(messages[1].content)));
+            return {
+              content: JSON.stringify({
+                format: 'sandbox-v1',
+                html: responseHtml,
+                css: attempts.length === 2 ? (repairCss ?? responseCss) : responseCss,
+                message: 'The design is ready to preview.',
+              }),
+              calls: [],
+            };
+          },
+        },
+        budget: {
+          acquire: async () => async () => {
+            releases++;
+          },
+          reserveTokens: async (_actor, estimate) => {
+            assert.ok(estimate > 0);
+            if (++reservations > limit)
+              throw new AccessError(429, 'Daily AI token budget reached.');
+            return async actual => {
+              assert.ok(actual > 0);
+              settlements++;
+            };
+          },
+        },
+      },
+    },
+    'fixture-preview-key',
+  );
+  const errors: ErrorRequestHandler = (error, _req, res, _next) => {
+    res.status(error.status ?? 500).json({ error: error.message });
+  };
+  app.use(errors);
+  const server = app.listen(0, '127.0.0.1');
+  try {
+    await once(server, 'listening');
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const post = async (input: object, viewport = { hasImage: false, width: 390 }) => {
+      attempts.length = operations.length = reservations = settlements = releases = 0;
+      const response = await fetch(
+        'http://127.0.0.1:' + address.port + '/api/announcements/design',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            grantId: grant,
+            definition: input,
+            viewport,
+            prompt: 'Refine the design',
+          }),
+        },
+      );
+      return { status: response.status, body: await response.json() };
+    };
+
+    await t.test(
+      'a CSS-only mobile design connects all seven field types and the inline image',
+      async () => {
+        const fields = Object.entries({
+          text: 'input',
+          longText: 'textarea',
+          choice: 'select',
+          radio: 'fieldset',
+          checkbox: 'input',
+          date: 'input',
+          rating: 'select',
+        });
+        responseCss = '@media (max-width: 480px) { .ann-fields { display: grid; gap: 8px; } }';
+        const result = await post(
+          {
+            ...dev,
+            cta: 'Register & join',
+            imageAlt: 'Poster "preview"',
+            fields: fields.map(([type]) => ({
+              id: type,
+              type,
+              label: 'Question <b> & ' + type,
+              required: true,
+              options: ['A', 'B'],
+            })),
+          },
+          { hasImage: true, width: 390 },
+        );
+        assert.equal(result.status, 200);
+        assert.equal(result.body.design.css, responseCss);
+        for (const [type, tag] of fields)
+          assert.match(
+            result.body.design.html,
+            new RegExp('<' + tag + ' id="ann-field-' + type + '"'),
+          );
+        assert.match(result.body.design.html, /Question &lt;b&gt; &amp; text/);
+        assert.match(result.body.design.html, /id="ann-submit">Register &amp; join/);
+        assert.match(result.body.design.html, /alt="Poster &quot;preview&quot;"/);
+        assert.deepEqual(result.body.design.bindings.at(-1), {
+          elementId: 'ann-image',
+          kind: 'image',
+          key: 'image',
+        });
+        assert.equal(attempts.length, 1);
+        assert.equal(settlements, 1);
+      },
+    );
+
+    await t.test(
+      'an existing layout survives a CSS-only edit and may omit an optional image',
+      async () => {
+        responseHtml = announcementDesignContext(definition(dev), {}).starterHtml.replace(
+          '<header>',
+          '<header class="ann-custom-header">',
+        );
+        const first = await post(dev, { hasImage: true, width: 1280 });
+        assert.equal(first.status, 200);
+        const updated = { ...dev, versions: [first.body], selectedVersion: first.body.id };
+        responseHtml = '';
+        responseCss = '.ann-custom-header { background: navy; color: white; }';
+        const current = await post(updated, { hasImage: true, width: 1280 });
+        assert.equal(current.status, 200);
+        assert.equal(current.body.design.html, first.body.design.html);
+        assert.equal(current.body.design.css, responseCss);
+        assert.deepEqual(current.body.design.bindings, first.body.design.bindings);
+        assert.ok(
+          !current.body.design.bindings.some(
+            (binding: { kind: string }) => binding.kind === 'image',
+          ),
+        );
+        assert.equal(attempts.length, 1);
+
+        const revised = await post({ ...updated, fields: [{ ...dev.fields[0], type: 'radio' }] });
+        assert.equal(revised.status, 200);
+        assert.match(revised.body.design.html, /<fieldset id="ann-field-batch">/);
+        assert.equal(attempts.length, 1);
+      },
+    );
+
+    await t.test('poll keeps three configured votes and a poster stays app-managed', async () => {
+      const poll = { ...dev, kind: 'POLL', options: ['Azure', 'SQL', 'Both'] };
+      const first = await post(poll, { hasImage: true, width: 1280 });
+      assert.equal(first.status, 200);
+      assert.match(first.body.design.html, /id="ann-image"/);
+      responseCss = '[id^="ann-vote-"] { background: teal; color: white; }';
+      const result = await post(
+        {
+          ...poll,
+          imagePopup: true,
+          versions: [first.body],
+          selectedVersion: first.body.id,
+        },
+        { hasImage: true, width: 390 },
+      );
+      assert.equal(result.status, 200);
+      assert.doesNotMatch(result.body.design.html, /ann-image|ann-form|ann-submit/);
+      assert.deepEqual(
+        result.body.design.bindings.slice(2).map((binding: { key: string }) => binding.key),
+        ['0', '1', '2'],
+      );
+      assert.equal(attempts.length, 1);
+    });
+
+    await t.test(
+      'invalid CSS, revoked access, and exhausted retry budget return no design',
+      async () => {
+        responseCss = '.ann-card {';
+        const invalid = await post(dev);
+        assert.equal(invalid.status, 422);
+        assert.equal(invalid.body.design, undefined);
+        assert.equal(attempts.length, 2);
+        assert.ok(attempts[1].repair?.validationError);
+        assert.equal(settlements, 2);
+        assert.equal(releases, 1);
+        assert.deepEqual(operations, ['DESIGN', 'DESIGN', 'DESIGN']);
+
+        denyAfterCall = 2;
+        repairCss = '.ann-card { color: teal; }';
+        const revoked = await post(dev);
+        assert.equal(revoked.status, 403);
+        assert.equal(revoked.body.design, undefined);
+        assert.equal(attempts.length, 2);
+        assert.equal(releases, 1);
+
+        denyAfterCall = Number.POSITIVE_INFINITY;
+        limit = 1;
+        const exhausted = await post(dev);
+        assert.equal(exhausted.status, 429);
+        assert.equal(exhausted.body.design, undefined);
+        assert.equal(reservations, 2);
+        assert.equal(settlements, 1);
+        assert.equal(attempts.length, 1);
+        assert.equal(releases, 1);
+      },
+    );
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close(error => (error ? reject(error) : resolve())),
+    );
+  }
 });
 
 test('notification delivery uses only the authenticated actor active feed and isolates outages', async () => {

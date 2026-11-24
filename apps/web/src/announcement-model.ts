@@ -27,8 +27,15 @@ export interface Scope {
   id: string;
   kind: string;
 }
+export interface Appearance {
+  background?: 'teal' | 'blue-red' | 'neutral';
+  button?: 'teal' | 'green' | 'navy';
+  spacing?: 'compact' | 'comfortable';
+  columns?: 'one' | 'two';
+}
 export interface Design {
-  format?: 'sandbox-v1';
+  format?: 'sandbox-v1' | 'appearance-v1';
+  appearance?: Appearance;
   bindings?: { elementId: string; kind: string; key: string }[];
   order: string[];
   color: string;

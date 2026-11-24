@@ -88,7 +88,7 @@ test('older expired announcements can be republished as a separate previewed ann
   await expect(editor.getByRole('textbox', { name: 'Message', exact: true })).toHaveValue(
     'Original content',
   );
-  await editor.getByRole('button', { name: 'Continue to AI design', exact: true }).click();
+  await editor.getByRole('button', { name: 'Continue to preview', exact: true }).click();
   await editor.getByRole('button', { name: 'Publish announcement' }).click();
   expect(saves[0]).not.toHaveProperty('id');
   expect(saves[0].revision).toBe(0);

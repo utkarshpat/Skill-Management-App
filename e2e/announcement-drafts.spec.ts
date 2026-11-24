@@ -114,7 +114,7 @@ test('audience hierarchy, local draft recovery and banner/popup preview remain c
   );
   await editor.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(
-    editor.getByText('Design updated. Try it in the preview or continue refining.'),
+    editor.getByText('Design updated. Check the audience again before publishing.'),
   ).toBeVisible();
   expect(designContext).toMatchObject({
     definition: { useCase: 'TRAINING', designViewport: 'both' },
