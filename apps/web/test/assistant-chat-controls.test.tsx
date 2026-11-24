@@ -53,7 +53,7 @@ const navigation = () => ({
   pages: grants ? [{ label: 'Requests', url: '/requests' }] : [],
   canReviewOwnSkill: false,
   canManageLearning: grants,
-  canDraftDemand: grants,
+  canDraftAnnouncement: grants,
   canDraftAmendment: grants,
   status: { configured, provider: 'azure', mode: 'workflows' },
   suggestions: [
@@ -93,7 +93,6 @@ beforeEach(async () => {
     }
     if (url === '/api/workflows/options')
       return Response.json({ canRequest: false, canIncident: false });
-    if (url === '/api/announcements/feed?pending=1') return Response.json({ canPublish: grants });
     if (url === '/api/assistant/navigation')
       return navigationFailure ? Response.json({}, { status: 403 }) : Response.json(navigation());
     if (url === '/api/assistant/conversations')
@@ -292,7 +291,7 @@ test('assistant page action rechecks current permission and never navigates afte
   assert.match(document.body.textContent!, /Your chat stays here/);
 });
 
-test('assistant announcement action refuses revoked access and opens the prefilled route when allowed', async () => {
+test('assistant announcement action requires publishing access and rechecks it on click', async () => {
   await mount();
   artifact = {
     kind: 'announcement_draft',
@@ -305,6 +304,14 @@ test('assistant announcement action refuses revoked access and opens the prefill
   };
   await change(input(), 'ha to banao preview');
   await click('Send AI message');
+  assert.doesNotMatch(document.body.textContent!, /Open announcement draft/);
+  await view?.unmount();
+  view = undefined;
+  grants = true;
+  await mount();
+  await change(input(), 'ha to banao preview');
+  await click('Send AI message');
+  grants = false;
   await click('Open announcement draft');
   assert.equal(location().pathname, '/');
   assert.match(document.body.textContent!, /current access does not allow creating announcements/);
@@ -346,24 +353,26 @@ test('assistant learning handoff requires the same current actor and remains an 
   assert.equal(actions.length, 0);
 });
 
-test('business draft handoffs recheck revoked access and preserve demand versus catalogue destinations', async () => {
+test('only catalogue draft handoffs are available and current access is rechecked', async () => {
   for (const kind of ['amendment_draft', 'demand_draft'] as const) {
     await view?.unmount();
     view = undefined;
     grants = true;
     await mount();
     await replyWith(kind);
+    if (kind === 'demand_draft') {
+      assert.doesNotMatch(document.body.textContent!, /Preview business draft/);
+      assert.equal(location().pathname, '/');
+      continue;
+    }
     grants = false;
     await click('Preview business draft');
     assert.equal(location().pathname, '/');
     assert.match(document.body.textContent!, /current access does not allow/);
     grants = true;
     await click('Preview business draft');
-    assert.equal(location().pathname, kind === 'amendment_draft' ? '/skills' : '/business');
-    assert.equal(
-      location().searchParams.get('tab'),
-      kind === 'amendment_draft' ? 'amendments' : 'demand',
-    );
+    assert.equal(location().pathname, '/skills');
+    assert.equal(location().searchParams.get('tab'), 'amendments');
     const ticket = location().searchParams.get('draftTicket')!;
     assert.equal(businessDraftHandoff.take('aditi', ticket)?.kind, kind);
     assert.equal(businessDraftHandoff.take('aditi', ticket), undefined);

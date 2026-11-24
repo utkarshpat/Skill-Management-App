@@ -771,7 +771,7 @@ test('business AI separates aggregate facts from paginated people and cannot ove
 });
 
 test('business AI produces only human-review drafts and never invokes writes', async () => {
-  const runDraft = async (kind: 'amendment_draft' | 'demand_draft') => {
+  for (const kind of ['amendment_draft', 'demand_draft'] as const) {
     const s = state(),
       access: AccessStore = {
         snapshot: () => structuredClone(s),
@@ -780,7 +780,7 @@ test('business AI produces only human-review drafts and never invokes writes', a
           throw Error('No writes');
         },
       };
-    return new AssistantService(access, undefined, {
+    const reply = new AssistantService(access, undefined, {
       name: 'synthetic',
       complete: async () => ({
         content: '',
@@ -805,11 +805,14 @@ test('business AI produces only human-review drafts and never invokes writes', a
     }).chat(actor, {
       messages: [{ role: 'user', content: 'Prepare a ' + kind.replace('_', ' ') }],
     });
-  };
-  const amendment = await runDraft('amendment_draft');
-  assert.equal(amendment.artifact?.kind, 'amendment_draft');
-  assert.equal(amendment.mode, 'read-only');
-  await assert.rejects(runDraft('demand_draft'), /do not allow this workflow draft/);
+    if (kind === 'demand_draft') {
+      await assert.rejects(reply, { status: 403 });
+      continue;
+    }
+    const result = await reply;
+    assert.equal(result.artifact?.kind, kind);
+    assert.equal(result.mode, 'read-only');
+  }
 });
 test('business AI discards a reply when scope membership changes while permission remains allowed', async () => {
   const s = state(),

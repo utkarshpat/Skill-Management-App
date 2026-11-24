@@ -1151,10 +1151,6 @@ html[data-theme] :is(.assistant-mascot, .assistant-side-genie) img {
   bottom: 0;
   width: var(--mascot-width);
 }
-.assistant-mascot-body,
-.assistant-mascot-shell {
-  filter: url('/brand/assistant-shell-red.svg#shell-red');
-}
 /* Two crops of the same sprite overlap slightly beneath the head along the neck. */
 .assistant-mascot-body {
   clip-path: polygon(
@@ -1191,10 +1187,6 @@ html[data-theme] :is(.assistant-mascot, .assistant-side-genie) img {
 .assistant-mascot-head img {
   inset: 0;
   width: 100%;
-}
-.assistant-mascot-face {
-  /* Keep the original eyes and smile inside the recolored helmet. */
-  mask-image: radial-gradient(ellipse 26% 20% at 58% 47%, black 77%, transparent 100%);
 }
 .assistant-mascot-brand {
   position: absolute;

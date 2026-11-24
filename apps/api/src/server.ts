@@ -111,6 +111,9 @@ const business = process.env.ACCESS_ACCOUNT_ID
   : undefined;
 const provider = configuredProvider(process.env),
   aiBudget = access ? new SqlAiBudget(process.env.ACCESS_ACCOUNT_ID!) : undefined;
+const announcements = process.env.ACCESS_ACCOUNT_ID
+  ? new SqlAnnouncements(process.env.ACCESS_ACCOUNT_ID, provider, aiBudget)
+  : undefined;
 const capabilitySubmissions = process.env.ACCESS_ACCOUNT_ID
   ? new SqlCapabilitySubmissionStore(process.env.ACCESS_ACCOUNT_ID, fileStorage)
   : undefined;
@@ -150,6 +153,15 @@ const assistant = access
       certifications,
       organization?.ownOrganization.bind(organization),
       capabilitySubmissions,
+      announcements
+        ? async actor =>
+            (
+              await announcements.execute<{ canPublish: boolean }>(actor, 'FEED', undefined, {
+                page: 1,
+                pending: true,
+              })
+            ).canPublish === true
+        : undefined,
     )
   : undefined;
 const learningGenerator: QuizGenerator | undefined = assistant
@@ -196,9 +208,7 @@ const app = createApp(
     excelBulk: process.env.ACCESS_ACCOUNT_ID
       ? new SqlExcelBulkData(process.env.ACCESS_ACCOUNT_ID)
       : undefined,
-    announcements: process.env.ACCESS_ACCOUNT_ID
-      ? new SqlAnnouncements(process.env.ACCESS_ACCOUNT_ID, provider, aiBudget)
-      : undefined,
+    announcements,
     claims,
     certifications,
     capabilitySubmissions,

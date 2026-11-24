@@ -2,8 +2,7 @@ import { readActorAccess } from '../access/index.js';
 import content from './content.generated.js';
 import { AccessError } from '../../shared/errors.js';
 import { can, type AccessStore } from '../access/index.js';
-import type { Provider, Message } from '../ai/index.js';
-import type { AiBudget } from '../ai/index.js';
+import { completeWithinBudget, type Provider, type Message, type AiBudget } from '../ai/index.js';
 
 interface GuideInput {
   question: string;
@@ -172,7 +171,17 @@ export class KnowledgeTransferService {
       ];
       if (Buffer.byteLength(JSON.stringify(messages), 'utf8') > 28000)
         throw new AccessError(422, 'Ask a narrower project question.');
-      const answer = await this.provider.complete(messages, [], signal, { maxOutputTokens: 1400 });
+      const answer = await completeWithinBudget(
+        this.budget,
+        actor,
+        this.provider,
+        messages,
+        [],
+        signal,
+        {
+          maxOutputTokens: 1400,
+        },
+      );
       signal.throwIfAborted();
       await this.authorize(actor);
       if (answer.calls.length || !answer.content.trim() || answer.content.length > 12000)

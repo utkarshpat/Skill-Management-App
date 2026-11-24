@@ -36,7 +36,7 @@ const RequestComposer = lazy(() =>
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
-  sources?: { label: string; url: string }[];
+  sources?: { label: string; url?: string }[];
   artifact?: Artifact;
   peopleSearch?: { query: PeopleQuery };
 }
@@ -84,7 +84,7 @@ export function AssistantWidget() {
     pages: AssistantPage[];
     canReviewOwnSkill: boolean;
     canManageLearning?: boolean;
-    canDraftDemand?: boolean;
+    canDraftAnnouncement?: boolean;
     canDraftAmendment?: boolean;
     suggestions?: { label: string; destination: string; prompt: string }[];
   }>({ pages: [], canReviewOwnSkill: false });
@@ -96,20 +96,16 @@ export function AssistantWidget() {
     const pending = new AbortController();
     actionController.current = pending;
     try {
-      const [current, feed] = await Promise.all([
-        authenticatedFetch('/api/assistant/navigation', { signal: pending.signal }).then(response =>
-          readApiResponse<{ actorId?: string }>(response, 'Could not verify workspace identity.'),
-        ),
-        authenticatedFetch('/api/announcements/feed?pending=1', { signal: pending.signal }).then(
-          response =>
-            readApiResponse<{ canPublish: boolean }>(
-              response,
-              'Could not check announcement access.',
-            ),
-        ),
-      ]);
+      const current = await readApiResponse<{ actorId?: string; canDraftAnnouncement?: boolean }>(
+        await authenticatedFetch('/api/assistant/navigation', { signal: pending.signal }),
+        'Could not verify announcement access.',
+      );
       if (pending.signal.aborted) return;
-      if (!current.actorId || current.actorId !== navigation.actorId || !feed.canPublish)
+      if (
+        !current.actorId ||
+        current.actorId !== navigation.actorId ||
+        !current.canDraftAnnouncement
+      )
         throw Error('Your current access does not allow creating announcements.');
       const ticket = announcementDraftHandoff.offer(current.actorId, draft);
       collapse();
@@ -125,7 +121,7 @@ export function AssistantWidget() {
     }
   }
   async function reviewBusiness(draft: BusinessDraft) {
-    if (actionBusy || busy || historyBusy) return;
+    if (draft.kind !== 'amendment_draft' || actionBusy || busy || historyBusy) return;
     setActionBusy(true);
     setError('');
     const pending = new AbortController();
@@ -136,19 +132,11 @@ export function AssistantWidget() {
         }),
         current = await response.json();
       if (pending.signal.aborted) return;
-      if (
-        !response.ok ||
-        current.actorId !== navigation.actorId ||
-        !(draft.kind === 'amendment_draft' ? current.canDraftAmendment : current.canDraftDemand)
-      )
+      if (!response.ok || current.actorId !== navigation.actorId || !current.canDraftAmendment)
         throw Error('Your current access does not allow this business draft.');
       const ticket = businessDraftHandoff.offer(current.actorId, draft);
       collapse();
-      navigate(
-        (draft.kind === 'amendment_draft' ? '/skills?tab=amendments' : '/business?tab=demand') +
-          '&draftTicket=' +
-          encodeURIComponent(ticket),
-      );
+      navigate('/skills?tab=amendments&draftTicket=' + encodeURIComponent(ticket));
     } catch (e) {
       if (!pending.signal.aborted) setError((e as Error).message);
     } finally {
@@ -686,13 +674,12 @@ export function AssistantWidget() {
           <span className="assistant-greeting-text">May I help you?</span>
         </span>
         <span className="assistant-mascot" aria-hidden="true">
-          <img className="assistant-mascot-body" src="/brand/assistant-robot.webp" alt="" />
+          <img className="assistant-mascot-body" src="/brand/assistant-robot-red.webp" alt="" />
           <span className="assistant-mascot-head">
-            <img className="assistant-mascot-shell" src="/brand/assistant-robot.webp" alt="" />
-            <img className="assistant-mascot-face" src="/brand/assistant-robot.webp" alt="" />
+            <img src="/brand/assistant-robot-red.webp" alt="" />
           </span>
           <span className="assistant-mascot-brand">
-            <img src="/brand/skill-genie-logo.png" alt="" />
+            <img src="/brand/skill-genie-badge.webp" alt="" />
           </span>
           <img className="assistant-mascot-hand" src="/brand/assistant-robot-hand.webp" alt="" />
         </span>
@@ -870,15 +857,15 @@ export function AssistantWidget() {
                         : undefined
                     }
                     onReviewBusiness={
-                      (
-                        message.artifact.kind === 'amendment_draft'
-                          ? navigation.canDraftAmendment
-                          : navigation.canDraftDemand
-                      )
+                      message.artifact.kind === 'amendment_draft' && navigation.canDraftAmendment
                         ? draft => void reviewBusiness(draft)
                         : undefined
                     }
-                    onReviewAnnouncement={draft => void reviewAnnouncement(draft)}
+                    onReviewAnnouncement={
+                      navigation.canDraftAnnouncement
+                        ? draft => void reviewAnnouncement(draft)
+                        : undefined
+                    }
                     onReviewRequest={draft => void reviewRequest(draft)}
                     onReviewPlan={
                       navigation.canManageLearning === true

@@ -1,6 +1,6 @@
 {
   "version": "2026-11-20",
-  "revision": "ea67a0f946eb3b6e",
+  "revision": "e9917195fbe453a2",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -120,7 +120,8 @@
       "115_optional_approval_feedback.sql",
       "116_readable_activity_records.sql",
       "117_employee_excel_import.sql",
-      "118_skill_staleness_reminders.sql"
+      "118_skill_staleness_reminders.sql",
+      "119_ai_token_budgets.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -7313,6 +7314,99 @@
         ],
         "indexes": [],
         "domain": "Skills & claims"
+      },
+      "AiDailyTokenBudget": {
+        "source": "119_ai_token_budgets.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "119_ai_token_budgets.sql"
+          },
+          "budget_day": {
+            "type": "date",
+            "nullable": false,
+            "declaration": "budget_day date NOT NULL",
+            "source": "119_ai_token_budgets.sql"
+          },
+          "actor_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "actor_id uniqueidentifier NOT NULL",
+            "source": "119_ai_token_budgets.sql"
+          },
+          "tokens": {
+            "type": "bigint",
+            "nullable": false,
+            "declaration": "tokens bigint NOT NULL CHECK (tokens >= 0)",
+            "source": "119_ai_token_budgets.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "budget_day",
+          "actor_id"
+        ],
+        "unique": [],
+        "fks": [],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id, budget_day, actor_id)",
+            "source": "119_ai_token_budgets.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "AI & budget"
+      },
+      "AiTokenReservation": {
+        "source": "119_ai_token_budgets.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL",
+            "source": "119_ai_token_budgets.sql"
+          },
+          "reservation_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "reservation_id uniqueidentifier NOT NULL",
+            "source": "119_ai_token_budgets.sql"
+          },
+          "actor_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "actor_id uniqueidentifier NOT NULL",
+            "source": "119_ai_token_budgets.sql"
+          },
+          "budget_day": {
+            "type": "date",
+            "nullable": false,
+            "declaration": "budget_day date NOT NULL",
+            "source": "119_ai_token_budgets.sql"
+          },
+          "tokens": {
+            "type": "bigint",
+            "nullable": false,
+            "declaration": "tokens bigint NOT NULL CHECK (tokens > 0)",
+            "source": "119_ai_token_budgets.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "reservation_id"
+        ],
+        "unique": [],
+        "fks": [],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY(account_id, reservation_id)",
+            "source": "119_ai_token_budgets.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "AI & budget"
       }
     },
     "views": {
@@ -8767,6 +8861,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@page int=1",
       "source": "database/migrations/118_skill_staleness_reminders.sql"
+    },
+    {
+      "name": "AiTokenBudget",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier, @actor_id uniqueidentifier, @reservation_id uniqueidentifier,\n @operation varchar(8), @tokens bigint, @actor_limit int, @account_limit int",
+      "source": "database/migrations/119_ai_token_budgets.sql"
     }
   ],
   "groups": {
@@ -8855,7 +8955,9 @@
     "AI & budget": [
       "AiConversation",
       "AiAccountBudget",
-      "AiActorBudget"
+      "AiActorBudget",
+      "AiDailyTokenBudget",
+      "AiTokenReservation"
     ],
     "Private files": [
       "PrivateFileCounter",

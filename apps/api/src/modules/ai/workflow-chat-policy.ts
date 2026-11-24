@@ -9,7 +9,11 @@ export function announcementDraftInstructions(history: Pick<Message, 'role' | 'c
 }
 
 export function hasUnsupportedCodeOutput(content: string) {
-  return /```|(?:^|\n)\s*(?:function\s+\w+\s*\(|(?:const|let|var)\s+\w+\s*=|SELECT\s+.+\s+FROM\s+)/m.test(
-    content,
-  );
+  const fencedCode = /```|(?:^|\n)\s*~~~/;
+  const statement =
+    /(?:^|\n|\x60)\s*(?:function\s+\w+\s*\(|(?:const|let|var)\s+\w+\s*=|(?:async\s+)?def\s+\w+\s*\(|(?:print|console\.(?:log|error))\s*\(|(?:npm\s+(?:install|run)|git\s+(?:clone|push))\s+)/i;
+  const query =
+    /(?:^|\n|\x60)\s*SELECT\s+[^\n]+\s+FROM\s+/.test(content) ||
+    /(?:^|\n|\x60)\s*select\s+(?:\*|count\s*\()[^\n]*\bfrom\b/i.test(content);
+  return fencedCode.test(content) || statement.test(content) || query;
 }

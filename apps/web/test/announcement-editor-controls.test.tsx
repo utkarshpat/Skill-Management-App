@@ -68,13 +68,14 @@ test('Skill Genie opens a prefilled signup preview without saving or replacing a
       });
     if (path === '/api/announcements/draft') {
       const body = JSON.parse(String(init?.body));
-      assert.equal(body.preview, true);
       assert.equal(body.definition.title, 'Are You Interested?');
       assert.equal(body.definition.message, 'Register for UK Gold Heist');
       assert.equal(body.definition.cta, 'Register');
       assert.deepEqual(body.definition.fields, []);
       assert.deepEqual(body.definition.audience, [{ kind: 'DEPARTMENT', id: 'nhs' }]);
-      return Response.json({ id: 'preview', audienceCount: 2, receipt: 'receipt' });
+      return body.preview
+        ? Response.json({ id: 'preview', audienceCount: 2, receipt: 'receipt' })
+        : Response.json({ id: 'saved', revision: 1, state: 'DRAFT' });
     }
     throw Error('Unexpected request ' + path);
   });
@@ -132,6 +133,25 @@ test('Skill Genie opens a prefilled signup preview without saving or replacing a
   assert.match(
     document.querySelector('[aria-label="Local announcement draft"]')?.textContent ?? '',
     /Existing local draft/,
+  );
+  await view.update(
+    <AnnouncementManager
+      view="announcements"
+      onViewChange={onViewChange}
+      onUpdated={onUpdated}
+      draftTicket={announcementDraftHandoff.offer(actorId, incoming)}
+    />,
+  );
+  await settle();
+  await click('Save draft');
+  assert.match(document.body.textContent ?? '', /Draft saved\./);
+  await click('Basic details');
+  await fill('Title', 'Saved Genie draft with subsequent edits');
+  await click('Back to announcements');
+  await settle();
+  assert.match(
+    document.querySelector('[aria-label="Local announcement draft"]')?.textContent ?? '',
+    /Saved Genie draft with subsequent edits/,
   );
 });
 

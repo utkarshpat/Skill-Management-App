@@ -22,6 +22,15 @@ export function responsesUsage(value: unknown): TokenUsage {
 }
 export class UsageMeter {
   private calls: TokenUsage[] = [];
+  track() {
+    let record: ((usage: TokenUsage) => void) | undefined;
+    return {
+      onDispatch: () => {
+        record = this.begin();
+      },
+      onUsage: (usage: TokenUsage) => record?.(usage),
+    };
+  }
   begin() {
     const index = this.calls.length;
     this.calls.push(responsesUsage(undefined));

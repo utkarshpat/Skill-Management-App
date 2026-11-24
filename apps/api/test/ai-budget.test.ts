@@ -1,9 +1,52 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MemoryAiBudget } from '../src/modules/ai/budget.js';
-import { AssistantService } from '../src/modules/ai/assistant.js';
+import { completeWithinBudget, MemoryAiBudget } from '../src/modules/ai/budget.js';
+import { AssistantService, type Provider } from '../src/modules/ai/assistant.js';
+import { responsesUsage } from '../src/modules/ai/usage.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
 const limited = (e: unknown) => (e as { status?: number }).status === 429;
+
+test('token reservations protect shared capacity and settle once against the original UTC day', async () => {
+  let now = 0;
+  const budget = new MemoryAiBudget(() => now, { actor: 100, account: 120 });
+  const first = await budget.reserveTokens('a', 80);
+  await assert.rejects(budget.reserveTokens('a', 21), limited);
+  await assert.rejects(budget.reserveTokens('b', 41), limited);
+  await first(30);
+  await first(0);
+  const second = await budget.reserveTokens('b', 90);
+  await assert.rejects(budget.reserveTokens('a', 1), limited);
+  now = 86_400_000;
+  const current = await budget.reserveTokens('b', 100);
+  await second(1);
+  await assert.rejects(budget.reserveTokens('b', 1), limited);
+  await current(100);
+});
+
+test('provider failures with usage still spend tokens and unknown usage keeps the reservation', async () => {
+  let calls = 0;
+  const provider: Provider = {
+    name: 'synthetic',
+    complete: async (_messages, _tools, _signal, options) => {
+      calls++;
+      if (calls === 1) {
+        options?.onUsage?.(responsesUsage({ input_tokens: 170, output_tokens: 50 }));
+        throw Error('Provider failure after billing');
+      }
+      return { content: 'Done.', calls: [] };
+    },
+  };
+  const budget = new MemoryAiBudget(() => 0, { actor: 270, account: 400 });
+  const run = (actor: string) =>
+    completeWithinBudget(budget, actor, provider, [], [], new AbortController().signal, {
+      maxOutputTokens: 100,
+    });
+  await assert.rejects(run('a'), /after billing/);
+  await assert.rejects(run('a'), limited);
+  await run('b');
+  await assert.rejects(run('b'), limited);
+  assert.equal(calls, 2);
+});
 test('shared budget rejects overlapping replies and shares quotas between service instances', async () => {
   const budget = new MemoryAiBudget(),
     store = await LocalAccessStore.open(),

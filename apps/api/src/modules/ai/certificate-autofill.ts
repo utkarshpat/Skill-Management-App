@@ -1,7 +1,7 @@
 import { can, readActorAccess, type AccessStore } from '../access/index.js';
 import type { ClaimsStore } from '../skills/index.js';
 import { AccessError } from '../../shared/errors.js';
-import type { AiBudget } from './budget.js';
+import { completeWithinBudget, type AiBudget } from './budget.js';
 import type { Provider } from './assistant.js';
 import { unzipSync, strFromU8 } from 'fflate';
 
@@ -104,7 +104,10 @@ export class CertificateAutofillService {
           503,
           'This AI provider does not support certificate image/PDF extraction. Enter details manually.',
         );
-      const result = await this.provider.complete(
+      const result = await completeWithinBudget(
+        this.budget,
+        actor,
+        this.provider,
         [
           {
             role: 'system',
@@ -184,7 +187,10 @@ export class CertificateAutofillService {
       const options = [...candidates.values()].slice(0, 30);
       let suggestions: any[] = [];
       if (options.length) {
-        const selection = await this.provider.complete(
+        const selection = await completeWithinBudget(
+          this.budget,
+          actor,
+          this.provider,
           [
             {
               role: 'system',

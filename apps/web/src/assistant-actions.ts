@@ -3,6 +3,7 @@ import { isPhaseTwoPage, phaseTwoVisible } from './release-features';
 export interface AssistantPage {
   label: string;
   url: string;
+  canOpenSkillClaim?: boolean;
 }
 export function canonicalAssistantDestination(input: string): string | undefined {
   if (!input.startsWith('/') || input.startsWith('//') || input.includes('\\')) return undefined;
@@ -72,33 +73,29 @@ export function canonicalAssistantDestination(input: string): string | undefined
 }
 export function assistantNavigationTargets(
   content: string,
-  sources: { url: string }[],
+  sources: { url?: string }[],
   pages: AssistantPage[],
 ) {
-  const requested = [
-    ...sources.map(source => source.url),
-    ...[...content.matchAll(/\[[^\]\n]+\]\(([^\s)]+)\)/g)].map(match => match[1]),
-  ];
-  const urls = [
-    ...new Set(
-      requested.map(canonicalAssistantDestination).filter((url): url is string => Boolean(url)),
-    ),
-  ];
-  const hasReviewSkills = pages.some(page => page.url === '/skill-reviews?type=certifications');
-  const ownerPageUrl = (url: string) => {
-    if (url.startsWith('/skill-reviews?type=certifications&certification='))
-      return '/skill-reviews?type=certifications';
-    if (url === '/skill-reviews?type=certifications') return '/skill-reviews?type=certifications';
-    if (url.startsWith('/skill-reviews?')) return hasReviewSkills ? '/skill-reviews' : undefined;
-    return url.split('?')[0];
-  };
+  const sourceUrls = sources
+    .map(source => source.url && canonicalAssistantDestination(source.url))
+    .filter((url): url is string => Boolean(url));
+  // Generated text can suggest a known page. Exact records come from server sources.
+  const suggestedPages = [...content.matchAll(/\[[^\]\n]+\]\(([^\s)]+)\)/g)]
+    .map(match => canonicalAssistantDestination(match[1]))
+    .filter((url): url is string => pages.some(page => page.url === url));
+  const urls = [...new Set([...sourceUrls, ...suggestedPages])];
   return pages.flatMap(page =>
     urls
-      .filter(
-        url =>
-          url === page.url ||
-          (ownerPageUrl(url) === page.url && !pages.some(item => item.url === url)),
-      )
+      .filter(url => {
+        if (url === page.url) return true;
+        if (url.startsWith('/skill-reviews?type=certifications'))
+          return (
+            url.includes('&certification=') && page.url === '/skill-reviews?type=certifications'
+          );
+        if (url.startsWith('/skill-reviews?claim='))
+          return page.url === '/skill-reviews' && page.canOpenSkillClaim === true;
+        return url.split('?')[0] === page.url && !pages.some(item => item.url === url);
+      })
       .map(url => ({ ...page, url })),
   );
 }

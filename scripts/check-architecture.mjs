@@ -18,8 +18,8 @@ const moduleNames = new Set([
 ]);
 const runtimeDependencies = {
   business: ['access'],
-  announcements: ['skills'],
-  'knowledge-transfer': ['access'],
+  announcements: ['ai', 'skills'],
+  'knowledge-transfer': ['access', 'ai'],
   recommendations: ['access', 'learning'],
   dashboard: ['access'],
   identity: ['access'],

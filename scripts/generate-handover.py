@@ -204,7 +204,7 @@ groups={
  'Requests & incidents':['WorkflowRecord','WorkflowEvent'],
  'Announcements':['AnnouncementPublisher','Announcement','AnnouncementResponse'],
  'Business Operations':['BusinessProject','BusinessProjectMember','BusinessResponsibility','CredentialProvider','CredentialDefinition','CredentialSkillMapping','MasterAmendment','BusinessDemand','BusinessShortlist'],
- 'AI & budget':['AiConversation','AiAccountBudget','AiActorBudget'],
+ 'AI & budget':['AiConversation','AiAccountBudget','AiActorBudget','AiDailyTokenBudget','AiTokenReservation'],
  'Private files':['PrivateFileCounter','PrivateFileObject','PrivateUploadPart'],
 }
 assert set(sum(groups.values(), []))==set(tables), 'Update schema domain groups for new tables'

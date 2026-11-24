@@ -4,7 +4,7 @@ import { FormDialog } from './FormDialog';
 import { AssistantRichText } from './AssistantRichText';
 export interface AiDocument {
   content: string;
-  sources?: { label: string; url: string }[];
+  sources?: { label: string; url?: string }[];
 }
 export function AssistantDocument({
   document,
@@ -63,11 +63,15 @@ export function AssistantDocument({
         {document.sources?.length && (
           <aside className="assistant-document-sources">
             <h3>Sources</h3>
-            {document.sources.map(source => (
-              <Link key={source.url} to={source.url} onClick={onClose}>
-                {source.label}
-              </Link>
-            ))}
+            {document.sources.map(source =>
+              source.url ? (
+                <Link key={source.label + source.url} to={source.url} onClick={onClose}>
+                  {source.label}
+                </Link>
+              ) : (
+                <span key={source.label}>{source.label}</span>
+              ),
+            )}
           </aside>
         )}
       </article>

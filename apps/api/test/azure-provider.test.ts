@@ -411,7 +411,7 @@ test('Azure chat carries clarification context and delivers a localized announce
         assert.equal(input[8].call_id, 'call');
         if (round <= 5)
           return completed(
-            Array.from({ length: round === 5 ? 6 : 1 }, (_, index) => ({
+            Array.from({ length: round === 5 ? 4 : 3 }, (_, index) => ({
               type: 'function_call',
               call_id: `read-${round}-${index}`,
               name: 'own_profile',
@@ -434,7 +434,23 @@ test('Azure chat carries clarification context and delivers a localized announce
       },
       async () => 'synthetic',
     );
-    const service = new AssistantService(access, undefined, provider);
+    const service = new AssistantService(
+      access,
+      undefined,
+      provider,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      async () => true,
+    );
     const first = await service.chat(actor, { message: request });
     await service.chat(actor, { message: details, conversationId: first.conversationId });
     const next = service.chat(actor, { message: followUp, conversationId: first.conversationId });

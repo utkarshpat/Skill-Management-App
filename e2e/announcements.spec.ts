@@ -53,7 +53,7 @@ test('publisher uploads a poster and publishes the previewed poll', async ({ pag
   await dialog
     .getByLabel('Upload image')
     .setInputFiles(
-      fileURLToPath(new URL('../apps/web/public/brand/assistant-robot.webp', import.meta.url)),
+      fileURLToPath(new URL('../apps/web/public/brand/assistant-robot-red.webp', import.meta.url)),
     );
   await dialog.getByLabel('Image description').fill('Training poster');
   await expect(dialog.getByLabel('Show image before the form or poll')).toBeChecked();

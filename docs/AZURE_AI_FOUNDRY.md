@@ -53,6 +53,14 @@ Do not add an anonymous AI diagnostic endpoint, grant the model direct database 
 - User-selected certificate PDF/image autofill uses inline Responses file/image input; DOCX/text retain bounded extracted text. Existing explicit-action, file validation/size limits, catalogue matching and access rechecks remain required. Extraction remains a suggestion for review, not issuer verification or proficiency approval.
 - Upstream credentials/diagnostics are concealed. Quota returns 429; unavailable or rejected Azure identity returns 503; malformed/incomplete upstream output returns 502; cancellation/timeout returns 504. No automatic provider fallback or request replay occurs.
 
+## Token budgets and reply checks
+
+Apply migration `119_ai_token_budgets.sql` after 118 before deploying the matching API. The existing request limits still apply. Set `AI_ACTOR_DAILY_TOKEN_LIMIT` and `AI_ACCOUNT_DAILY_TOKEN_LIMIT` to tune the default daily limits of 350,000 per employee and 5,000,000 per workspace. Both reset at midnight UTC.
+
+Model calls reserve an estimate before dispatch and settle against provider-reported input and output tokens. The estimate remains charged when usage is unavailable. Document inputs use an estimate because their token count depends on the provider. A call can exceed its reservation when actual usage is higher. Later calls use the settled total.
+
+Genie uses system instructions and local code pattern checks to guide responses. Ordinary replies require no separate model verdict. Server tools still enforce current actor and record permissions before delivering data.
+
 ## Acceptance before rollout
 
 1. Verify approved geography, deployment type, quota, identity and network path. The user-selected Global Standard deployment does not itself establish restricted processing geography or private networking. `store:false` does not mean all service logging/abuse-monitoring retention is disabled.

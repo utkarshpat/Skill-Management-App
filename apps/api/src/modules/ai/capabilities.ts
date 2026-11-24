@@ -10,7 +10,9 @@ import {
 export function assistantCapabilities(state: LocalAccessState, person: LocalPerson) {
   const workspace = workspaceFor(state, person),
     capabilities = workspace.capabilities;
-  const pages = [{ label: 'Dashboard', url: '/workspace' }];
+  const pages: { label: string; url: string; canOpenSkillClaim?: boolean }[] = [
+    { label: 'Dashboard', url: '/workspace' },
+  ];
   if (capabilities.businessOperations) pages.push({ label: 'Analytics', url: '/business' });
   if (capabilities.ownProfile) pages.push({ label: 'My profile', url: '/profile' });
   if (capabilities.ownProfile) pages.push({ label: 'Announcements', url: '/announcements' });
@@ -18,9 +20,14 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
   if (capabilities.ownSkills) pages.push({ label: 'My certifications', url: '/certifications' });
   if (capabilities.requests) pages.push({ label: 'Requests', url: '/requests' });
   if (capabilities.learning) pages.push({ label: 'Learn & Grow', url: '/learning' });
-  if (capabilities.reviewSkills || capabilities.issuerApprovals)
-    pages.push({ label: 'Approvals', url: '/skill-reviews' });
-  if (capabilities.reviewSkills)
+  if (capabilities.reviewSkills || capabilities.issuerApprovals) {
+    pages.push({
+      label: 'Approvals',
+      url: '/skill-reviews',
+      canOpenSkillClaim: capabilities.reviewSkills,
+    });
+  }
+  if (capabilities.reviewSkills ? capabilities.certifications : capabilities.issuerApprovals)
     pages.push({ label: 'Certification approvals', url: '/skill-reviews?type=certifications' });
   if (capabilities.catalogue) pages.push({ label: 'Skill catalogue', url: '/skills' });
   if (capabilities.catalogue && (capabilities.amendments || capabilities.approveAmendments))

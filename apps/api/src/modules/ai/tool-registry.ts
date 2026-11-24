@@ -43,7 +43,7 @@ export interface ToolDefinition {
 
 interface Source {
   label: string;
-  url: string;
+  url?: string;
 }
 
 interface ToolContext {
@@ -204,7 +204,7 @@ export class ToolRegistry {
         },
         permission: (s, p) => can(s, p, 'matching.view') && can(s, p, 'matching.run'),
         validate: args => ({ ...peopleSearchQuery(args) }),
-        source: { label: 'Find people · Authorized matching', url: '/business' },
+        source: { label: 'Find people · Authorized matching' },
         read: async ({ person, args }) => {
           const result = await business.peopleSearch!(person.id, peopleSearchQuery(args));
           return {
@@ -633,12 +633,9 @@ export class ToolRegistry {
                 : operation === 'MASTERS'
                   ? 'Catalogue · Master definitions'
                   : 'Analytics · Demand',
-            url:
-              name === 'business_matching_options'
-                ? '/business'
-                : operation === 'MASTERS'
-                  ? '/skills?tab=amendments'
-                  : '/business?tab=demand',
+            ...(operation === 'MASTERS' && name !== 'business_matching_options'
+              ? { url: '/skills?tab=amendments' }
+              : {}),
           },
           read: async ({ person, args }) => {
             const result = await business.workflow(person.id, operation, args);
@@ -700,7 +697,7 @@ export class ToolRegistry {
             throw new AccessError(400, 'Choose an authorized demand and page.');
           return { id: identifier(q.id), page: q.page ?? 1 };
         },
-        source: { label: 'Analytics · Demand matching', url: '/business?tab=demand' },
+        source: { label: 'Demand matching' },
         read: async ({ person, args }) => {
           const result = await business.workflow(person.id, 'MATCHES', args);
           const rows = result.rows as Record<string, unknown>[];

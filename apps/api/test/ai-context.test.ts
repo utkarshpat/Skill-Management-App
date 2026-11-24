@@ -9,6 +9,18 @@ import {
 import { UsageMeter, responsesUsage } from '../src/modules/ai/usage.js';
 import { AssistantService } from '../src/modules/ai/assistant.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
+import { hasUnsupportedCodeOutput } from '../src/modules/ai/workflow-chat-policy.js';
+
+test('workflow code guard rejects simple code forms and preserves normal Markdown guidance', () => {
+  assert.equal(hasUnsupportedCodeOutput("print('hello')"), true);
+  assert.equal(hasUnsupportedCodeOutput("Example: `print('hello')`"), true);
+  assert.equal(hasUnsupportedCodeOutput('~~~python\npass\n~~~'), true);
+  assert.equal(hasUnsupportedCodeOutput('Choose `Python` under **Add skill**.'), false);
+  assert.equal(
+    hasUnsupportedCodeOutput('Select Python from the published skill catalogue.'),
+    false,
+  );
+});
 
 test('workspace questions route to guidance while explicit draft and practice requests retain their intent', () => {
   for (const question of [
@@ -521,6 +533,56 @@ test('an over-budget batch returns a final answer from the reads that ran', asyn
   });
   const result = await service.chat(actor, { message: 'What is in my profile?' });
   assert.match(result.reply, /One lookup could not be completed/);
+  assert.equal(rounds, 2);
+});
+
+test('announcement drafting is unavailable without confirmed publishing access', async () => {
+  const access = await LocalAccessStore.open();
+  const actor = access.snapshot().people[0].id;
+  const service = new AssistantService(access, undefined, {
+    name: 'fixture',
+    complete: async (messages, tools) => {
+      assert.match(messages[0].content, /Announcement draft creation is unavailable/);
+      assert.ok(!tools.some(tool => tool.function.name === 'present_announcement_draft'));
+      return { content: 'Announcement drafting is unavailable.', calls: [] };
+    },
+  });
+  assert.equal((await service.navigation(actor))?.canDraftAnnouncement, false);
+  const reply = await service.chat(actor, { message: 'Draft a signup announcement.' });
+  assert.equal(reply.artifact, undefined);
+});
+
+test('large tool results leave room for a final answer with facts already retrieved', async () => {
+  const access = await LocalAccessStore.open();
+  const state = access.snapshot();
+  const actor = state.people[0].id;
+  state.people[0].jobTitle = 'x'.repeat(8000);
+  access.snapshot = () => structuredClone(state);
+  let rounds = 0;
+  const service = new AssistantService(access, undefined, {
+    name: 'fixture',
+    complete: async (messages, tools) => {
+      if (++rounds === 1)
+        return {
+          content: '',
+          calls: Array.from({ length: 4 }, (_, index) => ({
+            id: 'read-' + index,
+            type: 'function' as const,
+            function: { name: 'own_profile', arguments: '{}' },
+          })),
+        };
+      assert.deepEqual(tools, []);
+      const facts = messages
+        .filter(message => message.role === 'tool')
+        .map(message => JSON.parse(message.content));
+      assert.equal(facts.length, 4);
+      assert.ok(facts.some(fact => fact.jobTitle === state.people[0].jobTitle));
+      assert.ok(facts.some(fact => fact.unavailable));
+      return { content: 'I read the profile. Some lookups could not be included.', calls: [] };
+    },
+  });
+  const result = await service.chat(actor, { message: 'What is in my profile?' });
+  assert.match(result.reply, /I read the profile/);
   assert.equal(rounds, 2);
 });
 

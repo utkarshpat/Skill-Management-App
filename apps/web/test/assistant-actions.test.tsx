@@ -49,32 +49,27 @@ test('record links retain the exact destination only when its workspace page is 
   const url = '/my-skills?claim=a7b7353e-601e-4f8d-a42c-9b77982363de';
   assert.deepEqual(assistantNavigationTargets('', [{ url }], [page]), [{ ...page, url }]);
   assert.deepEqual(assistantNavigationTargets('', [{ url }], []), []);
+  assert.deepEqual(assistantNavigationTargets('[Fake record](' + url + ')', [], [page]), []);
   assert.equal(canonicalAssistantDestination(url + '&personId=other'), undefined);
   assert.equal(canonicalAssistantDestination('/my-skills?claim=invalid'), undefined);
+});
 
-  const approvals = { label: 'Approvals', url: '/skill-reviews' };
-  const certApprovals = {
+test('approval links use the capability for the specific review kind', () => {
+  const id = 'a7b7353e-601e-4f8d-a42c-9b77982363de';
+  const page = { label: 'Approvals', url: '/skill-reviews', canOpenSkillClaim: false };
+  const certificates = {
     label: 'Certification approvals',
     url: '/skill-reviews?type=certifications',
   };
-  const certRecord =
-    '/skill-reviews?type=certifications&certification=a7b7353e-601e-4f8d-a42c-9b77982363de';
-  const claimRecord = '/skill-reviews?claim=a7b7353e-601e-4f8d-a42c-9b77982363de';
-  assert.deepEqual(
-    assistantNavigationTargets('', [{ url: certRecord }, { url: claimRecord }], [approvals]),
-    [],
-  );
-  assert.deepEqual(
-    assistantNavigationTargets(
-      '',
-      [{ url: certRecord }, { url: claimRecord }],
-      [approvals, certApprovals],
-    ),
-    [
-      { ...approvals, url: claimRecord },
-      { ...certApprovals, url: certRecord },
-    ],
-  );
+  const claim = '/skill-reviews?claim=' + id;
+  const certificate = certificates.url + '&certification=' + id;
+  const submission = '/skill-reviews?submission=' + id + '&tab=queue';
+  const sources = [claim, certificate, submission].map(url => ({ url }));
+  assert.deepEqual(assistantNavigationTargets('', sources, [page]), [{ ...page, url: submission }]);
+  assert.deepEqual(assistantNavigationTargets('', sources, [page, certificates]), [
+    { ...page, url: submission },
+    { ...certificates, url: certificate },
+  ]);
 });
 
 test('learning AI navigation requires the exact currently permitted page', () => {

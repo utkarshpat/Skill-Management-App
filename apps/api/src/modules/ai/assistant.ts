@@ -1,6 +1,6 @@
 import type { BusinessStore } from '../business/index.js';
 import { readActorAccess } from '../access/index.js';
-import { MemoryAiBudget, type AiBudget } from './budget.js';
+import { completeWithinBudget, MemoryAiBudget, type AiBudget } from './budget.js';
 import { AccessError } from '../../shared/errors.js';
 import { phaseTwoAvailable } from '../../shared/release-features.js';
 import type { WorkflowStore } from '../workflows/index.js';
@@ -83,7 +83,10 @@ function permittedCurrentPage(value: string | undefined, pages: { label: string;
   }
 }
 
-function authorizedAssistantDestination(value: string, pages: { label: string; url: string }[]) {
+function authorizedAssistantDestination(
+  value: string,
+  pages: ReturnType<typeof assistantCapabilities>['pages'],
+) {
   if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return undefined;
   try {
     const target = new URL(value, workspaceOrigin);
@@ -92,47 +95,55 @@ function authorizedAssistantDestination(value: string, pages: { label: string; u
     const exact = target.pathname + target.search,
       exactPage = pages.find(page => page.url === exact);
     if (exactPage) return { ...exactPage, url: exact };
-    const page = pages.find(candidate => candidate.url === target.pathname);
+    const pageUrl =
+      target.pathname === '/skill-reviews' && target.searchParams.get('type') === 'certifications'
+        ? '/skill-reviews?type=certifications'
+        : target.pathname;
+    const page = pages.find(candidate => candidate.url === pageUrl);
     if (!page) return undefined;
-    const reviewSkillsPage = pages.find(
-      candidate => candidate.url === '/skill-reviews?type=certifications',
-    );
     const params = target.searchParams,
       isUuid = (id: string | null) =>
         Boolean(id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+    let url: string | undefined;
     if (target.pathname === '/requests' && params.size === 1 && isUuid(params.get('record')))
-      return { ...page, url: `/requests?record=${encodeURIComponent(params.get('record')!)}` };
-    if (target.pathname === '/my-skills' && params.size === 1 && isUuid(params.get('claim')))
-      return { ...page, url: `/my-skills?claim=${encodeURIComponent(params.get('claim')!)}` };
-    if (target.pathname === '/my-skills' && params.size === 1 && isUuid(params.get('submission')))
-      return {
-        ...page,
-        url: `/my-skills?submission=${encodeURIComponent(params.get('submission')!)}`,
-      };
-    if (target.pathname === '/certifications' && params.size === 1 && isUuid(params.get('record')))
-      return {
-        ...page,
-        url: `/certifications?record=${encodeURIComponent(params.get('record')!)}`,
-      };
-    if (target.pathname === '/skill-reviews' && reviewSkillsPage) {
-      if (params.size === 1 && isUuid(params.get('claim')))
-        return { ...page, url: `/skill-reviews?claim=${encodeURIComponent(params.get('claim')!)}` };
-      if (params.size === 2 && params.get('tab') === 'queue' && isUuid(params.get('submission')))
-        return {
-          ...page,
-          url: `/skill-reviews?submission=${encodeURIComponent(params.get('submission')!)}&tab=queue`,
-        };
-      if (
-        params.size === 2 &&
-        params.get('type') === 'certifications' &&
-        isUuid(params.get('certification'))
-      )
-        return {
-          ...reviewSkillsPage,
-          url: `/skill-reviews?type=certifications&certification=${encodeURIComponent(params.get('certification')!)}`,
-        };
-    }
-    return undefined;
+      url = `/requests?record=${encodeURIComponent(params.get('record')!)}`;
+    else if (target.pathname === '/my-skills' && params.size === 1 && isUuid(params.get('claim')))
+      url = `/my-skills?claim=${encodeURIComponent(params.get('claim')!)}`;
+    else if (
+      target.pathname === '/my-skills' &&
+      params.size === 1 &&
+      isUuid(params.get('submission'))
+    )
+      url = `/my-skills?submission=${encodeURIComponent(params.get('submission')!)}`;
+    else if (
+      target.pathname === '/certifications' &&
+      params.size === 1 &&
+      isUuid(params.get('record'))
+    )
+      url = `/certifications?record=${encodeURIComponent(params.get('record')!)}`;
+    else if (
+      target.pathname === '/skill-reviews' &&
+      page.canOpenSkillClaim &&
+      params.size === 1 &&
+      isUuid(params.get('claim'))
+    )
+      url = `/skill-reviews?claim=${encodeURIComponent(params.get('claim')!)}`;
+    else if (
+      target.pathname === '/skill-reviews' &&
+      params.size === 2 &&
+      params.get('tab') === 'queue' &&
+      isUuid(params.get('submission'))
+    )
+      url = `/skill-reviews?submission=${encodeURIComponent(params.get('submission')!)}&tab=queue`;
+    else if (
+      target.pathname === '/skill-reviews' &&
+      params.size === 2 &&
+      params.get('type') === 'certifications' &&
+      isUuid(params.get('certification'))
+    )
+      url = `/skill-reviews?type=certifications&certification=${encodeURIComponent(params.get('certification')!)}`;
+    if (!url) return undefined;
+    return { ...page, url };
   } catch {
     return undefined;
   }
@@ -203,6 +214,7 @@ export class AssistantService {
     certifications?: CertificationStore,
     ownOrganization?: (actor: string) => Promise<OwnOrganization>,
     capabilitySubmissions?: CapabilitySubmissionStore,
+    private announcementPublishAccess?: (actor: string) => Promise<boolean>,
   ) {
     this.registry = new ToolRegistry(
       store,
@@ -216,6 +228,9 @@ export class AssistantService {
       ownOrganization,
       capabilitySubmissions,
     );
+  }
+  private async canDraftAnnouncement(actor: string) {
+    return (await this.announcementPublishAccess?.(actor).catch(() => false)) === true;
   }
   async reviewAssistance(actor: string, input: unknown, signal: AbortSignal) {
     const b = input as Record<string, unknown>;
@@ -288,8 +303,10 @@ export class AssistantService {
     const meter = new UsageMeter();
     try {
       signal.throwIfAborted();
-      const usage = meter.begin();
-      const answer = await this.provider.complete(
+      const answer = await completeWithinBudget(
+        this.budget,
+        actor,
+        this.provider,
         [
           {
             role: 'system',
@@ -308,9 +325,8 @@ export class AssistantService {
         ],
         [presentationTool],
         signal,
-        { maxOutputTokens: 900, onUsage: usage },
+        { maxOutputTokens: 900, ...meter.track() },
       );
-      if (answer.usage) usage(answer.usage);
       signal.throwIfAborted();
       await authorize();
       const after = (await this.claims.reviewDetail(actor, b.id, 1)).claim;
@@ -334,7 +350,8 @@ export class AssistantService {
         output.kind !== 'task_draft' ||
         !output.body ||
         output.body.length > 1800 ||
-        output.steps.length
+        output.steps.length ||
+        hasUnsupportedCodeOutput(output.body)
       )
         throw new AccessError(502, 'AI returned an invalid review draft.');
       return {
@@ -525,7 +542,7 @@ export class AssistantService {
           capabilities.pages.some(page => page.url === '/learning'),
         pages: capabilities.pages,
         canReviewOwnSkill: capabilities.canDraftOwnSkill,
-        canDraftDemand: capabilities.canDraftDemand,
+        canDraftAnnouncement: await this.canDraftAnnouncement(actor),
         canDraftAmendment: capabilities.canDraftAmendment,
         suggestions: [
           {
@@ -725,6 +742,11 @@ export class AssistantService {
           );
       };
       await recheckDelivery();
+      if (
+        result.artifact?.kind === 'announcement_draft' &&
+        !(await this.canDraftAnnouncement(actorId))
+      )
+        throw new AccessError(403, 'Your current access does not allow creating announcements.');
       if (prepared) {
         if (prepared.previous.policy !== initialPolicy)
           throw new AccessError(403, 'Access changed while preparing this reply. Please retry.');
@@ -816,7 +838,9 @@ export class AssistantService {
     if (!person || !this.registry.permits(initial, person, 'own_profile'))
       throw new AccessError(403, 'Assistant access is not assigned.');
     const settings = rememberedTask ?? conversationTaskSettings(history);
-    const announcementInstructions = announcementDraftInstructions(history);
+    const announcementRequest = announcementDraftInstructions(history);
+    const announcementInstructions =
+      announcementRequest && (await this.canDraftAnnouncement(actorId)) ? announcementRequest : '';
     const precedingReply = history.at(-2);
     const precedingRequest = history.at(-3);
     const ownSkillDraft =
@@ -835,6 +859,9 @@ export class AssistantService {
           workflowOnlyInstructions +
           ` Configured AI provider metadata: provider=${this.provider.name}; deployment=${this.provider.deployment ?? 'not exposed'}. A deployment may be an alias and does not prove the underlying model version. Explain only these facts if asked, in the latest user message language.` +
           announcementInstructions +
+          (announcementRequest && !announcementInstructions
+            ? ' Announcement draft creation is unavailable for this user. Do not offer an editor handoff.'
+            : '') +
           (/\b(amendment|catalogue|catalog)\b/i.test(history.at(-1)!.content)
             ? ' ' + catalogueGuidanceInstructions
             : '') +
@@ -847,7 +874,7 @@ export class AssistantService {
       },
       ...history,
     ];
-    const sources: { label: string; url: string }[] = [];
+    const sources: { label: string; url?: string }[] = [];
     const skillChoices = new Map<string, { id: string; name: string }>();
     const skillReads = new Map<string, Awaited<ReturnType<ToolRegistry['execute']>>>();
     const maxReads = ownSkillDraft ? 12 : 8;
@@ -855,6 +882,27 @@ export class AssistantService {
     const usesAzureReplay = this.provider.name === 'azure';
     let peopleSearch: { query: import('../business/index.js').PeopleSearchQuery } | undefined;
     let executions = 0;
+    let lookupContextFull = false;
+    const contextLimit = 32_000;
+    function requestSize(available: Tool[]) {
+      let replayBytes = 0;
+      const request = JSON.stringify(
+        { messages, available },
+        function (this: { type?: unknown }, key, value) {
+          if (
+            usesAzureReplay &&
+            key === 'encrypted_content' &&
+            this.type === 'reasoning' &&
+            typeof value === 'string'
+          ) {
+            replayBytes += Buffer.byteLength(JSON.stringify(value), 'utf8') - 2;
+            return '';
+          }
+          return value;
+        },
+      );
+      return { textBytes: Buffer.byteLength(request, 'utf8'), replayBytes };
+    }
     const recheck = async (name: string) => {
       const state = await readActorAccess(this.store, actorId);
       const current = state.people.find(item => item.id === actorId);
@@ -868,8 +916,10 @@ export class AssistantService {
       return { state, person: current };
     };
     const localizedReply = async (instruction: string, maxOutputTokens = 180) => {
-      const recordUsage = meter.begin();
-      const generated = await this.provider!.complete(
+      const generated = await completeWithinBudget(
+        this.budget,
+        actorId,
+        this.provider!,
         [
           {
             role: 'system',
@@ -885,9 +935,8 @@ export class AssistantService {
         ],
         [],
         signal,
-        { maxOutputTokens, onUsage: recordUsage },
+        { maxOutputTokens, ...meter.track() },
       );
-      if (generated.usage) recordUsage(generated.usage);
       await recheck('own_profile');
       signal.throwIfAborted();
       if (!generated.content.trim() || hasUnsupportedCodeOutput(generated.content))
@@ -909,7 +958,7 @@ export class AssistantService {
     };
     // Reserve a final response round after the permitted reads.
     for (let round = 0; round <= maxReadRounds; round++) {
-      const finalRound = round === maxReadRounds || executions >= maxReads;
+      const finalRound = round === maxReadRounds || executions >= maxReads || lookupContextFull;
       const current = await recheck('own_profile');
       signal.throwIfAborted();
       const fullContext = assistantCapabilities(current.state, current.person);
@@ -951,33 +1000,24 @@ export class AssistantService {
           '\nFinal response: use the facts already read. No more lookups, writes or invented catalogue options. Ask a focused question if information is missing.';
       // Azure replays encrypted reasoning verbatim. Bound that transport state
       // separately so it doesn't consume the conversation and tool text budget.
-      let replayBytes = 0;
-      const requestText = JSON.stringify(
-        { messages, available },
-        function (this: { type?: unknown }, key, value) {
-          if (
-            usesAzureReplay &&
-            key === 'encrypted_content' &&
-            this.type === 'reasoning' &&
-            typeof value === 'string'
-          ) {
-            replayBytes += Buffer.byteLength(JSON.stringify(value), 'utf8') - 2;
-            return '';
-          }
-          return value;
-        },
-      );
-      if (Buffer.byteLength(requestText, 'utf8') > 32_000 || replayBytes > 256 * 1024)
+      const { textBytes, replayBytes } = requestSize(available);
+      if (textBytes > contextLimit || replayBytes > 256 * 1024)
         throw new AccessError(
           422,
           'This task needs too much context. Start a new conversation or ask a smaller question.',
         );
-      const recordUsage = meter.begin();
-      const answer = await this.provider.complete(messages, available, signal, {
-        maxOutputTokens: settings.maxOutputTokens,
-        onUsage: recordUsage,
-      });
-      if (answer.usage) recordUsage(answer.usage);
+      const answer = await completeWithinBudget(
+        this.budget,
+        actorId,
+        this.provider,
+        messages,
+        available,
+        signal,
+        {
+          maxOutputTokens: settings.maxOutputTokens,
+          ...meter.track(),
+        },
+      );
       await recheck('own_profile');
       signal.throwIfAborted();
       if (!answer.calls.length) {
@@ -1118,7 +1158,20 @@ export class AssistantService {
         tool_calls: answer.calls,
         providerParts: answer.providerParts,
       });
-      for (const call of answer.calls) {
+      // Reserve one response for every call, including skipped lookups.
+      const firstResult = messages.length;
+      const skipped = JSON.stringify({
+        unavailable: 'Lookup limit reached. Use the facts already retrieved.',
+      });
+      messages.push(
+        ...answer.calls.map(call => ({
+          role: 'tool' as const,
+          content: skipped,
+          tool_call_id: call.id,
+          tool_name: call.function.name,
+        })),
+      );
+      for (const [index, call] of answer.calls.entries()) {
         if (!available.some(tool => tool.function.name === call.function.name))
           throw new AccessError(403, 'Assistant tool is not permitted.');
         let args: unknown;
@@ -1135,15 +1188,6 @@ export class AssistantService {
         } else {
           if (executions >= maxReads) {
             if (ownSkillDraft) return clarifySkillDraft();
-            messages.push({
-              role: 'tool',
-              content: JSON.stringify({
-                unavailable:
-                  'The read-only lookup capacity for this reply has been reached. Answer from facts already retrieved and state what could not be checked.',
-              }),
-              tool_call_id: call.id,
-              tool_name: call.function.name,
-            });
             continue;
           }
           executions++;
@@ -1151,6 +1195,14 @@ export class AssistantService {
           if (key !== undefined) skillReads.set(key, result);
         }
         const { data, source } = result;
+        const response = messages[firstResult + index];
+        response.content = JSON.stringify(data);
+        // Leave room for the final instructions and refreshed capability context.
+        if (!ownSkillDraft && requestSize(available).textBytes > contextLimit - 2048) {
+          response.content = skipped;
+          lookupContextFull = true;
+          continue;
+        }
         if (call.function.name === 'skill_claim_options') {
           const { skills } = data as { skills: { id: string; name: string }[] };
           for (const { id, name } of skills) skillChoices.set(id, { id, name });
@@ -1163,12 +1215,6 @@ export class AssistantService {
         }
         if (!sources.some(item => item.label === source.label && item.url === source.url))
           sources.push(source);
-        messages.push({
-          role: 'tool',
-          content: JSON.stringify(data),
-          tool_call_id: call.id,
-          tool_name: call.function.name,
-        });
       }
     }
     throw new AccessError(422, 'Please ask a more focused question.');

@@ -6,7 +6,7 @@ import type { Session } from './context.js';
 interface SavedMessage {
   role: 'user' | 'assistant';
   content: string;
-  sources?: { label: string; url: string }[];
+  sources?: { label: string; url?: string }[];
   artifact?: unknown;
   peopleSearch?: { query: import('../business/index.js').PeopleSearchQuery };
 }

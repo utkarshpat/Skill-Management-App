@@ -731,9 +731,9 @@ test('assistant mascot loads its artwork and respects reduced motion', async ({
   await expect(greeting).toBeVisible();
   await expect(body).toHaveCSS('width', '104px');
   await expect(greeting).toHaveCSS('animation-name', 'assistant-type-greeting');
-  await expect(launcher.locator('img')).toHaveCount(5);
+  await expect(launcher.locator('img')).toHaveCount(4);
   const brand = launcher.locator('.assistant-mascot-brand');
-  await expect(brand.locator('img')).toHaveAttribute('src', '/brand/skill-genie-logo.png');
+  await expect(brand.locator('img')).toHaveAttribute('src', '/brand/skill-genie-badge.webp');
   await expect(brand).toHaveCSS('overflow', 'hidden');
   await expect(brand).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await expect
@@ -743,6 +743,16 @@ test('assistant mascot loads its artwork and respects reduced motion', async ({
         .evaluateAll(images => images.every(image => (image as HTMLImageElement).naturalWidth > 0)),
     )
     .toBe(true);
+  const antenna = await body.evaluate((node: HTMLImageElement) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = node.naturalWidth;
+    canvas.height = node.naturalHeight;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(node, 0, 0);
+    return [...context.getImageData(158, 15, 1, 1).data];
+  });
+  expect(antenna[3]).toBeGreaterThan(240);
+  expect(antenna[0]).toBeGreaterThan(antenna[2]);
   await expect(hand).toHaveCSS('animation-name', 'assistant-wave');
   await expect(head).toHaveCSS('animation-name', 'assistant-head-tilt');
   await expect(body).toHaveCSS('animation-name', 'none');
@@ -806,13 +816,11 @@ test('red mascot stays transparent in both admin themes', async ({ page }, info)
       await expect(image).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
       await expect(image).toHaveCSS('padding', '0px');
     }
-    for (const layer of ['body', 'shell']) {
-      await expect(launcher.locator('.assistant-mascot-' + layer)).toHaveCSS(
-        'filter',
-        /url\(["']?[^"')]*\/brand\/assistant-shell-red\.svg#shell-red["']?\)/,
-      );
+    for (const layer of ['.assistant-mascot-body', '.assistant-mascot-head img']) {
+      const image = launcher.locator(layer);
+      await expect(image).toHaveAttribute('src', '/brand/assistant-robot-red.webp');
+      await expect(image).toHaveCSS('filter', 'none');
     }
-    await expect(launcher.locator('.assistant-mascot-face')).toHaveCSS('filter', 'none');
     await expect(launcher.locator('.assistant-mascot-brand img')).toHaveCSS('filter', 'none');
     await page.screenshot({
       path: info.outputPath('mascot-' + theme + '.png'),

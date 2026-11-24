@@ -13,7 +13,7 @@ import { AccessError } from '../../shared/errors.js';
 import { logEvent } from '../../shared/logger.js';
 import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import type { Identity } from '../identity/index.js';
-import type { AiBudget, Provider } from '../ai/index.js';
+import { completeWithinBudget, type AiBudget, type Provider } from '../ai/index.js';
 import { excelMime, writeExcel } from '../skills/index.js';
 import {
   answers,
@@ -281,7 +281,10 @@ export function registerAnnouncementRoutes(app: Express, dependencies?: Dependen
     const signal = AbortSignal.any([timeout, disconnected.signal]);
     const started = Date.now();
     try {
-      const result = await store.provider.complete(
+      const result = await completeWithinBudget(
+        store.budget,
+        actor,
+        store.provider,
         [
           {
             role: 'system',

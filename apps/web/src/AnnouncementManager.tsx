@@ -120,7 +120,7 @@ export function AnnouncementManager({
   draftTicket?: string;
   children?: ReactNode;
 }) {
-  const [data, setData] = useState<Management>();
+  const [managementResult, setManagementResult] = useState<{ page: number; value: Management }>();
   const [draft, setDraft] = useState<Draft>();
   const [definition, setDefinition] = useState<Definition>(empty);
   const [grantId, setGrantId] = useState('');
@@ -165,6 +165,7 @@ export function AnnouncementManager({
   const [responseAttempt, setResponseAttempt] = useState(0);
   const [managementAttempt, setManagementAttempt] = useState(0);
   const [managementPage, setManagementPage] = useState(1);
+  const data = managementResult?.page === managementPage ? managementResult.value : undefined;
   const [responsePage, setResponsePage] = useState(1);
   const [clock, setClock] = useState(Date.now());
   useEffect(() => {
@@ -296,12 +297,12 @@ export function AnnouncementManager({
     let active = true;
     api<Management>('/manage' + (managementPage > 1 ? '?page=' + managementPage : ''))
       .then(value => {
-        if (active) setData(value);
+        if (active) setManagementResult({ page: managementPage, value });
       })
       .catch(error => {
         if (active) {
           if ([401, 403].includes((error as { status?: number }).status ?? 0)) {
-            setData(undefined);
+            setManagementResult(undefined);
             setResponses(undefined);
             setReceipt(undefined);
             setPage('list');
@@ -368,7 +369,7 @@ export function AnnouncementManager({
       await operation();
     } catch (error) {
       if ([401, 403].includes((error as { status?: number }).status ?? 0)) {
-        setData(undefined);
+        setManagementResult(undefined);
         setResponses(undefined);
         setReceipt(undefined);
         setPage('list');
@@ -380,6 +381,10 @@ export function AnnouncementManager({
   };
   const backToList = () =>
     work(async () => {
+      const snapshot = localSnapshot.current;
+      if (!assistantEditing && snapshot && snapshot.actor === actor) {
+        if (writeLocalAnnouncement(snapshot.actor, snapshot.value)) setLocalDraft(snapshot.value);
+      }
       setPage('list');
       refresh();
     });
@@ -520,9 +525,9 @@ export function AnnouncementManager({
         refresh();
         setNote('Announcement published for the selected schedule.');
       } else {
-        setAssistantEditing(false);
         setReceipt(undefined);
         setDraft({ ...payload(), ...saved });
+        setAssistantEditing(false);
         setNote('Draft saved.');
       }
     });
@@ -644,8 +649,9 @@ export function AnnouncementManager({
     <div role="group" aria-label="Your announcement pages" className="announcement-editor-actions">
       <button
         className="secondary-button"
-        disabled={busy || !data || managementPage === 1}
+        disabled={busy || (!data && !error) || managementPage === 1}
         onClick={() => {
+          setError('');
           setManagementPage(p => p - 1);
           setResponsePage(1);
         }}
@@ -657,6 +663,7 @@ export function AnnouncementManager({
         className="secondary-button"
         disabled={busy || !data?.hasMore}
         onClick={() => {
+          setError('');
           setManagementPage(p => p + 1);
           setResponsePage(1);
         }}

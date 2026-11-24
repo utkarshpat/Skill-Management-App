@@ -103,7 +103,7 @@ for (const kind of ['FORM', 'POLL']) {
           route.fulfill({
             contentType: 'image/webp',
             path: fileURLToPath(
-              new URL('../apps/web/public/brand/assistant-robot.webp', import.meta.url),
+              new URL('../apps/web/public/brand/assistant-robot-red.webp', import.meta.url),
             ),
           }),
         );
