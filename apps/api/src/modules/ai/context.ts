@@ -11,6 +11,9 @@ const lookupLists = [
   'activity',
   'categories',
   'comparisons',
+  'authorizedScopes',
+  'authorizedHierarchy',
+  'distribution',
   'skills',
   'certifications',
 ];

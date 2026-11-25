@@ -523,14 +523,26 @@ export class ToolRegistry {
             return { ...businessQuery({ ...q, dataset }) };
           },
           read: async ({ person, args }) => {
-            const result = await business.dashboard(person.id, businessQuery(args));
+            const query = businessQuery(args);
+            const result = await business.dashboard(person.id, query);
+            const scopes = result.context.scopes.filter(scope => scope.effect === 'ALLOW');
+            const hierarchy = result.context.hierarchy ?? [];
             return {
               asOf: result.context.asOf,
+              scopeLabel: query.scopeId
+                ? (scopes.find(scope => scope.id === query.scopeId)?.label ??
+                  'Selected authorized scope')
+                : scopes.some(scope => scope.kind === 'ORGANIZATION')
+                  ? 'Organization'
+                  : 'All authorized scopes',
+              placementLabel: hierarchy.find(node => node.id === query.hierarchyId)?.name,
               filters: args,
-              authorizedHierarchy: result.context.hierarchy ?? [],
-              authorizedScopes: result.context.scopes
-                .filter(scope => scope.effect === 'ALLOW')
-                .map(scope => ({ id: scope.id, kind: scope.kind, label: scope.label })),
+              authorizedHierarchy: hierarchy,
+              authorizedScopes: scopes.map(scope => ({
+                id: scope.id,
+                kind: scope.kind,
+                label: scope.label,
+              })),
               summary: result.summary,
               ...(name === 'business_insights'
                 ? {

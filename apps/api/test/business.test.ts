@@ -815,8 +815,8 @@ test('business AI produces only human-review drafts and never invokes writes', a
   }
 });
 
-test('business AI shares repeated lookups and aborts when the authorized revision changes', async () => {
-  for (const changeRevision of [false, true]) {
+test('business AI keeps analytics totals within context and aborts when the authorized revision changes', async () => {
+  for (const mode of ['reuse', 'revision change', 'aggregate fallback']) {
     const s = state();
     const access: AccessStore = {
       snapshot: () => structuredClone(s),
@@ -827,7 +827,7 @@ test('business AI shares repeated lookups and aborts when the authorized revisio
     let reads = 0;
     const coverage = Array.from({ length: 140 }, (_, index) => ({
       id: String(index),
-      label: 'Skill '.repeat(35) + index,
+      label: 'Skill '.repeat(mode === 'aggregate fallback' ? 4000 : 35) + index,
       holders: 1,
       rank: 2,
     }));
@@ -835,7 +835,21 @@ test('business AI shares repeated lookups and aborts when the authorized revisio
       context: async () => context(),
       dashboard: async () => {
         reads++;
-        return { ...dashboard(), coverage, coverageComplete: true };
+        const result = dashboard();
+        return {
+          ...result,
+          coverage,
+          coverageComplete: true,
+          context: {
+            ...result.context,
+            hierarchy: Array.from({ length: 170 }, (_, index) => ({
+              id: index === 0 ? person : String(index),
+              kind: 'PROJECT',
+              name: 'Placement '.repeat(14) + index,
+              parentId: null,
+            })),
+          },
+        };
       },
       administration: async () => ({}),
       change: async () => {},
@@ -850,12 +864,20 @@ test('business AI shares repeated lookups and aborts when the authorized revisio
           rounds++;
           if (rounds > 1) {
             const result = JSON.parse(messages.find(message => message.role === 'tool')!.content);
+            assert.equal(result.scopeLabel, 'Project A');
+            assert.equal(result.asOf, context().asOf);
+            assert.deepEqual(result.summary, dashboard().summary);
+            if (mode === 'aggregate fallback') {
+              assert.equal(result.coverage, undefined);
+              assert.match(result.limits[0], /Aggregate totals only/);
+              return { content: 'Here are the current authorized totals.', calls: [] };
+            }
             assert.equal(result.coverageComplete, false);
             assert.deepEqual(result.coverage[0], coverage[0]);
             assert.equal(result.coverage.length + result.contextOmitted.coverage, coverage.length);
-            assert.deepEqual(result.summary, dashboard().summary);
+            assert.ok(result.contextOmitted.authorizedHierarchy > 0);
           }
-          if (rounds === 2 && changeRevision) s.revision++;
+          if (rounds === 2 && mode === 'revision change') s.revision++;
           if (rounds > 2) return { content: 'Here is the current business summary.', calls: [] };
           return {
             content: '',
@@ -884,7 +906,7 @@ test('business AI shares repeated lookups and aborts when the authorized revisio
     const reply = service.chat(actor, {
       messages: [{ role: 'user', content: 'Summarize business analytics' }],
     });
-    if (changeRevision) await assert.rejects(reply, { status: 403 });
+    if (mode === 'revision change') await assert.rejects(reply, { status: 403 });
     else await reply;
     assert.equal(reads, 1);
   }

@@ -984,7 +984,11 @@ export class AssistantService {
       const finalRound = round === maxReadRounds || executions >= maxReads || lookupContextFull;
       const current = await recheck('own_profile');
       signal.throwIfAborted();
-      const fullContext = assistantCapabilities(current.state, current.person);
+      // The full business policy is used for server-side rechecks, not model context.
+      const { businessPolicy: _businessPolicy, ...fullContext } = assistantCapabilities(
+        current.state,
+        current.person,
+      );
       const requested = history.at(-1)!.content.toLowerCase();
       const context = {
         ...fullContext,
@@ -1234,7 +1238,33 @@ export class AssistantService {
         if (!ownSkillDraft && compactContext(available).textBytes > contextLimit - 2048) {
           response.content = skipped;
           lookupContextFull = true;
-          break;
+          if (
+            call.function.name === 'business_insights' ||
+            call.function.name === 'credential_expiry'
+          ) {
+            const { asOf, scopeLabel, placementLabel, filters, summary, expiry } = data as Record<
+              string,
+              unknown
+            >;
+            response.content = JSON.stringify({
+              asOf,
+              scopeLabel,
+              placementLabel,
+              filters,
+              summary,
+              expiry,
+              limits: [
+                'Aggregate totals only. Detailed coverage and individual records are unavailable in this reply.',
+              ],
+            });
+          }
+          if (
+            response.content === skipped ||
+            requestSize(available).textBytes > contextLimit - 2048
+          ) {
+            response.content = skipped;
+            break;
+          }
         }
         if (call.function.name === 'skill_claim_options') {
           const { skills } = data as { skills: { id: string; name: string }[] };
@@ -1248,6 +1278,7 @@ export class AssistantService {
         }
         if (!sources.some(item => item.label === source.label && item.url === source.url))
           sources.push(source);
+        if (lookupContextFull) break;
       }
     }
     throw new AccessError(422, 'Please ask a more focused question.');

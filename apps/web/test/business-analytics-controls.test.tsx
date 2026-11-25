@@ -400,6 +400,10 @@ test('analytics drill-through, pagination and assistant handoff preserve narrowi
     assert.match(prompts[0].prompt, /Customer Insights Modernisation/);
     assert.match(prompts[0].prompt, /Financial Services/);
     assert.match(prompts[1].prompt, /authorized analytics/);
+    assert.ok(prompts[1].prompt.includes('Selected Analytics scope ID: ' + scope));
+    assert.ok(
+      prompts[1].prompt.includes('Selected hierarchy filter ID: ' + context.hierarchy[1].id),
+    );
     await click('Skill coverage', document.querySelector('[aria-label="Analytics views"]')!);
     await click('SQL, Experienced: 1 approved holders');
     assert.equal(current().get('dataset'), 'skills');

@@ -502,7 +502,13 @@ function Insights({ context }: { context: BusinessContext }) {
                 new CustomEvent('assistant-context-request', {
                   detail: {
                     prompt:
-                      'Summarize my current authorized analytics: skill coverage, credential renewals and gaps. State scope and as-of time.',
+                      'Use the authorized analytics lookup first. Summarize skill coverage, credential renewals and gaps. State scope and as-of time from the lookup.' +
+                      (scopes.some(scope => scope.id === params.get('scopeId'))
+                        ? ' Selected Analytics scope ID: ' + params.get('scopeId') + '.'
+                        : ' Use all my authorized scopes.') +
+                      (hierarchy.some(node => node.id === params.get('hierarchyId'))
+                        ? ' Selected hierarchy filter ID: ' + params.get('hierarchyId') + '.'
+                        : ''),
                   },
                 }),
               )
