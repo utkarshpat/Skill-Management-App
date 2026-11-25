@@ -167,36 +167,39 @@ html[data-theme] .admin-sidebar.desktop-sidebar {
 }
 .sidebar-collapse-toggle {
   position: absolute;
-  top: 70px;
+  top: 63px;
   left: 100%;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 40px;
+  width: 24px;
+  height: 54px;
   padding: 0;
   border: 0;
   background: transparent;
-  color: #c8d2e0;
+  color: #edf3fb;
   cursor: pointer;
 }
 .sidebar-collapse-toggle::before {
   content: '';
   position: absolute;
-  inset: 5px 3px 5px 0;
-  border: 1px solid #354760;
+  inset: 4px 5px 4px 0;
+  border: 1px solid rgb(220 234 255 / 38%);
   border-inline-start: 0;
-  border-radius: 0 6px 6px 0;
-  background: var(--color-primary);
+  border-radius: 0 9px 9px 0;
+  background-color: color-mix(in srgb, var(--color-primary) 78%, transparent);
+  background-image: linear-gradient(155deg, rgb(230 242 255 / 26%), transparent 72%);
+  backdrop-filter: blur(8px);
+  box-shadow: 2px 3px 9px rgb(8 16 35 / 13%);
 }
 .sidebar-collapse-toggle svg {
   position: relative;
-  margin-inline-end: 3px;
+  margin-inline-end: 5px;
 }
 .sidebar-collapse-toggle:hover {
   color: #fff;
 }
 .sidebar-collapse-toggle:hover::before {
-  background: #243147;
+  background-color: color-mix(in srgb, #283a55 83%, transparent);
 }
 .sidebar-collapse-toggle:focus-visible {
   outline: 2px solid #8cdbd5;
