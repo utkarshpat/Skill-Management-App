@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
 
@@ -7,15 +7,16 @@ const preferenceKey = 'skill-management.sidebar-collapsed';
 export function Sidebar({
   children,
   brandHref,
-  onBrandClick,
+  onNavigate,
   collapsible = false,
 }: {
-  children: ReactNode;
+  children: (onNavigate: () => void) => ReactNode;
   brandHref: string;
-  onBrandClick?: () => void;
+  onNavigate?: () => void;
   collapsible?: boolean;
 }) {
   const sidebar = useRef<HTMLElement>(null);
+  const sidebarId = useId();
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return collapsible && localStorage.getItem(preferenceKey) === 'true';
@@ -23,14 +24,17 @@ export function Sidebar({
       return false;
     }
   });
-  function toggleSidebar() {
-    const next = !collapsed;
+  function updateCollapse(next: boolean) {
     setCollapsed(next);
     try {
       localStorage.setItem(preferenceKey, String(next));
     } catch {
       // The sidebar can still be toggled when browser storage is unavailable.
     }
+  }
+  function selectDestination() {
+    if (collapsible && !collapsed) updateCollapse(true);
+    onNavigate?.();
   }
   useEffect(() => {
     const element = sidebar.current;
@@ -53,6 +57,7 @@ export function Sidebar({
   return (
     <aside
       ref={sidebar}
+      id={sidebarId}
       className={'admin-sidebar' + (collapsible ? ' desktop-sidebar' : '')}
       data-collapsed={collapsed || undefined}
     >
@@ -60,7 +65,16 @@ export function Sidebar({
         <Link
           className="admin-brand"
           to={brandHref}
-          onClick={onBrandClick}
+          onClick={event => {
+            if (
+              !event.defaultPrevented &&
+              !event.metaKey &&
+              !event.ctrlKey &&
+              !event.altKey &&
+              !event.shiftKey
+            )
+              selectDestination();
+          }}
           aria-label="Sopra Steria"
           title={collapsed ? 'Sopra Steria' : undefined}
         >
@@ -70,21 +84,22 @@ export function Sidebar({
             <img src="/brand/sopra-steria.svg" alt="" />
           )}
         </Link>
-        {collapsible && (
-          <button
-            type="button"
-            className="sidebar-collapse-toggle"
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            onClick={toggleSidebar}
-          >
-            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
-        )}
       </div>
+      {collapsible && (
+        <button
+          type="button"
+          className="sidebar-collapse-toggle"
+          aria-controls={sidebarId}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          onClick={() => updateCollapse(!collapsed)}
+        >
+          {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+        </button>
+      )}
       <p className="nav-caption">SKILL MANAGEMENT APP</p>
-      {children}
+      {children(selectDestination)}
     </aside>
   );
 }

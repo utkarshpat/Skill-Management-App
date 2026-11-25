@@ -459,11 +459,11 @@ export function AccessAdmin({
     { id: 'people', label: 'People & Access', icon: Users },
     { id: 'audit', label: 'Activity log', icon: History },
   ] as const;
-  const sidebarContent = (close: () => void = () => {}) => (
+  const sidebarContent = (onNavigate: () => void) => (
     <SidebarNavigation
       actorId={workspaceContext?.person.id ?? state?.currentPerson?.id}
       label="Administration sections"
-      onNavigate={close}
+      onNavigate={onNavigate}
       items={[
         ...sections
           .filter(
@@ -487,7 +487,6 @@ export function AccessAdmin({
             onSelect: () => {
               if (id === 'skills') {
                 navigate('/skills');
-                close();
                 return;
               }
               setTab(id === 'people' && !canManageUsers ? 'roles' : id);
@@ -516,13 +515,13 @@ export function AccessAdmin({
         Skip to content
       </a>
       <Sidebar brandHref="/access?view=overview" collapsible>
-        {sidebarContent()}
+        {sidebarContent}
       </Sidebar>
       {navigationOpen && (
         <NavigationDrawer onClose={() => setNavigationOpen(false)}>
           {close => (
-            <Sidebar brandHref="/access?view=overview" onBrandClick={close}>
-              {sidebarContent(close)}
+            <Sidebar brandHref="/access?view=overview" onNavigate={close}>
+              {sidebarContent}
             </Sidebar>
           )}
         </NavigationDrawer>

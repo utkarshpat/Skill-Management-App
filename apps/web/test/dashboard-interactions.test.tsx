@@ -139,12 +139,14 @@ function snapshot() {
 }
 let overview: any,
   overviewFailure = 0,
+  interruptedOverview = false,
   cardFailure = 0,
   paths: string[] = [],
   mounted: Awaited<ReturnType<typeof render>> | undefined;
 beforeEach(async () => {
   overview = snapshot();
   overviewFailure = 0;
+  interruptedOverview = false;
   cardFailure = 0;
   paths = [];
   mock.method(globalThis, 'fetch', async (input: string | URL | Request) => {
@@ -157,7 +159,15 @@ beforeEach(async () => {
             { error: { message: 'Workspace refresh unavailable' } },
             { status: overviewFailure },
           )
-        : Response.json(overview);
+        : interruptedOverview
+          ? new Response(
+              JSON.stringify({ manifest: { ...overview, cardData: {} } }) +
+                '\n' +
+                JSON.stringify({ card: 'capability', result: overview.cardData.capability }) +
+                '\n',
+              { headers: { 'Content-Type': 'application/x-ndjson' } },
+            )
+          : Response.json(overview);
     if (path.startsWith('/api/dashboard/requests?status=')) {
       const status = new URL(path, 'http://localhost').searchParams.get('status');
       return Response.json({
@@ -253,6 +263,17 @@ test('dashboard overview failure is retryable without stale records or duplicate
   await click('Retry');
   assert.match(document.body.textContent!, /Power BI/);
   assert.equal(paths.filter(p => p === '/api/dashboard/overview').length, 2);
+});
+test('an interrupted stream keeps completed cards and offers retry for missing cards', async () => {
+  interruptedOverview = true;
+  await mount();
+  assert.match(document.body.textContent!, /Dashboard refresh failed/);
+  assert.match(document.body.textContent!, /Power BI/);
+  assert.equal(document.querySelector('[aria-label^="Loading "]'), null);
+  const card = document.querySelector('.dashboard-learning')!;
+  assert.match(card.textContent!, /This card could not be loaded/);
+  await click('Retry', card);
+  assert.match(card.textContent!, /Compare SQL joins/);
 });
 test('failed individual card retries current data; denial clears the old workspace projection', async () => {
   overview.cardData.learning = {

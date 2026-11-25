@@ -816,7 +816,7 @@ test('business AI produces only human-review drafts and never invokes writes', a
 });
 
 test('business AI keeps analytics totals within context and aborts when the authorized revision changes', async () => {
-  for (const mode of ['reuse', 'revision change', 'aggregate fallback']) {
+  for (const mode of ['reuse', 'revision change', 'aggregate fallback', 'filtered page']) {
     const s = state();
     const access: AccessStore = {
       snapshot: () => structuredClone(s),
@@ -833,8 +833,19 @@ test('business AI keeps analytics totals within context and aborts when the auth
     }));
     const business: BusinessStore = {
       context: async () => context(),
-      dashboard: async () => {
+      dashboard: async (_actor, query) => {
         reads++;
+        if (mode === 'filtered page') {
+          assert.equal(query.scopeId, scope);
+          assert.equal(query.hierarchyId, person);
+          assert.equal(query.dataset, 'certifications');
+          assert.equal(query.issuer, 'Oracle');
+          assert.equal(query.validity, 'EXPIRED');
+          assert.equal(query.status, 'APPROVED');
+          assert.equal(query.search, 'Aditi');
+          assert.equal(query.from, '2026-10-01');
+          assert.equal(query.to, '2026-11-01');
+        }
         const result = dashboard();
         return {
           ...result,
@@ -860,8 +871,19 @@ test('business AI keeps analytics totals within context and aborts when the auth
       undefined,
       {
         name: 'synthetic',
-        complete: async messages => {
+        complete: async (messages, tools) => {
           rounds++;
+          if (mode === 'filtered page') {
+            assert.equal(tools.length, 0);
+            const facts = messages[0].content
+              .split('Analytics data: ')[1]
+              .split('\nEffective capability')[0];
+            const result = JSON.parse(facts);
+            assert.equal(result.total, dashboard().total);
+            assert.equal(result.scopeLabel, 'Project A');
+            assert.equal(result.filters.issuer, 'Oracle');
+            return { content: 'Here are the authorized filtered totals.', calls: [] };
+          }
           if (rounds > 1) {
             const result = JSON.parse(messages.find(message => message.role === 'tool')!.content);
             assert.equal(result.scopeLabel, 'Project A');
@@ -903,9 +925,26 @@ test('business AI keeps analytics totals within context and aborts when the auth
       undefined,
       business,
     );
-    const reply = service.chat(actor, {
-      messages: [{ role: 'user', content: 'Summarize business analytics' }],
-    });
+    const reply = service.chat(
+      actor,
+      mode === 'filtered page'
+        ? {
+            message: 'Summarize the records matching my current Analytics filters.',
+            currentPage: '/business?view=records',
+            analyticsFilters: {
+              scopeId: scope,
+              hierarchyId: person,
+              dataset: 'certifications',
+              issuer: 'Oracle',
+              validity: 'EXPIRED',
+              status: 'APPROVED',
+              search: 'Aditi',
+              from: '2026-10-01',
+              to: '2026-11-01',
+            },
+          }
+        : { messages: [{ role: 'user', content: 'Summarize business analytics' }] },
+    );
     if (mode === 'revision change') await assert.rejects(reply, { status: 403 });
     else await reply;
     assert.equal(reads, 1);

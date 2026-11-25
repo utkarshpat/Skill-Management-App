@@ -617,16 +617,18 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
                   [credential.provider, credential.category].filter(Boolean).join(' · ')
                 }
                 onSelect={credential => {
+                  if (selectedCredential && credential.id !== selectedCredential.id) setUrl('');
                   setSelectedCredential(credential);
                   setName(credential.name);
                   setProvider(credential.provider);
                   setCategory(credential.category);
                 }}
                 onQueryChange={value => {
-                  if (catalogueSelection) {
+                  if (selectedCredential) {
                     setName('');
                     setProvider('');
                     setCategory('');
+                    setUrl('');
                   }
                   setSelectedCredential(undefined);
                   if (value !== catalogueSearch || cataloguePage !== 1) {

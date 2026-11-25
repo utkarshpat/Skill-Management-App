@@ -315,6 +315,8 @@ test('changing a catalogue search clears the previous selection and still allows
   await press(catalogue, 'Enter');
   assert.equal(catalogue.value, 'Oracle Database SQL');
   await fill('Why are you recommending it?', 'Supports customer reporting');
+  await expand('Edit certification details');
+  await fill('Issuer', 'Edited issuer');
   await fill('Certification catalogue', 'AWS');
   await press(catalogue, 'Escape');
   const send = Array.from(document.querySelectorAll('button')).find(
@@ -322,7 +324,7 @@ test('changing a catalogue search clears the previous selection and still allows
   )!;
   assert.ok(send.disabled);
   assert.equal(writes.length, 0);
-  await expand('Enter certification manually');
+  assert.equal(document.querySelector<HTMLDetailsElement>('.cert-recommend-details')?.open, true);
   await fill('Certification name', 'AWS Cloud Practitioner');
   await fill('Certification catalogue', 'AWS Cloud');
   await press(catalogue, 'Escape');

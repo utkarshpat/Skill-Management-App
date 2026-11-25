@@ -173,13 +173,13 @@ function Insights({ context }: { context: BusinessContext }) {
     exportGuard = useRef(false);
 
   const [fileRecord, setFileRecord] = useState<{ kind: string; id: string; name: string }>();
-  const analyticalView = ['community', 'skills', 'certifications', 'records'].includes(
-    params.get('view') ?? '',
-  )
-    ? params.get('view')!
-    : params.get('dataset')
-      ? 'records'
-      : 'community';
+  const view = params.get('view');
+  const analyticalView =
+    view === 'community' || view === 'skills' || view === 'certifications' || view === 'records'
+      ? view
+      : params.get('dataset')
+        ? 'records'
+        : 'community';
   const setAnalyticalView = (view: string) =>
     setParams(current => updateBusinessFilters(current, { view }));
   const resetFilters = () =>
@@ -497,22 +497,26 @@ function Insights({ context }: { context: BusinessContext }) {
             className="secondary-button"
             aria-label="Ask AI about analytics"
             title="Ask AI about analytics"
-            onClick={() =>
+            onClick={() => {
+              const analyticsFilters = Object.fromEntries(filters);
+              delete analyticsFilters.page;
+              delete analyticsFilters.sort;
               window.dispatchEvent(
                 new CustomEvent('assistant-context-request', {
                   detail: {
+                    analyticsFilters,
                     prompt:
-                      'Use the authorized analytics lookup first. Summarize skill coverage, credential renewals and gaps. State scope and as-of time from the lookup.' +
-                      (scopes.some(scope => scope.id === params.get('scopeId'))
-                        ? ' Selected Analytics scope ID: ' + params.get('scopeId') + '.'
-                        : ' Use all my authorized scopes.') +
-                      (hierarchy.some(node => node.id === params.get('hierarchyId'))
-                        ? ' Selected hierarchy filter ID: ' + params.get('hierarchyId') + '.'
-                        : ''),
+                      {
+                        community: 'Summarize the current Analytics overview.',
+                        skills: 'Summarize skill coverage and gaps in the current Analytics view.',
+                        certifications:
+                          'Summarize certificates and renewals in the current Analytics view.',
+                        records: 'Summarize the records matching my current Analytics filters.',
+                      }[analyticalView] + ' State the applied filters, scope and as-of time.',
                   },
                 }),
-              )
-            }
+              );
+            }}
           >
             <Sparkles size={16} />
           </button>
@@ -1037,7 +1041,7 @@ function Insights({ context }: { context: BusinessContext }) {
             />
           )}
           {/* SECTION 1: SKILL-WISE HEADCOUNT & 4-LEVEL MATRIX */}
-          {(analyticalView === 'all' || analyticalView === 'skills') && (
+          {analyticalView === 'skills' && (
             <section className="bo-panel bo-coverage bo-card-elevated">
               <div className="bo-panel-header">
                 <div className="bo-panel-title-group">
@@ -1163,7 +1167,7 @@ function Insights({ context }: { context: BusinessContext }) {
           )}
 
           {/* SECTION 2: CERTIFICATIONS, PILLARS & ISSUERS */}
-          {(analyticalView === 'all' || analyticalView === 'certifications') && (
+          {analyticalView === 'certifications' && (
             <div className="bo-chart-grid">
               <CredentialCoverage
                 data={data}

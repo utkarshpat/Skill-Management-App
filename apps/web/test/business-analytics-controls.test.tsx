@@ -247,6 +247,31 @@ test('direct links to ?tab=demand stay on analytics without rendering a demand p
   assert.equal(document.querySelector('nav[aria-label="Analytics sections"]'), null);
   assert.ok(queries.length > 0);
 });
+test('Ask AI forwards the current analytics filters without pagination or sorting', async () => {
+  await mount(
+    '?view=records&dataset=certifications&issuer=Oracle&validity=EXPIRED&search=Aditi&from=2026-10-01&to=2026-11-01&page=2&sort=expiry_asc',
+  );
+  const button = document.querySelector<HTMLButtonElement>(
+    '[aria-label="Ask AI about analytics"]',
+  )!;
+  let filters: unknown;
+  window.addEventListener(
+    'assistant-context-request',
+    event => {
+      filters = (event as CustomEvent).detail.analyticsFilters;
+    },
+    { once: true },
+  );
+  await act(async () => button.click());
+  assert.deepEqual(filters, {
+    dataset: 'certifications',
+    issuer: 'Oracle',
+    validity: 'EXPIRED',
+    search: 'Aditi',
+    from: '2026-10-01',
+    to: '2026-11-01',
+  });
+});
 const current = () => queries.at(-1)!;
 async function named(name: string, value: string) {
   const field = document.querySelector<HTMLInputElement | HTMLSelectElement>(
@@ -399,11 +424,12 @@ test('analytics drill-through, pagination and assistant handoff preserve narrowi
     assert.equal(prompts[0].autoSend, true);
     assert.match(prompts[0].prompt, /Customer Insights Modernisation/);
     assert.match(prompts[0].prompt, /Financial Services/);
-    assert.match(prompts[1].prompt, /authorized analytics/);
-    assert.ok(prompts[1].prompt.includes('Selected Analytics scope ID: ' + scope));
-    assert.ok(
-      prompts[1].prompt.includes('Selected hierarchy filter ID: ' + context.hierarchy[1].id),
-    );
+    assert.match(prompts[1].prompt, /applied filters, scope and as-of time/);
+    assert.deepEqual(prompts[1].analyticsFilters, {
+      scopeId: scope,
+      hierarchyId: context.hierarchy[1].id,
+      dataset: 'people',
+    });
     await click('Skill coverage', document.querySelector('[aria-label="Analytics views"]')!);
     await click('SQL, Experienced: 1 approved holders');
     assert.equal(current().get('dataset'), 'skills');

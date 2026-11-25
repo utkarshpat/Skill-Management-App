@@ -220,6 +220,29 @@ test('history failure remains recoverable and unsent shortcut replacement requir
   assert.equal(outgoing.length, 0);
 });
 
+test('analytics shortcut applies filters after draft replacement and retains them on retry', async () => {
+  await mount();
+  await change(input(), 'My unsent message');
+  const analyticsFilters = { dataset: 'certifications', issuer: 'Oracle', validity: 'EXPIRED' };
+  await act(async () => {
+    window.dispatchEvent(
+      new CustomEvent('assistant-context-request', {
+        detail: { prompt: 'Summarize this Analytics view.', analyticsFilters },
+      }),
+    );
+  });
+  await click('Replace message');
+  chatFailure = true;
+  await click('Send AI message');
+  assert.deepEqual(outgoing[0].analyticsFilters, analyticsFilters);
+  chatFailure = false;
+  await click('Send AI message');
+  assert.deepEqual(outgoing[1].analyticsFilters, analyticsFilters);
+  await change(input(), 'How do I update my profile?');
+  await click('Send AI message');
+  assert.equal(outgoing[2].analyticsFilters, undefined);
+});
+
 test('collapsed background reply does not block navigation and can be resumed after completion', async () => {
   await mount();
   pending = deferred<Response>();

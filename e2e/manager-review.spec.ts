@@ -281,7 +281,7 @@ test('certification recommendation: search and select inside each picker', async
   await page.route('**/api/capability-submissions/catalogue?**', route =>
     route.fulfill({
       json: {
-        total: 1,
+        total: 21,
         pageSize: 10,
         credentials: [
           {
@@ -290,6 +290,12 @@ test('certification recommendation: search and select inside each picker', async
             provider: 'Oracle',
             category: 'Databases',
           },
+          ...Array.from({ length: 9 }, (_, index) => ({
+            id: 'fixture-' + index,
+            name: 'Catalogue certificate ' + (index + 1),
+            provider: 'Fixture issuer',
+            category: 'Cloud',
+          })),
         ],
       },
     }),
@@ -319,7 +325,20 @@ test('certification recommendation: search and select inside each picker', async
   await report.press('ArrowDown');
   await report.press('Enter');
   await expect(report).toHaveValue('Aditi Menon');
+  const reason = dialog.getByRole('textbox', { name: /Why are you recommending it/ });
+  const closedDialog = (await dialog.boundingBox())!;
+  const closedReason = (await reason.boundingBox())!;
   await catalogue.fill('Oracle');
+  const results = dialog.getByRole('listbox', { name: 'Certification catalogue' });
+  await expect(results.getByRole('option')).toHaveCount(10);
+  await expect(dialog.getByRole('button', { name: 'Next', exact: true })).toBeVisible();
+  expect(await dialog.boundingBox()).toEqual(closedDialog);
+  expect(await reason.boundingBox()).toEqual(closedReason);
+  expect(await results.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true);
+  const body = (await dialog.locator('.form-dialog-body').boundingBox())!;
+  const panel = (await results.locator('..').boundingBox())!;
+  expect(panel.y).toBeGreaterThanOrEqual(body.y);
+  expect(panel.y + panel.height).toBeLessThanOrEqual(body.y + body.height);
   await dialog.getByRole('option', { name: /Oracle Database SQL.*Databases/ }).click();
   await expect(catalogue).toHaveValue('Oracle Database SQL');
   await dialog.getByText('Edit certification details', { exact: true }).click();

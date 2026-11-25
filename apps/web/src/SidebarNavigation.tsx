@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react';
 import { Link } from 'react-router';
 import { ChevronRight, GripVertical, RotateCcw, type LucideIcon } from 'lucide-react';
 import {
@@ -199,6 +206,12 @@ export function SidebarNavigation({
     cancelDrag();
     if (ordered[target]) move(id, ordered[target].id);
   }
+  function selectLink(event: MouseEvent<HTMLAnchorElement>, onSelect?: () => void) {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey)
+      return;
+    onSelect?.();
+    onNavigate();
+  }
   if (!items.length) return null;
   return (
     <>
@@ -226,10 +239,7 @@ export function SidebarNavigation({
                   aria-label={caption}
                   title={caption}
                   aria-current={active ? 'page' : undefined}
-                  onClick={() => {
-                    onSelect?.();
-                    onNavigate();
-                  }}
+                  onClick={event => selectLink(event, onSelect)}
                 >
                   <Icon size={19} />
                   <span>{caption}</span>
@@ -302,10 +312,7 @@ export function SidebarNavigation({
               aria-label={profile.label}
               title={profile.label}
               aria-current={profile.active ? 'page' : undefined}
-              onClick={() => {
-                profile.onSelect?.();
-                onNavigate();
-              }}
+              onClick={event => selectLink(event, profile.onSelect)}
             >
               <profile.icon size={19} />
               <span>{profile.label}</span>

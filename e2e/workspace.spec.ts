@@ -84,10 +84,14 @@ test('collapsed desktop navigation keeps named icons and restores the full mobil
   const collapse = sidebar.getByRole('button', { name: 'Collapse sidebar' });
   await expect(dashboard).toHaveAttribute('aria-current', 'page');
   const expandedWidth = (await sidebar.boundingBox())!.width;
+  const expandedToggle = (await collapse.boundingBox())!;
   await collapse.press('Enter');
   await expect(expand).toBeFocused();
   await expect(expand).toHaveAttribute('aria-expanded', 'false');
   expect((await sidebar.boundingBox())!.width).toBeLessThan(expandedWidth / 2);
+  const collapsedToggle = (await expand.boundingBox())!;
+  expect(collapsedToggle.y).toBe(expandedToggle.y);
+  expect(collapsedToggle.x).toBeLessThan(expandedToggle.x);
   await expect(sidebar.getByRole('link', { name: 'Sopra Steria' }).locator('img')).toHaveAttribute(
     'src',
     '/brand/sopra-steria-mark.svg',
@@ -110,6 +114,14 @@ test('collapsed desktop navigation keeps named icons and restores the full mobil
   await expand.click();
   await expect(collapse).toHaveAttribute('aria-expanded', 'true');
   await expect(dashboard.locator('span')).toBeVisible();
+  const people = sidebar.getByRole('button', { name: 'People & Access', exact: true });
+  await people.press('Enter');
+  await expect(people).toHaveAttribute('aria-current', 'page');
+  await expect(expand).toBeVisible();
+  await expand.click();
+  await sidebar.getByRole('link', { name: 'My profile' }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(expand).toBeVisible();
 });
 
 test('navigation drawer keeps focus and toasts across the tablet breakpoint', async ({ page }) => {

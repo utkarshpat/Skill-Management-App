@@ -444,6 +444,14 @@ export class ToolRegistry {
                 type: 'object',
                 additionalProperties: false,
                 properties: {
+                  ...(name === 'business_insights'
+                    ? {
+                        dataset: {
+                          type: 'string',
+                          enum: ['people', 'skills', 'certifications', 'submissions'],
+                        },
+                      }
+                    : {}),
                   scopeId: {
                     type: 'string',
                     format: 'uuid',
@@ -502,6 +510,7 @@ export class ToolRegistry {
             if (
               Object.keys(q).some(
                 key =>
+                  !(key === 'dataset' && name === 'business_insights') &&
                   ![
                     'scopeId',
                     'hierarchyId',
@@ -520,7 +529,7 @@ export class ToolRegistry {
               )
             )
               throw new AccessError(400, 'Unsupported business filter.');
-            return { ...businessQuery({ ...q, dataset }) };
+            return { ...businessQuery({ dataset, ...q }) };
           },
           read: async ({ person, args }) => {
             const query = businessQuery(args);

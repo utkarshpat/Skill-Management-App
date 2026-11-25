@@ -120,7 +120,21 @@ export function Dashboard() {
         .catch(e => {
           if (!c.signal.aborted && n === generation) {
             setError(e.message);
-            if ([401, 403, 409].includes(e.status)) setManifest(undefined);
+            if ([401, 403, 409].includes(e.status)) {
+              setManifest(undefined);
+            } else {
+              setManifest(previous => {
+                if (!previous) return previous;
+                const missing = previous.cards.filter(card => !previous.cardData[card.id]);
+                if (!missing.length) return previous;
+                const cardData = { ...previous.cardData };
+                for (const card of missing)
+                  cardData[card.id] = {
+                    error: { status: 503, message: 'This card could not be loaded.' },
+                  };
+                return { ...previous, cardData };
+              });
+            }
           }
           return false;
         })

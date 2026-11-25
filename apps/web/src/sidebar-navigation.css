@@ -153,7 +153,6 @@ html[data-theme] .admin-sidebar .admin-brand {
 .sidebar-heading {
   display: flex;
   align-items: center;
-  gap: 8px;
 }
 .sidebar-heading .admin-brand {
   flex: 1;
@@ -162,22 +161,46 @@ html[data-theme] .admin-sidebar .admin-brand {
 .sidebar-heading .admin-brand img {
   max-width: 100%;
 }
+html[data-theme] .admin-sidebar.desktop-sidebar {
+  z-index: 21;
+  overflow: visible;
+}
 .sidebar-collapse-toggle {
+  position: absolute;
+  top: 70px;
+  left: 100%;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  flex: none;
+  width: 22px;
+  height: 40px;
   padding: 0;
-  border: 1px solid #53627a;
-  border-radius: 8px;
+  border: 0;
   background: transparent;
   color: #c8d2e0;
   cursor: pointer;
 }
+.sidebar-collapse-toggle::before {
+  content: '';
+  position: absolute;
+  inset: 5px 3px 5px 0;
+  border: 1px solid #354760;
+  border-inline-start: 0;
+  border-radius: 0 6px 6px 0;
+  background: var(--color-primary);
+}
+.sidebar-collapse-toggle svg {
+  position: relative;
+  margin-inline-end: 3px;
+}
 .sidebar-collapse-toggle:hover {
-  background: #243147;
   color: #fff;
+}
+.sidebar-collapse-toggle:hover::before {
+  background: #243147;
+}
+.sidebar-collapse-toggle:focus-visible {
+  outline: 2px solid #8cdbd5;
+  outline-offset: 1px;
 }
 html[data-theme] .admin-sidebar.desktop-sidebar[data-collapsed] {
   width: 76px;
@@ -185,7 +208,6 @@ html[data-theme] .admin-sidebar.desktop-sidebar[data-collapsed] {
   padding-inline: 10px;
 }
 .desktop-sidebar[data-collapsed] .sidebar-heading {
-  flex-direction: column;
   margin-bottom: 16px;
 }
 html[data-theme] .desktop-sidebar[data-collapsed] .admin-brand .sidebar-brand-mark {

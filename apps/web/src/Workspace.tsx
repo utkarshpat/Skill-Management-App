@@ -229,11 +229,11 @@ export function Workspace({
       )}
     </>
   );
-  const sidebarContent = (close: () => void = () => {}) => (
+  const sidebarContent = (onNavigate: () => void) => (
     <SidebarNavigation
       actorId={state?.person.id}
       label="Personal workspace sections"
-      onNavigate={close}
+      onNavigate={onNavigate}
       items={[
         ...sidebarItems,
         ...(state?.capabilities.administration
@@ -315,13 +315,13 @@ export function Workspace({
         Skip to content
       </a>
       <Sidebar brandHref="/workspace" collapsible>
-        {sidebarContent()}
+        {sidebarContent}
       </Sidebar>
       {navigationOpen && (
         <NavigationDrawer onClose={() => setNavigationOpen(false)}>
           {close => (
-            <Sidebar brandHref="/workspace" onBrandClick={close}>
-              {sidebarContent(close)}
+            <Sidebar brandHref="/workspace" onNavigate={close}>
+              {sidebarContent}
             </Sidebar>
           )}
         </NavigationDrawer>

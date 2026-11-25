@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { AccessError } from '../../shared/errors.js';
+import { businessQuery } from '../business/index.js';
 import type { Message } from './assistant.js';
 
 const lookupLists = [
@@ -50,6 +51,7 @@ interface PreparedConversation {
   id: string;
   message: string;
   currentPage?: string;
+  analyticsFilters?: ReturnType<typeof businessQuery>;
   history: Message[];
   previous: Session;
   compacted: boolean;
@@ -77,7 +79,9 @@ export class ConversationMemory {
       throw new AccessError(400, 'Enter a message.');
     const body = input as Record<string, unknown>;
     if (
-      Object.keys(body).some(key => !['message', 'conversationId', 'currentPage'].includes(key)) ||
+      Object.keys(body).some(
+        key => !['message', 'conversationId', 'currentPage', 'analyticsFilters'].includes(key),
+      ) ||
       typeof body.message !== 'string' ||
       !body.message.trim() ||
       body.message.length > 2000
@@ -135,6 +139,8 @@ export class ConversationMemory {
         !body.currentPage.includes('#')
           ? body.currentPage
           : undefined,
+      analyticsFilters:
+        body.analyticsFilters === undefined ? undefined : businessQuery(body.analyticsFilters),
       history,
       previous,
       compacted: previous.notes.length > 0 || Boolean(existing && existing.policy !== policy),

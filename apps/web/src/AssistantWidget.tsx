@@ -202,6 +202,8 @@ export function AssistantWidget() {
   const [historyBusy, setHistoryBusy] = useState(false);
   const [pendingContext, setPendingContext] = useState<string>();
   const [pendingRecord, setPendingRecord] = useState<AssistantRecordContext>();
+  const [pendingAnalytics, setPendingAnalytics] = useState<Record<string, string>>();
+  const analyticsContext = useRef<Record<string, string>>(undefined);
   const [recordContext, setRecordContext] = useState<
     AssistantRecordContext & { facts: string; locationKey: string }
   >();
@@ -221,6 +223,8 @@ export function AssistantWidget() {
     setActionNotice('');
     setPendingContext(undefined);
     setPendingRecord(undefined);
+    setPendingAnalytics(undefined);
+    analyticsContext.current = undefined;
     setRecordContext(undefined);
     peopleContext.current = undefined;
     setShowHistory(false);
@@ -258,7 +262,12 @@ export function AssistantWidget() {
     },
     [],
   );
-  function useRecordPrompt(prompt: string, record?: AssistantRecordContext) {
+  function useRecordPrompt(
+    prompt: string,
+    record?: AssistantRecordContext,
+    analyticsFilters?: Record<string, string>,
+  ) {
+    analyticsContext.current = analyticsFilters;
     const split = record ? prompt.indexOf(recordFactsSeparator) : -1;
     setRecordContext(
       record && split >= 0
@@ -271,7 +280,12 @@ export function AssistantWidget() {
     );
     setText(split >= 0 ? prompt.slice(0, split) : prompt);
   }
-  function prepareContext(value: unknown, autoSend = false, record?: AssistantRecordContext) {
+  function prepareContext(
+    value: unknown,
+    autoSend = false,
+    record?: AssistantRecordContext,
+    analyticsFilters?: Record<string, string>,
+  ) {
     if (busy || actionBusy || historyBusy) return;
     const context = assistantContextPrompt(value, session.current.restartOnOpen ? '' : text);
     if (!context) return;
@@ -281,14 +295,16 @@ export function AssistantWidget() {
     if (context.needsReplacement) {
       setPendingContext(context.prompt);
       setPendingRecord(record);
+      setPendingAnalytics(analyticsFilters);
     } else {
       setPendingContext(undefined);
       setPendingRecord(undefined);
+      setPendingAnalytics(undefined);
       if (autoSend) {
         beginPeopleSearch(context.prompt);
       } else {
         peopleContext.current = undefined;
-        useRecordPrompt(context.prompt, record);
+        useRecordPrompt(context.prompt, record, analyticsFilters);
       }
     }
     return true;
@@ -310,9 +326,17 @@ export function AssistantWidget() {
           prompt?: unknown;
           autoSend?: boolean;
           record?: AssistantRecordContext;
+          analyticsFilters?: Record<string, string>;
         }>
       ).detail;
-      if (prepareContext(detail?.prompt, detail?.autoSend === true, detail?.record)) {
+      if (
+        prepareContext(
+          detail?.prompt,
+          detail?.autoSend === true,
+          detail?.record,
+          detail?.analyticsFilters,
+        )
+      ) {
         event.preventDefault();
         if (event.cancelable)
           requestAnimationFrame(() => input.current?.focus({ preventScroll: true }));
@@ -324,6 +348,7 @@ export function AssistantWidget() {
   useEffect(() => {
     setPendingContext(undefined);
     setPendingRecord(undefined);
+    setPendingAnalytics(undefined);
     setRecordContext(undefined);
     recordActionController.current?.abort();
   }, [location.key]);
@@ -507,6 +532,8 @@ export function AssistantWidget() {
       );
       setPendingContext(undefined);
       setPendingRecord(undefined);
+      setPendingAnalytics(undefined);
+      analyticsContext.current = undefined;
       setRecordContext(undefined);
       setText('');
       setDocument(undefined);
@@ -601,10 +628,12 @@ export function AssistantWidget() {
       return;
     }
     if (!prompt && currentRecord && !(await checkRecordForSend())) return;
+    const analytics = prompt ? undefined : analyticsContext.current;
     input.current?.focus({ preventScroll: true });
     const next: ChatMessage[] = [...messages, { role: 'user', content: (prompt ?? text).trim() }];
     setPendingContext(undefined);
     setPendingRecord(undefined);
+    setPendingAnalytics(undefined);
     setMessages(current => [...current, next.at(-1)!]);
     setText('');
     setBusy(true);
@@ -620,6 +649,7 @@ export function AssistantWidget() {
           message: outgoing,
           conversationId: conversationId.current,
           currentPage: location.pathname + location.search,
+          analyticsFilters: analytics,
         }),
         signal: pending.signal,
       });
@@ -629,6 +659,7 @@ export function AssistantWidget() {
       if (!pending.signal.aborted) {
         const completion = session.current.completion(epoch);
         if (completion.current) {
+          if (analyticsContext.current === analytics) analyticsContext.current = undefined;
           conversationId.current = body.conversationId;
           setShowHistory(false);
           const reply: ChatMessage = {
@@ -929,9 +960,10 @@ export function AssistantWidget() {
                       pendingContext.includes('Use conversational search')
                     )
                       beginPeopleSearch(pendingContext);
-                    else useRecordPrompt(pendingContext, pendingRecord);
+                    else useRecordPrompt(pendingContext, pendingRecord, pendingAnalytics);
                     setPendingContext(undefined);
                     setPendingRecord(undefined);
+                    setPendingAnalytics(undefined);
                     input.current?.focus();
                   }}
                 >
@@ -942,6 +974,7 @@ export function AssistantWidget() {
                   onClick={() => {
                     setPendingContext(undefined);
                     setPendingRecord(undefined);
+                    setPendingAnalytics(undefined);
                   }}
                 >
                   Keep my message
@@ -1027,7 +1060,10 @@ export function AssistantWidget() {
               placeholder="Ask about this workspace…"
               disabled={!status?.configured || historyBusy || actionBusy}
               readOnly={busy}
-              onChange={event => setText(event.target.value)}
+              onChange={event => {
+                if (!event.target.value.trim()) analyticsContext.current = undefined;
+                setText(event.target.value);
+              }}
               onKeyDown={event => {
                 if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
                   event.preventDefault();

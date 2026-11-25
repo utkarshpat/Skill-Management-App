@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, ChevronDown, Search } from 'lucide-react';
 
 type Option = { id: string; name: string };
@@ -33,13 +33,51 @@ export function RecommendationPicker<T extends Option>({
   const id = useId();
   const listId = `${id}-results`;
   const input = useRef<HTMLInputElement>(null);
+  const results = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLUListElement>(null);
   const activeOption = useRef<HTMLLIElement>(null);
   const [open, setOpen] = useState(false);
   const [activeId, setActiveId] = useState<string>();
   const activeIndex = open ? options.findIndex(option => option.id === activeId) : -1;
 
+  useLayoutEffect(() => {
+    const panel = results.current;
+    const anchor = panel?.parentElement;
+    const body = anchor?.closest('.form-dialog-body');
+    if (!panel || !anchor || !body) return;
+
+    const position = () => {
+      const picker = anchor.getBoundingClientRect();
+      const bounds = body.getBoundingClientRect();
+      if (!bounds.height) return;
+      const below = bounds.bottom - picker.bottom;
+      const above = picker.top - bounds.top;
+      const opensAbove = below < 140 && above > below;
+      panel.toggleAttribute('data-above', opensAbove);
+      panel.style.setProperty(
+        '--picker-room',
+        Math.max(0, (opensAbove ? above : below) - 12) + 'px',
+      );
+    };
+    position();
+    const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(position);
+    resize?.observe(body);
+    resize?.observe(anchor);
+    body.addEventListener('scroll', position, { passive: true });
+    return () => {
+      resize?.disconnect();
+      body.removeEventListener('scroll', position);
+    };
+  }, [open]);
+
   useEffect(() => {
-    if (activeIndex >= 0) activeOption.current?.scrollIntoView({ block: 'nearest' });
+    const scroll = list.current;
+    const option = activeOption.current;
+    if (activeIndex < 0 || !scroll || !option) return;
+    const bounds = scroll.getBoundingClientRect();
+    const item = option.getBoundingClientRect();
+    if (item.top < bounds.top) scroll.scrollTop += item.top - bounds.top;
+    else if (item.bottom > bounds.bottom) scroll.scrollTop += item.bottom - bounds.bottom;
   }, [activeIndex, activeId]);
 
   function close() {
@@ -122,8 +160,8 @@ export function RecommendationPicker<T extends Option>({
         )}
       </div>
       {open && (
-        <div className="cert-recommend-picker-results">
-          <ul id={listId} role="listbox" aria-labelledby={`${id}-label`}>
+        <div className="cert-recommend-picker-results" ref={results}>
+          <ul id={listId} role="listbox" aria-labelledby={`${id}-label`} ref={list}>
             {options.map((option, index) => {
               const description = describe(option);
               return (
