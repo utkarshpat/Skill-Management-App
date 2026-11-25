@@ -29,7 +29,6 @@ import {
   AskSkillGenie,
   certificateContext,
   certificateQuestion,
-  focusRecordSection,
   readOwnCertificate,
 } from '../AskSkillGenie';
 
@@ -60,6 +59,10 @@ export function Certifications({
     return () => window.removeEventListener('notifications-remote-updated', refresh);
   }, []);
   const [viewing, setViewing] = useState<CertificationRecord>();
+  const [focusFeedback, setFocusFeedback] = useState(false);
+  useEffect(() => {
+    if (!viewing) setFocusFeedback(false);
+  }, [viewing]);
   const [renewalSource, setRenewalSource] = useState<CertificationRecord>();
   const [renewalFields, setRenewalFields] = useState<CertificationFields>();
   const [today, setToday] = useState(() => new Date().toISOString().slice(0, 10));
@@ -270,6 +273,7 @@ export function Certifications({
         <FormDialog
           title={viewing.certificationName}
           subtitle={viewing.provider}
+          initialFocus={focusFeedback ? '[data-genie-section="feedback"]' : undefined}
           onClose={() => setViewing(undefined)}
           footer={
             <>
@@ -283,8 +287,8 @@ export function Certifications({
                       (record, action) => {
                         if (action === 'renew') startRenewal(record);
                         else {
+                          setFocusFeedback(action === 'feedback');
                           setViewing(record);
-                          if (action === 'feedback') focusRecordSection('feedback');
                         }
                       },
                       Boolean(data?.canManage && data.canUploadImage),

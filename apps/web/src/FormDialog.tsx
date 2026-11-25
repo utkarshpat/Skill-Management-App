@@ -27,11 +27,13 @@ export function FormDialog({
   subtitle,
   stepNavigation = false,
   compact = false,
+  initialFocus,
 }: {
   className?: string;
   subtitle?: ReactNode;
   stepNavigation?: boolean;
   compact?: boolean;
+  initialFocus?: string;
   title: string;
   onClose: () => void;
   busy?: boolean;
@@ -72,7 +74,9 @@ export function FormDialog({
     const input = Array.from(element.querySelectorAll<HTMLElement>('input,select,textarea')).find(
       field => !field.closest('[hidden]') && !field.hasAttribute('disabled') && field.tabIndex >= 0,
     );
-    if (
+    const target = initialFocus ? element.querySelector<HTMLElement>(initialFocus) : null;
+    if (target) target.focus();
+    else if (
       (!className.includes('skill-wizard') && !className.includes('capability-composer')) ||
       window.matchMedia('(min-width:801px)').matches
     )

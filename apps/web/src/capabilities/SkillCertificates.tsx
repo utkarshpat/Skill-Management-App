@@ -8,7 +8,6 @@ import {
   AskSkillGenie,
   certificateContext,
   certificateQuestion,
-  focusRecordSection,
   readOwnCertificate,
 } from '../AskSkillGenie';
 import { CertificationImage } from '../certifications/CertificationImage';
@@ -53,6 +52,10 @@ export function SkillCertificates({
     [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0),
     [viewing, setViewing] = useState<CertificationRecord>();
+  const [focusFeedback, setFocusFeedback] = useState(false);
+  useEffect(() => {
+    if (!viewing) setFocusFeedback(false);
+  }, [viewing]);
   const [opening, setOpening] = useState(false),
     [detailError, setDetailError] = useState('');
   const [editing, setEditing] = useState<CertificationRecord>(),
@@ -229,6 +232,7 @@ export function SkillCertificates({
         <FormDialog
           title={viewing?.certificationName || 'Certificate'}
           subtitle={viewing?.provider}
+          initialFocus={focusFeedback ? '[data-genie-section="feedback"]' : undefined}
           onClose={close}
           footer={
             <>
@@ -243,8 +247,8 @@ export function SkillCertificates({
                         (record, action) => {
                           if (action === 'renew') void open(record.id, true);
                           else {
+                            setFocusFeedback(action === 'feedback');
                             setViewing(record);
-                            if (action === 'feedback') focusRecordSection('feedback');
                           }
                         },
                         Boolean(data?.canManage && data.canUploadImage),
