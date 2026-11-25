@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router';
 import { ProfileDetails } from '../src/ProfileDetails';
 import type { WorkspaceState } from '../src/Workspace';
 import { ProfileOrganization, type ProfileOrganizationDetails } from '../src/ProfileOrganization';
-test('profile shows real identity and independently permission-filtered workspace actions', () => {
+test('profile shows work identity without the profile actions card', () => {
   const workspace: WorkspaceState = {
     person: { id: 'own', displayName: 'Test Person', employeeCode: 'EMP-1', roles: ['Employee'] },
     authentication: 'microsoft',
@@ -32,11 +32,12 @@ test('profile shows real identity and independently permission-filtered workspac
     </MemoryRouter>,
   );
   assert.match(html, /Real workspace/);
-  assert.match(html, /EMP-1/);
-  assert.match(html, /Microsoft account/);
-  assert.match(html, /href="\/my-skills"/);
-  assert.match(html, /href="\/requests\?action=create"/);
-  assert.doesNotMatch(html, /href="\/learning"/);
+  assert.equal(html.match(/Employee ID EMP-1/g)?.length, 1);
+  assert.doesNotMatch(
+    html,
+    /Microsoft account|Sign-in session|Account status|Active account|>Active</,
+  );
+  assert.doesNotMatch(html, /Profile actions|href="\/(my-skills|learning|requests)/);
   assert.doesNotMatch(html, /Edit profile/);
 });
 
@@ -59,7 +60,6 @@ test('own organization presents current names without treating templates or hier
     'Engineering',
     'Platform',
     'Current Manager',
-    'not access grants',
     'Accounts/Clients',
     'Project',
   ])
@@ -227,5 +227,5 @@ test('profile correction actions require explicit backend create capability and 
   assert.match(render(), /Profile completeness/);
   assert.doesNotMatch(render(), /requests\?action=create/);
   workspace.capabilities.requestProfileCorrection = true;
-  assert.match(render(), /requests\?action=create/);
+  assert.equal(render().match(/requests\?action=create/g)?.length, 1);
 });

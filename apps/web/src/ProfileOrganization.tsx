@@ -47,10 +47,7 @@ export function ProfileOrganization({
         <span className="profile-card-icon">
           <Building2 size={19} aria-hidden="true" />
         </span>
-        <div>
-          <h3>Organization & reporting</h3>
-          <p className="profile-card-subtitle">Assigned organizational unit and direct manager</p>
-        </div>
+        <h3>Organization & reporting</h3>
       </header>
       {loading ? (
         <p role="status">Loading your organization details...</p>
@@ -132,10 +129,6 @@ export function ProfileOrganization({
               administrator to update your placement.
             </p>
           )}
-          <p className="profile-organization-policy">
-            These are your current stored assignments, not access grants. Available actions follow
-            your effective permissions.
-          </p>
         </>
       )}
     </section>

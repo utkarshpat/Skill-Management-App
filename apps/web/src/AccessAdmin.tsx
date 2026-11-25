@@ -582,11 +582,6 @@ export function AccessAdmin({
           </div>
           <NavbarAccount
             name={name}
-            identity={
-              (state?.authentication ?? workspaceContext?.authentication) === 'microsoft'
-                ? 'Microsoft account'
-                : 'Development session'
-            }
             workspaceLink={{ href: '/workspace', label: 'Personal workspace' }}
           />
         </header>
@@ -900,10 +895,6 @@ export function AccessAdmin({
                     </>
                   }
                 >
-                  <p>
-                    The server will recheck current permissions and revision before saving this
-                    change and its audit.
-                  </p>
                   <h3>{String(review.body.name)}</h3>
                   {role.permissions.length ? (
                     <ul aria-label="Selected permissions">

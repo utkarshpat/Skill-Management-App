@@ -831,8 +831,7 @@ export function AnnouncementManager({
             {data && data.items.length === 0 && (
               <div className="announcement-empty">
                 <FileText size={28} strokeWidth={1.5} aria-hidden="true" />
-                <h3>Start with an announcement</h3>
-                <p>Create an event, training form or quick poll for your audience.</p>
+                <h3>No announcements yet</h3>
               </div>
             )}
             {data?.items.map(entry => (

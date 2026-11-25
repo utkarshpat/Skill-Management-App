@@ -24,7 +24,6 @@ import {
   Monitor,
   Target,
   AlertCircle,
-  Plus,
 } from 'lucide-react';
 import { PortfolioSearch } from './PortfolioSearch';
 import {
@@ -64,7 +63,6 @@ export function SkillsProfileView({
   onView,
   onEdit,
   onSubmit,
-  onAdd,
   certificates = [],
   onCertificate,
   extraInsights,
@@ -74,7 +72,6 @@ export function SkillsProfileView({
   certificatesToday,
   canManageCertificates = false,
   canRenewCertificates = false,
-  onAddCertificate,
   onEditCertificate,
   onRenewCertificate,
 }: {
@@ -87,14 +84,12 @@ export function SkillsProfileView({
   onView: (claim: Claim) => void;
   onEdit: (claim: Claim) => void;
   onSubmit: (claim: Claim) => void;
-  onAdd?: () => void;
   initialStatus?: string;
   unified?: boolean;
   initialType?: 'all' | 'skill' | 'cert';
   certificatesToday?: string;
   canManageCertificates?: boolean;
   canRenewCertificates?: boolean;
-  onAddCertificate?: () => void;
   onEditCertificate?: (record: CertificationRecord) => void;
   onRenewCertificate?: (record: CertificationRecord) => void;
 }) {
@@ -114,8 +109,6 @@ export function SkillsProfileView({
         onView={onView}
         onEdit={onEdit}
         onSubmit={onSubmit}
-        onAdd={onAdd}
-        onAddCertificate={onAddCertificate}
         onCertificate={onCertificate}
         onEditCertificate={onEditCertificate}
         onRenewCertificate={onRenewCertificate}
@@ -482,15 +475,6 @@ export function SkillsProfileView({
                   Clear filters
                 </button>
               )}
-              {canClaim && onAdd && !claims.length && (
-                <button
-                  type="button"
-                  className="admin-primary skills-empty-add-btn"
-                  onClick={onAdd}
-                >
-                  <Plus size={16} /> Add your first skill
-                </button>
-              )}
             </div>
           )}
         </section>
@@ -555,21 +539,17 @@ export function SkillsProfileView({
               <ArrowUpRight size={14} />
             </button>
           </section>
-          <section className="skills-insight-card skills-next-card">
-            <span className="skills-next-icon">
-              <Target size={22} />
-            </span>
-            <h3>Your next step</h3>
-            <p>
-              {attention
-                ? `${attention} claims need an update. Check your manager’s feedback before resubmitting.`
-                : drafts
-                  ? `${drafts} self-assessed ${drafts === 1 ? 'draft is' : 'drafts are'} ready for you to check and submit.`
-                  : pending
-                    ? `${pending} ${pending === 1 ? 'claim is' : 'claims are'} pending approval from your reporting manager.`
-                    : 'Add a skill and describe your experience to keep your profile up to date.'}
-            </p>
-            {drafts + attention > 0 && (
+          {drafts + attention > 0 && (
+            <section className="skills-insight-card skills-next-card">
+              <span className="skills-next-icon">
+                <Target size={22} />
+              </span>
+              <h3>Your next step</h3>
+              <p>
+                {attention
+                  ? `${attention} claims need an update. Check your manager’s feedback before resubmitting.`
+                  : `${drafts} self-assessed ${drafts === 1 ? 'draft is' : 'drafts are'} ready for you to check and submit.`}
+              </p>
               <button
                 className="skills-text-link"
                 onClick={() => {
@@ -580,14 +560,8 @@ export function SkillsProfileView({
                 Open my drafts
                 <ArrowUpRight size={14} />
               </button>
-            )}
-            {canClaim && onAdd && (
-              <button className="skills-text-link" disabled={loading} onClick={onAdd}>
-                Add a skill
-                <ArrowUpRight size={14} />
-              </button>
-            )}
-          </section>
+            </section>
+          )}
         </aside>
       </div>
     </section>

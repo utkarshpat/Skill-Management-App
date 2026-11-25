@@ -2811,16 +2811,6 @@ html[data-theme] :is(.assistant-mascot, .assistant-side-genie) img {
 .assistant-collapse-handle[hidden] {
   display: none;
 }
-.refresh-indicator {
-  display: block;
-  color: var(--muted, #64748b);
-  font-size: 0.8rem;
-  line-height: 1.5;
-  margin: 0 0 12px;
-}
-.notification-popover .refresh-indicator {
-  margin: 12px 16px 4px;
-}
 .assistant-collapse-handle:hover {
   background: color-mix(in srgb, var(--color-ai, #7850cc) 9%, var(--surface, #fff));
 }

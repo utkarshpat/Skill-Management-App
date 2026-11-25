@@ -1059,10 +1059,6 @@ export function BusinessAdministration({
             </>
           }
         >
-          <p>
-            Access revision {String(preview.change.revision)}. The server will recheck access,
-            bindings and this revision before saving.
-          </p>
           <div className="bo-amendment-comparison">
             <section>
               <h3>Current access</h3>

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { EffectiveAccess } from './EffectiveAccess';
 import { authenticatedFetch } from './auth';
 import type { WorkspaceState } from './Workspace';
 import { ProfileDetails, type Profile } from './ProfileDetails';
@@ -36,7 +35,6 @@ export function PersonalProfile({ workspace }: { workspace: WorkspaceState }) {
         </p>
       )}
       <ProfileDetails workspace={workspace} profile={profile} failed={Boolean(error)} />
-      <EffectiveAccess endpoint="/api/effective-access" actorId={workspace.person.id} collapsible />
     </>
   );
 }

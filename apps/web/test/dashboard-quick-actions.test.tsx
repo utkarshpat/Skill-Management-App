@@ -34,8 +34,9 @@ test('quick actions expose real entry points and editable AI shortcuts without s
   ])
     assert.ok(html.includes(path));
   assert.match(html, /Draft with AI/);
-  assert.match(html, /Choose a published skill/);
-  assert.match(html, /Check the details/);
+  assert.match(html, /Add skill/);
+  assert.match(html, /Create learning plan/);
+  assert.doesNotMatch(html, /Get started|Choose a published skill|Check the details/);
   assert.equal(calls, 0);
   const manual = renderToStaticMarkup(
     <MemoryRouter>

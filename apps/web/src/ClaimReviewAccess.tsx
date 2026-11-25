@@ -31,7 +31,7 @@ export function ClaimReviewAccess({ decision }: { decision?: ClaimReviewDecision
       {decision && (
         <details>
           <summary>Why this access?</summary>
-          <p>Scope: current direct reports · Claim revision {decision.resource.revision}</p>
+          <p>Scope: current direct reports</p>
           <ul>
             {decision.sources.map((source, index) => (
               <li key={index}>
@@ -42,10 +42,6 @@ export function ClaimReviewAccess({ decision }: { decision?: ClaimReviewDecision
               </li>
             ))}
           </ul>
-          <p>
-            A decision rechecks your permissions, current reporting relationship, reviewer
-            assignment and claim revision when saved.
-          </p>
         </details>
       )}
     </section>

@@ -21,6 +21,8 @@ export function ProfileCompleteness({
   failed?: boolean;
   canRequest?: boolean;
 }) {
+  const missing = details?.items.filter(item => item.state !== 'COMPLETE') ?? [];
+  const showCorrection = details && details.status !== 'COMPLETE' && phaseTwoVisible && canRequest;
   return (
     <section
       className="profile-information profile-completeness"
@@ -36,44 +38,38 @@ export function ProfileCompleteness({
         <p>Completeness could not be confirmed. Reload your profile to try again.</p>
       ) : (
         <>
-          <p>
-            <strong>
-              {details.filled} of {details.total} required fields complete.
-            </strong>
-            {details.status === 'UNAVAILABLE'
-              ? ' Some fields are unavailable; this is not a confirmed completeness score.'
-              : details.status === 'COMPLETE'
-                ? ' Your required work information is complete.'
-                : ' Check the missing fields below.'}
-          </p>
-          <dl className="profile-checklist">
-            {details.items.map(item => (
-              <div key={item.key}>
-                <dt>{item.key === 'department' ? 'Accounts/Clients' : item.label}</dt>
-                <dd data-state={item.state}>
-                  {
-                    {
-                      COMPLETE: 'Complete',
-                      MISSING: 'Not assigned',
-                      NEEDS_ATTENTION: 'Needs administrator attention',
-                      UNAVAILABLE: 'Unavailable',
-                    }[item.state]
-                  }
-                </dd>
-              </div>
-            ))}
-          </dl>
-          <p>
-            Reporting manager is shown separately and is not required for this score. Optional
-            skills, experience, evidence and access templates do not affect completeness.
-          </p>
-          {details.status !== 'COMPLETE' && (
+          {details.status === 'UNAVAILABLE' ? (
+            <p>Some profile fields couldn’t be checked. Reload your profile to try again.</p>
+          ) : (
             <p>
-              People administrators maintain your work identity and primary capability. Organization
-              administrators maintain your account/client and reporting assignments.
+              <strong>
+                {details.filled} of {details.total} required fields complete.
+              </strong>
             </p>
           )}
-          {details.status !== 'COMPLETE' && phaseTwoVisible && canRequest && (
+          {missing.length > 0 && (
+            <dl className="profile-checklist">
+              {missing.map(item => (
+                <div key={item.key}>
+                  <dt>{item.key === 'department' ? 'Accounts/Clients' : item.label}</dt>
+                  <dd data-state={item.state}>
+                    {
+                      {
+                        COMPLETE: 'Complete',
+                        MISSING: 'Not assigned',
+                        NEEDS_ATTENTION: 'Needs administrator attention',
+                        UNAVAILABLE: 'Unavailable',
+                      }[item.state]
+                    }
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {details.status === 'INCOMPLETE' && !showCorrection && (
+            <p>Ask your administrator to update missing or incorrect details.</p>
+          )}
+          {showCorrection && (
             <Link className="secondary-button" to="/requests?action=create">
               Request a profile correction
             </Link>

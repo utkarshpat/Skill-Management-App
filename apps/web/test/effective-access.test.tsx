@@ -36,7 +36,7 @@ test('access explanations show resolved scope, workflow checks and escaped sourc
   assert.match(html, /current direct manager/);
   assert.match(html, /no self review/);
   assert.match(html, /preserved/);
-  assert.match(html, /revision 7/);
+  assert.doesNotMatch(html, /revision 7/);
   assert.doesNotMatch(html, /<script>/);
 });
 

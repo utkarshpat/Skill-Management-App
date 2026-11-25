@@ -90,9 +90,10 @@ test('capability empty and read-only states hide unsupported editing actions', (
     rejected: 0,
     recentClaims: [],
   };
-  assert.match(render(empty), /Add your first skill/);
+  assert.equal(render(empty).match(/action=add/g)?.length, 1);
+  assert.match(render(empty), /No skill claims yet/);
   const readonly = render({ ...empty, canClaim: false });
-  assert.match(readonly, /Build your capability profile/);
+  assert.match(readonly, /No skill claims yet/);
   assert.doesNotMatch(readonly, /action=add|Recently updated|View feedback/);
 });
 

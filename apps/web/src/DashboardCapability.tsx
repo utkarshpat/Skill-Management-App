@@ -78,7 +78,13 @@ function dashboardDate(value: string) {
       }).format(date)
     : undefined;
 }
-export function DashboardCapability({ data }: { data: DashboardCapabilityData }) {
+export function DashboardCapability({
+  data,
+  showAddSkill = true,
+}: {
+  data: DashboardCapabilityData;
+  showAddSkill?: boolean;
+}) {
   const states = [
     {
       value: data.verified,
@@ -109,7 +115,7 @@ export function DashboardCapability({ data }: { data: DashboardCapabilityData })
           <Layers size={17} />
           <strong>{data.total}</strong> {data.total === 1 ? 'skill claim' : 'skill claims'}
         </span>
-        {data.canClaim && (
+        {showAddSkill && data.canClaim && (
           <Link to="/my-skills?action=add">
             <Plus size={15} />
             Add skill
@@ -169,18 +175,7 @@ export function DashboardCapability({ data }: { data: DashboardCapabilityData })
         <div className="dashboard-empty">
           <ShieldCheck size={25} />
           <div>
-            <strong>Build your capability profile</strong>
-            <p>
-              {data.canClaim
-                ? 'Choose a published skill, describe your experience and prepare a claim for approval.'
-                : 'Your skill claims and their approval status will appear here.'}
-            </p>
-            {data.canClaim && (
-              <Link to="/my-skills?action=add">
-                Add your first skill
-                <ArrowUpRight size={15} />
-              </Link>
-            )}
+            <strong>No skill claims yet</strong>
           </div>
         </div>
       ) : (

@@ -18,7 +18,6 @@ import {
   Layers,
   Monitor,
   Pencil,
-  Plus,
   RotateCcw,
   Send,
   ShieldCheck,
@@ -83,8 +82,6 @@ export function UnifiedPortfolioView({
   onView,
   onEdit,
   onSubmit,
-  onAdd,
-  onAddCertificate,
   onCertificate,
   onEditCertificate,
   onRenewCertificate,
@@ -102,8 +99,6 @@ export function UnifiedPortfolioView({
   onView: (claim: Claim) => void;
   onEdit: (claim: Claim) => void;
   onSubmit: (claim: Claim) => void;
-  onAdd?: () => void;
-  onAddCertificate?: () => void;
   onCertificate?: (id: string) => void;
   onEditCertificate?: (record: CertificationRecord) => void;
   onRenewCertificate?: (record: CertificationRecord) => void;
@@ -867,31 +862,10 @@ export function UnifiedPortfolioView({
                   ? 'Try another search or clear your filters.'
                   : 'Add a published skill or certification to track your progress and approvals in one place.'}
               </p>
-              {scopedTotal > 0 ? (
+              {scopedTotal > 0 && (
                 <button type="button" className="secondary-button" onClick={reset}>
                   Clear filters
                 </button>
-              ) : (
-                <div className="portfolio-empty-actions">
-                  {canManageCertificates && onAddCertificate && (
-                    <button
-                      type="button"
-                      className="admin-primary skills-empty-add-btn"
-                      onClick={onAddCertificate}
-                    >
-                      <Plus size={16} /> Add certificate
-                    </button>
-                  )}
-                  {canClaim && onAdd && (
-                    <button
-                      type="button"
-                      className="admin-primary skills-empty-add-btn"
-                      onClick={onAdd}
-                    >
-                      <Plus size={16} /> Add skill
-                    </button>
-                  )}
-                </div>
               )}
             </div>
           )}
@@ -981,38 +955,29 @@ export function UnifiedPortfolioView({
             </button>
           </section>
 
-          <section className="skills-insight-card skills-next-card">
-            <span className="skills-next-icon">
-              <Target size={22} />
-            </span>
-            <h3>Your next step</h3>
-            <p>
-              {attentionCount
-                ? `${attentionCount} ${attentionCount === 1 ? 'item needs' : 'items need'} your attention. Review drafts, feedback or expiring certificates.`
-                : pendingCount
-                  ? `${pendingCount} ${pendingCount === 1 ? 'item is' : 'items are'} pending approval from your reporting manager.`
-                  : 'Add a skill or certification to keep your portfolio up to date.'}
-            </p>
-            {actionCount > 0 && (
+          {attentionCount > 0 && (
+            <section className="skills-insight-card skills-next-card">
+              <span className="skills-next-icon">
+                <Target size={22} />
+              </span>
+              <h3>Your next step</h3>
+              <p>
+                {attentionCount} {attentionCount === 1 ? 'item needs' : 'items need'} your
+                attention. Review drafts, feedback or expiring certificates.
+              </p>
               <button
                 type="button"
                 className="skills-text-link"
                 onClick={() => {
                   reset();
-                  setStatusChip('action');
+                  setStatusChip('attention');
                 }}
               >
                 Open items needing action
                 <ArrowUpRight size={14} />
               </button>
-            )}
-            {canClaim && onAdd && (
-              <button type="button" className="skills-text-link" disabled={loading} onClick={onAdd}>
-                Add a skill
-                <ArrowUpRight size={14} />
-              </button>
-            )}
-          </section>
+            </section>
+          )}
         </aside>
       </div>
     </section>

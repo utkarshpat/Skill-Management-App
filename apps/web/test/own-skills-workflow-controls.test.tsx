@@ -345,7 +345,13 @@ test('skill profile rank and status filters reset pagination and category insigh
 test('empty skill profile can start an authorized first claim without creating a draft on cancel', async () => {
   claims = [];
   await mount();
-  await click('Add your first skill');
+  assert.equal(
+    [...document.querySelectorAll('button')].filter(
+      button => button.textContent?.trim() === 'Add skill',
+    ).length,
+    1,
+  );
+  await click('Add skill');
   for (
     let attempt = 0;
     attempt < 40 && !document.querySelector('dialog[aria-label="Add skill"]');

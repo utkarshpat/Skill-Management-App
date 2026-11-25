@@ -319,20 +319,9 @@ export function SidebarNavigation({
               {profile.active && <ChevronRight size={14} />}
             </Link>
           </div>
-          {freshness?.checkedAt && (
-            <div
-              className="sidebar-last-updated"
-              role="status"
-              title={freshness.mode === 'live' ? 'Auto-refresh while active' : undefined}
-            >
-              <small>
-                {freshness.mode === 'retrying' ? 'Refresh failed · ' : ''}
-                Updated{' '}
-                {new Date(freshness.checkedAt).toLocaleTimeString(undefined, {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </small>
+          {freshness?.mode === 'retrying' && Boolean(freshness.checkedAt) && (
+            <div className="sidebar-last-updated" role="status">
+              <small>Refresh failed</small>
             </div>
           )}
         </nav>

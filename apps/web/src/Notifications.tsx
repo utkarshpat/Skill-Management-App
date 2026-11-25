@@ -4,8 +4,7 @@ import { ArrowUpRight, Bell, Check, RefreshCw, X } from 'lucide-react';
 import { notificationDestination, notificationDay } from './notification-model';
 import { authenticatedFetch } from './auth';
 import { readApiResponse } from './api-response';
-import { startActivityRefresh, type RefreshStatus } from './activity-refresh';
-import { RefreshIndicator } from './RefreshIndicator';
+import { startActivityRefresh } from './activity-refresh';
 import { reportClientAction } from './client-diagnostics';
 import { lockPageScroll } from './page-scroll-lock';
 interface Item {
@@ -48,7 +47,6 @@ export function Notifications({ id }: { id: string }) {
   const [category, setCategory] = useState('All updates');
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
-  const [freshness, setFreshness] = useState<RefreshStatus>();
   const [reminderPage, setReminderPage] = useState(1);
   const [announcementPage, setAnnouncementPage] = useState(1);
   // The navbar badge reflects the first page, which the drawer reopens to.
@@ -159,7 +157,6 @@ export function Notifications({ id }: { id: string }) {
       undefined,
       {
         pollMs: 90_000,
-        onStatus: setFreshness,
         ignoreEvent: event => event === publishedUpdate,
       },
     );
@@ -501,7 +498,6 @@ export function Notifications({ id }: { id: string }) {
                   })}
                 </ul>
               )}
-              <RefreshIndicator status={freshness} />
               {(reminderPage > 1 || feed.hasMoreReminders) && (
                 <div role="group" aria-label="Reminder pages">
                   <button

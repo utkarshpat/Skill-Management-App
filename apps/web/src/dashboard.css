@@ -1061,49 +1061,25 @@
 
 .dashboard-action-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
-.dashboard-action-grid article {
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  min-width: 0;
+.dashboard-action-grid li {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-.dashboard-action-grid h4 {
-  font-size: 16px;
-  margin: 12px 0 6px;
-}
-.dashboard-action-grid p {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--muted);
-  margin: 0 0 18px;
-}
-.dashboard-action-grid article > div {
-  display: flex;
-  gap: 14px;
   align-items: center;
   flex-wrap: wrap;
-  margin-top: auto;
+  gap: 0 12px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
-.dashboard-action-grid .dashboard-ai {
-  padding: 8px 10px;
-  white-space: normal;
-  min-height: 40px;
+.dashboard-action-grid :is(.dashboard-link, .dashboard-ai) {
+  min-height: 44px;
 }
-.dashboard-quick-actions .dashboard-footnote {
-  margin: 16px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-[data-theme='dark'] .dashboard-quick-actions .dashboard-link,
-[data-theme='dark'] .dashboard-quick-actions .dashboard-icon {
+[data-theme='dark'] .dashboard-quick-actions .dashboard-link {
   color: #71dce4;
 }
 [data-theme='dark'] .dashboard-ai {
@@ -1167,47 +1143,6 @@
 .dashboard-attention > header .dashboard-icon {
   color: #c34855;
   background: color-mix(in srgb, #c34855 9%, transparent);
-}
-.dashboard-action-grid {
-  grid-template-columns: 1fr;
-  gap: 10px;
-}
-.dashboard-action-grid article {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 4px 12px;
-  padding: 14px;
-  background: color-mix(in srgb, var(--accent) 2%, var(--surface));
-  transition: border-color 0.15s;
-}
-.dashboard-action-grid article:hover {
-  border-color: var(--accent);
-}
-.dashboard-action-grid .dashboard-icon {
-  grid-row: span 2;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-}
-.dashboard-action-grid h4 {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.4;
-}
-.dashboard-action-grid p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.dashboard-action-grid article > div {
-  grid-column: 2;
-  gap: 8px 14px;
-  margin-top: 7px;
-}
-.dashboard-action-grid .dashboard-ai {
-  padding: 0;
-  min-height: 28px;
-  font-size: 13px;
 }
 .dashboard-next-task h4 {
   font-size: 18px;

@@ -7,11 +7,9 @@ import { signOut } from './auth';
 
 export function NavbarAccount({
   name,
-  identity,
   workspaceLink,
 }: {
   name: string;
-  identity: string;
   workspaceLink?: { href: string; label: string };
 }) {
   const id = useId(),
@@ -51,7 +49,6 @@ export function NavbarAccount({
         aria-label="Account menu"
       >
         <strong>{name}</strong>
-        <p className="account-identity">{identity}</p>
         {workspaceLink && (
           <Link
             className="secondary-button account-context"

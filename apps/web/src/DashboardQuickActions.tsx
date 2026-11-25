@@ -18,12 +18,9 @@ export function DashboardQuickActions({
   return (
     <section className="dashboard-card dashboard-quick-actions" aria-label="Quick actions">
       <header>
-        <div>
-          <h3>Quick actions</h3>
-          <p>Choose a task and get started.</p>
-        </div>
+        <h3>Quick actions</h3>
       </header>
-      <div className="dashboard-action-grid">
+      <ul className="dashboard-action-grid">
         {actions.map(a => {
           const Icon =
             (
@@ -35,43 +32,31 @@ export function DashboardQuickActions({
               } as Record<string, typeof Inbox>
             )[a.id] ?? Inbox;
           return (
-            <article key={a.id}>
-              <span className="dashboard-icon">
-                <Icon size={20} />
-              </span>
-              <h4>{a.label}</h4>
-              <p>{a.description}</p>
-              <div>
-                <Link className="dashboard-link" to={a.href}>
-                  Get started
-                  <ArrowUpRight size={15} />
-                  <span className="sr-only">: {a.label}</span>
-                </Link>
-                {a.assistance &&
-                  (a.assistance.href ? (
-                    <Link className="dashboard-ai" to={a.assistance.href}>
-                      <Sparkles size={15} />
-                      {a.assistance.label}
-                    </Link>
-                  ) : (
-                    <button
-                      className="dashboard-ai"
-                      onClick={() => a.assistance?.prompt && onAssist(a.assistance.prompt)}
-                    >
-                      <Sparkles size={15} />
-                      {a.assistance.label}
-                    </button>
-                  ))}
-              </div>
-            </article>
+            <li key={a.id}>
+              <Link className="dashboard-link" to={a.href}>
+                <Icon size={17} aria-hidden="true" />
+                {a.label}
+                <ArrowUpRight size={15} aria-hidden="true" />
+              </Link>
+              {a.assistance &&
+                (a.assistance.href ? (
+                  <Link className="dashboard-ai" to={a.assistance.href}>
+                    <Sparkles size={15} />
+                    {a.assistance.label}
+                  </Link>
+                ) : (
+                  <button
+                    className="dashboard-ai"
+                    onClick={() => a.assistance?.prompt && onAssist(a.assistance.prompt)}
+                  >
+                    <Sparkles size={15} />
+                    {a.assistance.label}
+                  </button>
+                ))}
+            </li>
           );
         })}
-      </div>
-      {actions.some(a => a.assistance) && (
-        <p className="dashboard-footnote">
-          AI helps prepare your work. Check the details before saving or submitting.
-        </p>
-      )}
+      </ul>
     </section>
   );
 }

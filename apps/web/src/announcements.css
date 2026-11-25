@@ -411,19 +411,6 @@ html[data-theme]
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
   gap: 16px;
 }
-.announcement-page-heading {
-  margin-bottom: 24px;
-}
-.announcement-page-heading h2 {
-  margin: 0;
-  color: var(--heading);
-  font-size: 26px;
-  letter-spacing: -0.025em;
-}
-.announcement-page-heading p {
-  margin: 8px 0 0;
-  color: var(--muted);
-}
 .announcement-workspace {
   min-width: 0;
 }

@@ -355,9 +355,6 @@ export function Workspace({
           <div className="page-actions" role="group" aria-label="Page actions" ref={setActions} />
           <NavbarAccount
             name={name}
-            identity={
-              state?.authentication === 'local-demo' ? 'Development session' : 'Microsoft account'
-            }
             workspaceLink={
               state?.capabilities.administration
                 ? { href: '/access', label: 'Administration' }

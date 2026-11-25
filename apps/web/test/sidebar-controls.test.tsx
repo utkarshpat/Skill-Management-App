@@ -112,6 +112,14 @@ test('sidebar storage updates are actor-bound and freshness shows retry state wi
   await act(async () =>
     window.dispatchEvent(
       new CustomEvent('workspace-freshness', {
+        detail: { mode: 'live', checkedAt: Date.now() },
+      }),
+    ),
+  );
+  assert.equal(document.querySelector('.sidebar-last-updated'), null);
+  await act(async () =>
+    window.dispatchEvent(
+      new CustomEvent('workspace-freshness', {
         detail: { mode: 'retrying', checkedAt: Date.now() },
       }),
     ),

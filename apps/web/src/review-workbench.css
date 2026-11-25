@@ -497,8 +497,7 @@
   letter-spacing: -0.35px;
   margin: 0 0 9px;
 }
-.review-empty p,
-.review-loading p {
+.review-empty p {
   font-size: 14px;
   line-height: 1.7;
   max-width: 460px;

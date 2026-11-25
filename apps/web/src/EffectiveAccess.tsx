@@ -1,54 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ShieldCheck, ChevronDown } from 'lucide-react';
 import { authenticatedFetch } from './auth';
 import { AccessDecisionList, type AccessSummary } from './AccessDecisionList';
 export type { Decision, AccessSummary } from './AccessDecisionList';
-export function EffectiveAccess({
-  endpoint,
-  actorId,
-  collapsible = false,
-}: {
-  endpoint: string;
-  actorId: string;
-  collapsible?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const content = (
-    <EffectiveAccessContent
-      key={JSON.stringify([endpoint, actorId])}
-      endpoint={endpoint}
-      actorId={actorId}
-    />
-  );
-  if (collapsible) {
-    return (
-      <details
-        className="profile-panel profile-effective-accordion"
-        onToggle={event => setOpen(event.currentTarget.open)}
-      >
-        <summary className="profile-effective-summary">
-          <div className="profile-effective-header-left">
-            <span className="profile-card-icon">
-              <ShieldCheck size={18} />
-            </span>
-            <div>
-              <strong>Effective access & security scope</strong>
-              <small>Inspect verified server permissions and scope evaluation</small>
-            </div>
-          </div>
-          <span className="profile-effective-action">
-            <span>Audit & details</span>
-            <ChevronDown size={16} className="profile-accordion-icon" />
-          </span>
-        </summary>
-        {open && <div className="profile-effective-body">{content}</div>}
-      </details>
-    );
-  }
+export function EffectiveAccess({ endpoint, actorId }: { endpoint: string; actorId: string }) {
   return (
     <section className="profile-panel">
       <h2>Effective access</h2>
-      {content}
+      <EffectiveAccessContent
+        key={JSON.stringify([endpoint, actorId])}
+        endpoint={endpoint}
+        actorId={actorId}
+      />
     </section>
   );
 }

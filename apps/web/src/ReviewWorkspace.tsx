@@ -47,10 +47,7 @@ export function ReviewWorkspace({
           <div className="review-loading-icon" aria-hidden="true">
             <RefreshCw size={24} />
           </div>
-          <div>
-            <strong>Loading approvals…</strong>
-            <p>Checking your permissions and assigned approval queues.</p>
-          </div>
+          <strong>Loading approvals…</strong>
         </section>
       }
     >

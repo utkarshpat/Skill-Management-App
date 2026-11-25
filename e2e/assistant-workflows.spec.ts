@@ -52,7 +52,12 @@ test('workspace end content can scroll above the floating Skill Genie launcher',
     await page.goto(path);
     await expectClearOfLauncherAtEnd(
       page,
-      page.getByRole('heading', { name: 'Your next step' }).locator('..'),
+      path === '/my-skills'
+        ? page
+            .getByRole('complementary', { name: 'Portfolio overview' })
+            .locator(':scope > section')
+            .last()
+        : page.getByRole('heading', { name: 'Your next step' }).locator('..'),
     );
 
     if (path === '/my-skills') {

@@ -198,7 +198,6 @@ export function Announcements({
   if (!feed || !person)
     return page ? (
       <section className="announcement-workspace" aria-label="Announcements">
-        <h2>Announcements</h2>
         {feedError ? (
           <div className="announcement-feedback" role="alert">
             <p>{feedError}</p>
@@ -385,10 +384,6 @@ export function Announcements({
     <>
       {page && (
         <section className="announcement-workspace" aria-label="Announcements">
-          <header className="announcement-page-heading">
-            <h2>Announcements</h2>
-            <p>What's happening, all in one place.</p>
-          </header>
           {feed.canPublish && (
             <div className="announcement-tabs" role="tablist" aria-label="Announcements workspace">
               {(['announcements', 'responses'] as const).map(tab => {

@@ -22,7 +22,7 @@ test('claim access explains historical state and fails closed without a current 
   const html = renderToStaticMarkup(<ClaimReviewAccess decision={decision} />);
   assert.match(html, /no longer awaiting a decision/);
   assert.match(html, /Why this access/);
-  assert.match(html, /revision 4/);
+  assert.doesNotMatch(html, /revision 4/);
   assert.ok(!html.includes('<script>'));
   assert.match(html, /&lt;script&gt;/);
   assert.match(renderToStaticMarkup(<ClaimReviewAccess />), /could not be resolved/);

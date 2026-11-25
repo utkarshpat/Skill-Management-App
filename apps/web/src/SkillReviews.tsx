@@ -318,13 +318,11 @@ export function SkillReviews({
                     ? 'All assigned approvals'
                     : reviewLabels[status]}
               </h3>
-              {!includeCombined && (
+              {!includeCombined && !loading && (
                 <p>
-                  {loading
-                    ? 'Checking current assignments…'
-                    : data
-                      ? `${data.total} ${data.total === 1 ? 'claim' : 'claims'}${filtered ? ' matching your filters' : ' assigned to you'}`
-                      : 'Assigned approval data is unavailable.'}
+                  {data
+                    ? `${data.total} ${data.total === 1 ? 'claim' : 'claims'}${filtered ? ' matching your filters' : ' assigned to you'}`
+                    : 'Assigned approval data is unavailable.'}
                 </p>
               )}
             </div>
@@ -404,7 +402,7 @@ export function SkillReviews({
           )}
           {opening && (
             <p className="review-opening" role="status">
-              Checking current claim access…
+              Opening skill approval…
             </p>
           )}
           {includeCombined && category && (
@@ -430,8 +428,7 @@ export function SkillReviews({
               <span className="review-loading-icon">
                 <RefreshCw size={22} className="review-spin" />
               </span>
-              <strong>Loading your approval queue</strong>
-              <p>Checking current assignments and claim status.</p>
+              <strong>Loading approvals…</strong>
             </div>
           )}
           {!loading &&
@@ -660,7 +657,6 @@ export function SkillReviews({
             <div className="notification-destination-loading" role="status">
               <RefreshCw size={26} className="notification-spin" />
               <strong>Opening skill approval…</strong>
-              <p>Checking the current claim and your available actions.</p>
             </div>
           </FormDialog>
         )}
@@ -757,8 +753,7 @@ export function SkillReviews({
             <RefreshCw size={24} />
           </div>
           <div>
-            <strong>Loading approvals workspace…</strong>
-            <p>Checking your permissions and assigned approval queues.</p>
+            <strong>Loading approvals…</strong>
           </div>
         </section>
       )}

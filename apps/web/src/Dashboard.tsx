@@ -167,6 +167,11 @@ export function Dashboard() {
       c.abort();
     };
   }, [attempt]);
+  const quickActions =
+    manifest?.actions.filter(
+      action => phaseTwoVisible || !isPhaseTwoPage(action.href.split('?')[0]),
+    ) ?? [];
+  const hasSkillQuickAction = quickActions.some(action => action.href === '/my-skills?action=add');
   const renderCard = (card: Card) => (
     <DashboardCard
       key={manifest!.actorId + card.id}
@@ -174,6 +179,7 @@ export function Dashboard() {
       revision={manifest!.revision}
       snapshot={manifest!.cardData[card.id]}
       ai={manifest!.ai}
+      hasSkillQuickAction={hasSkillQuickAction}
       onAccessChanged={() => setAttempt(n => n + 1)}
     />
   );
@@ -213,13 +219,11 @@ export function Dashboard() {
             {leftCards.length > 0 && (
               <div className="dashboard-column">{leftCards.map(renderCard)}</div>
             )}
-            {(rightCards.length > 0 || manifest.actions.length > 0) && (
+            {(rightCards.length > 0 || quickActions.length > 0) && (
               <div className="dashboard-column">
                 {rightCards.map(renderCard)}
                 <DashboardQuickActions
-                  actions={manifest.actions.filter(
-                    action => phaseTwoVisible || !isPhaseTwoPage(action.href.split('?')[0]),
-                  )}
+                  actions={quickActions}
                   onAssist={prompt =>
                     window.dispatchEvent(
                       new CustomEvent('assistant-context-request', { detail: { prompt } }),
@@ -245,12 +249,14 @@ function DashboardCard({
   revision,
   snapshot,
   ai,
+  hasSkillQuickAction,
   onAccessChanged,
 }: {
   card: Card;
   revision: number;
   snapshot?: CardResult<CardData>;
   ai: boolean;
+  hasSkillQuickAction: boolean;
   onAccessChanged: () => void;
 }) {
   const lastRevision = useRef(revision);
@@ -378,7 +384,10 @@ function DashboardCard({
             />
           )}
           {card.id === 'capability' && (
-            <DashboardCapability data={data as DashboardCapabilityData} />
+            <DashboardCapability
+              data={data as DashboardCapabilityData}
+              showAddSkill={!hasSkillQuickAction}
+            />
           )}
           {card.id === 'requests' && (
             <DashboardRequests

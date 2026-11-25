@@ -12,20 +12,7 @@ for (const role of ['employee', 'manager', 'admin'] as const) {
     await expect(
       page.getByRole('heading', { name: people[role].displayName, exact: true }),
     ).toBeVisible();
-    const access = page.getByText('Effective access & security scope', { exact: true });
-    await expect(access).toBeVisible();
-    expect(accessReads).toBe(0);
-    if (role === 'employee') {
-      await access.click();
-      await expect(page.getByText('No matching decisions.')).toBeVisible();
-      expect(accessReads).toBe(1);
-      await access.click();
-      await expect(page.getByText('No matching decisions.')).toHaveCount(0);
-      await access.click();
-      await expect(page.getByText('No matching decisions.')).toBeVisible();
-      expect(accessReads).toBe(2);
-      await access.click();
-    }
+    await expect(page.getByText(/Effective access/i)).toHaveCount(0);
     const menu = page.getByRole('button', { name: 'Account menu for ' + people[role].displayName });
     await expect(page.getByRole('region', { name: 'Account menu', exact: true })).toBeHidden();
     await menu.focus();
@@ -36,6 +23,7 @@ for (const role of ['employee', 'manager', 'admin'] as const) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
     ).toBeTruthy();
+    expect(accessReads).toBe(0);
   });
 }
 test('sidebar uses slim theme scrollbars in light and dark mode', async ({ page }) => {

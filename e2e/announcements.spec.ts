@@ -398,11 +398,13 @@ test('feed failures show an actionable error instead of an empty feed', async ({
   );
   await page.goto('/announcements');
   const workspace = page.getByRole('region', { name: 'Announcements', exact: true });
+  await expect(page.getByRole('heading', { name: 'Announcements', exact: true })).toHaveCount(1);
   await expect(workspace.getByRole('alert')).toContainText('Announcements are waking up.');
   await expect(workspace.getByText('No active announcements')).toHaveCount(0);
   unavailable = false;
   await workspace.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(workspace.getByText('No active announcements', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Announcements', exact: true })).toHaveCount(1);
   await expect(page.getByRole('tab', { name: 'Responses', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'New announcement' })).toHaveCount(0);
 });

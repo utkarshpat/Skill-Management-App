@@ -57,7 +57,10 @@ function snapshot() {
     revision: 7,
     actorId: actor,
     ai: true,
-    actions: [{ id: 'learning', label: 'Create learning plan', href: '/learning?action=create' }],
+    actions: [
+      { id: 'learning', label: 'Create learning plan', href: '/learning?action=create' },
+      { id: 'skill', label: 'Add skill', href: '/my-skills?action=add' },
+    ],
     cards: ['attention', 'learning', 'capability', 'requests'].map(id => ({
       id,
       title: {
@@ -226,8 +229,11 @@ test('dashboard combines current cards, correct deep links, request status filte
   assert.equal(paths.filter(p => p === '/api/dashboard/overview').length, 1);
   assert.equal(
     document.querySelector('a[href="/learning?action=create"]')?.textContent?.trim(),
-    'Get started: Create learning plan',
+    'Create learning plan',
   );
+  const addSkill = document.querySelectorAll('a[href="/my-skills?action=add"]');
+  assert.equal(addSkill.length, 1);
+  assert.ok(addSkill[0].closest('.dashboard-quick-actions'));
   const events: CustomEvent[] = [];
   const listener = (event: Event) => events.push(event as CustomEvent);
   window.addEventListener('assistant-context-request', listener);

@@ -70,10 +70,6 @@ export function AccessDecisionList({ summary }: { summary: AccessSummary }) {
           have been preserved.
         </p>
       )}
-      <p className="access-help">
-        Scope summary · revision {summary.revision}. Each record and action is checked again when
-        used.
-      </p>
       <div className="effective-list">
         {decisions.map(item => (
           <details key={item.action + item.resolvedScope.kind} className="effective-decision">

@@ -515,15 +515,6 @@ export function MySkills({
               initialStatus={new URLSearchParams(location.search).get('status') ?? ''}
               unified={Boolean(unified && certificateContext)}
               initialType={initialType}
-              onAdd={() => setCombined(true)}
-              onAddCertificate={
-                canAddCertificate
-                  ? () => {
-                      setIntakeEntry({ certificate: true });
-                      setCombined(true);
-                    }
-                  : undefined
-              }
               claims={state.claims}
               certificates={certificateContext?.data?.records}
               certificatesToday={certificateContext?.today}

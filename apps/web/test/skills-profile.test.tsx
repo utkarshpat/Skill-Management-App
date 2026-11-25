@@ -175,4 +175,5 @@ test('unified portfolio does not double-count pending expiring certifications in
   assert.match(html, /Pending: 1/);
   assert.match(html, /Needs attention: 0/);
   assert.match(html, /Needs action<span>1<\/span>/);
+  assert.doesNotMatch(html, /Your next step/);
 });
