@@ -83,6 +83,7 @@ export function RecommendationPicker<T extends Option>({
           aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
           aria-required={required}
           autoComplete="off"
+          spellCheck={false}
           maxLength={maxLength}
           placeholder={placeholder}
           value={selected?.name ?? query}

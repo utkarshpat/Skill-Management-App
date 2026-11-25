@@ -139,6 +139,15 @@ async function press(input: HTMLInputElement, key: string) {
   );
 }
 
+async function expand(label: string) {
+  const summary = Array.from(document.querySelectorAll('summary')).find(
+    item => item.textContent?.trim() === label,
+  );
+  assert.ok(summary);
+  await act(async () => summary.click());
+  assert.ok(summary.closest('details')?.open);
+}
+
 test('credential suggestions keep one write identity across an unconfirmed unchanged send', async () => {
   await mount(true);
   catalogueFailure = true;
@@ -169,6 +178,7 @@ test('credential suggestions keep one write identity across an unconfirmed uncha
   assert.match(option?.textContent ?? '', /Oracle Database SQL.*Oracle.*Databases/);
   await act(async () => option?.click());
   await fill('Why are you recommending it?', 'Supports Northstar customer reporting delivery');
+  await expand('Optional link and target date');
   await fill('Credential information link', 'https://education.oracle.com/');
   await fill('Suggested target date', '2026-12-01');
   writeFailure = 503;
@@ -260,6 +270,7 @@ test('a failed direct-report lookup cannot retain a recipient from an earlier se
   await press(directReport, 'ArrowDown');
   await press(directReport, 'Enter');
   assert.equal(directReport.value, 'Aditi Menon');
+  await expand('Enter certification manually');
   await fill('Certification name', 'Oracle Database SQL');
   await fill('Why are you recommending it?', 'Customer reporting delivery');
   lookupFailure = true;
@@ -311,6 +322,7 @@ test('changing a catalogue search clears the previous selection and still allows
   )!;
   assert.ok(send.disabled);
   assert.equal(writes.length, 0);
+  await expand('Enter certification manually');
   await fill('Certification name', 'AWS Cloud Practitioner');
   await fill('Certification catalogue', 'AWS Cloud');
   await press(catalogue, 'Escape');

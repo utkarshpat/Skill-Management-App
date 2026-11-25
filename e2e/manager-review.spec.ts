@@ -298,15 +298,31 @@ test('certification recommendation: search and select inside each picker', async
   await page.getByRole('button', { name: 'Recommend a certification' }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Recommend a certification' });
   const report = dialog.getByRole('combobox', { name: 'Direct report' });
+  const catalogue = dialog.getByRole('combobox', { name: 'Certification catalogue' });
+  const [reportBox, catalogueBox] = await Promise.all([
+    report.boundingBox(),
+    catalogue.boundingBox(),
+  ]);
+  expect(reportBox).not.toBeNull();
+  expect(catalogueBox).not.toBeNull();
+  if (page.viewportSize()!.width > 600) {
+    expect(catalogueBox!.x).toBeGreaterThan(reportBox!.x);
+    expect(catalogueBox!.y).toBe(reportBox!.y);
+  } else {
+    expect(catalogueBox!.x).toBe(reportBox!.x);
+    expect(catalogueBox!.y).toBeGreaterThan(reportBox!.y + reportBox!.height);
+  }
+  await expect(dialog.getByRole('textbox', { name: /Certification name/ })).toBeHidden();
+  await expect(dialog.getByRole('textbox', { name: 'Credential information link' })).toBeHidden();
   await report.fill('1042');
   await expect(dialog.getByRole('option', { name: /Aditi Menon.*EMP-1042/ })).toBeVisible();
   await report.press('ArrowDown');
   await report.press('Enter');
   await expect(report).toHaveValue('Aditi Menon');
-  const catalogue = dialog.getByRole('combobox', { name: 'Certification catalogue' });
   await catalogue.fill('Oracle');
   await dialog.getByRole('option', { name: /Oracle Database SQL.*Databases/ }).click();
   await expect(catalogue).toHaveValue('Oracle Database SQL');
+  await dialog.getByText('Edit certification details', { exact: true }).click();
   await expect(dialog.getByRole('textbox', { name: /Certification name/ })).toHaveValue(
     'Oracle Database SQL',
   );

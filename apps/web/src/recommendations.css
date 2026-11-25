@@ -234,6 +234,73 @@
     flex-wrap: wrap;
   }
 }
+.form-dialog.cert-recommend-dialog {
+  box-sizing: border-box;
+  width: min(740px, calc(100vw - 24px));
+  height: fit-content;
+  max-height: calc(100dvh - 24px);
+}
+.cert-recommend-dialog .form-dialog-body {
+  scrollbar-gutter: auto;
+}
+.cert-recommend-form {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.cert-recommend-form > p {
+  margin: 0;
+}
+.cert-recommend-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.cert-recommend-form :is(input, textarea) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.cert-recommend-form textarea {
+  resize: vertical;
+}
+.cert-recommend-pickers,
+.cert-recommend-fields {
+  display: grid;
+  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.cert-recommend-details summary {
+  color: var(--accent-ink);
+  font-weight: 600;
+  cursor: pointer;
+  padding-block: 4px;
+}
+.cert-recommend-details > div {
+  display: grid;
+  gap: 12px;
+  margin-top: 6px;
+}
+@media (max-width: 600px) {
+  .cert-recommend-pickers,
+  .cert-recommend-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cert-recommend-dialog :is(.form-dialog-header, .form-dialog-body, .form-dialog-footer) {
+    padding-inline: 14px;
+  }
+}
 .cert-recommend-picker {
   display: grid;
   min-width: 0;

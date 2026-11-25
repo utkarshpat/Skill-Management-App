@@ -22,44 +22,6 @@
   color: var(--danger, #b42318);
   font-weight: 600;
 }
-.cert-recommend-form {
-  display: grid;
-  gap: 14px;
-}
-.cert-recommend-form label,
-.cert-recommend-fields label {
-  display: grid;
-  gap: 6px;
-  color: var(--ink);
-  font-weight: 600;
-}
-.cert-recommend-form input,
-.cert-recommend-form select,
-.cert-recommend-form textarea {
-  width: 100%;
-  min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--ink);
-  font: inherit;
-}
-.cert-recommend-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-.cert-recommend-form > p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.5;
-}
-@media (max-width: 600px) {
-  .cert-recommend-fields {
-    grid-template-columns: 1fr;
-  }
-}
 .cert-help {
   color: var(--muted);
   line-height: 1.6;

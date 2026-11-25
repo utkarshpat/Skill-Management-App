@@ -540,6 +540,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
       {sending && (
         <FormDialog
           title="Recommend a certification"
+          className="cert-recommend-dialog"
           busy={saving}
           onClose={() => {
             if (!saving) setSending(false);
@@ -563,189 +564,197 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
             </>
           }
         >
-          <fieldset
-            disabled={saving}
-            className="cert-recommend-form"
-            style={{ border: 0, padding: 0, margin: 0 }}
-          >
+          <fieldset disabled={saving} className="cert-recommend-form">
             {sendError && <p role="alert">{sendError}</p>}
-            <RecommendationPicker
-              label="Direct report"
-              placeholder="Search by name or employee code"
-              required
-              query={recipientSearch}
-              selected={selectedPerson}
-              options={people}
-              describe={person => person.employeeCode}
-              onSelect={person => setPersonId(person.id)}
-              onQueryChange={value => {
-                setPersonId('');
-                if (value !== recipientSearch) {
-                  setPeople([]);
-                  setRecipientError('');
-                  setRecipientLoading(true);
-                  setRecipientSearch(value);
-                }
-              }}
-              status={
-                recipientError ? (
-                  <span role="alert">{recipientError}</span>
-                ) : recipientLoading ? (
-                  <span role="status">Loading direct reports…</span>
-                ) : !people.length ? (
-                  <span role="status">No matching direct reports.</span>
-                ) : undefined
-              }
-              actions={
-                recipientError && (
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => setRecipientAttempt(v => v + 1)}
-                  >
-                    Retry direct reports
-                  </button>
-                )
-              }
-            />
-            <RecommendationPicker
-              label="Certification catalogue"
-              placeholder="Search by certification, issuer or category"
-              maxLength={100}
-              query={catalogueSearch}
-              selected={catalogueSelection}
-              options={credentials ?? []}
-              describe={credential =>
-                [credential.provider, credential.category].filter(Boolean).join(' · ')
-              }
-              onSelect={credential => {
-                setSelectedCredential(credential);
-                setName(credential.name);
-                setProvider(credential.provider);
-                setCategory(credential.category);
-              }}
-              onQueryChange={value => {
-                if (catalogueSelection) {
-                  setName('');
-                  setProvider('');
-                  setCategory('');
-                }
-                setSelectedCredential(undefined);
-                if (value !== catalogueSearch || cataloguePage !== 1) {
-                  setCredentials(undefined);
-                  setCatalogueError('');
-                  setCatalogueHasNext(false);
-                }
-                setCatalogueSearch(value);
-                setCataloguePage(1);
-              }}
-              status={
-                catalogueError ? (
-                  <span role="alert">{catalogueError}</span>
-                ) : !credentials ? (
-                  <span role="status">Loading certifications…</span>
-                ) : !credentials.length ? (
-                  <span role="status">No matches. You can enter the certification below.</span>
-                ) : undefined
-              }
-              actions={
-                catalogueError ? (
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => setCatalogueAttempt(v => v + 1)}
-                  >
-                    Retry catalogue
-                  </button>
-                ) : (
-                  (cataloguePage > 1 || catalogueHasNext) && (
-                    <nav className="cert-recommend-picker-pages" aria-label="Catalogue pages">
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        disabled={cataloguePage <= 1 || !credentials}
-                        onClick={() => setCataloguePage(page => page - 1)}
-                      >
-                        Previous
-                      </button>
-                      <span>Page {cataloguePage}</span>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        disabled={!catalogueHasNext}
-                        onClick={() => setCataloguePage(page => page + 1)}
-                      >
-                        Next
-                      </button>
-                    </nav>
-                  )
-                )
-              }
-            />
-            <label>
-              Certification name *
-              <input
+            <div className="cert-recommend-pickers">
+              <RecommendationPicker
+                label="Direct report"
+                placeholder="Search by name or employee code"
                 required
-                maxLength={200}
-                value={name}
-                onChange={event => setName(event.target.value)}
-                placeholder="e.g. Azure Administrator Associate"
+                query={recipientSearch}
+                selected={selectedPerson}
+                options={people}
+                describe={person => person.employeeCode}
+                onSelect={person => setPersonId(person.id)}
+                onQueryChange={value => {
+                  setPersonId('');
+                  if (value !== recipientSearch) {
+                    setPeople([]);
+                    setRecipientError('');
+                    setRecipientLoading(true);
+                    setRecipientSearch(value);
+                  }
+                }}
+                status={
+                  recipientError ? (
+                    <span role="alert">{recipientError}</span>
+                  ) : recipientLoading ? (
+                    <span role="status">Loading direct reports…</span>
+                  ) : !people.length ? (
+                    <span role="status">No matching direct reports.</span>
+                  ) : undefined
+                }
+                actions={
+                  recipientError && (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => setRecipientAttempt(v => v + 1)}
+                    >
+                      Retry direct reports
+                    </button>
+                  )
+                }
               />
-            </label>
-            <div className="cert-recommend-fields">
-              <label>
-                Issuer
-                <input
-                  maxLength={120}
-                  value={provider}
-                  onChange={event => setProvider(event.target.value)}
-                  placeholder="Optional"
-                />
-              </label>
-              <label>
-                Category
-                <input
-                  maxLength={80}
-                  value={category}
-                  onChange={event => setCategory(event.target.value)}
-                  placeholder="Optional"
-                />
-              </label>
+              <RecommendationPicker
+                label="Certification catalogue"
+                placeholder="Search by certification, issuer or category"
+                maxLength={100}
+                query={catalogueSearch}
+                selected={catalogueSelection}
+                options={credentials ?? []}
+                describe={credential =>
+                  [credential.provider, credential.category].filter(Boolean).join(' · ')
+                }
+                onSelect={credential => {
+                  setSelectedCredential(credential);
+                  setName(credential.name);
+                  setProvider(credential.provider);
+                  setCategory(credential.category);
+                }}
+                onQueryChange={value => {
+                  if (catalogueSelection) {
+                    setName('');
+                    setProvider('');
+                    setCategory('');
+                  }
+                  setSelectedCredential(undefined);
+                  if (value !== catalogueSearch || cataloguePage !== 1) {
+                    setCredentials(undefined);
+                    setCatalogueError('');
+                    setCatalogueHasNext(false);
+                  }
+                  setCatalogueSearch(value);
+                  setCataloguePage(1);
+                }}
+                status={
+                  catalogueError ? (
+                    <span role="alert">{catalogueError}</span>
+                  ) : !credentials ? (
+                    <span role="status">Loading certifications…</span>
+                  ) : !credentials.length ? (
+                    <span role="status">No matches. You can enter the certification below.</span>
+                  ) : undefined
+                }
+                actions={
+                  catalogueError ? (
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => setCatalogueAttempt(v => v + 1)}
+                    >
+                      Retry catalogue
+                    </button>
+                  ) : (
+                    (cataloguePage > 1 || catalogueHasNext) && (
+                      <nav className="cert-recommend-picker-pages" aria-label="Catalogue pages">
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={cataloguePage <= 1 || !credentials}
+                          onClick={() => setCataloguePage(page => page - 1)}
+                        >
+                          Previous
+                        </button>
+                        <span>Page {cataloguePage}</span>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={!catalogueHasNext}
+                          onClick={() => setCataloguePage(page => page + 1)}
+                        >
+                          Next
+                        </button>
+                      </nav>
+                    )
+                  )
+                }
+              />
             </div>
+            <details className="cert-recommend-details">
+              <summary>
+                {catalogueSelection
+                  ? 'Edit certification details'
+                  : name.trim()
+                    ? 'Edit manual certification'
+                    : 'Enter certification manually'}
+              </summary>
+              <div>
+                <label>
+                  Certification name *
+                  <input
+                    required
+                    maxLength={200}
+                    value={name}
+                    onChange={event => setName(event.target.value)}
+                    placeholder="e.g. Azure Administrator Associate"
+                  />
+                </label>
+                <div className="cert-recommend-fields">
+                  <label>
+                    Issuer
+                    <input
+                      maxLength={120}
+                      value={provider}
+                      onChange={event => setProvider(event.target.value)}
+                      placeholder="Optional"
+                    />
+                  </label>
+                  <label>
+                    Category
+                    <input
+                      maxLength={80}
+                      value={category}
+                      onChange={event => setCategory(event.target.value)}
+                      placeholder="Optional"
+                    />
+                  </label>
+                </div>
+              </div>
+            </details>
             <label>
               Why are you recommending it? *
               <textarea
                 required
                 maxLength={2000}
-                rows={4}
+                rows={3}
                 value={reason}
                 onChange={event => setReason(event.target.value)}
               />
             </label>
-            <div className="cert-recommend-fields">
-              <label>
-                Credential information link
-                <input
-                  type="url"
-                  maxLength={1000}
-                  value={url}
-                  onChange={event => setUrl(event.target.value)}
-                  placeholder="https://…"
-                />
-              </label>
-              <label>
-                Suggested target date
-                <input
-                  type="date"
-                  value={targetDate}
-                  onChange={event => setTargetDate(event.target.value)}
-                />
-              </label>
-            </div>
-            <p>
-              This recommendation does not create or verify a certification record. The employee can
-              respond and add the credential separately.
-            </p>
+            <details className="cert-recommend-details">
+              <summary>Optional link and target date</summary>
+              <div className="cert-recommend-fields">
+                <label>
+                  Credential information link
+                  <input
+                    type="url"
+                    maxLength={1000}
+                    value={url}
+                    onChange={event => setUrl(event.target.value)}
+                    placeholder="https://…"
+                  />
+                </label>
+                <label>
+                  Suggested target date
+                  <input
+                    type="date"
+                    value={targetDate}
+                    onChange={event => setTargetDate(event.target.value)}
+                  />
+                </label>
+              </div>
+            </details>
           </fieldset>
         </FormDialog>
       )}
