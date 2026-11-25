@@ -230,30 +230,24 @@ export function Workspace({
     </>
   );
   const sidebarContent = (close: () => void = () => {}) => (
-    <>
-      <Link className="admin-brand" to="/workspace" onClick={close}>
-        <img src="/brand/sopra-steria.svg" alt="Sopra Steria" />
-      </Link>
-      <p className="nav-caption">SKILL MANAGEMENT APP</p>
-      <SidebarNavigation
-        actorId={state?.person.id}
-        label="Personal workspace sections"
-        onNavigate={close}
-        items={[
-          ...sidebarItems,
-          ...(state?.capabilities.administration
-            ? [
-                {
-                  id: 'administration',
-                  label: 'Administration',
-                  href: '/access',
-                  icon: ShieldCheck,
-                },
-              ]
-            : []),
-        ]}
-      />
-    </>
+    <SidebarNavigation
+      actorId={state?.person.id}
+      label="Personal workspace sections"
+      onNavigate={close}
+      items={[
+        ...sidebarItems,
+        ...(state?.capabilities.administration
+          ? [
+              {
+                id: 'administration',
+                label: 'Administration',
+                href: '/access',
+                icon: ShieldCheck,
+              },
+            ]
+          : []),
+      ]}
+    />
   );
   if (
     state &&
@@ -320,10 +314,16 @@ export function Workspace({
       <a className="skip-link" href="#workspace-main">
         Skip to content
       </a>
-      <Sidebar className="desktop-sidebar">{sidebarContent()}</Sidebar>
+      <Sidebar brandHref="/workspace" collapsible>
+        {sidebarContent()}
+      </Sidebar>
       {navigationOpen && (
         <NavigationDrawer onClose={() => setNavigationOpen(false)}>
-          {close => <Sidebar>{sidebarContent(close)}</Sidebar>}
+          {close => (
+            <Sidebar brandHref="/workspace" onBrandClick={close}>
+              {sidebarContent(close)}
+            </Sidebar>
+          )}
         </NavigationDrawer>
       )}
       <div className="admin-content">

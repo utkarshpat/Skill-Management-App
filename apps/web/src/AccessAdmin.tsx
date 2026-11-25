@@ -460,54 +460,48 @@ export function AccessAdmin({
     { id: 'audit', label: 'Activity log', icon: History },
   ] as const;
   const sidebarContent = (close: () => void = () => {}) => (
-    <>
-      <Link className="admin-brand" to="/access?view=overview" onClick={close}>
-        <img src="/brand/sopra-steria.svg" alt="Sopra Steria" />
-      </Link>
-      <p className="nav-caption">SKILL MANAGEMENT APP</p>
-      <SidebarNavigation
-        actorId={workspaceContext?.person.id ?? state?.currentPerson?.id}
-        label="Administration sections"
-        onNavigate={close}
-        items={[
-          ...sections
-            .filter(
-              section =>
-                section.id === 'overview' ||
-                section.id === 'people' ||
-                (section.id === 'skills'
-                  ? canViewSkills
-                  : section.id === 'audit'
-                    ? canViewAudit
-                    : canManageUsers),
-            )
-            .map(({ id, label, icon }) => ({
-              id: id === 'overview' ? 'dashboard' : id,
-              label: id === 'people' && !canManageUsers ? 'Access management' : label,
-              icon,
-              active: personalTitle
-                ? id === 'skills' && personalPath === '/skills'
-                : tab === id ||
-                  (id === 'people' && ['roles', 'assignments', 'profiles'].includes(tab)),
-              onSelect: () => {
-                if (id === 'skills') {
-                  navigate('/skills');
-                  close();
-                  return;
-                }
-                setTab(id === 'people' && !canManageUsers ? 'roles' : id);
-                setEditor(undefined);
-                setSearch('');
-                setNotice('');
-              },
-            })),
-          ...personalNavigationItems(
-            personalCapabilities && { ...personalCapabilities, canPublishAnnouncements },
-            personalPath,
-          ),
-        ]}
-      />
-    </>
+    <SidebarNavigation
+      actorId={workspaceContext?.person.id ?? state?.currentPerson?.id}
+      label="Administration sections"
+      onNavigate={close}
+      items={[
+        ...sections
+          .filter(
+            section =>
+              section.id === 'overview' ||
+              section.id === 'people' ||
+              (section.id === 'skills'
+                ? canViewSkills
+                : section.id === 'audit'
+                  ? canViewAudit
+                  : canManageUsers),
+          )
+          .map(({ id, label, icon }) => ({
+            id: id === 'overview' ? 'dashboard' : id,
+            label: id === 'people' && !canManageUsers ? 'Access management' : label,
+            icon,
+            active: personalTitle
+              ? id === 'skills' && personalPath === '/skills'
+              : tab === id ||
+                (id === 'people' && ['roles', 'assignments', 'profiles'].includes(tab)),
+            onSelect: () => {
+              if (id === 'skills') {
+                navigate('/skills');
+                close();
+                return;
+              }
+              setTab(id === 'people' && !canManageUsers ? 'roles' : id);
+              setEditor(undefined);
+              setSearch('');
+              setNotice('');
+            },
+          })),
+        ...personalNavigationItems(
+          personalCapabilities && { ...personalCapabilities, canPublishAnnouncements },
+          personalPath,
+        ),
+      ]}
+    />
   );
 
   if (!personalTitle && tab === 'skills') {
@@ -521,10 +515,16 @@ export function AccessAdmin({
       <a className="skip-link" href="#access-main">
         Skip to content
       </a>
-      <Sidebar className="desktop-sidebar">{sidebarContent()}</Sidebar>
+      <Sidebar brandHref="/access?view=overview" collapsible>
+        {sidebarContent()}
+      </Sidebar>
       {navigationOpen && (
         <NavigationDrawer onClose={() => setNavigationOpen(false)}>
-          {close => <Sidebar>{sidebarContent(close)}</Sidebar>}
+          {close => (
+            <Sidebar brandHref="/access?view=overview" onBrandClick={close}>
+              {sidebarContent(close)}
+            </Sidebar>
+          )}
         </NavigationDrawer>
       )}
       <div className="admin-content">

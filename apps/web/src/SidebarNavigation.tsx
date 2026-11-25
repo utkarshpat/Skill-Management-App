@@ -223,6 +223,8 @@ export function SidebarNavigation({
                 <Link
                   className="workspace-nav-link sidebar-nav-destination"
                   to={href}
+                  aria-label={caption}
+                  title={caption}
                   aria-current={active ? 'page' : undefined}
                   onClick={() => {
                     onSelect?.();
@@ -236,6 +238,8 @@ export function SidebarNavigation({
               ) : (
                 <button
                   className="sidebar-nav-destination"
+                  aria-label={caption}
+                  title={caption}
                   aria-current={active ? 'page' : undefined}
                   onClick={() => {
                     onSelect?.();
@@ -295,6 +299,8 @@ export function SidebarNavigation({
             <Link
               className="workspace-nav-link sidebar-nav-destination"
               to={profile.href ?? '/profile'}
+              aria-label={profile.label}
+              title={profile.label}
               aria-current={profile.active ? 'page' : undefined}
               onClick={() => {
                 profile.onSelect?.();

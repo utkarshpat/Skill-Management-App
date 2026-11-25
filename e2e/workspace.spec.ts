@@ -72,6 +72,46 @@ test('sidebar uses slim theme scrollbars in light and dark mode', async ({ page 
   expect(dark.thumbClip).toBe('content-box');
 });
 
+test('collapsed desktop navigation keeps named icons and restores the full mobile drawer', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 850 });
+  await fixture(page, { role: 'admin' });
+  await page.goto('/access?view=overview');
+  const sidebar = page.locator('.desktop-sidebar');
+  const dashboard = sidebar.getByRole('button', { name: 'Dashboard', exact: true });
+  const expand = sidebar.getByRole('button', { name: 'Expand sidebar' });
+  const collapse = sidebar.getByRole('button', { name: 'Collapse sidebar' });
+  await expect(dashboard).toHaveAttribute('aria-current', 'page');
+  const expandedWidth = (await sidebar.boundingBox())!.width;
+  await collapse.press('Enter');
+  await expect(expand).toBeFocused();
+  await expect(expand).toHaveAttribute('aria-expanded', 'false');
+  expect((await sidebar.boundingBox())!.width).toBeLessThan(expandedWidth / 2);
+  await expect(sidebar.getByRole('link', { name: 'Sopra Steria' }).locator('img')).toHaveAttribute(
+    'src',
+    '/brand/sopra-steria-mark.svg',
+  );
+  await expect(dashboard).toHaveAttribute('title', 'Dashboard');
+  await expect(dashboard.locator('span')).toBeHidden();
+  await expect(sidebar.getByRole('link', { name: 'My profile' }).locator('span')).toBeHidden();
+  await expect(sidebar.getByRole('button', { name: 'Reorder Dashboard' })).toHaveCount(0);
+  await page.reload();
+  await expect(expand).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  const drawer = page.getByRole('dialog', { name: 'Workspace navigation' });
+  await expect(drawer.getByText('Dashboard', { exact: true })).toBeVisible();
+  await expect(drawer.getByRole('link', { name: 'Sopra Steria' }).locator('img')).toHaveAttribute(
+    'src',
+    '/brand/sopra-steria.svg',
+  );
+  await page.setViewportSize({ width: 1280, height: 850 });
+  await expand.click();
+  await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+  await expect(dashboard.locator('span')).toBeVisible();
+});
+
 test('navigation drawer keeps focus and toasts across the tablet breakpoint', async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 850 });
   await fixture(page, { role: 'employee' });

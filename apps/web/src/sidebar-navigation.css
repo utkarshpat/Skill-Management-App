@@ -150,6 +150,67 @@ html[data-theme] .admin-sidebar .admin-brand {
   padding-right: 0;
   width: 100%;
 }
+.sidebar-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar-heading .admin-brand {
+  flex: 1;
+  min-width: 0;
+}
+.sidebar-heading .admin-brand img {
+  max-width: 100%;
+}
+.sidebar-collapse-toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  padding: 0;
+  border: 1px solid #53627a;
+  border-radius: 8px;
+  background: transparent;
+  color: #c8d2e0;
+  cursor: pointer;
+}
+.sidebar-collapse-toggle:hover {
+  background: #243147;
+  color: #fff;
+}
+html[data-theme] .admin-sidebar.desktop-sidebar[data-collapsed] {
+  width: 76px;
+  flex-basis: 76px;
+  padding-inline: 10px;
+}
+.desktop-sidebar[data-collapsed] .sidebar-heading {
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+html[data-theme] .desktop-sidebar[data-collapsed] .admin-brand .sidebar-brand-mark {
+  width: 42px;
+  height: 42px;
+  padding: 6px;
+  object-fit: contain;
+}
+.desktop-sidebar[data-collapsed] :is(.nav-caption, .sidebar-order-tools, .sidebar-last-updated) {
+  display: none;
+}
+html[data-theme]
+  .desktop-sidebar[data-collapsed]
+  nav.sidebar-navigation
+  button.sidebar-drag-handle {
+  display: none;
+}
+html[data-theme] .desktop-sidebar[data-collapsed] nav.sidebar-navigation .sidebar-nav-destination {
+  justify-content: center;
+  padding-inline: 0;
+  gap: 0;
+}
+.desktop-sidebar[data-collapsed] .sidebar-nav-destination :is(span, svg:not(:first-child)) {
+  display: none;
+}
 html[data-theme] .admin-sidebar .sidebar-scroll {
   flex: 1 1 0;
   min-height: 0;
