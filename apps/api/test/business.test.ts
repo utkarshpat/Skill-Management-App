@@ -814,6 +814,81 @@ test('business AI produces only human-review drafts and never invokes writes', a
     assert.equal(result.mode, 'read-only');
   }
 });
+
+test('business AI shares repeated lookups and aborts when the authorized revision changes', async () => {
+  for (const changeRevision of [false, true]) {
+    const s = state();
+    const access: AccessStore = {
+      snapshot: () => structuredClone(s),
+      person: () => s.people[0],
+      save: async () => s,
+    };
+    let rounds = 0;
+    let reads = 0;
+    const coverage = Array.from({ length: 140 }, (_, index) => ({
+      id: String(index),
+      label: 'Skill '.repeat(35) + index,
+      holders: 1,
+      rank: 2,
+    }));
+    const business: BusinessStore = {
+      context: async () => context(),
+      dashboard: async () => {
+        reads++;
+        return { ...dashboard(), coverage, coverageComplete: true };
+      },
+      administration: async () => ({}),
+      change: async () => {},
+      workflow: async () => ({}),
+    };
+    const service = new AssistantService(
+      access,
+      undefined,
+      {
+        name: 'synthetic',
+        complete: async messages => {
+          rounds++;
+          if (rounds > 1) {
+            const result = JSON.parse(messages.find(message => message.role === 'tool')!.content);
+            assert.equal(result.coverageComplete, false);
+            assert.deepEqual(result.coverage[0], coverage[0]);
+            assert.equal(result.coverage.length + result.contextOmitted.coverage, coverage.length);
+            assert.deepEqual(result.summary, dashboard().summary);
+          }
+          if (rounds === 2 && changeRevision) s.revision++;
+          if (rounds > 2) return { content: 'Here is the current business summary.', calls: [] };
+          return {
+            content: '',
+            calls: [
+              {
+                id: 'lookup-' + rounds,
+                type: 'function',
+                function: {
+                  name: 'business_insights',
+                  arguments: JSON.stringify({ scopeId: scope }),
+                },
+              },
+            ],
+          };
+        },
+      },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      business,
+    );
+    const reply = service.chat(actor, {
+      messages: [{ role: 'user', content: 'Summarize business analytics' }],
+    });
+    if (changeRevision) await assert.rejects(reply, { status: 403 });
+    else await reply;
+    assert.equal(reads, 1);
+  }
+});
 test('business AI discards a reply when scope membership changes while permission remains allowed', async () => {
   const s = state(),
     access: AccessStore = {

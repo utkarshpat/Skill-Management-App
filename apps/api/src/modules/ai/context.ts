@@ -2,6 +2,38 @@ import { randomUUID } from 'node:crypto';
 import { AccessError } from '../../shared/errors.js';
 import type { Message } from './assistant.js';
 
+const lookupLists = [
+  'rows',
+  'items',
+  'coverage',
+  'credentialCoverage',
+  'uncataloguedCredentials',
+  'activity',
+  'categories',
+  'comparisons',
+  'skills',
+  'certifications',
+];
+
+// Compact unsigned data only. Leave filters, totals, retained records and provider replay intact.
+export function compactLookupLists(messages: Message[], limit: number) {
+  for (const message of messages) {
+    if (message.role !== 'tool') continue;
+    const data = JSON.parse(message.content) as Record<string, unknown>;
+    const omitted = (data.contextOmitted ?? {}) as Record<string, number>;
+    let changed = false;
+    for (const key of lookupLists) {
+      const entries = data[key];
+      if (!Array.isArray(entries) || entries.length <= limit) continue;
+      data[key] = entries.slice(0, limit);
+      omitted[key] = (omitted[key] ?? 0) + entries.length - limit;
+      if (key === 'coverage') data.coverageComplete = false;
+      changed = true;
+    }
+    if (changed) message.content = JSON.stringify({ ...data, contextOmitted: omitted });
+  }
+}
+
 export interface Session {
   actor: string;
   policy: string;

@@ -6,6 +6,7 @@ type DatabasePhase = 'token' | 'connect' | 'acquire' | 'checkout' | 'operation';
 export type TimedProcedure =
   | 'ResolveAccessIdentity'
   | 'ReadActorAccessContext'
+  | 'ReadProfileManager'
   | 'BusinessContext'
   | 'BusinessDashboard'
   | 'BusinessAmendmentNotifications';

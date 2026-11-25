@@ -171,6 +171,7 @@ test('dashboard overview replaces five requests with one, shares learning only w
     plans = 0,
     summaries = 0,
     workflowReads = 0;
+  let waitForPlans = Promise.resolve();
   const access: AccessStore = {
     snapshot: () => structuredClone(state),
     actorSnapshot: () => {
@@ -203,6 +204,7 @@ test('dashboard overview replaces five requests with one, shares learning only w
       read: async id => {
         assert.equal(id, actor);
         plans++;
+        await waitForPlans;
         return sources.learning!.read(id);
       },
     },
@@ -254,6 +256,36 @@ test('dashboard overview replaces five requests with one, shares learning only w
     assert.equal((await fetch(root + '/overview?status=SUBMITTED', { headers })).status, 400);
     assert.equal((await fetch(root + '/overview')).status, 401);
     assert.equal(summaries, before);
+    let releasePlans!: () => void;
+    waitForPlans = new Promise<void>(resolve => {
+      releasePlans = resolve;
+    });
+    try {
+      const stream = await fetch(root + '/overview', {
+        headers: { ...headers, Accept: 'application/x-ndjson' },
+        signal: AbortSignal.timeout(5000),
+      });
+      assert.match(stream.headers.get('Content-Type') ?? '', /application\/x-ndjson/);
+      const reader = stream.body!.pipeThrough(new TextDecoderStream()).getReader();
+      let output = '';
+      while (!output.includes('"card":"capability"')) {
+        const chunk = await reader.read();
+        assert.equal(chunk.done, false);
+        output += chunk.value;
+      }
+      assert.match(output, /"manifest":/);
+      assert.doesNotMatch(output, /"card":"learning"|"complete":true/);
+      releasePlans();
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        output += chunk.value;
+      }
+      assert.match(output, /"card":"learning"/);
+      assert.match(output, /"complete":true/);
+    } finally {
+      releasePlans();
+    }
   } finally {
     await new Promise<void>(resolve => server.close(() => resolve()));
   }

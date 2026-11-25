@@ -559,28 +559,56 @@ test('large tool results leave room for a final answer with facts already retrie
   state.people[0].jobTitle = 'x'.repeat(8000);
   access.snapshot = () => structuredClone(state);
   let rounds = 0;
-  const service = new AssistantService(access, undefined, {
-    name: 'fixture',
-    complete: async (messages, tools) => {
-      if (++rounds === 1)
-        return {
-          content: '',
-          calls: Array.from({ length: 4 }, (_, index) => ({
-            id: 'read-' + index,
-            type: 'function' as const,
-            function: { name: 'own_profile', arguments: '{}' },
-          })),
-        };
-      assert.deepEqual(tools, []);
-      const facts = messages
-        .filter(message => message.role === 'tool')
-        .map(message => JSON.parse(message.content));
-      assert.equal(facts.length, 4);
-      assert.ok(facts.some(fact => fact.jobTitle === state.people[0].jobTitle));
-      assert.ok(facts.some(fact => fact.unavailable));
-      return { content: 'I read the profile. Some lookups could not be included.', calls: [] };
+  let reads = 0;
+  const service = new AssistantService(
+    access,
+    undefined,
+    {
+      name: 'fixture',
+      complete: async (messages, tools) => {
+        if (++rounds === 1)
+          return {
+            content: '',
+            calls: Array.from({ length: 8 }, (_, index) => ({
+              id: 'read-' + index,
+              type: 'function' as const,
+              function: { name: 'own_profile', arguments: '{}' },
+            })),
+          };
+        assert.deepEqual(tools, []);
+        const facts = messages
+          .filter(message => message.role === 'tool')
+          .map(message => JSON.parse(message.content));
+        assert.equal(facts.length, 8);
+        assert.ok(facts.some(fact => fact.jobTitle === state.people[0].jobTitle));
+        const firstSkipped = facts.findIndex(fact => fact.unavailable);
+        assert.ok(firstSkipped >= 0 && firstSkipped < facts.length - 1);
+        assert.equal(reads, firstSkipped + 1);
+        return { content: 'I read the profile. Some lookups could not be included.', calls: [] };
+      },
     },
-  });
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    async () => {
+      reads++;
+      return {
+        workspace: 'Fixture',
+        placementStatus: 'NOT_ASSIGNED',
+        deliveryUnit: null,
+        department: null,
+        team: null,
+        managerStatus: 'NOT_ASSIGNED',
+        managerName: null,
+      };
+    },
+  );
   const result = await service.chat(actor, { message: 'What is in my profile?' });
   assert.match(result.reply, /I read the profile/);
   assert.equal(rounds, 2);

@@ -72,6 +72,8 @@ for (const kind of ['FORM', 'POLL']) {
                 startsAt: '2000-01-01T00:00:00Z',
                 endsAt: '2099-01-01T00:00:00Z',
                 answered,
+                ...(poster &&
+                  answered && { savedAnswers: { vote: 'Afternoon' }, responseRevision: 1 }),
                 hasImage: poster,
                 definition: {
                   kind,
@@ -82,6 +84,14 @@ for (const kind of ['FORM', 'POLL']) {
                   imagePopup: poster,
                   imageAlt: 'Training poster',
                   marquee: false,
+                  ...(poster && {
+                    allowResponseUpdates: true,
+                    design: {
+                      format: 'appearance-v1',
+                      order: ['title', 'message', 'image', 'action'],
+                      appearance: { button: 'green' },
+                    },
+                  }),
                   options: ['Morning', 'Afternoon'],
                   fields: [
                     {
@@ -173,6 +183,14 @@ for (const kind of ['FORM', 'POLL']) {
           exact: true,
         }),
       ).toHaveCount(0);
+      if (poster) {
+        await dialog.getByRole('button', { name: 'Edit response' }).click();
+        const selected = dialog.getByRole('button', { name: 'Afternoon', exact: true });
+        const other = dialog.getByRole('button', { name: 'Morning', exact: true });
+        await expect(selected).toHaveAttribute('aria-pressed', 'true');
+        await expect(other).toHaveCSS('background-color', 'rgb(22, 101, 52)');
+        await expect(selected).not.toHaveCSS('background-color', 'rgb(22, 101, 52)');
+      }
       expect(submissions).toBe(1);
     },
   );

@@ -66,12 +66,19 @@ export function registerRecommendationRoutes(
       let value;
       if (action === 'SEND') {
         const input = sendRecommendation(req.body);
-        state = await (deps?.access ?? store)!.snapshot({ includeAudit: false });
-        actor = state.people.find((person: LocalPerson) => person.id === actor.id && person.active);
-        if (!actor) throw new AccessError(403, 'Recommendation access changed.');
-        const decision = recommendationAccess(state, actor, input.personId);
-        if (!decision.allowed)
-          throw new AccessError(403, 'Recommendation denied: ' + decision.reasonCode);
+        if (deps.recommendations.enforcesSendPolicy) {
+          if (!effectiveAccess(state, actor, 'learning.recommend', 'DIRECT_REPORTS').allowed)
+            throw new AccessError(403, 'Direct report recommendations are unavailable.');
+        } else {
+          state = await (deps?.access ?? store)!.snapshot({ includeAudit: false });
+          actor = state.people.find(
+            (person: LocalPerson) => person.id === actor.id && person.active,
+          );
+          if (!actor) throw new AccessError(403, 'Recommendation access changed.');
+          const decision = recommendationAccess(state, actor, input.personId);
+          if (!decision.allowed)
+            throw new AccessError(403, 'Recommendation denied: ' + decision.reasonCode);
+        }
         value = await deps.recommendations.send(actor.id, input);
       } else if (action === 'RESPOND') {
         if (

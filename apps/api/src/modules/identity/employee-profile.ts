@@ -24,7 +24,11 @@ export function createEmployeeProfileReader(dependencies: EmployeeProfileDepende
     if (!state || !actor?.active || !can(state, actor, 'profile.view', true)) return undefined;
     // External bindings require the persisted manager record, omitted by compact
     // actor projections. Keep this server-only and re-read after external I/O.
-    if (dependencies.directory.source === 'external' && state.reporting === undefined) {
+    if (
+      dependencies.directory.source === 'external' &&
+      state.reporting === undefined &&
+      !dependencies.access?.profileManager
+    ) {
       const full = await dependencies.access?.snapshot({ includeAudit: false });
       if (!full || full.reporting === undefined)
         throw new AccessError(503, 'Canonical reporting information is unavailable.');
@@ -32,7 +36,20 @@ export function createEmployeeProfileReader(dependencies: EmployeeProfileDepende
     }
     return state;
   };
-  const managerCode = (state: NonNullable<Awaited<ReturnType<typeof readContext>>>, id: string) => {
+  const managerCode = async (
+    state: NonNullable<Awaited<ReturnType<typeof readContext>>>,
+    id: string,
+  ) => {
+    if (dependencies.directory.source === 'external' && dependencies.access?.profileManager) {
+      const manager = await dependencies.access.profileManager(id);
+      if (
+        manager.revision !== state.revision ||
+        (manager.managerId &&
+          (manager.managerId.toLowerCase() === id.toLowerCase() || !manager.employeeCode))
+      )
+        throw new AccessError(409, 'Employee reporting changes need synchronization.');
+      return manager.employeeCode;
+    }
     const edges = state.reporting?.filter(edge => edge.personId === id);
     const manager = edges?.[0]?.managerId;
     const person = manager
@@ -61,7 +78,7 @@ export function createEmployeeProfileReader(dependencies: EmployeeProfileDepende
       email: null,
       entraObjectId: person.entraObjectId ?? identity.objectId,
       active: person.active,
-      managerEmployeeCode: managerCode(state, id),
+      managerEmployeeCode: await managerCode(state, id),
       deliveryUnit: organization?.deliveryUnit ?? null,
       portfolio: organization?.portfolio ?? null,
       department: organization?.department ?? null,
@@ -83,7 +100,7 @@ export function createEmployeeProfileReader(dependencies: EmployeeProfileDepende
         ...stored,
         employeeCode: person.employeeCode,
         entraObjectId: person.entraObjectId ?? identity.objectId,
-        managerEmployeeCode: managerCode(state, id),
+        managerEmployeeCode: await managerCode(state, id),
         deliveryUnit: organization?.deliveryUnit ?? null,
         portfolio: organization?.portfolio ?? null,
         department: organization?.department ?? null,

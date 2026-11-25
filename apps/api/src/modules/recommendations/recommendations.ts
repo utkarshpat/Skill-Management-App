@@ -114,6 +114,7 @@ export function recommendationResponse(input: unknown): RecommendationResponse {
   };
 }
 export interface RecommendationStore {
+  readonly enforcesSendPolicy?: true;
   read(actor: string, view: 'received' | 'sent', page: number, id?: string): Promise<unknown>;
   options(actor: string, search: string): Promise<unknown>;
   send(actor: string, input: SendRecommendation): Promise<unknown>;

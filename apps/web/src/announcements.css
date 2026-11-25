@@ -351,7 +351,7 @@ html[data-theme]
     .announcement-strip,
     .announcement-poster
   )[style*='--announcement-manual-button']
-  :is(.admin-primary, .announcement-poll button) {
+  :is(.admin-primary, .announcement-poll button:not([aria-pressed='true'])) {
   background: var(--announcement-manual-button);
   color: #fff;
   border-color: transparent;

@@ -141,8 +141,9 @@ export class SqlAiBudget implements AiBudget {
     env: NodeJS.ProcessEnv = process.env,
   ) {
     const limit = (key: string, fallback: number) => {
-      if (env[key] === undefined) return fallback;
-      const value = Number(env[key]);
+      const configured = env[key]?.trim();
+      if (!configured) return fallback;
+      const value = Number(configured);
       if (!Number.isSafeInteger(value) || value < 1 || value > 2_000_000_000)
         throw Error(`Invalid ${key}: expected a positive whole token limit.`);
       return value;
@@ -170,8 +171,9 @@ export class SqlAiBudget implements AiBudget {
     try {
       await run('reserve', estimate);
     } catch (error) {
-      const number = (error as { number?: number })?.number;
-      if (number === 51029) throw exhausted();
+      const { number, message } = (error ?? {}) as { number?: number; message?: string };
+      // Migration 119 uses the same SQL error number for lock contention and quota.
+      if (number === 51029 && message !== 'AI token budget busy.') throw exhausted();
       if (number === 51003) throw new AccessError(403, 'Assistant access is not assigned.');
       throw new AccessError(503, 'AI capacity could not be checked. Please retry shortly.');
     }

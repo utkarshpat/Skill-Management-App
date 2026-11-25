@@ -625,6 +625,11 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
                 setCategory(credential.category);
               }}
               onQueryChange={value => {
+                if (catalogueSelection) {
+                  setName('');
+                  setProvider('');
+                  setCategory('');
+                }
                 setSelectedCredential(undefined);
                 if (value !== catalogueSearch || cataloguePage !== 1) {
                   setCredentials(undefined);

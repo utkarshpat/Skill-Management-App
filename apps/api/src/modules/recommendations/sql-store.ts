@@ -7,6 +7,8 @@ import type {
   RecommendationResponse,
 } from './recommendations.js';
 export class SqlRecommendationStore implements RecommendationStore {
+  // dbo.LearningRecommendations checks the exact recipient before its transactional write.
+  readonly enforcesSendPolicy = true as const;
   constructor(private accountId: string) {}
   private async run(actor: string, action: string, payload: object = {}) {
     try {

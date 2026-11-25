@@ -12,58 +12,67 @@ test('employee dashboard prioritizes returned claims and opens the exact certifi
   await page.route('**/api/certifications/' + certificate.id, route =>
     route.fulfill({ json: { record: certificate } }),
   );
-  await page.route('**/api/dashboard/overview', route =>
-    route.fulfill({
-      json: {
-        revision: 1,
-        actorId: ids.person,
-        ai: false,
-        actions: [],
-        cards: [
-          {
-            id: 'capability',
-            title: 'My capability',
-            description: 'My work',
-            endpoint: '/api/dashboard/capability',
-            scope: { kind: 'OWN', actorId: ids.person },
-          },
-        ],
-        cardData: {
-          capability: {
-            data: {
-              total: 1,
-              verified: 0,
-              pending: 0,
-              draft: 0,
-              changesRequested: 1,
-              rejected: 0,
-              canClaim: true,
-              topSkills: [],
-              recentClaims: [
-                {
-                  ...claim,
-                  href: `/my-skills?claim=${claim.id}`,
-                  editHref: `/my-skills?editClaim=${claim.id}`,
-                },
-              ],
-              recentCertificates: [
-                {
-                  id: certificate.id,
-                  name: certificate.certificationName,
-                  issuer: certificate.provider,
-                  status: 'APPROVED',
-                  expiryDate: certificate.expiryDate,
-                  expired: true,
-                  href: `/certifications?record=${certificate.id}`,
-                  renewalHref: `/certifications?renew=${certificate.id}`,
-                },
-              ],
-            },
+  await page.route('**/api/dashboard/overview', route => {
+    expect(route.request().headers().accept).toBe('application/x-ndjson');
+    const overview = {
+      revision: 1,
+      actorId: ids.person,
+      ai: false,
+      actions: [],
+      cards: [
+        {
+          id: 'capability',
+          title: 'My capability',
+          description: 'My work',
+          endpoint: '/api/dashboard/capability',
+          scope: { kind: 'OWN', actorId: ids.person },
+        },
+      ],
+      cardData: {
+        capability: {
+          data: {
+            total: 1,
+            verified: 0,
+            pending: 0,
+            draft: 0,
+            changesRequested: 1,
+            rejected: 0,
+            canClaim: true,
+            topSkills: [],
+            recentClaims: [
+              {
+                ...claim,
+                href: `/my-skills?claim=${claim.id}`,
+                editHref: `/my-skills?editClaim=${claim.id}`,
+              },
+            ],
+            recentCertificates: [
+              {
+                id: certificate.id,
+                name: certificate.certificationName,
+                issuer: certificate.provider,
+                status: 'APPROVED',
+                expiryDate: certificate.expiryDate,
+                expired: true,
+                href: `/certifications?record=${certificate.id}`,
+                renewalHref: `/certifications?renew=${certificate.id}`,
+              },
+            ],
           },
         },
       },
-    }),
-  );
+    };
+    return route.fulfill({
+      contentType: 'application/x-ndjson',
+      body: [
+        { manifest: { ...overview, cardData: {} } },
+        { card: 'capability', result: overview.cardData.capability },
+        { complete: true },
+      ]
+        .map(event => JSON.stringify(event) + '\n')
+        .join(''),
+    });
+  });
   await page.goto('/workspace');
   const claimsSection = page.getByRole('region', { name: 'Skill claim status and next actions' });
   await expect(

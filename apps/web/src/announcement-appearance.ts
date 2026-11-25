@@ -1,13 +1,14 @@
 import type { Appearance } from './announcement-model';
 
 export const backgrounds = {
-  teal: { label: 'Soft teal', fill: '#e6f5f3', ink: '#123e40' },
+  teal: { label: 'Soft teal', fill: '#e6f5f3', ink: '#123e40', textSurface: '#e6f5f3' },
   'blue-red': {
     label: 'Blue to red gradient',
     fill: 'linear-gradient(135deg, #1e3a8a, #991b1b)',
     ink: '#ffffff',
+    textSurface: '#1e3a8a',
   },
-  neutral: { label: 'Soft grey', fill: '#eef2f6', ink: '#182235' },
+  neutral: { label: 'Soft grey', fill: '#eef2f6', ink: '#182235', textSurface: '#eef2f6' },
 };
 export const buttons = {
   teal: { label: 'Teal', fill: '#126b70' },
@@ -35,7 +36,8 @@ export function sandboxAppearanceCss(appearance?: Appearance) {
   return [
     background &&
       `#bridge-canvas,#bridge-canvas > * {background:${background.fill}!important;color:${background.ink}!important}
-        #bridge-canvas :is(#ann-title,#ann-message,label,legend,output) {color:${background.ink}!important}`,
+        #bridge-canvas :is(#ann-title,#ann-message) {background:${background.textSurface}!important;color:${background.ink}!important}
+        #bridge-canvas :is(label,legend,output) {background:#f7f9fc!important;color:#182235!important}`,
     button &&
       `#bridge-canvas :is(#ann-submit,[id^="ann-vote-"]) {background:${button.fill}!important;color:#fff!important;border-color:transparent!important}`,
     space &&

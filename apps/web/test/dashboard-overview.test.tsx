@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readDashboardOverview } from '../src/dashboard-overview';
+import { readDashboardOverview, readProgressiveDashboard } from '../src/dashboard-overview';
 
 const fixture = () => ({
   actorId: 'actor',
@@ -56,4 +56,33 @@ test('missing, foreign, duplicate and malformed card snapshots fail before rende
   for (const body of malformed)
     await assert.rejects(readDashboardOverview(response(body)), /incomplete/);
   await assert.rejects(readDashboardOverview(new Response('broken-json')), /incomplete/);
+});
+
+test('progressive overview publishes ready data and rejects access changed mid-stream', async () => {
+  const valid = fixture();
+  const { readable, writable } = new TransformStream<Uint8Array>();
+  const writer = writable.getWriter();
+  const seen: unknown[] = [];
+  let onCard!: () => void;
+  const received = new Promise<void>(resolve => {
+    onCard = resolve;
+  });
+  const stream = readProgressiveDashboard(
+    new Response(readable, {
+      headers: { 'Content-Type': 'application/x-ndjson' },
+    }),
+    overview => {
+      seen.push(overview);
+      if (overview.cardData.learning) onCard();
+    },
+  );
+  const failure = assert.rejects(stream, { status: 409 });
+  const send = (event: object) =>
+    writer.write(new TextEncoder().encode(JSON.stringify(event) + '\n'));
+  await send({ manifest: { ...valid, cardData: {} } });
+  await send({ card: 'learning', result: valid.cardData.learning });
+  await received;
+  assert.deepEqual(seen, [{ ...valid, cardData: {} }, valid]);
+  await send({ error: { status: 409, message: 'Access changed' } });
+  await failure;
 });

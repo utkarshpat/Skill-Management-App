@@ -39,8 +39,8 @@ test('publisher uploads a poster, retries the AI design and publishes the previe
         reply: 'Updated the background and vote buttons.',
         design: {
           format: 'sandbox-v1',
-          html: '<section class="ann-card"><h2 id="ann-title"></h2><p id="ann-message"></p><button id="ann-vote-0" type="button"></button><button id="ann-vote-1" type="button"></button></section>',
-          css: '.ann-card { background: linear-gradient(135deg, #1e3a8a, #991b1b); color: white; } button { background: #166534; color: white; }',
+          html: '<section class="ann-card"><header><h2 id="ann-title"></h2><p id="ann-message"></p></header><button id="ann-vote-0" type="button"></button><button id="ann-vote-1" type="button"></button></section>',
+          css: '.ann-card { background: linear-gradient(135deg, #1e3a8a, #991b1b); color: white; } header { background: white; color: #182235; } button { background: #166534; color: white; }',
           bindings: [
             { elementId: 'ann-title', kind: 'content', key: 'title' },
             { elementId: 'ann-message', kind: 'content', key: 'message' },
@@ -112,7 +112,18 @@ test('publisher uploads a poster, retries the AI design and publishes the previe
   await expect(dialog.getByText('Preview vote accepted. Nothing was submitted.')).toBeVisible();
   await dialog.getByText('Adjust appearance', { exact: true }).click();
   await dialog.getByLabel('Button color').selectOption('navy');
+  await dialog
+    .locator('.announcement-appearance')
+    .getByLabel('Background')
+    .selectOption('blue-red');
+  const banner = dialog.getByRole('button', { name: 'Banner preview' });
+  await banner.click();
   await dialog.getByRole('button', { name: 'Apply appearance' }).click();
+  await expect(banner).toHaveAttribute('aria-pressed', 'true');
+  await dialog.getByRole('button', { name: 'Poll preview' }).click();
+  const heading = sandbox.getByRole('heading', { name: 'Training topic' });
+  await expect(heading).toHaveCSS('color', 'rgb(255, 255, 255)');
+  await expect(heading).toHaveCSS('background-color', 'rgb(30, 58, 138)');
   await expect(vote).toHaveCSS('background-color', 'rgb(24, 34, 53)');
   await dialog.getByRole('button', { name: 'Compare previous' }).click();
   await expect(vote).toHaveCSS('background-color', 'rgb(22, 101, 52)');

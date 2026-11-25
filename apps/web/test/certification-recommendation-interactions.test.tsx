@@ -292,3 +292,32 @@ test('catalogue pagination stays with the picker and a new search starts on the 
   assert.equal(catalogue.getAttribute('aria-expanded'), 'false');
   assert.equal(document.querySelector('.form-dialog'), dialog);
 });
+
+test('changing a catalogue search clears the previous selection and still allows manual entry', async () => {
+  await mount(true);
+  await click('Recommend a certification');
+  const directReport = picker('Direct report');
+  await press(directReport, 'ArrowDown');
+  await press(directReport, 'Enter');
+  const catalogue = picker('Certification catalogue');
+  await press(catalogue, 'ArrowDown');
+  await press(catalogue, 'Enter');
+  assert.equal(catalogue.value, 'Oracle Database SQL');
+  await fill('Why are you recommending it?', 'Supports customer reporting');
+  await fill('Certification catalogue', 'AWS');
+  await press(catalogue, 'Escape');
+  const send = Array.from(document.querySelectorAll('button')).find(
+    button => button.textContent?.trim() === 'Send recommendation',
+  )!;
+  assert.ok(send.disabled);
+  assert.equal(writes.length, 0);
+  await fill('Certification name', 'AWS Cloud Practitioner');
+  await fill('Certification catalogue', 'AWS Cloud');
+  await press(catalogue, 'Escape');
+  assert.equal(send.disabled, false);
+  await click('Send recommendation');
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].body.certificationName, 'AWS Cloud Practitioner');
+  assert.equal(writes[0].body.provider, '');
+  assert.equal(writes[0].body.category, '');
+});

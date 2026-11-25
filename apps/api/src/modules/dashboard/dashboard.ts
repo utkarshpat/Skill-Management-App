@@ -626,6 +626,10 @@ export async function loadDashboardOverview(
   person: LocalPerson,
   sources: DashboardSources,
   at = new Date(),
+  onCard?: (
+    id: CardId,
+    result: { data: unknown } | { error: { status: number; message: string } },
+  ) => Promise<void>,
 ) {
   const manifest = dashboardManifest(state, person, sources);
   let learningRead: ReturnType<NonNullable<DashboardSources['learning']>['read']> | undefined;
@@ -643,25 +647,30 @@ export async function loadDashboardOverview(
       : undefined,
   };
   const results = await Promise.allSettled(
-    manifest.cards.map(card => loadDashboardCard(card.id, actor, state, person, shared, at)),
+    manifest.cards.map(async card => {
+      const result = await loadDashboardCard(card.id, actor, state, person, shared, at).then(
+        data => ({ data }),
+        error => {
+          if (error instanceof AccessError && [401, 403, 409].includes(error.status)) throw error;
+          return {
+            error: {
+              status: error instanceof AccessError ? error.status : 503,
+              message:
+                error instanceof AccessError
+                  ? error.message
+                  : 'This dashboard card could not be loaded.',
+            },
+          };
+        },
+      );
+      await onCard?.(card.id, result);
+      return [card.id, result] as const;
+    }),
   );
   const cardData = Object.fromEntries(
-    results.map((result, i) => {
-      if (result.status === 'fulfilled') return [manifest.cards[i].id, { data: result.value }];
-      const error = result.reason;
-      if (error instanceof AccessError && [401, 403, 409].includes(error.status)) throw error;
-      return [
-        manifest.cards[i].id,
-        {
-          error: {
-            status: error instanceof AccessError ? error.status : 503,
-            message:
-              error instanceof AccessError
-                ? error.message
-                : 'This dashboard card could not be loaded.',
-          },
-        },
-      ];
+    results.map(result => {
+      if (result.status === 'rejected') throw result.reason;
+      return result.value;
     }),
   );
   return { ...manifest, cardData };

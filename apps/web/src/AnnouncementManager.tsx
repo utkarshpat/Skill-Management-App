@@ -510,7 +510,6 @@ export function AnnouncementManager({
         appearance: Object.fromEntries(Object.entries(appearance).filter(([, value]) => value)),
       },
     });
-    setPreviewView('form');
   };
   const columns = orderAudienceScopes(
     data?.scopes.filter(scope => scope.grantId === grantId) ?? [],

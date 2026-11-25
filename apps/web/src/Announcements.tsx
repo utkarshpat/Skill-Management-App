@@ -513,7 +513,8 @@ export function Announcements({
             <AnnouncementCard
               key={open.id}
               definition={
-                open.answered || dialog?.retryAnswers
+                (open.answered || dialog?.retryAnswers) &&
+                open.definition.design?.format !== 'appearance-v1'
                   ? { ...open.definition, design: undefined }
                   : open.definition
               }

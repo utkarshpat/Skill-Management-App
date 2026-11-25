@@ -31,6 +31,7 @@ import {
 import { assistantCapabilities } from './capabilities.js';
 import {
   ConversationMemory,
+  compactLookupLists,
   coreInstructions,
   catalogueGuidanceInstructions,
   businessInstructions,
@@ -855,6 +856,7 @@ export class AssistantService {
         role: 'system',
         content:
           coreInstructions +
+          ' If a tool result has contextOmitted, its listed collections are partial samples. Preserve stated totals and scope, and do not infer missing items from those samples.' +
           ' ' +
           workflowOnlyInstructions +
           ` Configured AI provider metadata: provider=${this.provider.name}; deployment=${this.provider.deployment ?? 'not exposed'}. A deployment may be an alias and does not prove the underlying model version. Explain only these facts if asked, in the latest user message language.` +
@@ -876,7 +878,16 @@ export class AssistantService {
     ];
     const sources: { label: string; url?: string }[] = [];
     const skillChoices = new Map<string, { id: string; name: string }>();
-    const skillReads = new Map<string, Awaited<ReturnType<ToolRegistry['execute']>>>();
+    const repeatedReads = new Map<
+      string,
+      { revision: number; result: Awaited<ReturnType<ToolRegistry['execute']>> }
+    >();
+    const reusableReads = new Set([
+      'business_insights',
+      'business_matching_options',
+      'business_people_search',
+      'business_demand_matches',
+    ]);
     const maxReads = ownSkillDraft ? 12 : 8;
     const maxReadRounds = ownSkillDraft ? 5 : 6;
     const usesAzureReplay = this.provider.name === 'azure';
@@ -884,6 +895,7 @@ export class AssistantService {
     let executions = 0;
     let lookupContextFull = false;
     const contextLimit = 32_000;
+    const compactAt = contextLimit * 0.8;
     function requestSize(available: Tool[]) {
       let replayBytes = 0;
       const request = JSON.stringify(
@@ -903,6 +915,17 @@ export class AssistantService {
       );
       return { textBytes: Buffer.byteLength(request, 'utf8'), replayBytes };
     }
+    const compactContext = (available: Tool[]) => {
+      let size = requestSize(available);
+      if (!ownSkillDraft) {
+        for (const sampleSize of [12, 5, 2]) {
+          if (size.textBytes < compactAt) break;
+          compactLookupLists(messages, sampleSize);
+          size = requestSize(available);
+        }
+      }
+      return size;
+    };
     const recheck = async (name: string) => {
       const state = await readActorAccess(this.store, actorId);
       const current = state.people.find(item => item.id === actorId);
@@ -1000,7 +1023,7 @@ export class AssistantService {
           '\nFinal response: use the facts already read. No more lookups, writes or invented catalogue options. Ask a focused question if information is missing.';
       // Azure replays encrypted reasoning verbatim. Bound that transport state
       // separately so it doesn't consume the conversation and tool text budget.
-      const { textBytes, replayBytes } = requestSize(available);
+      const { textBytes, replayBytes } = compactContext(available);
       if (textBytes > contextLimit || replayBytes > 256 * 1024)
         throw new AccessError(
           422,
@@ -1158,6 +1181,12 @@ export class AssistantService {
         tool_calls: answer.calls,
         providerParts: answer.providerParts,
       });
+      if (
+        answer.calls.some(
+          call => !available.some(tool => tool.function.name === call.function.name),
+        )
+      )
+        throw new AccessError(403, 'Assistant tool is not permitted.');
       // Reserve one response for every call, including skipped lookups.
       const firstResult = messages.length;
       const skipped = JSON.stringify({
@@ -1172,36 +1201,40 @@ export class AssistantService {
         })),
       );
       for (const [index, call] of answer.calls.entries()) {
-        if (!available.some(tool => tool.function.name === call.function.name))
-          throw new AccessError(403, 'Assistant tool is not permitted.');
         let args: unknown;
         try {
           args = JSON.parse(call.function.arguments);
         } catch {
           throw new AccessError(400, 'Invalid assistant tool arguments.');
         }
-        const key = ownSkillDraft ? JSON.stringify([call.function.name, args]) : undefined;
-        let result = key === undefined ? undefined : skillReads.get(key);
-        if (result) {
-          await recheck(call.function.name);
+        const key =
+          ownSkillDraft || reusableReads.has(call.function.name)
+            ? JSON.stringify([call.function.name, args])
+            : undefined;
+        const cached = key === undefined ? undefined : repeatedReads.get(key);
+        let revision = current.state.revision;
+        if (cached) {
+          revision = (await recheck(call.function.name)).state.revision;
           signal.throwIfAborted();
-        } else {
+        }
+        let result = cached?.revision === revision ? cached.result : undefined;
+        if (!result) {
           if (executions >= maxReads) {
             if (ownSkillDraft) return clarifySkillDraft();
             continue;
           }
           executions++;
           result = await this.registry.execute(actorId, call.function.name, args, signal);
-          if (key !== undefined) skillReads.set(key, result);
+          if (key !== undefined) repeatedReads.set(key, { revision, result });
         }
         const { data, source } = result;
         const response = messages[firstResult + index];
         response.content = JSON.stringify(data);
         // Leave room for the final instructions and refreshed capability context.
-        if (!ownSkillDraft && requestSize(available).textBytes > contextLimit - 2048) {
+        if (!ownSkillDraft && compactContext(available).textBytes > contextLimit - 2048) {
           response.content = skipped;
           lookupContextFull = true;
-          continue;
+          break;
         }
         if (call.function.name === 'skill_claim_options') {
           const { skills } = data as { skills: { id: string; name: string }[] };

@@ -85,21 +85,63 @@ export function registerDashboardRoutes(
     if (cards.some(id => !allowed.some(card => card.id === id)))
       throw new AccessError(403, 'Dashboard access changed. Refresh your dashboard.');
   };
-  app.get('/api/dashboard/overview', async (_req, res, next) => {
+  app.get('/api/dashboard/overview', async (req, res, next) => {
+    res.vary('Accept');
+    const stream = req.get('Accept') === 'application/x-ndjson';
+    const write = (event: object) => {
+      if (!res.destroyed && !res.writableEnded) res.write(JSON.stringify(event) + '\n');
+    };
+    let failed = false;
+    const streamFailure = (error: unknown) => {
+      if (failed) return;
+      failed = true;
+      write({
+        error: {
+          status: error instanceof AccessError ? error.status : 503,
+          message: error instanceof AccessError ? error.message : 'Dashboard could not be loaded.',
+        },
+      });
+      res.end();
+    };
     try {
+      const { dashboardPerson: person, dashboardState: state } = res.locals;
+      if (stream) {
+        res.type('application/x-ndjson');
+        res.set('X-Accel-Buffering', 'no');
+        write({ manifest: { ...dashboardManifest(state, person, deps ?? {}), cardData: {} } });
+      }
       const result = await loadDashboardOverview(
-        res.locals.dashboardPerson.id,
-        res.locals.dashboardState,
-        res.locals.dashboardPerson,
+        person.id,
+        state,
+        person,
         deps ?? {},
+        new Date(),
+        stream
+          ? async (card, result) => {
+              if (failed || res.destroyed) return;
+              try {
+                await recheck(res, [card]);
+                write({ card, result });
+              } catch (error) {
+                streamFailure(error);
+              }
+            }
+          : undefined,
       );
       await recheck(
         res,
         result.cards.map(card => card.id),
       );
-      res.json(result);
+      if (stream) {
+        if (!failed) {
+          write({ complete: true });
+          res.end();
+        }
+      } else res.json(result);
     } catch (e) {
-      if (e instanceof AccessError) res.status(e.status).json({ error: { message: e.message } });
+      if (stream && res.headersSent) streamFailure(e);
+      else if (e instanceof AccessError)
+        res.status(e.status).json({ error: { message: e.message } });
       else next(e);
     }
   });

@@ -1,11 +1,34 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { completeWithinBudget, MemoryAiBudget } from '../src/modules/ai/budget.js';
+import { completeWithinBudget, MemoryAiBudget, SqlAiBudget } from '../src/modules/ai/budget.js';
 import { AssistantService, type Provider } from '../src/modules/ai/assistant.js';
 import { responsesUsage } from '../src/modules/ai/usage.js';
 import { LocalAccessStore } from '../src/modules/access/local-access-store.js';
+import { sqlAdapterFixture } from './sql-adapter-fixture.js';
 const limited = (e: unknown) => (e as { status?: number }).status === 429;
 
+test('blank SQL token limits use defaults and a lock timeout differs from exhausted quota', async () => {
+  const fixture = sqlAdapterFixture();
+  const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  try {
+    const budget = new SqlAiBudget(id, {
+      AI_ACTOR_DAILY_TOKEN_LIMIT: '',
+      AI_ACCOUNT_DAILY_TOKEN_LIMIT: '   ',
+    });
+    fixture.reject('dbo.AiTokenBudget', { number: 51029, message: 'AI token budget busy.' });
+    await assert.rejects(budget.reserveTokens(id, 42), { status: 503 });
+    fixture.reject('dbo.AiTokenBudget', { number: 51029, message: 'AI token budget exhausted.' });
+    await assert.rejects(budget.reserveTokens(id, 42), { status: 429 });
+    assert.equal(fixture.calls[0].inputs.actor_limit, 350_000);
+    assert.equal(fixture.calls[0].inputs.account_limit, 5_000_000);
+    assert.throws(
+      () => new SqlAiBudget(id, { AI_ACTOR_DAILY_TOKEN_LIMIT: '0' }),
+      /Invalid AI_ACTOR/,
+    );
+  } finally {
+    await fixture.finish();
+  }
+});
 test('token reservations protect shared capacity and settle once against the original UTC day', async () => {
   let now = 0;
   const budget = new MemoryAiBudget(() => now, { actor: 100, account: 120 });

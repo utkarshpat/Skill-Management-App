@@ -9,7 +9,7 @@ import { startActivityRefresh } from './activity-refresh';
 import './dashboard.css';
 import { DashboardQuickActions } from './DashboardQuickActions';
 import {
-  readDashboardOverview,
+  readProgressiveDashboard,
   type DashboardCardDefinition as Card,
   type DashboardOverview,
   type DashboardCardResult as CardResult,
@@ -98,12 +98,20 @@ export function Dashboard() {
       if (running) return;
       running = true;
       const n = ++generation;
-      return authenticatedFetch('/api/dashboard/overview', { signal: c.signal })
-        .then(readDashboardOverview<CardData>)
-        .then(value => {
+      return authenticatedFetch('/api/dashboard/overview', {
+        signal: c.signal,
+        headers: { Accept: 'application/x-ndjson' },
+      })
+        .then(response =>
+          readProgressiveDashboard<CardData>(response, value => {
+            if (!c.signal.aborted && n === generation) {
+              setManifest(value);
+              setError('');
+            }
+          }),
+        )
+        .then(() => {
           if (!c.signal.aborted && n === generation) {
-            setManifest(value);
-            setError('');
             if (typeof window !== 'undefined') {
               publishWorkspaceFreshness({ mode: 'live', checkedAt: Date.now() });
             }
@@ -150,7 +158,7 @@ export function Dashboard() {
       key={manifest!.actorId + card.id}
       card={card}
       revision={manifest!.revision}
-      snapshot={manifest!.cardData[card.id]!}
+      snapshot={manifest!.cardData[card.id]}
       ai={manifest!.ai}
       onAccessChanged={() => setAttempt(n => n + 1)}
     />
@@ -227,18 +235,18 @@ function DashboardCard({
 }: {
   card: Card;
   revision: number;
-  snapshot: CardResult<CardData>;
+  snapshot?: CardResult<CardData>;
   ai: boolean;
   onAccessChanged: () => void;
 }) {
   const lastRevision = useRef(revision);
   const [refreshing, setRefreshing] = useState(false);
-  const [data, setData] = useState<CardData | undefined>(snapshot.data),
-    [error, setError] = useState(snapshot.error?.message ?? ''),
-    [retry, setRetry] = useState<{ snapshot: CardResult<CardData>; attempt: number }>(),
+  const [data, setData] = useState<CardData | undefined>(snapshot?.data),
+    [error, setError] = useState(snapshot?.error?.message ?? ''),
+    [retry, setRetry] = useState<{ snapshot: CardResult<CardData> | undefined; attempt: number }>(),
     [denied, setDenied] = useState(false),
     [requestStatus, setRequestStatus] = useState('');
-  const attempt = retry?.snapshot === snapshot ? retry.attempt : 0;
+  const attempt = retry && retry.snapshot === snapshot ? retry.attempt : 0;
   const retryCard = () => setRetry({ snapshot, attempt: attempt + 1 });
   useEffect(() => {
     const c = new AbortController();
@@ -248,8 +256,8 @@ function DashboardCard({
     setError('');
     setDenied(false);
     if (!attempt) {
-      setData(snapshot.data);
-      setError(snapshot.error?.message ?? '');
+      setData(snapshot?.data);
+      setError(snapshot?.error?.message ?? '');
       setRefreshing(false);
       return () => c.abort();
     }

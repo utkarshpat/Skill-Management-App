@@ -46,6 +46,9 @@ test('learning recommendations bind current direct reports, own learning respons
   let effect = () => {},
     enabled = true,
     failure: AccessError | undefined;
+  let enforceInStore = false;
+  let fullReads = 0;
+  let sendAttempts = 0;
   const writes: unknown[] = [];
   const read = () => {
     if (failure) throw failure;
@@ -53,6 +56,9 @@ test('learning recommendations bind current direct reports, own learning respons
     return { items: [], total: 0 };
   };
   const backend: RecommendationStore = {
+    get enforcesSendPolicy() {
+      return enforceInStore ? true : undefined;
+    },
     read: async who => {
       assert.equal(who, actor);
       return read();
@@ -63,6 +69,8 @@ test('learning recommendations bind current direct reports, own learning respons
     },
     send: async (who, input) => {
       assert.equal(who, actor);
+      sendAttempts++;
+      if (enforceInStore) throw new AccessError(403, 'Current direct report required.');
       writes.push(input);
       return { saved: true };
     },
@@ -81,7 +89,11 @@ test('learning recommendations bind current direct reports, own learning respons
     resolveAccess: async () => actor,
     profile: async () => undefined,
     access: {
-      snapshot: () => structuredClone(state),
+      snapshot: () => {
+        fullReads++;
+        return structuredClone(state);
+      },
+      actorSnapshot: () => structuredClone(state),
       person: who => state.people.find(p => p.id === who),
       save: async () => state,
     },
@@ -132,6 +144,13 @@ test('learning recommendations bind current direct reports, own learning respons
   state.people[1].overrides = [{ permission: 'learning.view', scope: 'OWN', effect: 'DENY' }];
   assert.equal((await post('', send)).status, 403);
   state.people[1].overrides = [];
+  enforceInStore = true;
+  const priorReads = fullReads;
+  const priorAttempts = sendAttempts;
+  assert.equal((await post('', send)).status, 403);
+  assert.equal(sendAttempts, priorAttempts + 1);
+  assert.equal(fullReads, priorReads);
+  enforceInStore = false;
   for (const action of ['DECLINE', 'DISCUSS'])
     assert.equal(
       (

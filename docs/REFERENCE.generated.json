@@ -1,6 +1,6 @@
 {
   "version": "2026-11-20",
-  "revision": "e9917195fbe453a2",
+  "revision": "ee89f8d674a0ed5b",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -121,7 +121,8 @@
       "116_readable_activity_records.sql",
       "117_employee_excel_import.sql",
       "118_skill_staleness_reminders.sql",
-      "119_ai_token_budgets.sql"
+      "119_ai_token_budgets.sql",
+      "120_profile_manager_projection.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -8867,6 +8868,12 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier, @actor_id uniqueidentifier, @reservation_id uniqueidentifier,\n @operation varchar(8), @tokens bigint, @actor_limit int, @account_limit int",
       "source": "database/migrations/119_ai_token_budgets.sql"
+    },
+    {
+      "name": "ReadProfileManager",
+      "kind": "PROCEDURE",
+      "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
+      "source": "database/migrations/120_profile_manager_projection.sql"
     }
   ],
   "groups": {

@@ -267,6 +267,18 @@ test('external directory resolves a persisted manager beyond the SQL actor proje
   const profile = await f.profile(identity);
   assert.equal(profile?.employeeCode, 'EMP102');
   assert.equal(f.reads(), 2); // Full canonical bindings before and after provider I/O.
+  let managerReads = 0;
+  f.dependencies.access.profileManager = async () => {
+    managerReads++;
+    return {
+      revision: f.state.revision,
+      managerId: manager.id,
+      employeeCode: manager.employeeCode,
+    };
+  };
+  assert.equal((await f.profile(identity))?.employeeCode, 'EMP102');
+  assert.equal(managerReads, 2);
+  assert.equal(f.reads(), 2); // The SQL projection avoids any further roster reads.
 });
 
 test('external manager reassignment during directory I/O remains a reconciliation conflict', async () => {

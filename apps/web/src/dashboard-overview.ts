@@ -38,9 +38,17 @@ export async function readDashboardOverview<T extends { total: number }>(
       ),
       { status: response.status },
     );
-  const fail = () => {
-    throw Error('Dashboard response is incomplete. Refresh to retry.');
-  };
+  return parseOverview<T>(body);
+}
+
+const fail = (): never => {
+  throw Error('Dashboard response is incomplete. Refresh to retry.');
+};
+
+function parseOverview<T extends { total: number }>(
+  body: unknown,
+  partial = false,
+): DashboardOverview<T> {
   if (
     !object(body) ||
     !Number.isSafeInteger(body.revision) ||
@@ -69,6 +77,7 @@ export async function readDashboardOverview<T extends { total: number }>(
       return fail();
     ids.add(card.id);
     const result = body.cardData[card.id];
+    if (result === undefined && partial) continue;
     if (!object(result) || object(result.data) === object(result.error)) return fail();
     if (result.data && (!Number.isSafeInteger(result.data.total) || result.data.total < 0))
       return fail();
@@ -85,4 +94,55 @@ export async function readDashboardOverview<T extends { total: number }>(
   }
   if (Object.keys(body.cardData).some(id => !ids.has(id))) return fail();
   return body as unknown as DashboardOverview<T>;
+}
+
+export async function readProgressiveDashboard<T extends { total: number }>(
+  response: Response,
+  publish: (overview: DashboardOverview<T>) => void,
+) {
+  if (!response.ok || !response.headers.get('Content-Type')?.startsWith('application/x-ndjson')) {
+    publish(await readDashboardOverview<T>(response));
+    return;
+  }
+  if (!response.body) return fail();
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let manifest: DashboardOverview<T> | undefined;
+  let buffered = '';
+  let complete = false;
+  try {
+    while (!complete) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffered += chunk.value;
+      const lines = buffered.split('\n');
+      buffered = lines.pop()!;
+      for (const line of lines) {
+        const event: unknown = JSON.parse(line);
+        if (!object(event) || complete) return fail();
+        if (event.error)
+          throw Object.assign(Error(event.error.message), { status: event.error.status });
+        if (!manifest) {
+          manifest = parseOverview<T>(event.manifest, true);
+          publish(manifest);
+        } else if (event.complete === true) {
+          parseOverview<T>(manifest);
+          complete = true;
+        } else {
+          const card = manifest.cards.find(card => card.id === event.card);
+          if (!card || manifest.cardData[card.id]) return fail();
+          manifest = parseOverview<T>(
+            {
+              ...manifest,
+              cardData: { ...manifest.cardData, [card.id]: event.result },
+            },
+            true,
+          );
+          publish(manifest);
+        }
+      }
+    }
+    if (!complete) return fail();
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
 }

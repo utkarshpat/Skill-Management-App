@@ -163,6 +163,20 @@ export class SqlAccessStore implements AccessStore {
   async person(id: string) {
     return (await this.actorSnapshot(id)).people.find(person => person.id === id && person.active);
   }
+  async profileManager(actorId: string) {
+    return withRuntimeDatabase(async pool => {
+      const { recordset } = await pool
+        .request()
+        .input('account_id', sql.UniqueIdentifier, this.accountId)
+        .input('actor_id', sql.UniqueIdentifier, actorId)
+        .execute<Awaited<ReturnType<NonNullable<AccessStore['profileManager']>>>>(
+          'dbo.ReadProfileManager',
+        );
+      if (!recordset[0])
+        throw new AccessError(503, 'Canonical reporting information is unavailable.');
+      return recordset[0];
+    }, 'ReadProfileManager');
+  }
   private async administrationRead<T>(
     actorId: string,
     mode: string,

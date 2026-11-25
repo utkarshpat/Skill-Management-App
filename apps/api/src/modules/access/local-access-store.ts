@@ -72,6 +72,11 @@ export interface AccessStore {
     actorId: string,
     options?: { includeAudit?: boolean },
   ): LocalAccessState | Promise<LocalAccessState>;
+  profileManager?(actorId: string): Promise<{
+    revision: number;
+    managerId: string | null;
+    employeeCode: string | null;
+  }>;
   auditPage?(actorId: string, query: AuditQuery): Promise<AuditPage>;
   primaryCapabilities?(
     actorId: string,
