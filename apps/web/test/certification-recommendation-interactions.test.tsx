@@ -1,11 +1,13 @@
 import test, { after, afterEach, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { act } from 'react';
 import { render, settle, closeBrowser, demoResponse } from './support/browser';
 import {
   MemoryRouter,
   refreshDevelopmentLogin,
   component,
   click,
+  debounce,
   fill,
 } from './support/interactions';
 Object.assign(globalThis, {
@@ -42,6 +44,7 @@ let record: any,
   writeFailure = 0,
   lookupFailure = false,
   catalogueFailure = false,
+  catalogueTotal = 1,
   total = 1,
   writes: { path: string; body: any }[] = [],
   reads: string[] = [],
@@ -52,6 +55,7 @@ beforeEach(async () => {
   writeFailure = 0;
   lookupFailure = false;
   catalogueFailure = false;
+  catalogueTotal = 1;
   total = 1;
   writes = [];
   reads = [];
@@ -66,7 +70,7 @@ beforeEach(async () => {
             { status: 503 },
           )
         : Response.json({
-            total: 1,
+            total: catalogueTotal,
             pageSize: 10,
             credentials: [
               {
@@ -120,16 +124,50 @@ async function mount(sentOnly = false) {
   await settle();
 }
 
+function picker(label: string) {
+  const field = Array.from(document.querySelectorAll('label')).find(
+    item => item.textContent?.trim() === label,
+  );
+  const input = document.getElementById(field?.htmlFor ?? '');
+  assert.ok(input instanceof window.HTMLInputElement);
+  return input;
+}
+
+async function press(input: HTMLInputElement, key: string) {
+  await act(async () =>
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true })),
+  );
+}
+
 test('credential suggestions keep one write identity across an unconfirmed unchanged send', async () => {
   await mount(true);
   catalogueFailure = true;
   await click('Recommend a certification');
+  const catalogue = picker('Certification catalogue');
+  await act(async () => {
+    catalogue.focus();
+    catalogue.click();
+  });
   assert.match(document.body.textContent!, /Catalogue temporarily unavailable/);
   catalogueFailure = false;
   await click('Retry catalogue');
-  await fill('Find direct report', 'Aditi');
-  await fill('Direct report', employee);
-  await fill('Certification catalogue', 'catalogue-credential');
+  await fill('Direct report', 'Aditi');
+  const directReport = picker('Direct report');
+  await press(directReport, 'ArrowDown');
+  assert.match(
+    document.getElementById(directReport.getAttribute('aria-activedescendant')!)!.textContent!,
+    /Aditi Menon.*EMP-1042/,
+  );
+  await press(directReport, 'Enter');
+  assert.equal(directReport.value, 'Aditi Menon');
+  assert.equal(directReport.getAttribute('aria-expanded'), 'false');
+  await act(async () => {
+    catalogue.focus();
+    catalogue.click();
+  });
+  const option = document.querySelector<HTMLElement>('[role="option"]');
+  assert.match(option?.textContent ?? '', /Oracle Database SQL.*Oracle.*Databases/);
+  await act(async () => option?.click());
   await fill('Why are you recommending it?', 'Supports Northstar customer reporting delivery');
   await fill('Credential information link', 'https://education.oracle.com/');
   await fill('Suggested target date', '2026-12-01');
@@ -218,18 +256,39 @@ test('revocation clears response details and list pagination remains a current-s
 test('a failed direct-report lookup cannot retain a recipient from an earlier search', async () => {
   await mount(true);
   await click('Recommend a certification');
-  await fill('Direct report', employee);
+  const directReport = picker('Direct report');
+  await press(directReport, 'ArrowDown');
+  await press(directReport, 'Enter');
+  assert.equal(directReport.value, 'Aditi Menon');
   await fill('Certification name', 'Oracle Database SQL');
   await fill('Why are you recommending it?', 'Customer reporting delivery');
   lookupFailure = true;
-  await fill('Find direct report', 'unavailable');
+  await fill('Direct report', 'unavailable');
   assert.match(document.body.textContent!, /Direct report lookup unavailable/);
   const send = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(
     b => b.textContent?.trim() === 'Send recommendation',
   );
   assert.ok(send?.disabled);
-  assert.equal(document.querySelector<HTMLSelectElement>('.cert-recommend-form select')?.value, '');
+  assert.equal(document.querySelector('[role="option"]'), null);
   assert.equal(writes.length, 0);
   await click('Cancel');
   assert.equal(document.querySelector('.form-dialog'), null);
+});
+
+test('catalogue pagination stays with the picker and a new search starts on the first page', async () => {
+  catalogueTotal = 21;
+  await mount(true);
+  await click('Recommend a certification');
+  const catalogue = picker('Certification catalogue');
+  const dialog = document.querySelector('.form-dialog')!;
+  assert.equal(dialog.querySelector('[aria-label="Catalogue pages"]'), null);
+  await press(catalogue, 'ArrowDown');
+  await click('Next', dialog);
+  assert.ok(reads.some(path => path.includes('search=&page=2')));
+  await fill('Certification catalogue', 'Oracle');
+  await debounce();
+  assert.ok(reads.some(path => path.includes('search=Oracle&page=1')));
+  await press(catalogue, 'Escape');
+  assert.equal(catalogue.getAttribute('aria-expanded'), 'false');
+  assert.equal(document.querySelector('.form-dialog'), dialog);
 });

@@ -1,11 +1,12 @@
 import { WriteIntent } from '../write-intent';
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router';
-import { ArrowRight, Award, Plus, Search, Send } from 'lucide-react';
+import { ArrowRight, Award, Plus, Send } from 'lucide-react';
 import { authenticatedFetch } from '../auth';
 import { readApiResponse } from '../api-response';
 import { FormDialog } from '../FormDialog';
 import { toast } from '../toast';
+import { RecommendationPicker } from './RecommendationPicker';
 import {
   certificationResponseFailure,
   currentCertificationResponse,
@@ -59,6 +60,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
   const [recipientLoading, setRecipientLoading] = useState(true);
   const [people, setPeople] = useState<Person[]>([]);
   const [credentials, setCredentials] = useState<CatalogueCredential[]>();
+  const [selectedCredential, setSelectedCredential] = useState<CatalogueCredential>();
   const [catalogueSearch, setCatalogueSearch] = useState('');
   const [cataloguePage, setCataloguePage] = useState(1);
   const [catalogueHasNext, setCatalogueHasNext] = useState(false);
@@ -86,6 +88,13 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
 
   const feedKey = JSON.stringify([view, page, attempt, focused]);
   const feed = loadedFeed?.key === feedKey ? loadedFeed.value : undefined;
+  const selectedPerson = people.find(person => person.id === personId);
+  const catalogueSelection =
+    selectedCredential?.name === name &&
+    selectedCredential.provider === provider &&
+    selectedCredential.category === category
+      ? selectedCredential
+      : undefined;
 
   useEffect(() => {
     const c = new AbortController();
@@ -358,6 +367,7 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
       setName('');
       setProvider('');
       setCategory('');
+      setSelectedCredential(undefined);
       setReason('');
       setUrl('');
       setTargetDate('');
@@ -559,132 +569,114 @@ export function CertificationRecommendations({ sentOnly = false }: { sentOnly?: 
             style={{ border: 0, padding: 0, margin: 0 }}
           >
             {sendError && <p role="alert">{sendError}</p>}
-            <label>
-              <span>
-                <Search size={14} /> Find direct report
-              </span>
-              <input
-                value={recipientSearch}
-                onChange={event => {
-                  setRecipientSearch(event.target.value);
-                  setPersonId('');
+            <RecommendationPicker
+              label="Direct report"
+              placeholder="Search by name or employee code"
+              required
+              query={recipientSearch}
+              selected={selectedPerson}
+              options={people}
+              describe={person => person.employeeCode}
+              onSelect={person => setPersonId(person.id)}
+              onQueryChange={value => {
+                setPersonId('');
+                if (value !== recipientSearch) {
                   setPeople([]);
+                  setRecipientError('');
                   setRecipientLoading(true);
-                }}
-                placeholder="Search name or employee code"
-              />
-            </label>
-            <label>
-              Direct report
-              <select
-                disabled={recipientLoading}
-                value={personId}
-                onChange={event => setPersonId(event.target.value)}
-              >
-                <option value="">
-                  {recipientLoading ? 'Loading direct reports...' : 'Select a direct report'}
-                </option>
-                {people.map(person => (
-                  <option key={person.id} value={person.id}>
-                    {person.name} · {person.employeeCode}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {recipientError && (
-              <p role="alert">
-                {recipientError}{' '}
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setRecipientAttempt(v => v + 1)}
-                >
-                  Retry direct reports
-                </button>
-              </p>
-            )}
-            <label>
-              Search certification catalogue
-              <input
-                type="search"
-                maxLength={100}
-                value={catalogueSearch}
-                onChange={event => {
-                  setCatalogueSearch(event.target.value);
-                  setCataloguePage(1);
-                }}
-                placeholder="Certification, issuer or category"
-              />
-            </label>
-            <label>
-              Certification catalogue
-              <select
-                disabled={!credentials?.length}
-                value={
-                  credentials?.find(
-                    credential =>
-                      credential.name === name &&
-                      credential.provider === provider &&
-                      credential.category === category,
-                  )?.id ?? ''
+                  setRecipientSearch(value);
                 }
-                onChange={event => {
-                  const credential = credentials?.find(item => item.id === event.target.value);
-                  if (!credential) return;
-                  setName(credential.name);
-                  setProvider(credential.provider);
-                  setCategory(credential.category);
-                }}
-              >
-                <option value="" disabled>
-                  {catalogueError
-                    ? 'Certification catalogue unavailable'
-                    : !credentials
-                      ? 'Loading certifications…'
-                      : credentials.length
-                        ? 'Select a catalogue certification'
-                        : 'No certifications in the catalogue'}
-                </option>
-                {credentials?.map(credential => (
-                  <option key={credential.id} value={credential.id}>
-                    {credential.name} · {credential.provider}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {(cataloguePage > 1 || catalogueHasNext) && (
-              <div className="catalogue-picker-pagination" aria-label="Catalogue pages">
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={cataloguePage <= 1 || !credentials}
-                  onClick={() => setCataloguePage(page => page - 1)}
-                >
-                  Previous
-                </button>
-                <span>Page {cataloguePage}</span>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={!catalogueHasNext}
-                  onClick={() => setCataloguePage(page => page + 1)}
-                >
-                  Next
-                </button>
-              </div>
-            )}
-            {catalogueError && (
-              <div role="alert">
-                {catalogueError}{' '}
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={() => setCatalogueAttempt(attempt => attempt + 1)}
-                >
-                  Retry catalogue
-                </button>
-              </div>
-            )}
+              }}
+              status={
+                recipientError ? (
+                  <span role="alert">{recipientError}</span>
+                ) : recipientLoading ? (
+                  <span role="status">Loading direct reports…</span>
+                ) : !people.length ? (
+                  <span role="status">No matching direct reports.</span>
+                ) : undefined
+              }
+              actions={
+                recipientError && (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setRecipientAttempt(v => v + 1)}
+                  >
+                    Retry direct reports
+                  </button>
+                )
+              }
+            />
+            <RecommendationPicker
+              label="Certification catalogue"
+              placeholder="Search by certification, issuer or category"
+              maxLength={100}
+              query={catalogueSearch}
+              selected={catalogueSelection}
+              options={credentials ?? []}
+              describe={credential =>
+                [credential.provider, credential.category].filter(Boolean).join(' · ')
+              }
+              onSelect={credential => {
+                setSelectedCredential(credential);
+                setName(credential.name);
+                setProvider(credential.provider);
+                setCategory(credential.category);
+              }}
+              onQueryChange={value => {
+                setSelectedCredential(undefined);
+                if (value !== catalogueSearch || cataloguePage !== 1) {
+                  setCredentials(undefined);
+                  setCatalogueError('');
+                  setCatalogueHasNext(false);
+                }
+                setCatalogueSearch(value);
+                setCataloguePage(1);
+              }}
+              status={
+                catalogueError ? (
+                  <span role="alert">{catalogueError}</span>
+                ) : !credentials ? (
+                  <span role="status">Loading certifications…</span>
+                ) : !credentials.length ? (
+                  <span role="status">No matches. You can enter the certification below.</span>
+                ) : undefined
+              }
+              actions={
+                catalogueError ? (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setCatalogueAttempt(v => v + 1)}
+                  >
+                    Retry catalogue
+                  </button>
+                ) : (
+                  (cataloguePage > 1 || catalogueHasNext) && (
+                    <nav className="cert-recommend-picker-pages" aria-label="Catalogue pages">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={cataloguePage <= 1 || !credentials}
+                        onClick={() => setCataloguePage(page => page - 1)}
+                      >
+                        Previous
+                      </button>
+                      <span>Page {cataloguePage}</span>
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={!catalogueHasNext}
+                        onClick={() => setCataloguePage(page => page + 1)}
+                      >
+                        Next
+                      </button>
+                    </nav>
+                  )
+                )
+              }
+            />
             <label>
               Certification name *
               <input

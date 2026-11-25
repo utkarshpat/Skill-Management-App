@@ -234,3 +234,91 @@
     flex-wrap: wrap;
   }
 }
+.cert-recommend-picker {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+.cert-recommend-picker-field {
+  position: relative;
+}
+.cert-recommend-picker-field > svg {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 12px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.cert-recommend-picker-field > svg:last-child {
+  inset-inline: auto 12px;
+}
+.cert-recommend-picker-field > input[aria-expanded] {
+  min-height: 44px;
+  padding-inline: 38px;
+}
+.cert-recommend-picker-field:has(input[aria-expanded='true']) > svg:last-child {
+  color: var(--accent-ink);
+}
+.cert-recommend-picker-results {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.cert-recommend-picker-results > ul {
+  display: grid;
+  gap: 2px;
+  max-height: min(14rem, 32vh);
+  margin: 0;
+  padding: 4px;
+  overflow: auto;
+  list-style: none;
+}
+.cert-recommend-picker-results > ul:empty {
+  padding: 0;
+}
+.cert-recommend-picker-results [role='option'] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  color: var(--ink);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.cert-recommend-picker-results [role='option']:hover,
+.cert-recommend-picker-results [aria-selected='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.cert-recommend-picker-results [data-active='true'] {
+  background: var(--accent-soft);
+  outline: 1px solid var(--accent-ink);
+  outline-offset: -1px;
+}
+.cert-recommend-picker-results [role='option'] svg {
+  flex: none;
+}
+.cert-recommend-picker-results small {
+  display: block;
+  color: var(--muted);
+}
+.cert-recommend-picker-status,
+.cert-recommend-picker-actions {
+  padding: 8px 12px;
+  color: var(--muted);
+}
+.cert-recommend-picker-results > ul:not(:empty) ~ .cert-recommend-picker-actions {
+  border-top: 1px solid var(--line);
+}
+.cert-recommend-picker-pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}

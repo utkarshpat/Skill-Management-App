@@ -265,6 +265,58 @@ test('certification search can be cleared after zero results and notification li
   ).toBeVisible();
 });
 
+test('certification recommendation: search and select inside each picker', async ({ page }) => {
+  await fixture(page, { role: 'manager' });
+  await page.route('**/api/certification-recommendations/analytics', route =>
+    route.fulfill({ json: { canRecommend: true, categories: [] } }),
+  );
+  await page.route('**/api/certification-recommendations?**', route =>
+    route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 20, canSend: true } }),
+  );
+  await page.route('**/api/certification-recommendations/people?**', route =>
+    route.fulfill({
+      json: { people: [{ id: ids.person, name: 'Aditi Menon', employeeCode: 'EMP-1042' }] },
+    }),
+  );
+  await page.route('**/api/capability-submissions/catalogue?**', route =>
+    route.fulfill({
+      json: {
+        total: 1,
+        pageSize: 10,
+        credentials: [
+          {
+            id: 'oracle-sql',
+            name: 'Oracle Database SQL',
+            provider: 'Oracle',
+            category: 'Databases',
+          },
+        ],
+      },
+    }),
+  );
+  await page.goto('/skill-reviews?tab=recommendations');
+  await page.getByRole('button', { name: 'Recommend a certification' }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Recommend a certification' });
+  const report = dialog.getByRole('combobox', { name: 'Direct report' });
+  await report.fill('1042');
+  await expect(dialog.getByRole('option', { name: /Aditi Menon.*EMP-1042/ })).toBeVisible();
+  await report.press('ArrowDown');
+  await report.press('Enter');
+  await expect(report).toHaveValue('Aditi Menon');
+  const catalogue = dialog.getByRole('combobox', { name: 'Certification catalogue' });
+  await catalogue.fill('Oracle');
+  await dialog.getByRole('option', { name: /Oracle Database SQL.*Databases/ }).click();
+  await expect(catalogue).toHaveValue('Oracle Database SQL');
+  await expect(dialog.getByRole('textbox', { name: /Certification name/ })).toHaveValue(
+    'Oracle Database SQL',
+  );
+  await expect(dialog.getByRole('textbox', { name: 'Issuer' })).toHaveValue('Oracle');
+  await catalogue.click();
+  await catalogue.press('Escape');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('listbox')).toHaveCount(0);
+});
+
 test('employee history: view-only snapshots show saved proficiency and can reroute only the approved record set', async ({
   page,
 }) => {
