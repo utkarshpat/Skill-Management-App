@@ -4,6 +4,34 @@ import { certificates, people, plan, request as workforceRequest } from './workf
 for (const role of ['employee', 'manager', 'admin'] as const) {
   test(`${role}: own profile, navigation and keyboard account menu`, async ({ page }) => {
     await fixture(page, { role });
+    await page.route('**/api/me', route =>
+      route.fulfill({
+        json: {
+          profile: {
+            id: ids.person,
+            ...people[role],
+            organization: 'Aster Analytics',
+            status: 'ACTIVE',
+            organizationDetails: {
+              workspace: 'Aster Analytics',
+              placementStatus: 'ASSIGNED',
+              deliveryUnit: 'India Delivery',
+              portfolio: 'Financial Services',
+              department: 'Northstar Bank',
+              team: 'Analytics Platform',
+              managerStatus: 'ASSIGNED',
+              managerName: 'Maya Rao',
+            },
+            completeness: {
+              filled: 5,
+              total: 6,
+              status: 'INCOMPLETE',
+              items: [{ key: 'primaryCapability', label: 'Primary capability', state: 'MISSING' }],
+            },
+          },
+        },
+      }),
+    );
     let accessReads = 0;
     page.on('request', request => {
       if (new URL(request.url()).pathname === '/api/effective-access') accessReads++;
@@ -13,6 +41,25 @@ for (const role of ['employee', 'manager', 'admin'] as const) {
       page.getByRole('heading', { name: people[role].displayName, exact: true }),
     ).toBeVisible();
     await expect(page.getByText(/Effective access/i)).toHaveCount(0);
+    const organization = page.getByRole('region', { name: 'Organization and reporting' });
+    const employment = page.getByRole('heading', { name: 'Business role' }).locator('xpath=../..');
+    const completeness = page.getByRole('region', { name: 'Profile completeness' });
+    await expect(completeness).toContainText('5 of 6 required fields complete.');
+    const organizationBox = (await organization.boundingBox())!;
+    const employmentBox = (await employment.boundingBox())!;
+    const completenessBox = (await completeness.boundingBox())!;
+    expect(completenessBox.y).toBeGreaterThan(employmentBox.y + employmentBox.height);
+    if (page.viewportSize()!.width > 850) {
+      expect(Math.abs(employmentBox.y - organizationBox.y)).toBeLessThan(1);
+      expect(Math.abs(employmentBox.width - organizationBox.width)).toBeLessThan(1);
+      expect(
+        Math.abs(
+          completenessBox.width - (employmentBox.x + employmentBox.width - organizationBox.x),
+        ),
+      ).toBeLessThan(1);
+    } else {
+      expect(employmentBox.y).toBeGreaterThan(organizationBox.y + organizationBox.height);
+    }
     const menu = page.getByRole('button', { name: 'Account menu for ' + people[role].displayName });
     await expect(page.getByRole('region', { name: 'Account menu', exact: true })).toBeHidden();
     await menu.focus();

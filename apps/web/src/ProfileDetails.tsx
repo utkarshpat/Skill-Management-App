@@ -47,32 +47,26 @@ export function ProfileDetails({
       </section>
 
       <div className="personal-profile-grid">
-        <div className="profile-column-primary">
-          <ProfileOrganization
-            details={profile?.organizationDetails}
-            loading={!profile && !failed}
-            failed={failed}
-          />
-
-          <section className="profile-information">
-            <header>
-              <span className="profile-card-icon">
-                <Briefcase size={19} />
-              </span>
-              <h3>Business role</h3>
-            </header>
-            <EmploymentSummary value={profile} loading={!profile && !failed} failed={failed} />
-          </section>
-        </div>
-
-        <div className="profile-column-secondary">
-          <ProfileCompleteness
-            details={profile?.completeness}
-            loading={!profile && !failed}
-            failed={failed}
-            canRequest={workspace.capabilities.requestProfileCorrection}
-          />
-        </div>
+        <ProfileOrganization
+          details={profile?.organizationDetails}
+          loading={!profile && !failed}
+          failed={failed}
+        />
+        <section className="profile-information">
+          <header>
+            <span className="profile-card-icon">
+              <Briefcase size={19} aria-hidden="true" />
+            </span>
+            <h3>Business role</h3>
+          </header>
+          <EmploymentSummary value={profile} loading={!profile && !failed} failed={failed} />
+        </section>
+        <ProfileCompleteness
+          details={profile?.completeness}
+          loading={!profile && !failed}
+          failed={failed}
+          canRequest={workspace.capabilities.requestProfileCorrection}
+        />
       </div>
     </div>
   );

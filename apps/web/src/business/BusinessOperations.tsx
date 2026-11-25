@@ -549,11 +549,11 @@ function Insights({ context }: { context: BusinessContext }) {
             <MetricTooltip text="Select an assigned Organization, Delivery Unit, Portfolio/Division, Accounts/Clients or Project responsibility. This does not add access." />
           </div>
           {hierarchy.length > 0 && (
-            <label>
-              Organization hierarchy
+            <div className="bo-toolbar-hierarchy">
               <select
                 className="bo-select"
                 aria-label="Organization hierarchy filter"
+                title="Filter by organization hierarchy"
                 value={params.get('hierarchyId') ?? ''}
                 onChange={e => change({ hierarchyId: e.target.value })}
               >
@@ -574,7 +574,7 @@ function Insights({ context }: { context: BusinessContext }) {
                   </optgroup>
                 ))}
               </select>
-            </label>
+            </div>
           )}
 
           {/* Employee Search */}

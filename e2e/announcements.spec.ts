@@ -489,9 +489,18 @@ test('two-tab workspace switches responses without stale rows and recovers from 
   await expect(responsesTab).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('cell', { name: 'Cloud architecture', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download responses' })).toHaveCount(0);
-  const selector = page.getByRole('combobox', { name: 'Announcement', exact: true });
-  await expect(selector.locator('option')).toHaveCount(2);
-  await selector.selectOption(second);
+  const cards = page.getByRole('navigation', { name: 'Published announcements' });
+  await expect(cards.getByRole('button')).toHaveCount(2);
+  const cardList = (await cards.boundingBox())!;
+  const detail = (await page
+    .getByRole('region', { name: 'Selected announcement responses' })
+    .boundingBox())!;
+  if (page.viewportSize()!.width > 760)
+    expect(detail.x).toBeGreaterThan(cardList.x + cardList.width);
+  else expect(detail.y).toBeGreaterThan(cardList.y + cardList.height);
+  const secondCard = cards.getByRole('button', { name: /Next quarter training preferences/ });
+  await secondCard.click();
+  await expect(secondCard).toHaveAttribute('aria-pressed', 'true');
   await expect(
     page.getByRole('region', { name: 'Recent responses' }).getByRole('alert'),
   ).toContainText('Responses temporarily unavailable.');

@@ -2262,8 +2262,18 @@
   overflow: auto;
 }
 .bo-toolbar-scope-wrap,
+.bo-toolbar-hierarchy,
 .bo-toolbar-search-form {
   min-width: 0;
+}
+.bo-toolbar-hierarchy {
+  flex: 1 1 180px;
+  max-width: 280px;
+}
+.bo-toolbar-hierarchy > .bo-select {
+  display: block;
+  width: 100%;
+  margin: 0;
 }
 .bo-toolbar-search-btn,
 .bo-toolbar-clear-btn {
@@ -2275,7 +2285,8 @@
   .bo-toolbar-primary-row {
     flex-wrap: wrap;
   }
-  .bo-toolbar-scope-wrap {
+  .bo-toolbar-scope-wrap,
+  .bo-toolbar-hierarchy {
     flex-basis: 100%;
     max-width: none;
   }

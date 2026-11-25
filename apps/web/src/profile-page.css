@@ -67,14 +67,21 @@
 /* Grid Layout */
 .personal-profile-grid {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 22px;
-  align-items: start;
 }
-.profile-column-primary,
-.profile-column-secondary {
-  display: grid;
-  gap: 22px;
+.personal-profile-grid > .profile-information {
+  min-width: 0;
+}
+.personal-profile-grid > .profile-completeness {
+  grid-column: 1 / -1;
+}
+.profile-completeness > p {
+  margin: 0;
+}
+.profile-completeness .secondary-button {
+  align-self: start;
+  margin-top: 12px;
 }
 .profile-information {
   padding: 24px 26px;
@@ -335,10 +342,6 @@
 .profile-checklist dd[data-state='NEEDS_ATTENTION'],
 .profile-checklist dd[data-state='MISSING'] {
   font-weight: 600;
-}
-.profile-column-primary,
-.profile-column-secondary {
-  min-width: 0;
 }
 @media (max-width: 480px) {
   .profile-information > dl:not(.profile-info-grid) > div {

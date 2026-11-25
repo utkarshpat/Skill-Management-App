@@ -102,7 +102,7 @@ export function ProfileOrganization({
                 )}
               </dd>
             </div>
-            <div className="profile-info-tile">
+            <div className="profile-info-tile full-width">
               <dt>Reporting manager</dt>
               <dd>
                 {reporting === 'ASSIGNED' && details.managerName ? (

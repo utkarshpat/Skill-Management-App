@@ -398,8 +398,9 @@ export function AnnouncementManager({
     if (conversation.current) conversation.current.scrollTop = conversation.current.scrollHeight;
   }, [definition.versions.length, designing, designError, page]);
   const responseEntries = data?.items.filter(entry => entry.state !== 'DRAFT') ?? [];
-  const selectedResponse =
-    responseEntries.find(entry => entry.id === responseId)?.id ?? responseEntries[0]?.id ?? '';
+  const selectedEntry =
+    responseEntries.find(entry => entry.id === responseId) ?? responseEntries[0];
+  const selectedResponse = selectedEntry?.id ?? '';
   useEffect(() => {
     if (view !== 'responses' || !selectedResponse) {
       setResponses(undefined);
@@ -959,142 +960,160 @@ export function AnnouncementManager({
       >
         {view === 'responses' && (
           <section className="announcement-responses" aria-label="Recent responses">
-            <div className="announcement-response-toolbar">
-              <label>
-                Announcement
-                <select
-                  value={selectedResponse}
-                  disabled={!responseEntries.length}
-                  onChange={event => {
-                    setResponseId(event.target.value);
-                    setResponsePage(1);
-                  }}
-                >
-                  {!responseEntries.length && <option value="">No published announcements</option>}
+            {responseEntries.length > 0 && (
+              <div className="announcement-response-layout">
+                <nav className="announcement-response-cards" aria-label="Published announcements">
                   {responseEntries.map(entry => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.title}
-                    </option>
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className="announcement-response-card"
+                      aria-pressed={entry.id === selectedResponse}
+                      aria-controls="announcement-response-detail"
+                      onClick={() => {
+                        if (entry.id !== selectedResponse) viewResponses(entry);
+                      }}
+                    >
+                      <strong>{entry.title}</strong>
+                      <time dateTime={entry.startsAt}>
+                        {new Date(entry.startsAt).toLocaleString()}
+                      </time>
+                    </button>
                   ))}
-                </select>
-              </label>
-              <div className="announcement-editor-actions">
-                <button
-                  className="secondary-button"
-                  disabled={busy || responseLoading || !selectedResponse}
-                  onClick={() => setResponseAttempt(value => value + 1)}
+                  {managementPagination}
+                </nav>
+                <section
+                  className="announcement-response-detail"
+                  id="announcement-response-detail"
+                  aria-label="Selected announcement responses"
                 >
-                  <RefreshCw size={16} aria-hidden="true" />
-                  Refresh responses
-                </button>
-                {data?.canExport && (
-                  <button
-                    className="secondary-button"
-                    disabled={busy || responseLoading || responses?.id !== selectedResponse}
-                    onClick={() => void exportResponses({ id: selectedResponse })}
-                  >
-                    <Download size={16} aria-hidden="true" />
-                    Download responses
-                  </button>
-                )}
+                  <div className="announcement-response-toolbar">
+                    <h3>{selectedEntry?.title}</h3>
+                    <div className="announcement-editor-actions">
+                      <button
+                        className="secondary-button"
+                        disabled={busy || responseLoading || !selectedResponse}
+                        onClick={() => setResponseAttempt(value => value + 1)}
+                      >
+                        <RefreshCw size={16} aria-hidden="true" />
+                        Refresh responses
+                      </button>
+                      {data?.canExport && (
+                        <button
+                          className="secondary-button"
+                          disabled={busy || responseLoading || responses?.id !== selectedResponse}
+                          onClick={() => void exportResponses({ id: selectedResponse })}
+                        >
+                          <Download size={16} aria-hidden="true" />
+                          Download responses
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {selectedResponse && responseLoading && <p role="status">Loading responses…</p>}
+                  {selectedResponse && responseError && (
+                    <div className="announcement-feedback" role="alert">
+                      <p>{responseError}</p>
+                      <button
+                        className="secondary-button"
+                        onClick={() => setResponseAttempt(value => value + 1)}
+                      >
+                        Retry responses
+                      </button>
+                    </div>
+                  )}
+                  {!responseLoading &&
+                    responses?.id === selectedResponse &&
+                    !responseError &&
+                    (responses.responses.length === 0 ? (
+                      <div className="announcement-empty">
+                        <MessageSquare size={28} strokeWidth={1.5} aria-hidden="true" />
+                        <h3>No responses yet</h3>
+                        <p>
+                          No responses are available in your current scope for this announcement.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="my-skills-table-wrap">
+                        <table className="my-skills-table">
+                          <caption className="sr-only">
+                            {responses.definition.title} responses
+                          </caption>
+                          <thead>
+                            <tr>
+                              <th>Employee</th>
+                              <th>Employee ID</th>
+                              <th>Work email</th>
+                              {(responses.definition.kind === 'POLL'
+                                ? [{ id: 'vote', label: 'Vote' }]
+                                : responses.definition.fields
+                              ).map(field => (
+                                <th key={field.id}>{field.label}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {responses.responses.map(row => (
+                              <tr key={row.employeeId}>
+                                <td>{row.name}</td>
+                                <td>{row.employeeId}</td>
+                                <td>{row.email || '—'}</td>
+                                {(responses.definition.kind === 'POLL'
+                                  ? [{ id: 'vote' }]
+                                  : responses.definition.fields
+                                ).map(field => (
+                                  <td key={field.id}>
+                                    {row.answers[field.id] === true
+                                      ? 'Yes'
+                                      : row.answers[field.id] === false
+                                        ? 'No'
+                                        : row.answers[field.id]}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  {responses?.id === selectedResponse &&
+                    !responseError &&
+                    (responsePage > 1 || responses.hasMore) && (
+                      <div
+                        role="group"
+                        aria-label="Response pages"
+                        className="announcement-editor-actions"
+                      >
+                        <button
+                          className="secondary-button"
+                          disabled={responseLoading || responsePage === 1}
+                          onClick={() => setResponsePage(p => p - 1)}
+                        >
+                          Previous responses
+                        </button>
+                        <span>Response page {responsePage}</span>
+                        <button
+                          className="secondary-button"
+                          disabled={responseLoading || !responses.hasMore}
+                          onClick={() => setResponsePage(p => p + 1)}
+                        >
+                          More responses
+                        </button>
+                      </div>
+                    )}
+                </section>
               </div>
-            </div>
+            )}
             {!data && !error && <p role="status">Loading announcements…</p>}
-            {data && !selectedResponse && (
-              <div className="announcement-empty">
-                <MessageSquare size={28} strokeWidth={1.5} aria-hidden="true" />
-                <h3>No responses to view yet</h3>
-                <p>Publish an announcement to start collecting responses.</p>
-              </div>
-            )}
-            {selectedResponse && responseLoading && <p role="status">Loading responses…</p>}
-            {selectedResponse && responseError && (
-              <div className="announcement-feedback" role="alert">
-                <p>{responseError}</p>
-                <button
-                  className="secondary-button"
-                  onClick={() => setResponseAttempt(value => value + 1)}
-                >
-                  Retry responses
-                </button>
-              </div>
-            )}
-            {!responseLoading &&
-              responses?.id === selectedResponse &&
-              !responseError &&
-              (responses.responses.length === 0 ? (
+            {data && responseEntries.length === 0 && (
+              <>
                 <div className="announcement-empty">
                   <MessageSquare size={28} strokeWidth={1.5} aria-hidden="true" />
-                  <h3>No responses yet</h3>
-                  <p>No responses are available in your current scope for this announcement.</p>
+                  <h3>No published announcements on this page</h3>
                 </div>
-              ) : (
-                <div className="my-skills-table-wrap">
-                  <table className="my-skills-table">
-                    <caption className="sr-only">{responses.definition.title} responses</caption>
-                    <thead>
-                      <tr>
-                        <th>Employee</th>
-                        <th>Employee ID</th>
-                        <th>Work email</th>
-                        {(responses.definition.kind === 'POLL'
-                          ? [{ id: 'vote', label: 'Vote' }]
-                          : responses.definition.fields
-                        ).map(field => (
-                          <th key={field.id}>{field.label}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {responses.responses.map(row => (
-                        <tr key={row.employeeId}>
-                          <td>{row.name}</td>
-                          <td>{row.employeeId}</td>
-                          <td>{row.email || '—'}</td>
-                          {(responses.definition.kind === 'POLL'
-                            ? [{ id: 'vote' }]
-                            : responses.definition.fields
-                          ).map(field => (
-                            <td key={field.id}>
-                              {row.answers[field.id] === true
-                                ? 'Yes'
-                                : row.answers[field.id] === false
-                                  ? 'No'
-                                  : row.answers[field.id]}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
-            {responses?.id === selectedResponse &&
-              !responseError &&
-              (responsePage > 1 || responses.hasMore) && (
-                <div
-                  role="group"
-                  aria-label="Response pages"
-                  className="announcement-editor-actions"
-                >
-                  <button
-                    className="secondary-button"
-                    disabled={responseLoading || responsePage === 1}
-                    onClick={() => setResponsePage(p => p - 1)}
-                  >
-                    Previous responses
-                  </button>
-                  <span>Response page {responsePage}</span>
-                  <button
-                    className="secondary-button"
-                    disabled={responseLoading || !responses.hasMore}
-                    onClick={() => setResponsePage(p => p + 1)}
-                  >
-                    More responses
-                  </button>
-                </div>
-              )}
-            {managementPagination}
+                {managementPagination}
+              </>
+            )}
           </section>
         )}
       </div>

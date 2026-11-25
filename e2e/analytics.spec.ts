@@ -142,11 +142,19 @@ test('analytics: scope, chart perspectives, dataset filters and export use the c
   await analytics(page, {}, queries);
   const views = page.getByRole('navigation', { name: 'Analytics views' });
   await expect(views.getByRole('button', { name: 'Overview', exact: true })).toBeVisible();
-  await page.getByRole('combobox', { name: 'Scope filter' }).selectOption(scope);
+  const scopeFilter = page.getByRole('combobox', { name: 'Scope filter' });
+  const hierarchyFilter = page.getByRole('combobox', { name: 'Organization hierarchy filter' });
+  await expect(hierarchyFilter).toBeVisible();
+  if (page.viewportSize()!.width > 850) {
+    const scopeBox = (await scopeFilter.boundingBox())!;
+    const hierarchyBox = (await hierarchyFilter.boundingBox())!;
+    const searchBox = (await page.getByPlaceholder('Search employee or code…').boundingBox())!;
+    expect(Math.abs(hierarchyBox.y - scopeBox.y)).toBeLessThan(1);
+    expect(Math.abs(hierarchyBox.y - searchBox.y)).toBeLessThan(1);
+  }
+  await scopeFilter.selectOption(scope);
   await expect.poll(() => queries.at(-1)?.get('scopeId')).toBe(scope);
-  await page
-    .getByRole('combobox', { name: 'Organization hierarchy filter' })
-    .selectOption('90000000-0000-4000-8000-000000000002');
+  await hierarchyFilter.selectOption('90000000-0000-4000-8000-000000000002');
   await expect
     .poll(() => queries.at(-1)?.get('hierarchyId'))
     .toBe('90000000-0000-4000-8000-000000000002');
