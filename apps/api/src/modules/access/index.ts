@@ -14,6 +14,7 @@ export { rolePresets, type RolePreset } from './role-presets.js';
 export { workspaceFor } from './workspace.js';
 
 export {
+  canUseCertificationRecommendations,
   effectiveAccess,
   effectiveAccessSummary,
   effectiveClaimReview,

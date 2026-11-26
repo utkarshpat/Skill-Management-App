@@ -154,7 +154,13 @@ test('business filters are bounded, reject forged authority, invalid dates and i
     assert.throws(() => businessQuery(q));
   assert.equal(businessQuery({ validity: '15_30', minRank: 3, maxRank: 3 }).validity, '15_30');
 });
-test('template module settings have independent, receipt-bound previews', () => {
+test('template module settings have independent, receipt-bound previews', t => {
+  const originalFlag = process.env.PHASE_TWO_ENABLED;
+  t.after(() => {
+    if (originalFlag === undefined) delete process.env.PHASE_TWO_ENABLED;
+    else process.env.PHASE_TWO_ENABLED = originalFlag;
+  });
+  process.env.PHASE_TWO_ENABLED = 'false';
   const current = { revision: 1, baselineAffectedPeople: 12, templateFeatures: [] };
   const input = {
     kind: 'TEMPLATE_FEATURES',
@@ -169,7 +175,22 @@ test('template module settings have independent, receipt-bound previews', () => 
     ...input,
     payload: { ...input.payload, template: 'SYSTEM_ADMIN' },
   });
-  assert.notEqual(previewBusiness(actor, current, scoped).receipt, reviewed.receipt);
+  const scopedPreview = previewBusiness(actor, current, scoped);
+  assert.notEqual(scopedPreview.receipt, reviewed.receipt);
+  assert.equal(scopedPreview.impact.baselineAffectedPeople, undefined);
+  process.env.PHASE_TWO_ENABLED = 'true';
+  const employeeCutover = previewBusiness(actor, current, businessChange(input));
+  assert.deepEqual(employeeCutover.before, {
+    template: 'EMPLOYEE',
+    learning: true,
+    requests: true,
+  });
+  const scopedCutover = previewBusiness(actor, current, scoped);
+  assert.equal(scopedCutover.impact.baselineAffectedPeople, 12);
+  assert.match(scopedCutover.warnings.join(' '), /first save replaces workspace-wide/);
+  assert.notEqual(scopedCutover.receipt, scopedPreview.receipt);
+  const configured = { ...current, templateFeatures: [employeeCutover.before] };
+  assert.doesNotMatch(previewBusiness(actor, configured, scoped).warnings.join(' '), /first save/);
   assert.throws(() => previewBusiness(actor, { ...current, revision: 2 }, scoped), { status: 409 });
   assert.throws(
     () => businessChange({ ...input, payload: { ...input.payload, template: 'MANAGER' } }),
@@ -189,6 +210,12 @@ test('workspace exposes each template module only when its effective availabilit
 });
 
 test('template module switches agree across direct API access, Genie actions and notifications', async t => {
+  const originalFlag = process.env.PHASE_TWO_ENABLED;
+  t.after(() => {
+    if (originalFlag === undefined) delete process.env.PHASE_TWO_ENABLED;
+    else process.env.PHASE_TWO_ENABLED = originalFlag;
+  });
+  process.env.PHASE_TWO_ENABLED = 'false';
   const current = state();
   const viewer = current.people[0];
   const access = {
@@ -246,34 +273,54 @@ test('template module switches agree across direct API access, Genie actions and
   const root = `http://127.0.0.1:${(server.address() as { port: number }).port}/api`;
   const get = (path: string) =>
     fetch(root + path, { headers: { Authorization: 'Bearer trusted' } });
-  for (const learningEnabled of [true, false]) {
-    const requestsEnabled = !learningEnabled;
+  for (const [learningEnabled, requestsEnabled] of [
+    [true, false],
+    [false, true],
+    [undefined, undefined],
+  ]) {
     viewer.business = { ...viewer.business!, learningEnabled, requestsEnabled };
-    const [workspace, learning, requests, assistant, notifications] = await Promise.all(
-      [
-        '/workspace',
-        '/learning',
-        '/workflows/options',
-        '/assistant/navigation',
-        '/notifications',
-      ].map(get),
-    );
+    const [workspace, learning, requests, assistant, notifications, effective, certificates] =
+      await Promise.all(
+        [
+          '/workspace',
+          '/learning',
+          '/workflows/options',
+          '/assistant/navigation',
+          '/notifications',
+          '/effective-access',
+          '/certification-recommendations',
+        ].map(get),
+      );
     assert.equal(learning.status, learningEnabled ? 200 : 403);
     assert.equal(requests.status, requestsEnabled ? 200 : 403);
     assert.equal(workspace.status, 200);
     const { capabilities } = await workspace.json();
-    assert.equal(capabilities.learning, learningEnabled);
-    assert.equal(capabilities.requests, requestsEnabled);
+    assert.equal(capabilities.learning, !!learningEnabled);
+    assert.equal(capabilities.requests, !!requestsEnabled);
+    assert.equal(effective.status, 200);
+    assert.equal(certificates.status, 200);
+    const { decisions } = await effective.json();
+    for (const [action, enabled] of [
+      ['learning.view', learningEnabled],
+      ['learning.manage', learningEnabled],
+      ['request.view', requestsEnabled],
+      ['incident.create', requestsEnabled],
+    ]) {
+      const decision = decisions.find((entry: { action: string }) => entry.action === action);
+      assert.equal(decision.allowed, !!enabled, String(action));
+      if (!enabled) assert.equal(decision.reasonCode, 'UNAVAILABLE');
+    }
     assert.equal(assistant.status, 200);
     const navigation = await assistant.json();
-    assert.equal(navigation.canManageLearning, learningEnabled);
-    assert.equal(navigation.canDraftRequest, requestsEnabled);
-    assert.equal(navigation.canDraftIncident, requestsEnabled);
+    assert.equal(navigation.canManageLearning, !!learningEnabled);
+    assert.equal(navigation.canDraftRequest, !!requestsEnabled);
+    assert.equal(navigation.canDraftIncident, !!requestsEnabled);
     assert.equal(notifications.status, 200);
     const { items } = await notifications.json();
     assert.deepEqual(items.map((item: { id: string }) => item.id).sort(), [
       'certificate',
-      learningEnabled ? 'learning' : 'workflow',
+      ...(learningEnabled ? ['learning'] : []),
+      ...(requestsEnabled ? ['workflow'] : []),
     ]);
   }
 });

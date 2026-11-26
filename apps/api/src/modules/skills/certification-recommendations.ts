@@ -1,5 +1,11 @@
 import { AccessError } from '../../shared/errors.js';
-import { can, effectiveAccess, type LocalAccessState, type LocalPerson } from '../access/index.js';
+import {
+  can,
+  canUseCertificationRecommendations,
+  effectiveAccess,
+  type LocalAccessState,
+  type LocalPerson,
+} from '../access/index.js';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fail = (message: string): never => {
@@ -107,7 +113,7 @@ export function canRecommendCertification(
     personId === actor.id ||
     !can(state, actor, 'profile.view', true) ||
     !can(state, actor, 'skill.view', true) ||
-    !can(state, actor, 'learning.view', true)
+    !canUseCertificationRecommendations(state, actor, 'view')
   )
     return false;
   const target = state.people.find(person => person.id === personId && person.active),
@@ -115,7 +121,7 @@ export function canRecommendCertification(
   return Boolean(
     target &&
     can(state, target, 'profile.view', true) &&
-    can(state, target, 'learning.view', true) &&
+    canUseCertificationRecommendations(state, target, 'view') &&
     edges?.length === 1 &&
     edges[0].managerId === actor.id,
   );

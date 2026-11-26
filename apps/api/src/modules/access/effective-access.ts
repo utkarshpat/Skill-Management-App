@@ -1,4 +1,8 @@
-import { personalBaselinePermissions, systemAdminPermissions } from './business-policy.js';
+import {
+  personalBaselinePermissions,
+  systemAdminPermissions,
+  templateFeatureAvailable,
+} from './business-policy.js';
 import { permissionCatalogue } from './access-catalogue.js';
 import { authorize, type Grant } from './domain/authorization.js';
 import type { Assignment, LocalAccessState, LocalPerson } from './local-access-store.js';
@@ -167,6 +171,26 @@ export function effectiveAccess(
   action: string,
   context: 'OWN' | 'WORKSPACE' | 'DIRECT_REPORTS' = 'OWN',
   at = new Date(),
+): EffectiveDecision {
+  return evaluateAccess(state, person, action, context, at);
+}
+
+// Certification recommendations share the underlying learning grants with Learn & Grow.
+export function canUseCertificationRecommendations(
+  state: LocalAccessState,
+  person: LocalPerson,
+  action: 'view' | 'manage',
+) {
+  return evaluateAccess(state, person, 'learning.' + action, 'OWN', new Date(), true).allowed;
+}
+
+function evaluateAccess(
+  state: LocalAccessState,
+  person: LocalPerson,
+  action: string,
+  context: 'OWN' | 'WORKSPACE' | 'DIRECT_REPORTS',
+  at: Date,
+  certificationRecommendation = false,
 ): EffectiveDecision {
   if (businessActions.has(action)) {
     const projection = person.business,
@@ -406,9 +430,12 @@ export function effectiveAccess(
   else if (!Number.isFinite(at.getTime())) reasonCode = 'INVALID_TIME';
   else if (!person.active) reasonCode = 'INACTIVE_ACTOR';
   else if (
-    person.business?.requestsEnabled === false &&
-    (action.startsWith('incident.') ||
-      (action.startsWith('request.') && action !== 'request.approve'))
+    (!templateFeatureAvailable(person.business, 'requests') &&
+      (action.startsWith('incident.') ||
+        (action.startsWith('request.') && action !== 'request.approve'))) ||
+    (!certificationRecommendation &&
+      (action === 'learning.view' || action === 'learning.manage') &&
+      !templateFeatureAvailable(person.business, 'learning'))
   )
     reasonCode = 'UNAVAILABLE';
   else if (context === 'DIRECT_REPORTS' && !['skill.verify', 'learning.recommend'].includes(action))
@@ -488,7 +515,14 @@ export function effectiveAccess(
     constraints.push('REQUIRES ' + dependency.action + ' ' + dependency.context);
     if (
       allowed &&
-      !effectiveAccess(state, person, dependency.action, dependency.context, at).allowed
+      !evaluateAccess(
+        state,
+        person,
+        dependency.action,
+        dependency.context,
+        at,
+        certificationRecommendation || action === 'learning.recommend',
+      ).allowed
     ) {
       allowed = false;
       reasonCode = 'PREREQUISITE_DENIED';

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { AccessError } from '../../shared/errors.js';
+import { phaseTwoAvailable } from '../../shared/release-features.js';
 /** SQL JSON omits null collections when a subquery has no rows. */
 export function normalizeBusinessCollections<T extends object>(value: T, keys: string[]): T {
   const result = { ...value };
@@ -20,6 +21,13 @@ export function normalizeBusinessAdministration(value: Record<string, unknown>) 
     'nodes',
     'historicalGrantsForReview',
   ]);
+}
+export function templateFeatureFallbackActive(administration: Record<string, unknown>) {
+  return (
+    Array.isArray(administration.templateFeatures) &&
+    administration.templateFeatures.length === 0 &&
+    phaseTwoAvailable()
+  );
 }
 export interface BusinessQuery {
   scopeId?: string;
@@ -404,6 +412,9 @@ export function previewBusiness(
   const rows = (key: string) => (current[key] ?? []) as Record<string, unknown>[];
   if (change.kind === 'TEMPLATE_FEATURES' && !Array.isArray(current.templateFeatures))
     throw new AccessError(503, 'Template module settings require migration 121.');
+  const endsTemplateFallback =
+    change.kind === 'TEMPLATE_FEATURES' && templateFeatureFallbackActive(current);
+  const employeeFallback = endsTemplateFallback && change.payload.template === 'EMPLOYEE';
   const issuerIds = change.payload.issuerIds as string[] | undefined;
   if (issuerIds && !Array.isArray(current.issuers))
     throw new AccessError(503, 'Issuer assignment editing requires migration 112.');
@@ -472,8 +483,8 @@ export function previewBusiness(
             feature => feature.template === change.payload.template,
           ) ?? {
             template: change.payload.template,
-            learning: false,
-            requests: false,
+            learning: employeeFallback,
+            requests: employeeFallback,
           })
         : change.kind === 'MEMBERSHIP'
           ? (rows('memberships').find(
@@ -505,7 +516,16 @@ export function previewBusiness(
           ? ['Learn & Grow', 'Requests & Incidents']
           : ['No new authority'];
   return {
-    receipt: createHash('sha256').update(JSON.stringify({ actor, current, change })).digest('hex'),
+    receipt: createHash('sha256')
+      .update(
+        JSON.stringify({
+          actor,
+          current,
+          change,
+          ...(endsTemplateFallback && { endsTemplateFallback }),
+        }),
+      )
+      .digest('hex'),
     change,
     before,
     after: { id: change.id, ...change.payload },
@@ -515,13 +535,19 @@ export function previewBusiness(
       actions,
       baselineAffectedPeople:
         change.kind === 'PERSONAL_BASELINE' ||
-        (change.kind === 'TEMPLATE_FEATURES' && change.payload.template === 'EMPLOYEE')
+        (change.kind === 'TEMPLATE_FEATURES' &&
+          (change.payload.template === 'EMPLOYEE' || endsTemplateFallback))
           ? current.baselineAffectedPeople
           : undefined,
     },
     warnings:
       change.kind === 'TEMPLATE_FEATURES'
         ? [
+            ...(endsTemplateFallback
+              ? [
+                  'This first save replaces workspace-wide module availability with template settings. Only modules enabled by a saved matching template will remain available. Existing records are retained.',
+                ]
+              : []),
             'A module is available if any matching template enables it. Existing permissions and explicit denies still apply.',
           ]
         : [

@@ -8,6 +8,7 @@ import {
   businessQuery,
   businessChange,
   previewBusiness,
+  templateFeatureFallbackActive,
   identifier,
   type BusinessStore,
 } from './business.js';
@@ -228,7 +229,11 @@ export function registerBusinessRoutes(
       const actor: string = res.locals.businessActor;
       const personId =
         req.query.personId === undefined ? undefined : identifier(req.query.personId);
-      const administration = await deps!.business!.administration(actor, personId);
+      const savedAdministration = await deps!.business!.administration(actor, personId);
+      const administration = {
+        ...savedAdministration,
+        templateFeatureFallbackActive: templateFeatureFallbackActive(savedAdministration),
+      };
       if (!deps?.leadAdministration) {
         res.json(administration);
         return;

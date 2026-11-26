@@ -12,6 +12,7 @@ interface Administration {
   personalBaseline: boolean;
   baselineAffectedPeople: number;
   templateFeatures?: { template: FeatureTemplate; learning: boolean; requests: boolean }[];
+  templateFeatureFallbackActive?: boolean;
   projects: { id: string; name: string; departmentId: string | null; active: boolean }[];
   memberships: { personId: string; projectId: string; active: boolean }[];
   responsibilities: {
@@ -242,8 +243,10 @@ export function BusinessAdministration({
     features => features.template === featureTemplate,
   );
   const moduleSettings = {
-    learning: savedModules?.learning ?? false,
-    requests: savedModules?.requests ?? false,
+    learning:
+      savedModules?.learning ?? (employeeTemplate && state?.templateFeatureFallbackActive === true),
+    requests:
+      savedModules?.requests ?? (employeeTemplate && state?.templateFeatureFallbackActive === true),
     ...features,
   };
   const modulesAvailable = Array.isArray(state?.templateFeatures);
@@ -336,6 +339,7 @@ export function BusinessAdministration({
           current?.templateFeatures
             ? {
                 ...current,
+                templateFeatureFallbackActive: false,
                 templateFeatures: [
                   ...current.templateFeatures.filter(row => row.template !== featureTemplate),
                   { template: featureTemplate, ...moduleSettings },
@@ -1019,6 +1023,13 @@ export function BusinessAdministration({
               )}
               {kind === 'TEMPLATE_FEATURES' ? (
                 <>
+                  {state.templateFeatureFallbackActive && (
+                    <p className="bo-full bo-note">
+                      Both modules are currently available workspace-wide to people with the
+                      required permissions. The first save switches to template settings. To keep
+                      access workspace-wide, save both modules enabled on the Employee template.
+                    </p>
+                  )}
                   <p className="bo-full bo-note">
                     {employeeTemplate
                       ? 'These modules become available to active employees with the required permissions.'

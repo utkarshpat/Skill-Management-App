@@ -50,7 +50,22 @@ const state = (): LocalAccessState => ({
 
 test('credential recommendations require current manager, active people and both personal read policies', () => {
   const access = state();
+  for (const person of access.people) {
+    person.business = {
+      personalBaseline: false,
+      learningEnabled: false,
+      systemAdmin: false,
+      view: false,
+      export: false,
+      manage: false,
+      amend: false,
+      scopes: [],
+    };
+  }
   assert.equal(canRecommendCertification(access, access.people[0], reportId), true);
+  access.people[1].overrides = [{ permission: 'learning.view', scope: 'OWN', effect: 'DENY' }];
+  assert.equal(canRecommendCertification(access, access.people[0], reportId), false);
+  access.people[1].overrides = [];
   assert.equal(canRecommendCertification(access, access.people[0], managerId), false);
   access.reporting![0].managerId = reportId;
   assert.equal(canRecommendCertification(access, access.people[0], reportId), false);

@@ -345,6 +345,18 @@ test('employee modules use separate switches and save only after an explicit pre
   assert.equal(saves[0].previewReceipt, 'current-business-receipt');
 });
 
+test('first Employee module save starts from the current workspace-wide defaults', async () => {
+  state.templateFeatures = [];
+  state.templateFeatureFallbackActive = true;
+  await mount(true);
+  await click('Modules');
+  assert.match(document.body.textContent!, /first save switches to template settings/);
+  await fill('Reason', 'Preserve current availability.');
+  await click('Preview change');
+  assert.equal(previews[0].payload.learning, true);
+  assert.equal(previews[0].payload.requests, true);
+});
+
 test('retrying a module change keeps another administrator’s update to the other switch', async () => {
   state.templateFeatures = [];
   await mount(true);

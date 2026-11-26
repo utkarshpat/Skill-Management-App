@@ -3,7 +3,13 @@ import type { Express, Request, Response } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import type { LocalPerson } from '../access/index.js';
 import { AccessError } from '../../shared/errors.js';
-import { can, effectiveAccess, readActorAccess, type AccessStore } from '../access/index.js';
+import {
+  can,
+  canUseCertificationRecommendations,
+  effectiveAccess,
+  readActorAccess,
+  type AccessStore,
+} from '../access/index.js';
 import {
   canRecommendCertification,
   certificationRecommendationInput,
@@ -106,7 +112,7 @@ export function registerCertificationRecommendationRoutes(
         if (
           view === 'sent'
             ? !effectiveAccess(state, actor, 'learning.recommend', 'DIRECT_REPORTS').allowed
-            : !can(state, actor, 'learning.view', true)
+            : !canUseCertificationRecommendations(state, actor, 'view')
         )
           throw new AccessError(403, 'Certification recommendations are unavailable.');
         value = await backend.read(
@@ -129,8 +135,8 @@ export function registerCertificationRecommendationRoutes(
         value = await backend.send(actor.id, input);
       } else if (req.method === 'POST' && path === '/respond') {
         if (
-          !can(state, actor, 'learning.view', true) ||
-          !can(state, actor, 'learning.manage', true)
+          !canUseCertificationRecommendations(state, actor, 'view') ||
+          !canUseCertificationRecommendations(state, actor, 'manage')
         )
           throw new AccessError(403, 'Personal recommendation responses are unavailable.');
         value = await backend.respond(actor.id, certificationRecommendationResponse(req.body));
@@ -158,7 +164,7 @@ export function registerCertificationRecommendationRoutes(
               .allowed) ||
           (path === '/' &&
             req.query.view !== 'sent' &&
-            !can(current, currentActor, 'learning.view', true))
+            !canUseCertificationRecommendations(current, currentActor, 'view'))
         )
           throw new AccessError(403, 'Recommendation access changed. Refresh and retry.');
       }
