@@ -1,5 +1,4 @@
 import { Bell, BookOpen, ClipboardCheck, Inbox, Megaphone } from 'lucide-react';
-import { isPhaseTwoPage, phaseTwoVisible } from './release-features';
 export function notificationDestination(href: string | null) {
   if (!href?.startsWith('/') || href.startsWith('//') || /[\\\u0000-\u0020\u007f]/.test(href))
     return undefined;
@@ -10,7 +9,6 @@ export function notificationDestination(href: string | null) {
     return undefined;
   }
   if (url.origin !== 'https://workspace.invalid') return undefined;
-  if (!phaseTwoVisible && isPhaseTwoPage(url.pathname)) return undefined;
   const actions: Record<string, { label: string; kind: string; icon: typeof Bell }> = {
     '/announcements': { label: 'Open announcement', kind: 'Announcements', icon: Megaphone },
     '/requests': { label: 'View request', kind: 'Requests', icon: Inbox },

@@ -94,18 +94,11 @@ const catalogue = process.env.ACCESS_ACCOUNT_ID
   ? new SqlCatalogueStore(process.env.ACCESS_ACCOUNT_ID)
   : undefined;
 process.env.PHASE_TWO_ENABLED = process.env.PHASE_TWO_ENABLED === 'true' ? 'true' : 'false';
-const learning =
-  process.env.PHASE_TWO_ENABLED === 'true' && process.env.ACCESS_ACCOUNT_ID
-    ? new SqlLearningStore(process.env.ACCESS_ACCOUNT_ID)
-    : undefined;
-const recommendations =
-  process.env.PHASE_TWO_ENABLED === 'true' && process.env.ACCESS_ACCOUNT_ID
-    ? new SqlRecommendationStore(process.env.ACCESS_ACCOUNT_ID)
-    : undefined;
-const workflows =
-  process.env.PHASE_TWO_ENABLED === 'true' && process.env.ACCESS_ACCOUNT_ID
-    ? new SqlWorkflowStore(process.env.ACCESS_ACCOUNT_ID)
-    : undefined;
+const learning = access ? new SqlLearningStore(process.env.ACCESS_ACCOUNT_ID!) : undefined;
+const recommendations = access
+  ? new SqlRecommendationStore(process.env.ACCESS_ACCOUNT_ID!)
+  : undefined;
+const workflows = access ? new SqlWorkflowStore(process.env.ACCESS_ACCOUNT_ID!) : undefined;
 const business = process.env.ACCESS_ACCOUNT_ID
   ? new SqlBusinessStore(process.env.ACCESS_ACCOUNT_ID, fileStorage)
   : undefined;

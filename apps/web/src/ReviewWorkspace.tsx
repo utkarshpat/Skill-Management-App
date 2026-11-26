@@ -28,9 +28,11 @@ async function findCertificationApproval(id: string, signal: AbortSignal) {
 export function ReviewWorkspace({
   certificationsAllowed = false,
   issuerOnly = false,
+  learningRecommendations,
 }: {
   certificationsAllowed?: boolean;
   issuerOnly?: boolean;
+  learningRecommendations?: boolean;
 }) {
   const [certQueueCount, setCertQueueCount] = useState(0);
   if (issuerOnly)
@@ -54,6 +56,7 @@ export function ReviewWorkspace({
       <SkillReviews
         unified
         includeCombined
+        learningRecommendations={learningRecommendations}
         compactEmpty={certQueueCount > 0}
         queueContent={
           certificationsAllowed ? (

@@ -362,25 +362,28 @@ export function createApp(
     store,
     demo,
   );
-  if (phaseTwo) registerLearningRoutes(app, dependencies, store, demo);
+  if (phaseTwo || dependencies?.learning) registerLearningRoutes(app, dependencies, store, demo);
   registerCertificationRoutes(app, dependencies, store, demo);
   registerExcelBulkRoutes(app, dependencies);
   registerAnnouncementRoutes(app, dependencies);
   registerCapabilityRoutes(app, dependencies, store, demo);
   registerCapabilityLeadRoutes(app, dependencies);
   registerCertificationRecommendationRoutes(app, dependencies, store, demo);
-  if (phaseTwo) {
+  if (phaseTwo || dependencies?.recommendations)
     registerRecommendationRoutes(app, dependencies, store, demo);
-    registerWorkflowRoutes(app, dependencies, store, demo);
-  } else {
-    app.use(
-      ['/api/learning', '/api/recommendations', '/api/workflows', '/api/assistant/workflow-draft'],
-      (_req, res) => {
+  if (phaseTwo || dependencies?.workflows) registerWorkflowRoutes(app, dependencies, store, demo);
+  if (!phaseTwo) {
+    const unavailable = [
+      ...(dependencies?.learning ? [] : ['/api/learning']),
+      ...(dependencies?.recommendations ? [] : ['/api/recommendations']),
+      ...(dependencies?.workflows ? [] : ['/api/workflows', '/api/assistant/workflow-draft']),
+    ];
+    if (unavailable.length)
+      app.use(unavailable, (_req, res) => {
         res
           .status(404)
           .json({ error: { message: 'This feature is unavailable in this release.' } });
-      },
-    );
+      });
   }
   registerDashboardRoutes(
     app,

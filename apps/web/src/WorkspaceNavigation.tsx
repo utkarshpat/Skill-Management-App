@@ -1,5 +1,4 @@
 import { Megaphone, BarChart3, BookOpen, Compass, ShieldCheck, UserRound } from 'lucide-react';
-import { isPhaseTwoPage, phaseTwoVisible } from './release-features';
 
 export const administrationShellFor = (pathname: string, administration: boolean) =>
   pathname === '/access' || administration;
@@ -59,7 +58,6 @@ const businessNavigationVisible = (
     | undefined,
 ) => Boolean(capabilities?.businessOperations || capabilities?.issuerApprovals);
 export const isSupportedWorkspacePath = (pathname: string) =>
-  (phaseTwoVisible || !isPhaseTwoPage(pathname)) &&
   [
     '/',
     '/access',
@@ -99,7 +97,7 @@ export function personalNavigationItems(
     ...(businessNavigationVisible(capabilities)
       ? [{ id: 'business', label: 'Analytics', href: '/business', icon: BarChart3 }]
       : []),
-    ...(phaseTwoVisible && capabilities.learning
+    ...(capabilities.learning
       ? [{ id: 'learning', label: 'Learn & Grow', href: '/learning', icon: BookOpen }]
       : []),
     ...(capabilities.ownSkills || capabilities.certifications
@@ -115,7 +113,7 @@ export function personalNavigationItems(
     ...(capabilities.reviewSkills || capabilities.issuerApprovals
       ? [{ id: 'skill-reviews', label: 'Approvals', href: '/skill-reviews', icon: ShieldCheck }]
       : []),
-    ...(phaseTwoVisible && capabilities.requests
+    ...(capabilities.requests
       ? [{ id: 'requests', label: 'Requests', href: '/requests', icon: ShieldCheck }]
       : []),
     ...(capabilities.ownProfile && capabilities.canPublishAnnouncements

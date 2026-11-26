@@ -40,17 +40,13 @@ test('supported deep links are explicit and unknown paths do not masquerade as t
     '/certifications',
     '/skills',
     '/skill-reviews',
+    '/learning',
+    '/requests',
     '/preview',
     '/knowledgetransfer',
   ])
     assert.equal(isSupportedWorkspacePath(path), true, path);
-  for (const path of [
-    '/missing',
-    '/skill-reviews/claim-1',
-    '/learning',
-    '/requests',
-    '/requests/other',
-  ])
+  for (const path of ['/missing', '/skill-reviews/claim-1', '/requests/other'])
     assert.equal(isSupportedWorkspacePath(path), false, path);
 });
 

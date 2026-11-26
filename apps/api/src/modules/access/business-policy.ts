@@ -1,3 +1,5 @@
+import { phaseTwoAvailable } from '../../shared/release-features.js';
+
 /** Account-bound SQL projection. These summaries never authorize a resource or write. */
 export interface BusinessScope {
   id: string;
@@ -11,6 +13,8 @@ export interface BusinessScope {
 }
 export interface BusinessProjection {
   personalBaseline: boolean;
+  learningEnabled?: boolean;
+  requestsEnabled?: boolean;
   systemAdmin: boolean;
   adminDenied?: boolean;
   demandView?: boolean;
@@ -24,6 +28,15 @@ export interface BusinessProjection {
   export: boolean;
   manage: boolean;
   amend: boolean;
+}
+export function templateFeatureAvailable(
+  business: BusinessProjection | undefined,
+  feature: 'learning' | 'requests',
+) {
+  return (
+    (feature === 'learning' ? business?.learningEnabled : business?.requestsEnabled) ??
+    phaseTwoAvailable()
+  );
 }
 export const personalBaselinePermissions = new Set([
   'profile.view',

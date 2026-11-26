@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ShieldCheck, BarChart3, Pencil, Users } from 'lucide-react';
+import { ShieldCheck, BarChart3, Pencil, UserRound, Users } from 'lucide-react';
+import type { FeatureTemplate } from './business/BusinessAdministration';
 import {
   availableBundles,
   bundleSelected,
@@ -23,6 +24,8 @@ export function TemplateCards({
   onAssignments,
   onAssignPerson,
   onScopedAssignments,
+  onEditModules,
+  featureEditor,
   busy,
   canManagePeople,
   canManageScoped,
@@ -34,6 +37,8 @@ export function TemplateCards({
   onAssignments: () => void;
   onAssignPerson: () => void;
   onScopedAssignments: () => void;
+  onEditModules: (template: FeatureTemplate) => void;
+  featureEditor?: FeatureTemplate;
   busy: boolean;
   canManagePeople: boolean;
   canManageScoped: boolean;
@@ -41,10 +46,21 @@ export function TemplateCards({
   const [query, setQuery] = useState('');
   const matches = (name: string) => name.toLowerCase().includes(query.trim().toLowerCase());
   const bundles = availableBundles(catalogue);
+  const editModules = (template: FeatureTemplate, label: string) => (
+    <button
+      className="secondary-button"
+      disabled={busy}
+      aria-expanded={featureEditor === template}
+      onClick={() => onEditModules(template)}
+    >
+      <Pencil size={15} />{' '}
+      {featureEditor === template ? 'Close ' + label.toLowerCase() + ' settings' : 'Edit ' + label}
+    </button>
+  );
   return (
     <section className="template-workspace" aria-label="Access templates">
       <div className="template-toolbar">
-        <h2>{roles.length + 2} templates</h2>
+        <h2>{roles.length + 3} templates</h2>
         <label className="list-search">
           <input
             type="search"
@@ -56,6 +72,19 @@ export function TemplateCards({
         </label>
       </div>
       <div className="template-card-grid">
+        {matches('Employee') && (
+          <article className="template-card">
+            <UserRound size={24} aria-hidden="true" />
+            <h3>Employee</h3>
+            <p>Own profile, skill catalogue and personal skill and certification claims.</p>
+            <p className="template-note">Applies automatically to active employees when enabled.</p>
+            {canManageScoped && (
+              <div className="template-card-actions">
+                {editModules('EMPLOYEE', 'Employee access')}
+              </div>
+            )}
+          </article>
+        )}
         {matches('Business Analytics') && (
           <article className="template-card">
             <BarChart3 size={24} aria-hidden="true" />
@@ -74,6 +103,7 @@ export function TemplateCards({
                 <button className="secondary-button" disabled={busy} onClick={onScopedAssignments}>
                   <Pencil size={15} /> Edit assignments
                 </button>
+                {editModules('BUSINESS_OPERATIONS', 'Business Analytics modules')}
               </div>
             )}
           </article>
@@ -96,6 +126,7 @@ export function TemplateCards({
                 <button className="secondary-button" disabled={busy} onClick={onScopedAssignments}>
                   <Pencil size={15} /> Edit assignments
                 </button>
+                {editModules('SYSTEM_ADMIN', 'Admin modules')}
               </div>
             )}
           </article>
@@ -151,18 +182,16 @@ export function TemplateCards({
             );
           })}
       </div>
-      {query && !['Business Analytics', 'Admin', ...roles.map(role => role.name)].some(matches) && (
-        <p role="status">No matching templates.</p>
-      )}
+      {query &&
+        !['Employee', 'Business Analytics', 'Admin', ...roles.map(role => role.name)].some(
+          matches,
+        ) && <p role="status">No matching templates.</p>}
       {canManagePeople && roles.length > 0 && (
         <button className="secondary-button" disabled={busy} onClick={onAssignments}>
           Bulk template assignments
         </button>
       )}
-      <p className="template-note">
-        Basic user access is automatic for active employees. Manager access follows current direct
-        reporting assignments.
-      </p>
+      <p className="template-note">Manager access follows current direct reporting assignments.</p>
     </section>
   );
 }

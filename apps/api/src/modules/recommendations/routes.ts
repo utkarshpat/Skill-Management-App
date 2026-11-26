@@ -1,5 +1,5 @@
 import { verifyRequestIdentity } from '../../shared/request-identity.js';
-import { readActorAccess } from '../access/index.js';
+import { readActorAccess, templateFeatureAvailable } from '../access/index.js';
 import type { Express, Request, Response } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import { can, effectiveAccess, type AccessStore } from '../access/index.js';
@@ -45,7 +45,12 @@ export function registerRecommendationRoutes(
     }
     const state = await readActorAccess(deps?.access ?? store, actor),
       person = state?.people.find(p => p.id === actor && p.active);
-    if (!state || !person || !can(state, person, 'profile.view', true)) {
+    if (
+      !state ||
+      !person ||
+      !templateFeatureAvailable(person.business, 'learning') ||
+      !can(state, person, 'profile.view', true)
+    ) {
       res.sendStatus(403);
       return;
     }
@@ -129,7 +134,11 @@ export function registerRecommendationRoutes(
       if (req.method === 'GET') {
         const current = await readActorAccess((deps?.access ?? store)!, actor.id),
           person = current.people.find(p => p.id === actor.id && p.active);
-        if (!person || !can(current, person, 'profile.view', true))
+        if (
+          !person ||
+          !templateFeatureAvailable(person.business, 'learning') ||
+          !can(current, person, 'profile.view', true)
+        )
           throw new AccessError(403, 'Access changed. Reload your workspace.');
         if (current.revision !== state.revision)
           throw new AccessError(

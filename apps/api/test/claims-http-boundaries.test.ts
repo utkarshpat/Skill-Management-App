@@ -31,6 +31,16 @@ test('claim HTTP distinguishes own learning, exact assigned approval, stale snap
         active: true,
         roleIds: [id],
         overrides: [],
+        business: {
+          personalBaseline: false,
+          learningEnabled: true,
+          systemAdmin: false,
+          view: false,
+          export: false,
+          manage: false,
+          amend: false,
+          scopes: [],
+        },
       },
       {
         id: employee,
@@ -261,6 +271,10 @@ test('claim HTTP distinguishes own learning, exact assigned approval, stale snap
   journeyEnabled = false;
   assert.equal((await get('/api/my-skills/journey')).status, 503);
   journeyEnabled = true;
+  state.people[0].business!.learningEnabled = false;
+  assert.equal((await get('/api/my-skills/journey')).status, 403);
+  assert.equal((await get('/api/my-skills')).status, 200);
+  state.people[0].business!.learningEnabled = true;
   state.people[0].overrides = [{ permission: 'learning.view', scope: 'OWN', effect: 'DENY' }];
   assert.equal((await get('/api/my-skills/journey')).status, 403);
   state.people[0].overrides = [];

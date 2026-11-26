@@ -10,7 +10,12 @@ import { profileCompleteness } from './profile-completeness.js';
 import type { AccessStore } from '../access/index.js';
 import { workspaceFor } from './workspace.js';
 import { notificationsFor } from './notifications.js';
-import { can, readActorAccess, effectiveAccessSummary } from '../access/index.js';
+import {
+  can,
+  readActorAccess,
+  effectiveAccessSummary,
+  templateFeatureAvailable,
+} from '../access/index.js';
 type DevelopmentSessions = ReturnType<typeof createDevelopmentSessions>;
 export interface HttpDependencies {
   verify: (authorization: string | undefined) => Promise<Identity>;
@@ -284,7 +289,10 @@ export function registerRoutes(
           },
           {
             name: 'requests',
-            load: () => dependencies?.workflowNotifications?.(person.id) ?? Promise.resolve([]),
+            load: () =>
+              templateFeatureAvailable(person.business, 'requests')
+                ? (dependencies?.workflowNotifications?.(person.id) ?? Promise.resolve([]))
+                : Promise.resolve([]),
           },
           {
             name: 'catalogue-requests',
@@ -293,7 +301,9 @@ export function registerRoutes(
           {
             name: 'recommendations',
             load: () =>
-              dependencies?.recommendationNotifications?.(person.id) ?? Promise.resolve([]),
+              templateFeatureAvailable(person.business, 'learning')
+                ? (dependencies?.recommendationNotifications?.(person.id) ?? Promise.resolve([]))
+                : Promise.resolve([]),
           },
         ]);
         const fresh = await readActorAccess(dependencies?.access ?? store, actor, {
@@ -305,7 +315,13 @@ export function registerRoutes(
         if (!fresh || !current || !can(fresh, current, 'profile.view', true))
           throw new AccessError(403, 'Notification access changed. Refresh your workspace.');
         const { revision: freshRevision, ...freshPolicy } = effectiveAccessSummary(fresh, current);
-        if (JSON.stringify(freshPolicy) !== JSON.stringify(notificationPolicy))
+        if (
+          JSON.stringify(freshPolicy) !== JSON.stringify(notificationPolicy) ||
+          templateFeatureAvailable(current.business, 'requests') !==
+            templateFeatureAvailable(person.business, 'requests') ||
+          templateFeatureAvailable(current.business, 'learning') !==
+            templateFeatureAvailable(person.business, 'learning')
+        )
           throw new AccessError(403, 'Notification access changed. Refresh your workspace.');
         if (freshRevision !== notificationRevision)
           throw new AccessError(409, 'Notifications changed while loading. Retry to refresh.');

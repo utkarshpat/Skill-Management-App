@@ -55,6 +55,7 @@ export interface WorkspaceState {
     reviewSkills?: boolean;
     issuerApprovals?: boolean;
     learning?: boolean;
+    learningRecommendations?: boolean;
     requests?: boolean;
     requestProfileCorrection?: boolean;
     certifications?: boolean;
@@ -275,6 +276,9 @@ export function Workspace({
       {view === 'skill-reviews' && (
         <SkillReviews
           certificationsAllowed={Boolean(state.capabilities.certifications)}
+          learningRecommendations={
+            state.capabilities.learningRecommendations ?? Boolean(state.capabilities.learning)
+          }
           issuerOnly={!state.capabilities.reviewSkills && state.capabilities.issuerApprovals}
         />
       )}

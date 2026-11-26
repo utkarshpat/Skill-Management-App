@@ -11,6 +11,7 @@ interface Administration {
   revision: number;
   personalBaseline: boolean;
   baselineAffectedPeople: number;
+  templateFeatures?: { template: FeatureTemplate; learning: boolean; requests: boolean }[];
   projects: { id: string; name: string; departmentId: string | null; active: boolean }[];
   memberships: { personId: string; projectId: string; active: boolean }[];
   responsibilities: {
@@ -52,6 +53,12 @@ interface Administration {
   issuers?: { id: string; name: string }[];
 }
 export type ScopedAccessTemplate = 'BUSINESS_OPERATIONS' | 'SYSTEM_ADMIN';
+export type FeatureTemplate = 'EMPLOYEE' | ScopedAccessTemplate;
+const featureTemplateNames: Record<FeatureTemplate, string> = {
+  EMPLOYEE: 'Employee',
+  BUSINESS_OPERATIONS: 'Business Analytics',
+  SYSTEM_ADMIN: 'Admin',
+};
 
 interface LeadConfiguration {
   revision: number;
@@ -72,16 +79,25 @@ export function BusinessAdministration({
   onSaved,
   selectedPersonId,
   initialTemplate,
+  featureTemplate,
 }: {
   onSaved: (value: BusinessContext) => void;
   selectedPersonId?: string;
   initialTemplate?: ScopedAccessTemplate;
+  featureTemplate?: FeatureTemplate;
 }) {
+  const employeeTemplate = featureTemplate === 'EMPLOYEE';
   const [state, setState] = useState<Administration>(),
     [error, setError] = useState(''),
     [loadError, setLoadError] = useState(''),
     [attempt, setAttempt] = useState(0),
-    [kind, setKind] = useState('RESPONSIBILITY'),
+    [kind, setKind] = useState(
+      employeeTemplate
+        ? 'PERSONAL_BASELINE'
+        : featureTemplate
+          ? 'TEMPLATE_FEATURES'
+          : 'RESPONSIBILITY',
+    ),
     [search, setSearch] = useState(''),
     [id, setId] = useState(''),
     [person, setPerson] = useState(selectedPersonId ?? ''),
@@ -100,6 +116,7 @@ export function BusinessAdministration({
     [until, setUntil] = useState(''),
     [reason, setReason] = useState(''),
     [enabled, setEnabled] = useState(true),
+    [features, setFeatures] = useState<Partial<{ learning: boolean; requests: boolean }>>({}),
     [busy, setBusy] = useState(false),
     [preview, setPreview] = useState<{
       receipt: string;
@@ -218,7 +235,18 @@ export function BusinessAdministration({
                 : {}),
               reason,
             }
-          : { enabled, reason };
+          : kind === 'TEMPLATE_FEATURES'
+            ? { template: featureTemplate, ...moduleSettings, reason }
+            : { enabled, reason };
+  const savedModules = state?.templateFeatures?.find(
+    features => features.template === featureTemplate,
+  );
+  const moduleSettings = {
+    learning: savedModules?.learning ?? false,
+    requests: savedModules?.requests ?? false,
+    ...features,
+  };
+  const modulesAvailable = Array.isArray(state?.templateFeatures);
   async function prepare() {
     if (guard.current || !state) return;
     const isLead = kind === 'RESPONSIBILITY' && bundle === 'CAPABILITY_LEAD';
@@ -303,6 +331,20 @@ export function BusinessAdministration({
         'Change could not be saved.',
       );
       setPreview(undefined);
+      if (preview.change.kind === 'TEMPLATE_FEATURES' && featureTemplate) {
+        setState(current =>
+          current?.templateFeatures
+            ? {
+                ...current,
+                templateFeatures: [
+                  ...current.templateFeatures.filter(row => row.template !== featureTemplate),
+                  { template: featureTemplate, ...moduleSettings },
+                ],
+              }
+            : current,
+        );
+        setFeatures({});
+      }
       setId('');
       setReason('');
       setAttempt(n => n + 1);
@@ -341,15 +383,17 @@ export function BusinessAdministration({
       ) ?? [];
   return (
     <section className="bo-panel bo-access-admin" onChangeCapture={invalidatePreview}>
-      <div className="bo-panel-header">
-        <h2>
-          Access profiles
-          <span className="bo-panel-badge">Scoped governance</span>
-        </h2>
-        <p className="bo-note">
-          Choose a person, assign an access profile and scope, then preview the change.
-        </p>
-      </div>
+      {!featureTemplate && (
+        <div className="bo-panel-header">
+          <h2>
+            Access profiles
+            <span className="bo-panel-badge">Scoped governance</span>
+          </h2>
+          <p className="bo-note">
+            Choose a person, assign an access profile and scope, then preview the change.
+          </p>
+        </div>
+      )}
       {error && (
         <p role="alert" className="bo-error">
           {error}
@@ -370,13 +414,30 @@ export function BusinessAdministration({
         )
       ) : (
         <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-          {!selectedPersonId && (
+          {employeeTemplate && (
+            <div className="bo-tabs" aria-label="Employee template settings">
+              <button
+                type="button"
+                aria-current={kind === 'PERSONAL_BASELINE' ? 'page' : undefined}
+                onClick={() => changeKind('PERSONAL_BASELINE')}
+              >
+                Default access
+              </button>
+              <button
+                type="button"
+                aria-current={kind === 'TEMPLATE_FEATURES' ? 'page' : undefined}
+                onClick={() => changeKind('TEMPLATE_FEATURES')}
+              >
+                Modules
+              </button>
+            </div>
+          )}
+          {!selectedPersonId && !featureTemplate && (
             <div className="bo-tabs">
               {[
                 ['RESPONSIBILITY', 'People & access'],
                 ['PROJECT', 'Projects'],
                 ['MEMBERSHIP', 'Memberships'],
-                ['PERSONAL_BASELINE', 'Employee baseline'],
               ].map(([k, label]) => (
                 <button
                   key={k}
@@ -695,7 +756,9 @@ export function BusinessAdministration({
                       : 'Add project'
                     : kind === 'MEMBERSHIP'
                       ? 'Project membership'
-                      : 'Employee baseline configuration'}
+                      : kind === 'TEMPLATE_FEATURES' && featureTemplate
+                        ? featureTemplateNames[featureTemplate] + ' modules'
+                        : 'Default employee access'}
               </h3>
               {kind === 'RESPONSIBILITY' && id && (
                 <button
@@ -707,9 +770,15 @@ export function BusinessAdministration({
                 </button>
               )}
             </div>
+            {kind === 'TEMPLATE_FEATURES' && !modulesAvailable && (
+              <p role="status">Apply database migration 121 to manage modules from templates.</p>
+            )}
             <form
               id="bo-access-assignment-form"
               className="bo-admin-form"
+              style={
+                kind === 'TEMPLATE_FEATURES' && !modulesAvailable ? { display: 'none' } : undefined
+              }
               onSubmit={e => {
                 e.preventDefault();
                 void prepare();
@@ -948,7 +1017,38 @@ export function BusinessAdministration({
                   )}
                 </>
               )}
-              {kind !== 'PERSONAL_BASELINE' ? (
+              {kind === 'TEMPLATE_FEATURES' ? (
+                <>
+                  <p className="bo-full bo-note">
+                    {employeeTemplate
+                      ? 'These modules become available to active employees with the required permissions.'
+                      : 'These modules become available to people with an effective assignment to this template and the required permissions.'}{' '}
+                    A module is available if any matching template enables it.
+                  </p>
+                  <label className="bo-check">
+                    <input
+                      type="checkbox"
+                      checked={moduleSettings.learning}
+                      onChange={e => {
+                        const learning = e.target.checked;
+                        setFeatures(current => ({ ...current, learning }));
+                      }}
+                    />
+                    Learn &amp; Grow
+                  </label>
+                  <label className="bo-check">
+                    <input
+                      type="checkbox"
+                      checked={moduleSettings.requests}
+                      onChange={e => {
+                        const requests = e.target.checked;
+                        setFeatures(current => ({ ...current, requests }));
+                      }}
+                    />
+                    Requests &amp; Incidents
+                  </label>
+                </>
+              ) : kind !== 'PERSONAL_BASELINE' ? (
                 <label className="bo-check">
                   <input
                     type="checkbox"
@@ -965,7 +1065,7 @@ export function BusinessAdministration({
                       checked={enabled}
                       onChange={e => setEnabled(e.target.checked)}
                     />{' '}
-                    Employee baseline
+                    Enable default employee access
                   </label>
                   <p className="bo-note">
                     Applies to {state.baselineAffectedPeople} active provisioned people and future
@@ -1026,16 +1126,18 @@ export function BusinessAdministration({
               </table>
             </div>
           )}
-          <details>
-            <summary>
-              Historical grants needing explicit review ({state.historicalGrantsForReview.length})
-            </summary>
-            <p>
-              These assignments are retained. Their presence does not enable an unsupported workflow
-              or widen Analytics.
-            </p>
-            <pre>{JSON.stringify(state.historicalGrantsForReview, null, 2)}</pre>
-          </details>
+          {!featureTemplate && (
+            <details>
+              <summary>
+                Historical grants needing explicit review ({state.historicalGrantsForReview.length})
+              </summary>
+              <p>
+                These assignments are retained. Their presence does not enable an unsupported
+                workflow or widen Analytics.
+              </p>
+              <pre>{JSON.stringify(state.historicalGrantsForReview, null, 2)}</pre>
+            </details>
+          )}
         </fieldset>
       )}
       {preview && (
@@ -1086,6 +1188,13 @@ export function BusinessAdministration({
             </section>
           </div>
           <h3>Affected actions</h3>
+          {typeof (preview.impact as { baselineAffectedPeople?: number }).baselineAffectedPeople ===
+            'number' && (
+            <p>
+              {(preview.impact as { baselineAffectedPeople: number }).baselineAffectedPeople} active
+              employees in this workspace
+            </p>
+          )}
           <ul>
             {((preview.impact as { actions?: string[] }).actions ?? []).map(action => (
               <li key={action}>{action}</li>
@@ -1156,6 +1265,9 @@ function AccessChangeSummary({ value, state }: { value: unknown; state?: Adminis
     effect: 'Effect',
     active: 'State',
     enabled: 'Employee baseline',
+    template: 'Template audience',
+    learning: 'Learn & Grow',
+    requests: 'Requests & Incidents',
     validUntil: 'Expires',
     valid_until: 'Expires',
     reason: 'Reason',
@@ -1197,15 +1309,17 @@ function AccessChangeSummary({ value, state }: { value: unknown; state?: Adminis
               ? 'Business Analytics'
               : raw === 'SYSTEM_ADMIN'
                 ? 'Admin'
-                : typeof raw === 'boolean'
-                  ? raw
-                    ? 'Enabled'
-                    : 'Disabled'
-                  : raw === null
-                    ? 'None'
-                    : key === 'kind' || key === 'scope_kind'
-                      ? organizationKindLabel(String(raw))
-                      : String(raw).replaceAll('_', ' '));
+                : raw === 'EMPLOYEE'
+                  ? 'Employee'
+                  : typeof raw === 'boolean'
+                    ? raw
+                      ? 'Enabled'
+                      : 'Disabled'
+                    : raw === null
+                      ? 'None'
+                      : key === 'kind' || key === 'scope_kind'
+                        ? organizationKindLabel(String(raw))
+                        : String(raw).replaceAll('_', ' '));
           return (
             <div key={key}>
               <dt>{labels[key]}</dt>

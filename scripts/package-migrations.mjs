@@ -41,6 +41,7 @@ const migrations = [
   [118, '118_skill_staleness_reminders.sql'],
   [119, '119_ai_token_budgets.sql'],
   [120, '120_profile_manager_projection.sql'],
+  [121, '121_template_feature_access.sql'],
 ];
 const literal = value => "N'" + value.replaceAll("'", "''") + "'";
 export function transactionMigration(
@@ -151,8 +152,9 @@ complete, run 04_091_search_people_administration.sql first.
 31. Apply 31_118_skill_staleness_reminders.sql after 117 before deploying scheduled skill reminders.
 32. Apply 32_119_ai_token_budgets.sql after 118 before deploying the token budget enforcement.
 33. Apply 33_120_profile_manager_projection.sql after 119 before using external employee profiles.
-34. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
-   request topic/recipient discovery, current assigned-manager review and People & Access search.
+34. Apply 34_121_template_feature_access.sql after 120 before configuring module access from templates.
+35. Deploy the matching application ZIP, restore traffic and verify SSO, scoped totals/export,
+   module audiences, request topic/recipient discovery, assigned-manager review and People & Access search.
 
 Publishing follows existing effective Business Analytics or Admin assignments. Select an eligible concrete audience when publishing.
 

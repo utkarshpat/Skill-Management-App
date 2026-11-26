@@ -1,10 +1,4 @@
-import {
-  can,
-  effectiveAccess,
-  workspaceFor,
-  type LocalAccessState,
-  type LocalPerson,
-} from '../access/index.js';
+import { can, workspaceFor, type LocalAccessState, type LocalPerson } from '../access/index.js';
 
 // Uses the same effective capability calculation as navigation. Labels never grant access.
 export function assistantCapabilities(state: LocalAccessState, person: LocalPerson) {
@@ -150,7 +144,7 @@ export function assistantCapabilities(state: LocalAccessState, person: LocalPers
         'A recommendation never verifies a skill. Changed access or reporting relationships can make response actions unavailable.',
       ],
     });
-  if (effectiveAccess(state, person, 'learning.recommend', 'DIRECT_REPORTS').allowed)
+  if (capabilities.learningRecommendations)
     guidance.push({
       action: 'Recommend learning to a current direct report',
       url: '/learning',

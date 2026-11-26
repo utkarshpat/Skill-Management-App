@@ -281,7 +281,7 @@ export function businessQuery(value: unknown): BusinessQuery {
 }
 export interface BusinessChange {
   revision: number;
-  kind: 'PROJECT' | 'MEMBERSHIP' | 'RESPONSIBILITY' | 'PERSONAL_BASELINE';
+  kind: 'PROJECT' | 'MEMBERSHIP' | 'RESPONSIBILITY' | 'PERSONAL_BASELINE' | 'TEMPLATE_FEATURES';
   id: string;
   payload: Record<string, unknown>;
 }
@@ -292,7 +292,9 @@ export function businessChange(value: unknown): BusinessChange {
   if (
     !Number.isSafeInteger(q.revision) ||
     Number(q.revision) < 1 ||
-    !['PROJECT', 'MEMBERSHIP', 'RESPONSIBILITY', 'PERSONAL_BASELINE'].includes(String(q.kind)) ||
+    !['PROJECT', 'MEMBERSHIP', 'RESPONSIBILITY', 'PERSONAL_BASELINE', 'TEMPLATE_FEATURES'].includes(
+      String(q.kind),
+    ) ||
     !q.payload ||
     typeof q.payload !== 'object' ||
     Array.isArray(q.payload)
@@ -371,6 +373,15 @@ export function businessChange(value: unknown): BusinessChange {
       reason,
       ...(issuerIds ? { issuerIds } : {}),
     };
+  } else if (q.kind === 'TEMPLATE_FEATURES') {
+    if (
+      typeof p.template !== 'string' ||
+      !['EMPLOYEE', 'BUSINESS_OPERATIONS', 'SYSTEM_ADMIN'].includes(p.template) ||
+      typeof p.learning !== 'boolean' ||
+      typeof p.requests !== 'boolean'
+    )
+      throw new AccessError(400, 'Choose a supported template and both module settings.');
+    payload = { template: p.template, learning: p.learning, requests: p.requests, reason };
   } else {
     if (typeof p.enabled !== 'boolean')
       throw new AccessError(400, 'Choose personal baseline state.');
@@ -391,6 +402,8 @@ export function previewBusiness(
   if (current.revision !== change.revision)
     throw new AccessError(409, 'Access changed. Reload before previewing.');
   const rows = (key: string) => (current[key] ?? []) as Record<string, unknown>[];
+  if (change.kind === 'TEMPLATE_FEATURES' && !Array.isArray(current.templateFeatures))
+    throw new AccessError(503, 'Template module settings require migration 121.');
   const issuerIds = change.payload.issuerIds as string[] | undefined;
   if (issuerIds && !Array.isArray(current.issuers))
     throw new AccessError(503, 'Issuer assignment editing requires migration 112.');
@@ -454,13 +467,22 @@ export function previewBusiness(
   const before =
     change.kind === 'PERSONAL_BASELINE'
       ? { enabled: current.personalBaseline }
-      : change.kind === 'MEMBERSHIP'
-        ? (rows('memberships').find(
-            m => m.personId === change.payload.personId && m.projectId === change.payload.projectId,
-          ) ?? null)
-        : (rows(change.kind === 'PROJECT' ? 'projects' : 'responsibilities').find(
-            row => row.id === change.id,
-          ) ?? null);
+      : change.kind === 'TEMPLATE_FEATURES'
+        ? (rows('templateFeatures').find(
+            feature => feature.template === change.payload.template,
+          ) ?? {
+            template: change.payload.template,
+            learning: false,
+            requests: false,
+          })
+        : change.kind === 'MEMBERSHIP'
+          ? (rows('memberships').find(
+              m =>
+                m.personId === change.payload.personId && m.projectId === change.payload.projectId,
+            ) ?? null)
+          : (rows(change.kind === 'PROJECT' ? 'projects' : 'responsibilities').find(
+              row => row.id === change.id,
+            ) ?? null);
   const actions =
     change.kind === 'RESPONSIBILITY'
       ? issuerIds?.length
@@ -479,7 +501,9 @@ export function previewBusiness(
             'Personal learning and participant requests/incidents',
             'Published skill catalogue',
           ]
-        : ['No new authority'];
+        : change.kind === 'TEMPLATE_FEATURES'
+          ? ['Learn & Grow', 'Requests & Incidents']
+          : ['No new authority'];
   return {
     receipt: createHash('sha256').update(JSON.stringify({ actor, current, change })).digest('hex'),
     change,
@@ -490,12 +514,20 @@ export function previewBusiness(
       binding: binding?.name,
       actions,
       baselineAffectedPeople:
-        change.kind === 'PERSONAL_BASELINE' ? current.baselineAffectedPeople : undefined,
+        change.kind === 'PERSONAL_BASELINE' ||
+        (change.kind === 'TEMPLATE_FEATURES' && change.payload.template === 'EMPLOYEE')
+          ? current.baselineAffectedPeople
+          : undefined,
     },
-    warnings: [
-      'Membership is separate from reporting and never grants authority.',
-      'Private drafts stay private. Approvals follow current manager or eligible Business Analytics coverage.',
-      'Existing unsupported role grants are retained for explicit review.',
-    ],
+    warnings:
+      change.kind === 'TEMPLATE_FEATURES'
+        ? [
+            'A module is available if any matching template enables it. Existing permissions and explicit denies still apply.',
+          ]
+        : [
+            'Membership is separate from reporting and never grants authority.',
+            'Private drafts stay private. Approvals follow current manager or eligible Business Analytics coverage.',
+            'Existing unsupported role grants are retained for explicit review.',
+          ],
   };
 }

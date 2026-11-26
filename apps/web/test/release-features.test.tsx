@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { notificationDestination } from '../src/notification-model';
-import { isSupportedWorkspacePath } from '../src/WorkspaceNavigation';
+import { isSupportedWorkspacePath, personalNavigationItems } from '../src/WorkspaceNavigation';
 
-test('the current release hides Phase 2 routes and notification actions', () => {
+test('module links follow runtime capabilities and authorized notification destinations', () => {
   for (const path of ['/learning', '/requests']) {
-    assert.equal(isSupportedWorkspacePath(path), false);
-    assert.equal(notificationDestination(path + '?record=example'), undefined);
+    assert.equal(isSupportedWorkspacePath(path), true);
+    assert.ok(notificationDestination(path));
   }
+  const initial = { ownProfile: true, ownSkills: true };
+  const pages = (capabilities: typeof initial & { learning?: boolean; requests?: boolean }) =>
+    personalNavigationItems(capabilities).map(item => item.href);
+  assert.ok(!pages(initial).includes('/learning'));
+  assert.ok(!pages(initial).includes('/requests'));
+  assert.ok(pages({ ...initial, learning: true }).includes('/learning'));
+  assert.ok(!pages({ ...initial, learning: true }).includes('/requests'));
   assert.equal(isSupportedWorkspacePath('/skill-reviews'), true);
 });

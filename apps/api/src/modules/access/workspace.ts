@@ -4,12 +4,14 @@ import {
   type LocalAccessState,
   type LocalPerson,
 } from './local-access-store.js';
-import { phaseTwoAvailable } from '../../shared/release-features.js';
+import { templateFeatureAvailable } from './business-policy.js';
+import { effectiveAccess } from './effective-access.js';
 
 // Navigation describes effective authority; it never grants that authority.
 // Future workflows remain explicitly unavailable until their services exist.
 export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
-  const phaseTwo = phaseTwoAvailable();
+  const learning = templateFeatureAvailable(person.business, 'learning');
+  const requests = templateFeatureAvailable(person.business, 'requests');
   const ownProfile = can(state, person, 'profile.view', true);
   const ownSkills = ownProfile && can(state, person, 'skill.view', true);
   const catalogue =
@@ -27,11 +29,15 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
     },
     capabilities: {
       requestProfileCorrection:
-        phaseTwo &&
+        requests &&
         ownProfile &&
         can(state, person, 'request.view', true) &&
         can(state, person, 'request.create', true),
-      requests: phaseTwo && (available('request.view') || available('incident.view')),
+      requests: requests && (available('request.view') || available('incident.view')),
+      learningRecommendations:
+        learning &&
+        ownProfile &&
+        effectiveAccess(state, person, 'learning.recommend', 'DIRECT_REPORTS').allowed,
       businessOperations: can(state, person, 'reports.view'),
       amendments: can(state, person, 'skill.catalogue.propose'),
       approveAmendments: can(state, person, 'request.approve'),
@@ -44,7 +50,7 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
       ownProfile,
       ownSkills,
       certifications: ownSkills,
-      learning: phaseTwo && can(state, person, 'learning.view', true),
+      learning: learning && can(state, person, 'learning.view', true),
       claimSkills:
         ownSkills && can(state, person, 'skill.claim', true) && can(state, person, 'skill.view'),
       reviewSkills: ownProfile && canReviewAssigned(state, person),
@@ -65,13 +71,13 @@ export function workspaceFor(state: LocalAccessState, person: LocalPerson) {
       {
         id: 'learning',
         label: 'Learning & development',
-        assigned: phaseTwo && available('learning.view'),
+        assigned: learning && available('learning.view'),
         implemented: true,
       },
       {
         id: 'requests',
         label: 'Requests & incidents',
-        assigned: phaseTwo && (available('request.view') || available('incident.view')),
+        assigned: requests && (available('request.view') || available('incident.view')),
         implemented: true,
       },
       {

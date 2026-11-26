@@ -1,6 +1,7 @@
 import {
   can,
   canReviewAssigned,
+  templateFeatureAvailable,
   type LocalAccessState,
   type LocalPerson,
 } from '../access/index.js';
@@ -46,6 +47,8 @@ export function dashboardPolicy(state: LocalAccessState, person: LocalPerson) {
   return JSON.stringify([
     person.active,
     canReviewAssigned(state, person),
+    templateFeatureAvailable(person.business, 'learning'),
+    templateFeatureAvailable(person.business, 'requests'),
     ...[
       'profile.view',
       'skill.view',
@@ -102,8 +105,14 @@ export function dashboardManifest(
 ) {
   const own = (code: string) => can(state, person, code, true);
   const skill = own('profile.view') && own('skill.view') && Boolean(sources.claims?.summary);
-  const learning = own('learning.view') && Boolean(sources.learning);
-  const requests = (own('request.view') || own('incident.view')) && Boolean(sources.workflows);
+  const learning =
+    templateFeatureAvailable(person.business, 'learning') &&
+    own('learning.view') &&
+    Boolean(sources.learning);
+  const requests =
+    templateFeatureAvailable(person.business, 'requests') &&
+    (own('request.view') || own('incident.view')) &&
+    Boolean(sources.workflows);
   const reviews =
     own('profile.view') &&
     canReviewAssigned(state, person) &&
@@ -500,6 +509,7 @@ export async function loadDashboardCard(
       },
     });
   if (
+    templateFeatureAvailable(person.business, 'learning') &&
     can(state, person, 'learning.view', true) &&
     can(state, person, 'learning.manage', true) &&
     sources.learning
@@ -513,7 +523,12 @@ export async function loadDashboardCard(
     });
   for (const kind of ['REQUEST', 'INCIDENT'] as const) {
     const code = kind.toLowerCase();
-    if (!sources.workflows || !can(state, person, code + '.view', true)) continue;
+    if (
+      !sources.workflows ||
+      !templateFeatureAvailable(person.business, 'requests') ||
+      !can(state, person, code + '.view', true)
+    )
+      continue;
     for (const status of ['SUBMITTED', 'IN_PROGRESS'] as const) {
       if (!can(state, person, code + (status === 'SUBMITTED' ? '.assign' : '.resolve'), true))
         continue;

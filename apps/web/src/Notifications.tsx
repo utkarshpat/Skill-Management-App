@@ -85,7 +85,7 @@ export function Notifications({ id }: { id: string }) {
           response = await authenticatedFetch(path, { signal: controller.signal });
         }
         if (!response.ok) {
-          if ([401, 403].includes(response.status)) {
+          if (!controller.signal.aborted && [401, 403].includes(response.status)) {
             setFeed(undefined);
             setFirstPage(undefined);
           }
@@ -160,7 +160,15 @@ export function Notifications({ id }: { id: string }) {
         ignoreEvent: event => event === publishedUpdate,
       },
     );
+    const refreshAccess = () => {
+      controller.abort();
+      setFeed(undefined);
+      setFirstPage(undefined);
+      setAttempt(n => n + 1);
+    };
+    window.addEventListener('workspace-access-updated', refreshAccess);
     return () => {
+      window.removeEventListener('workspace-access-updated', refreshAccess);
       stop();
       controller.abort();
     };

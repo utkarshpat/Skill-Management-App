@@ -858,7 +858,7 @@ test('assistant: workflow and deployment replies are displayed without code bloc
   const panel = page.getByRole('dialog', { name: 'AI assistant' }),
     input = panel.getByRole('textbox', { name: 'Message AI assistant' });
   await expect(
-    panel.getByText('App workflows, drafts & learning practice', { exact: true }),
+    panel.getByText('App workflows, drafts & workspace help', { exact: true }),
   ).toBeVisible();
   await input.fill('tum mujhe factorial ka js code do');
   await panel.getByRole('button', { name: 'Send AI message' }).click();

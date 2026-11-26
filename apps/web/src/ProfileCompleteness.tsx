@@ -1,5 +1,4 @@
 import { Link } from 'react-router';
-import { phaseTwoVisible } from './release-features';
 export interface ProfileCompletenessDetails {
   filled: number;
   total: number;
@@ -22,7 +21,7 @@ export function ProfileCompleteness({
   canRequest?: boolean;
 }) {
   const missing = details?.items.filter(item => item.state !== 'COMPLETE') ?? [];
-  const showCorrection = details && details.status !== 'COMPLETE' && phaseTwoVisible && canRequest;
+  const showCorrection = details && details.status !== 'COMPLETE' && canRequest;
   return (
     <section
       className="profile-information profile-completeness"

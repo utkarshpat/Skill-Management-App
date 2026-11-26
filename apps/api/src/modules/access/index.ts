@@ -20,4 +20,5 @@ export {
   actionRegistry,
 } from './effective-access.js';
 export { readActorAccess } from './actor-context.js';
+export { templateFeatureAvailable } from './business-policy.js';
 export type { PrimaryCapabilityDetails } from './primary-capability.js';

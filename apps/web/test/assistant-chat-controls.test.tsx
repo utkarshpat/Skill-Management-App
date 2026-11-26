@@ -53,16 +53,20 @@ const navigation = () => ({
   pages: grants ? [{ label: 'Requests', url: '/requests' }] : [],
   canReviewOwnSkill: false,
   canManageLearning: grants,
+  canDraftRequest: grants,
+  canDraftIncident: grants,
   canDraftAnnouncement: grants,
   canDraftAmendment: grants,
   status: { configured, provider: 'azure', mode: 'workflows' },
-  suggestions: [
-    {
-      label: 'Check request progress',
-      destination: '/requests',
-      prompt: 'Show my request progress',
-    },
-  ],
+  suggestions: grants
+    ? [
+        {
+          label: 'Check request progress',
+          destination: '/requests',
+          prompt: 'Show my request progress',
+        },
+      ]
+    : [],
 });
 beforeEach(async () => {
   artifact = undefined;
@@ -199,6 +203,7 @@ test('history resume keeps conversation identity, reports access reset and delet
 });
 
 test('history failure remains recoverable and unsent shortcut replacement requires a choice', async () => {
+  grants = true;
   await mount();
   historyFailure = true;
   await click('Recent AI chats');
@@ -314,6 +319,23 @@ test('assistant page action rechecks current permission and never navigates afte
   assert.match(document.body.textContent!, /Your chat stays here/);
 });
 
+test('open assistant removes request actions after workspace access changes', async () => {
+  grants = true;
+  await mount();
+  await replyWith('request_draft');
+  const actionLabels = () =>
+    [...document.querySelectorAll('button')].map(button => button.textContent);
+  assert.ok(actionLabels().includes('Open Requests'));
+  assert.match(document.body.textContent!, /Preview request draft/);
+
+  grants = false;
+  await act(async () => {
+    window.dispatchEvent(new window.Event('workspace-access-updated'));
+  });
+  assert.ok(!actionLabels().includes('Open Requests'));
+  assert.doesNotMatch(document.body.textContent!, /Preview request draft|Check request progress/);
+});
+
 test('assistant announcement action requires publishing access and rechecks it on click', async () => {
   await mount();
   artifact = {
@@ -403,6 +425,7 @@ test('only catalogue draft handoffs are available and current access is rechecke
 });
 
 test('request and incident drafts cannot open a composer after current options deny creation', async () => {
+  grants = true;
   await mount();
   for (const kind of ['request_draft', 'incident_draft'] as const) {
     await replyWith(kind);

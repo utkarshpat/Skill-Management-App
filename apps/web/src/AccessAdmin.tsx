@@ -3,6 +3,7 @@ import type { Decision } from './EffectiveAccess';
 import type { Employment } from './EmploymentDetails';
 import { SidebarNavigation } from './SidebarNavigation';
 import { TemplateCards } from './TemplateCards';
+import type { FeatureTemplate } from './business/BusinessAdministration';
 import { TemplatePermissionBundles } from './TemplatePermissionBundles';
 import './template-cards.css';
 import { Workspace, type WorkspaceState } from './Workspace';
@@ -153,7 +154,7 @@ export function AccessAdmin({
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [role, setRole] = useState<Role>(emptyRole);
-  const [editor, setEditor] = useState<'role'>(),
+  const [editor, setEditor] = useState<'role' | FeatureTemplate>(),
     [editorRevision, setEditorRevision] = useState(0);
   const [originalRole, setOriginalRole] = useState<Role>();
   const [needsTemplateRefresh, setNeedsTemplateRefresh] = useState(false);
@@ -785,6 +786,8 @@ export function AccessAdmin({
                   canManageScoped={Boolean(workspaceContext?.capabilities.businessAdministration)}
                   onAssignPerson={() => setTab('people')}
                   onScopedAssignments={() => navigate('/access?view=profiles')}
+                  onEditModules={template => setEditor(editor === template ? undefined : template)}
+                  featureEditor={editor === 'role' ? undefined : editor}
                   onAssignments={() => setTab('assignments')}
                   onEdit={item => {
                     setRole(structuredClone(item));
@@ -795,6 +798,17 @@ export function AccessAdmin({
                     setError('');
                   }}
                 />
+              )}
+              {!personalTitle && tab === 'roles' && scopedAccess && editor && editor !== 'role' && (
+                <Suspense fallback={<p role="status">Opening template settings…</p>}>
+                  <BusinessAdministration
+                    key={editor}
+                    featureTemplate={editor}
+                    onSaved={() => {
+                      void load().catch(err => setError(err.message));
+                    }}
+                  />
+                </Suspense>
               )}
               {compactPeople && (
                 <>

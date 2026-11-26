@@ -138,10 +138,13 @@ afterEach(async () => {
   mock.restoreAll();
 });
 after(closeBrowser);
-async function mount() {
+async function mount(employeeTemplate = false) {
   view = await render(
     <MemoryRouter>
-      <BusinessAdministration onSaved={value => contexts.push(value)} />
+      <BusinessAdministration
+        featureTemplate={employeeTemplate ? 'EMPLOYEE' : undefined}
+        onSaved={value => contexts.push(value)}
+      />
     </MemoryRouter>,
   );
   await settle();
@@ -310,9 +313,8 @@ test('unconfirmed responsibility saves retain the same assignment ID for explici
 
 test('employee baseline change is explicit and does not remove stored historical grants', async () => {
   state.historicalGrantsForReview = [{ id: 'historic-grant', personId: 'aditi' }];
-  await mount();
-  await click('Employee baseline');
-  await toggleLabel('Employee baseline');
+  await mount(true);
+  await toggleLabel('Enable default employee access');
   await fill('Reason', 'Review employee baseline activation.');
   await click('Preview change');
   assert.equal(previews[0].kind, 'PERSONAL_BASELINE');
@@ -322,6 +324,44 @@ test('employee baseline change is explicit and does not remove stored historical
   });
   assert.equal(saves.length, 0);
   assert.equal(state.historicalGrantsForReview.length, 1);
+});
+
+test('employee modules use separate switches and save only after an explicit preview', async () => {
+  state.templateFeatures = [];
+  await mount(true);
+  await click('Modules');
+  await toggleLabel('Learn & Grow');
+  await fill('Reason', 'Enable personal learning for active employees.');
+  await click('Preview change');
+  assert.equal(previews[0].kind, 'TEMPLATE_FEATURES');
+  assert.deepEqual(previews[0].payload, {
+    template: 'EMPLOYEE',
+    learning: true,
+    requests: false,
+    reason: 'Enable personal learning for active employees.',
+  });
+  assert.equal(saves.length, 0);
+  await click('Confirm & save', review());
+  assert.equal(saves[0].previewReceipt, 'current-business-receipt');
+});
+
+test('retrying a module change keeps another administrator’s update to the other switch', async () => {
+  state.templateFeatures = [];
+  await mount(true);
+  await click('Modules');
+  await toggleLabel('Learn & Grow');
+  await fill('Reason', 'Enable learning for active employees.');
+  await click('Preview change');
+  assert.equal(previews[0].payload.requests, false);
+
+  state.revision++;
+  state.templateFeatures = [{ template: 'EMPLOYEE', learning: false, requests: true }];
+  writeFailure = 409;
+  await click('Confirm & save', review());
+  await click('Preview change');
+  assert.equal(previews[1].revision, state.revision);
+  assert.equal(previews[1].payload.learning, true);
+  assert.equal(previews[1].payload.requests, true);
 });
 
 test('existing project deactivation previews its stable identity and leaves membership untouched on close', async () => {

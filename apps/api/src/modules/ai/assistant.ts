@@ -2,7 +2,7 @@ import type { BusinessStore, businessQuery } from '../business/index.js';
 import { readActorAccess } from '../access/index.js';
 import { completeWithinBudget, MemoryAiBudget, type AiBudget } from './budget.js';
 import { AccessError } from '../../shared/errors.js';
-import { phaseTwoAvailable } from '../../shared/release-features.js';
+import { templateFeatureAvailable } from '../access/index.js';
 import type { WorkflowStore } from '../workflows/index.js';
 import type { LearningStore } from '../learning/index.js';
 import type { AccessStore } from '../access/index.js';
@@ -412,6 +412,13 @@ export class AssistantService {
     )
       throw new AccessError(400, 'Enter up to 500 characters of facts for this action.');
     if (!this.workflows) throw new AccessError(503, 'Workflow storage is not configured.');
+    const checkModule = async () => {
+      const state = await readActorAccess(this.store, actor);
+      const person = state.people.find(p => p.id === actor && p.active);
+      if (!person || !templateFeatureAvailable(person.business, 'requests'))
+        throw new AccessError(403, 'Requests & Incidents is unavailable for your access.');
+    };
+    await checkModule();
     const allowed = (r: Awaited<ReturnType<WorkflowStore['detail']>>['record']) =>
       b.action === 'COMMENT'
         ? r.canComment
@@ -444,6 +451,7 @@ export class AssistantService {
     });
     const result = await this.chat(actor, { messages }, signal, { workflowDraft: true });
     signal.throwIfAborted();
+    await checkModule();
     const after = await this.workflows.detail(actor, b.id);
     if (!allowed(after.record)) throw new AccessError(403, 'Your action permission changed.');
     if (after.record.revision !== before.record.revision)
@@ -543,6 +551,8 @@ export class AssistantService {
           capabilities.pages.some(page => page.url === '/learning'),
         pages: capabilities.pages,
         canReviewOwnSkill: capabilities.canDraftOwnSkill,
+        canDraftRequest: capabilities.canDraftRequest,
+        canDraftIncident: capabilities.canDraftIncident,
         canDraftAnnouncement: await this.canDraftAnnouncement(actor),
         canDraftAmendment: capabilities.canDraftAmendment,
         suggestions: [
@@ -1151,7 +1161,10 @@ export class AssistantService {
         const outputCapabilities = assistantCapabilities(outputContext.state, outputContext.person);
         if (
           ((artifact.kind === 'practice_quiz' || artifact.kind === 'task_draft') &&
-            !phaseTwoAvailable()) ||
+            !templateFeatureAvailable(
+              outputContext.person.business,
+              workflowDraft ? 'requests' : 'learning',
+            )) ||
           (artifact.kind === 'amendment_draft' && !outputCapabilities.canDraftAmendment) ||
           (artifact.kind === 'demand_draft' && !outputCapabilities.canDraftDemand) ||
           (artifact.kind === 'request_draft' && !outputCapabilities.canDraftRequest) ||

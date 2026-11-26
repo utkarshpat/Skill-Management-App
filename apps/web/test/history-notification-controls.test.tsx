@@ -303,6 +303,23 @@ test('notification storage synchronization is isolated to the current person and
   assert.match(document.body.textContent!, /No notifications yet/);
 });
 
+test('workspace access changes refresh notifications and clear old module links', async () => {
+  view = await render(
+    <MemoryRouter>
+      <Notifications id="test-notifications" />
+    </MemoryRouter>,
+  );
+  await settle();
+  assert.match(document.body.textContent!, /Request updated|Learning plan updated/);
+  const previousReads = reads.length;
+  empty = true;
+  await act(async () => {
+    window.dispatchEvent(new window.Event('workspace-access-updated'));
+  });
+  assert.ok(reads.length > previousReads);
+  assert.doesNotMatch(document.body.textContent!, /Request updated|Learning plan updated/);
+});
+
 test('partial notification feed reports incomplete data without treating it as an empty success', async () => {
   partial = true;
   window.localStorage.setItem('skill-notifications-read:aditi', 'invalid-json');

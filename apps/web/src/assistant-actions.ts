@@ -1,5 +1,3 @@
-import { isPhaseTwoPage, phaseTwoVisible } from './release-features';
-
 export interface AssistantPage {
   label: string;
   url: string;
@@ -22,7 +20,6 @@ export function canonicalAssistantDestination(input: string): string | undefined
     return undefined;
   const path = parsed.pathname,
     query = parsed.searchParams;
-  if (!phaseTwoVisible && isPhaseTwoPage(path)) return undefined;
   const uuid = (value: string | null) =>
     Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value));
   if (path === '/requests' && query.size === 1 && uuid(query.get('record')))

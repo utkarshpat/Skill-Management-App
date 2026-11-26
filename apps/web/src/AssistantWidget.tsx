@@ -5,7 +5,6 @@ import {
   type AnnouncementDraftInput,
 } from './announcement-draft-handoff';
 import { readApiResponse } from './api-response';
-import { phaseTwoVisible } from './release-features';
 import { AssistantSession } from './assistant-session';
 import { assistantContextPrompt } from './assistant-context';
 import {
@@ -84,6 +83,8 @@ export function AssistantWidget() {
     pages: AssistantPage[];
     canReviewOwnSkill: boolean;
     canManageLearning?: boolean;
+    canDraftRequest?: boolean;
+    canDraftIncident?: boolean;
     canDraftAnnouncement?: boolean;
     canDraftAmendment?: boolean;
     suggestions?: { label: string; destination: string; prompt: string }[];
@@ -416,24 +417,34 @@ export function AssistantWidget() {
   }, [messages, busy, open, showHistory]);
   useEffect(() => {
     if (!open) return;
-    const pending = new AbortController();
-    setNavigation({ pages: [], canReviewOwnSkill: false });
-    authenticatedFetch('/api/assistant/navigation', { signal: pending.signal })
-      .then(async response => {
-        const body = await response.json().catch(() => undefined);
-        if (!response.ok || !body) throw Error('Assistant actions could not be verified.');
-        if (!pending.signal.aborted) {
-          setNavigation(body);
-          setStatus(body.status);
-        }
-      })
-      .catch(err => {
-        if (!pending.signal.aborted) {
-          setStatus(undefined);
-          setError(err.message);
-        }
-      });
-    return () => pending.abort();
+    let controller: AbortController | undefined;
+    const refreshNavigation = () => {
+      controller?.abort();
+      const pending = new AbortController();
+      controller = pending;
+      setNavigation({ pages: [], canReviewOwnSkill: false });
+      authenticatedFetch('/api/assistant/navigation', { signal: pending.signal })
+        .then(async response => {
+          const body = await response.json().catch(() => undefined);
+          if (!response.ok || !body) throw Error('Assistant actions could not be verified.');
+          if (!pending.signal.aborted) {
+            setNavigation(body);
+            setStatus(body.status);
+          }
+        })
+        .catch(err => {
+          if (!pending.signal.aborted) {
+            setStatus(undefined);
+            setError(err.message);
+          }
+        });
+    };
+    refreshNavigation();
+    window.addEventListener('workspace-access-updated', refreshNavigation);
+    return () => {
+      window.removeEventListener('workspace-access-updated', refreshNavigation);
+      controller?.abort();
+    };
   }, [open, location.pathname, location.search]);
   async function action(
     destination: string,
@@ -760,8 +771,8 @@ export function AssistantWidget() {
             <div className="assistant-header-title">
               <strong>Skill Genie</strong>
               <small>
-                {phaseTwoVisible
-                  ? 'App workflows, drafts & learning practice'
+                {navigation.pages.some(page => page.url === '/requests' || page.url === '/learning')
+                  ? 'App workflows, drafts & workspace help'
                   : 'Skills, approvals & workspace help'}
               </small>
             </div>
@@ -897,7 +908,12 @@ export function AssistantWidget() {
                         ? draft => void reviewAnnouncement(draft)
                         : undefined
                     }
-                    onReviewRequest={draft => void reviewRequest(draft)}
+                    onReviewRequest={
+                      (message.artifact.kind === 'request_draft' && navigation.canDraftRequest) ||
+                      (message.artifact.kind === 'incident_draft' && navigation.canDraftIncident)
+                        ? draft => void reviewRequest(draft)
+                        : undefined
+                    }
                     onReviewPlan={
                       navigation.canManageLearning === true
                         ? draft => void reviewPlan(draft)

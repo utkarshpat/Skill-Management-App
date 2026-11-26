@@ -405,6 +405,12 @@ export function effectiveAccess(
   if (!implemented) reasonCode = 'UNAVAILABLE';
   else if (!Number.isFinite(at.getTime())) reasonCode = 'INVALID_TIME';
   else if (!person.active) reasonCode = 'INACTIVE_ACTOR';
+  else if (
+    person.business?.requestsEnabled === false &&
+    (action.startsWith('incident.') ||
+      (action.startsWith('request.') && action !== 'request.approve'))
+  )
+    reasonCode = 'UNAVAILABLE';
   else if (context === 'DIRECT_REPORTS' && !['skill.verify', 'learning.recommend'].includes(action))
     reasonCode = 'UNSUPPORTED_SCOPE';
   else if (context === 'WORKSPACE' && action === 'learning.recommend')

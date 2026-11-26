@@ -62,6 +62,7 @@ export function SkillReviews({
   compactEmpty = false,
   teamContent,
   recommendationContent,
+  learningRecommendations = phaseTwoVisible,
 }: {
   unified?: boolean;
   queueContent?: ReactNode;
@@ -69,6 +70,7 @@ export function SkillReviews({
   compactEmpty?: boolean;
   teamContent?: ReactNode;
   recommendationContent?: ReactNode;
+  learningRecommendations?: boolean;
 } = {}) {
   const [params, setParams] = useSearchParams(),
     [view, setView] = useState<'queue' | 'team' | 'recommendations'>('queue');
@@ -242,7 +244,7 @@ export function SkillReviews({
           Team analytics
         </button>
       )}
-      {data?.canRecommend && (phaseTwoVisible || recommendationContent) && (
+      {data?.canRecommend && (learningRecommendations || recommendationContent) && (
         <button
           aria-pressed={view === 'recommendations'}
           onClick={() => changeView('recommendations')}
@@ -671,7 +673,7 @@ export function SkillReviews({
       {navigation}
       {view === 'recommendations' && data?.canRecommend ? (
         <>
-          {phaseTwoVisible && <Recommendations sentOnly />}
+          {learningRecommendations && <Recommendations sentOnly />}
           {recommendationContent}
         </>
       ) : view === 'team' && data?.canViewTeam ? (

@@ -1,6 +1,6 @@
 {
   "version": "2026-11-20",
-  "revision": "ee89f8d674a0ed5b",
+  "revision": "0b62441a932ad708",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -122,7 +122,8 @@
       "117_employee_excel_import.sql",
       "118_skill_staleness_reminders.sql",
       "119_ai_token_budgets.sql",
-      "120_profile_manager_projection.sql"
+      "120_profile_manager_projection.sql",
+      "121_template_feature_access.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -7408,6 +7409,60 @@
         ],
         "indexes": [],
         "domain": "AI & budget"
+      },
+      "AccessTemplateFeature": {
+        "source": "121_template_feature_access.sql",
+        "columns": {
+          "account_id": {
+            "type": "uniqueidentifier",
+            "nullable": false,
+            "declaration": "account_id uniqueidentifier NOT NULL REFERENCES dbo.AccessWorkspace(account_id)",
+            "source": "121_template_feature_access.sql"
+          },
+          "template": {
+            "type": "varchar(24)",
+            "nullable": false,
+            "declaration": "template varchar(24) NOT NULL CHECK (template IN ('EMPLOYEE','BUSINESS_OPERATIONS','SYSTEM_ADMIN'))",
+            "source": "121_template_feature_access.sql"
+          },
+          "learning_enabled": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "learning_enabled bit NOT NULL",
+            "source": "121_template_feature_access.sql"
+          },
+          "requests_enabled": {
+            "type": "bit",
+            "nullable": false,
+            "declaration": "requests_enabled bit NOT NULL",
+            "source": "121_template_feature_access.sql"
+          }
+        },
+        "pk": [
+          "account_id",
+          "template"
+        ],
+        "unique": [],
+        "fks": [
+          {
+            "columns": [
+              "account_id"
+            ],
+            "target": "AccessWorkspace",
+            "targetColumns": [
+              "account_id"
+            ],
+            "source": "121_template_feature_access.sql"
+          }
+        ],
+        "constraints": [
+          {
+            "sql": "PRIMARY KEY (account_id, template)",
+            "source": "121_template_feature_access.sql"
+          }
+        ],
+        "indexes": [],
+        "domain": "Access & organization"
       }
     },
     "views": {
@@ -8177,7 +8232,7 @@
       "name": "AccessCan",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@person uniqueidentifier,@permission varchar(100),@own bit)\nRETURNS bit",
-      "source": "database/migrations/060_business_operations.sql"
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "ReadAccessWorkspace",
@@ -8273,25 +8328,25 @@
       "name": "ReadOwnLearningPlans",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/014_employee_learning.sql"
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "ChangeOwnLearningPlan",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@plan_id uniqueidentifier,@expected_revision int,@action varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/016_learning_skill_mapping.sql"
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "OwnLearningPractice",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@plan_id uniqueidentifier,@task_id uniqueidentifier,@action varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/017_learning_practice.sql"
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "RecoverOwnLearningPlan",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@plan_id uniqueidentifier,@expected_revision int,@payload nvarchar(max)",
-      "source": "database/migrations/018_learning_recovery.sql"
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "WorkflowCanView",
@@ -8345,13 +8400,13 @@
       "name": "RecommendationCan",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@sender uniqueidentifier,@person uniqueidentifier)\nRETURNS bit",
-      "source": "database/migrations/037_recommendation_permission_contract.sql"
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "LearningRecommendations",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@action varchar(20),@payload nvarchar(max)",
-      "source": "database/migrations/038_recommendation_recipient_discovery.sql"
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "AiRequestBudget",
@@ -8369,7 +8424,7 @@
       "name": "ReadOwnGrowthClaims",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
-      "source": "database/migrations/047_bounded_growth_claims.sql"
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "ReadActorAccessContext",
@@ -8513,7 +8568,7 @@
       "name": "BusinessProjection",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@actor uniqueidentifier) RETURNS nvarchar(max)",
-      "source": "database/migrations/089_portfolio_business_scopes.sql"
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "BusinessContext",
@@ -8525,13 +8580,13 @@
       "name": "BusinessAdministration",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@person_id uniqueidentifier=NULL",
-      "source": "database/migrations/112_business_issuer_coverage.sql"
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "SaveBusinessChange",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,@kind varchar(30),@id uniqueidentifier,@payload nvarchar(max)",
-      "source": "database/migrations/112_business_issuer_coverage.sql"
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "BusinessDashboard",
@@ -8686,8 +8741,8 @@
     {
       "name": "WorkflowTopicCan",
       "kind": "FUNCTION",
-      "signature": "(@account uniqueidentifier,@actor uniqueidentifier,@kind varchar(8),@category varchar(24)) RETURNS bit",
-      "source": "database/migrations/090_workflow_topic_recipients.sql"
+      "signature": "(\n @account uniqueidentifier,@actor uniqueidentifier,@kind varchar(8),@category varchar(24)\n) RETURNS bit",
+      "source": "database/migrations/121_template_feature_access.sql"
     },
     {
       "name": "ReadPeopleAdministration",
@@ -8874,6 +8929,18 @@
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier",
       "source": "database/migrations/120_profile_manager_projection.sql"
+    },
+    {
+      "name": "TemplateFeatureAudience",
+      "kind": "FUNCTION",
+      "signature": "(\n @account uniqueidentifier, @actor uniqueidentifier, @template varchar(24)\n) RETURNS bit",
+      "source": "database/migrations/121_template_feature_access.sql"
+    },
+    {
+      "name": "TemplateFeatureAllowed",
+      "kind": "FUNCTION",
+      "signature": "(\n @account uniqueidentifier, @actor uniqueidentifier, @feature varchar(12)\n) RETURNS bit",
+      "source": "database/migrations/121_template_feature_access.sql"
     }
   ],
   "groups": {
@@ -8897,6 +8964,7 @@
     "Access & organization": [
       "AccessWorkspace",
       "AccessRuntimeAccount",
+      "AccessTemplateFeature",
       "AccountRole",
       "AccessPerson",
       "AccountRolePermission",

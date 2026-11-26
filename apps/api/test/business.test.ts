@@ -154,6 +154,130 @@ test('business filters are bounded, reject forged authority, invalid dates and i
     assert.throws(() => businessQuery(q));
   assert.equal(businessQuery({ validity: '15_30', minRank: 3, maxRank: 3 }).validity, '15_30');
 });
+test('template module settings have independent, receipt-bound previews', () => {
+  const current = { revision: 1, baselineAffectedPeople: 12, templateFeatures: [] };
+  const input = {
+    kind: 'TEMPLATE_FEATURES',
+    id: '11111111-1111-4111-8111-111111111111',
+    revision: 1,
+    payload: { template: 'EMPLOYEE', learning: true, requests: false, reason: 'Enable learning' },
+  };
+  const reviewed = previewBusiness(actor, current, businessChange(input));
+  assert.deepEqual(reviewed.before, { template: 'EMPLOYEE', learning: false, requests: false });
+  assert.equal(reviewed.impact.baselineAffectedPeople, 12);
+  const scoped = businessChange({
+    ...input,
+    payload: { ...input.payload, template: 'SYSTEM_ADMIN' },
+  });
+  assert.notEqual(previewBusiness(actor, current, scoped).receipt, reviewed.receipt);
+  assert.throws(() => previewBusiness(actor, { ...current, revision: 2 }, scoped), { status: 409 });
+  assert.throws(
+    () => businessChange({ ...input, payload: { ...input.payload, template: 'MANAGER' } }),
+    { status: 400 },
+  );
+});
+
+test('workspace exposes each template module only when its effective availability allows it', () => {
+  const current = state();
+  const viewer = current.people[0];
+  viewer.business = { ...viewer.business!, learningEnabled: true, requestsEnabled: false };
+  assert.equal(workspaceFor(current, viewer).capabilities.learning, true);
+  assert.equal(workspaceFor(current, viewer).capabilities.requests, false);
+  viewer.business = { ...viewer.business, learningEnabled: false, requestsEnabled: true };
+  assert.equal(workspaceFor(current, viewer).capabilities.learning, false);
+  assert.equal(workspaceFor(current, viewer).capabilities.requests, true);
+});
+
+test('template module switches agree across direct API access, Genie actions and notifications', async t => {
+  const current = state();
+  const viewer = current.people[0];
+  const access = {
+    snapshot: () => structuredClone(current),
+    person: () => viewer,
+    save: async () => current,
+  };
+  const notification = (id: string, href: string) => ({
+    id,
+    href,
+    at: '2026-11-26T10:00:00Z',
+    title: id,
+    body: id,
+  });
+  const server = createApp({
+    verify: async () => ({ tenantId: actor, objectId: actor }),
+    resolveAccess: async () => actor,
+    profile: async () => undefined,
+    access,
+    assistant: new AssistantService(access, undefined, undefined),
+    learning: {
+      read: async () => ({ plans: [], canManage: true }),
+      change: async () => assert.fail('Learning should never write in this test.'),
+    },
+    workflows: {
+      options: async () => ({
+        canRequest: true,
+        canIncident: true,
+        categories: [],
+        recipients: [],
+      }),
+      list: async () => ({ items: [], total: 0, page: 1, pageSize: 25 }),
+      detail: async () => assert.fail('Workflow detail should not be called.'),
+      notifications: async () => [notification('workflow', '/requests')],
+      change: async () => assert.fail('Workflow should never write in this test.'),
+    },
+    recommendations: {
+      read: async () => [],
+      options: async () => [],
+      send: async () => assert.fail('Learning recommendation should not be sent.'),
+      respond: async () => assert.fail('Learning recommendation should not be changed.'),
+      notifications: async () => [notification('learning', '/learning')],
+    },
+    certificationRecommendations: {
+      read: async () => [],
+      people: async () => [],
+      send: async () => assert.fail('Certification recommendation should not be sent.'),
+      respond: async () => assert.fail('Certification recommendation should not be changed.'),
+      analytics: async () => ({}),
+      notifications: async () => [notification('certificate', '/my-skills')],
+    },
+  }).listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const root = `http://127.0.0.1:${(server.address() as { port: number }).port}/api`;
+  const get = (path: string) =>
+    fetch(root + path, { headers: { Authorization: 'Bearer trusted' } });
+  for (const learningEnabled of [true, false]) {
+    const requestsEnabled = !learningEnabled;
+    viewer.business = { ...viewer.business!, learningEnabled, requestsEnabled };
+    const [workspace, learning, requests, assistant, notifications] = await Promise.all(
+      [
+        '/workspace',
+        '/learning',
+        '/workflows/options',
+        '/assistant/navigation',
+        '/notifications',
+      ].map(get),
+    );
+    assert.equal(learning.status, learningEnabled ? 200 : 403);
+    assert.equal(requests.status, requestsEnabled ? 200 : 403);
+    assert.equal(workspace.status, 200);
+    const { capabilities } = await workspace.json();
+    assert.equal(capabilities.learning, learningEnabled);
+    assert.equal(capabilities.requests, requestsEnabled);
+    assert.equal(assistant.status, 200);
+    const navigation = await assistant.json();
+    assert.equal(navigation.canManageLearning, learningEnabled);
+    assert.equal(navigation.canDraftRequest, requestsEnabled);
+    assert.equal(navigation.canDraftIncident, requestsEnabled);
+    assert.equal(notifications.status, 200);
+    const { items } = await notifications.json();
+    assert.deepEqual(items.map((item: { id: string }) => item.id).sort(), [
+      'certificate',
+      learningEnabled ? 'learning' : 'workflow',
+    ]);
+  }
+});
+
 test('personal baseline survives title/role changes; denies and inactive status still win', () => {
   const s = state(),
     p = s.people[0];

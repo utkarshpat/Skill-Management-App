@@ -9,7 +9,8 @@ let slots = [],
   effects = [],
   calls = [],
   events = [],
-  handler;
+  handler,
+  featureTemplate;
 const react = {
   useState(initial) {
     const i = cursor++;
@@ -89,7 +90,7 @@ const Component = new Function(source + '\nreturn BusinessAdministration;')();
 const render = () => {
   cursor = 0;
   effects = [];
-  const tree = Component({ onSaved: () => {} });
+  const tree = Component({ onSaved: () => {}, featureTemplate });
   for (const effect of effects) effect();
   return tree;
 };
@@ -149,11 +150,12 @@ const tick = async () => {
   await new Promise(setImmediate);
   await new Promise(setImmediate);
 };
-async function initialize(fetcher) {
+async function initialize(fetcher, template) {
   slots = [];
   calls = [];
   events = [];
   handler = fetcher;
+  featureTemplate = template;
   render();
   await tick();
   return render();
@@ -168,7 +170,7 @@ let resolvePreview;
 tree = await initialize(async url =>
   url.endsWith('/preview') ? await new Promise(r => (resolvePreview = r)) : json(snapshot),
 );
-button(tree, 'Employee baseline').props.onClick();
+button(tree, 'Projects').props.onClick();
 tree = render();
 nodes(tree)
   .find(n => n.type === 'textarea')
@@ -179,7 +181,7 @@ nodes(tree)
   .props.onSubmit({ preventDefault() {} });
 await tick();
 tree = render();
-button(tree, 'Projects').props.onClick();
+button(tree, 'Memberships').props.onClick();
 tree = render();
 const submitted = JSON.parse(calls.find(c => c[0].endsWith('/preview'))[2]);
 resolvePreview(
@@ -200,17 +202,17 @@ results.previewRace = {
     .map(text),
   latePreviewKind: submitted.kind,
 };
-assert.ok(button(tree, 'Projects').props['aria-current'] === 'page');
+assert.ok(button(tree, 'Memberships').props['aria-current'] === 'page');
 assert.ok(!nodes(tree).some(n => n.type === FormDialog));
-assert.equal(submitted.kind, 'PERSONAL_BASELINE');
+assert.equal(submitted.kind, 'PROJECT');
 let conflictReads = 0;
-tree = await initialize(async url =>
-  url.endsWith('/preview')
-    ? json({ error: { message: 'Access changed. Reload before previewing.' } }, 409)
-    : json({ ...snapshot, revision: 7 + conflictReads++ }),
+tree = await initialize(
+  async url =>
+    url.endsWith('/preview')
+      ? json({ error: { message: 'Access changed. Reload before previewing.' } }, 409)
+      : json({ ...snapshot, revision: 7 + conflictReads++ }),
+  'EMPLOYEE',
 );
-button(tree, 'Employee baseline').props.onClick();
-tree = render();
 for (let i = 0; i < 2; i++) {
   nodes(tree)
     .find(n => n.type === 'form')
@@ -245,9 +247,7 @@ tree = await initialize(async (url, options) => {
   return ++reads === 1
     ? json(snapshot)
     : json({ error: { message: 'Administration denied.' } }, 403);
-});
-button(tree, 'Employee baseline').props.onClick();
-tree = render();
+}, 'EMPLOYEE');
 nodes(tree)
   .find(n => n.type === 'form')
   .props.onSubmit({ preventDefault() {} });
@@ -274,15 +274,17 @@ console.log('Administration regression scenarios passed');
 
 // Initial transient load can be retried, and the baseline draft survives a conflict reload.
 let initialReads = 0;
-tree = await initialize(async () =>
-  ++initialReads === 1 ? json({ error: { message: 'Temporary failure' } }, 503) : json(snapshot),
+tree = await initialize(
+  async () =>
+    ++initialReads === 1 ? json({ error: { message: 'Temporary failure' } }, 503) : json(snapshot),
+  'EMPLOYEE',
 );
 assert.ok(button(tree, 'Retry loading configuration'));
 button(tree, 'Retry loading configuration').props.onClick();
 tree = render();
 await tick();
 tree = render();
-assert.ok(button(tree, 'Employee baseline'));
+assert.ok(button(tree, 'Default access'));
 // A lost save response retains the ID even when the server already committed the change.
 let saveAttempts = 0;
 tree = await initialize(async (url, options) => {

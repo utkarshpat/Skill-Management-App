@@ -1,5 +1,5 @@
 import { verifyRequestIdentity } from '../../shared/request-identity.js';
-import { readActorAccess } from '../access/index.js';
+import { readActorAccess, templateFeatureAvailable } from '../access/index.js';
 import { raw, type Express } from 'express';
 import { uploadChunk } from './upload-chunks.js';
 import { streamPrivateFile } from '../../shared/private-file-response.js';
@@ -198,7 +198,12 @@ export function registerClaimsRoutes(
         throw new AccessError(400, 'Journey scope is resolved from your own learning plans.');
       const state = await readActorAccess(dependencies?.access ?? store, res.locals.claimActor),
         person = state?.people.find(p => p.id === res.locals.claimActor && p.active);
-      if (!state || !person || !can(state, person, 'learning.view', true))
+      if (
+        !state ||
+        !person ||
+        !templateFeatureAvailable(person.business, 'learning') ||
+        !can(state, person, 'learning.view', true)
+      )
         throw new AccessError(403, 'Learning access is unavailable.');
       if (!dependencies?.claims?.journey)
         throw new AccessError(503, 'Growth claim status is unavailable.');

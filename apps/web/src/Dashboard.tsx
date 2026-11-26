@@ -1,6 +1,5 @@
 import { readApiResponse } from './api-response';
 import { publishWorkspaceFreshness } from './workspace-freshness';
-import { isPhaseTwoPage, phaseTwoVisible } from './release-features';
 import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router';
 import { ArrowUpRight, Bell, BookOpen, Clock3, Inbox, Layers, Sparkles } from 'lucide-react';
@@ -72,9 +71,8 @@ const read = <T,>(response: Response) =>
   readApiResponse<T>(response, 'This information could not be loaded.');
 function openDashboardAssistant(card: Card['id']) {
   const prompts = {
-    attention: phaseTwoVisible
-      ? 'Help me prioritize my assigned requests, approvals and overdue learning tasks. Retrieve current authorized facts before advising.'
-      : 'Help me prioritize my pending approvals. Retrieve current authorized facts before advising.',
+    attention:
+      'Help me prioritize work that needs my attention. Retrieve current authorized facts before advising.',
     learning:
       'Help me choose the next task in my own learning plans. Check my current progress and backlog first.',
     capability:
@@ -167,10 +165,7 @@ export function Dashboard() {
       c.abort();
     };
   }, [attempt]);
-  const quickActions =
-    manifest?.actions.filter(
-      action => phaseTwoVisible || !isPhaseTwoPage(action.href.split('?')[0]),
-    ) ?? [];
+  const quickActions = manifest?.actions ?? [];
   const hasSkillQuickAction = quickActions.some(action => action.href === '/my-skills?action=add');
   const renderCard = (card: Card) => (
     <DashboardCard
@@ -183,9 +178,8 @@ export function Dashboard() {
       onAccessChanged={() => setAttempt(n => n + 1)}
     />
   );
-  const leftCards = phaseTwoVisible
-    ? (manifest?.cards.filter(card => card.id === 'learning' || card.id === 'requests') ?? [])
-    : [];
+  const leftCards =
+    manifest?.cards.filter(card => card.id === 'learning' || card.id === 'requests') ?? [];
   const rightCards = manifest?.cards.filter(card => card.id === 'capability') ?? [];
   return (
     <div className="dashboard-workspace">

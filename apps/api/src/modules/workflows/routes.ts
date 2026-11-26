@@ -1,5 +1,5 @@
 import { verifyRequestIdentity } from '../../shared/request-identity.js';
-import { readActorAccess } from '../access/index.js';
+import { readActorAccess, templateFeatureAvailable } from '../access/index.js';
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import type { AccessStore } from '../access/index.js';
@@ -45,7 +45,8 @@ export function registerWorkflowRoutes(
       actor = await deps!.resolveAccess!(identity);
     }
     const state = await readActorAccess(deps?.access ?? store, actor);
-    if (!state?.people.some(p => p.id === actor && p.active)) {
+    const person = state?.people.find(p => p.id === actor && p.active);
+    if (!person || !templateFeatureAvailable(person.business, 'requests')) {
       res.sendStatus(403);
       return;
     }

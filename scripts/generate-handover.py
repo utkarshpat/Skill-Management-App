@@ -198,7 +198,7 @@ for name in ['SkillEvidence','CertificationImage','CapabilityIntakeFiles','Capab
 
 groups={
  'Identity foundation':['SchemaMigration','Account','DeliveryUnit','Department','Team','AppUser','TeamMembership','ReportingRelationship','AppRole','Permission','UserRole','RolePermission','UserPermission','AuditEvent','CompanyAuthState'],
- 'Access & organization':['AccessWorkspace','AccessRuntimeAccount','AccountRole','AccessPerson','AccountRolePermission','AccessPersonRole','AccessPersonOverride','AccessAudit','AccessOrgNode','AccessOrgAssignment','AccessImplementedScope','CapabilityLeadGrant','CapabilityLeadScope','BusinessResponsibilityIssuerScope'],
+ 'Access & organization':['AccessWorkspace','AccessRuntimeAccount','AccessTemplateFeature','AccountRole','AccessPerson','AccountRolePermission','AccessPersonRole','AccessPersonOverride','AccessAudit','AccessOrgNode','AccessOrgAssignment','AccessImplementedScope','CapabilityLeadGrant','CapabilityLeadScope','BusinessResponsibilityIssuerScope'],
  'Skills & claims':['SkillCatalogue','ProficiencyFramework','ProficiencyLevel','SkillDefinitionVersion','SkillVersionCriterion','SkillClaimDraft','SkillClaimNotification','SkillClaimEvidence','SkillStalenessReminder','CertificationRecord','CertificationReminderSchedule','CertificationExpiryReminder','CertificationImageRecord','CapabilitySubmission','CapabilitySubmissionItem','SkillCertificationLink','CapabilityIntakeFile'],
  'Learning & recommendations':['LearningPlan','LearningSession','LearningQuiz','LearningAttempt','LearningRecommendation','LearningRecommendationEvent','CertificationRecommendation','CertificationRecommendationEvent'],
  'Requests & incidents':['WorkflowRecord','WorkflowEvent'],

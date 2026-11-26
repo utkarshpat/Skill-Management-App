@@ -138,7 +138,7 @@ test('access profiles: explicit project scope preview precedes a receipt-bound s
   expect(writes[0].previewReceipt).toBe('reviewed-preview-1');
   expect(writes[0].revision).toBe(4);
 });
-test('access profiles: project, membership, baseline and historical grants remain separate controls', async ({
+test('access profiles: projects, memberships and historical grants stay in scoped access', async ({
   page,
 }) => {
   await profiles(page);
@@ -156,12 +156,7 @@ test('access profiles: project, membership, baseline and historical grants remai
     ids.person,
   );
   await expect(page.getByRole('combobox', { name: 'Project', exact: false })).toHaveValue(project);
-  await page.getByRole('button', { name: 'Employee baseline', exact: true }).click();
-  await expect(
-    page.getByRole('checkbox', { name: 'Employee baseline', exact: true }),
-  ).toBeChecked();
-  await page.getByRole('checkbox', { name: 'Employee baseline', exact: true }).uncheck();
-  await expect(page.getByText(/Existing explicit denies remain effective/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Employee baseline', exact: true })).toHaveCount(0);
   await page.getByText('Historical grants needing explicit review (1)', { exact: true }).click();
   await expect(page.getByText(/Unsupported historical grant requires review/)).toBeVisible();
 });

@@ -1,5 +1,5 @@
 import { verifyRequestIdentity } from '../../shared/request-identity.js';
-import { readActorAccess } from '../access/index.js';
+import { readActorAccess, templateFeatureAvailable } from '../access/index.js';
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
 import { can, type AccessStore } from '../access/index.js';
@@ -48,6 +48,7 @@ export function registerLearningRoutes(
     if (
       !state ||
       !person ||
+      !templateFeatureAvailable(person.business, 'learning') ||
       !can(state, person, 'learning.view', true) ||
       (req.method !== 'GET' && !can(state, person, 'learning.manage', true))
     ) {

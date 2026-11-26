@@ -151,6 +151,9 @@ if (command !== 'check' && command !== 'migrate') {
           [116, '116_readable_activity_records.sql'],
           [117, '117_employee_excel_import.sql'],
           [118, '118_skill_staleness_reminders.sql'],
+          [119, '119_ai_token_budgets.sql'],
+          [120, '120_profile_manager_projection.sql'],
+          [121, '121_template_feature_access.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

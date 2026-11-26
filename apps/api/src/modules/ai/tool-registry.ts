@@ -13,6 +13,7 @@ import {
   permissionCatalogue,
   actionRegistry,
   effectiveAccessSummary,
+  templateFeatureAvailable,
   type AccessStore,
   type LocalAccessState,
   type LocalPerson,
@@ -1457,10 +1458,14 @@ export class ToolRegistry {
   }
 
   permits(state: LocalAccessState, person: LocalPerson, name: string): boolean {
+    const tool = this.entries.get(name);
+    const page = tool?.source.url?.split('?')[0];
     return (
       person.active &&
       can(state, person, 'profile.view', true) &&
-      Boolean(this.entries.get(name)?.permission(state, person))
+      (page !== '/learning' || templateFeatureAvailable(person.business, 'learning')) &&
+      (page !== '/requests' || templateFeatureAvailable(person.business, 'requests')) &&
+      Boolean(tool?.permission(state, person))
     );
   }
 
