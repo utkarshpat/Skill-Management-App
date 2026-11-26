@@ -1,6 +1,6 @@
 {
   "version": "2026-11-20",
-  "revision": "42fa86f9dac956eb",
+  "revision": "ff0103132fa9ca68",
   "basis": "Repository source and migrations; not live introspection",
   "schema": {
     "migrations": [
@@ -123,7 +123,8 @@
       "118_skill_staleness_reminders.sql",
       "119_ai_token_budgets.sql",
       "120_profile_manager_projection.sql",
-      "121_template_feature_access.sql"
+      "121_template_feature_access.sql",
+      "122_employee_default_permissions.sql"
     ],
     "tables": {
       "SchemaMigration": {
@@ -1316,6 +1317,12 @@
             "nullable": false,
             "declaration": "personal_baseline_enabled bit NOT NULL CONSTRAINT DF_PersonalBaseline DEFAULT 0",
             "source": "060_business_operations.sql"
+          },
+          "employee_permissions": {
+            "type": "nvarchar(max)",
+            "nullable": true,
+            "declaration": "employee_permissions nvarchar(max) NULL",
+            "source": "122_employee_default_permissions.sql"
           }
         },
         "pk": [
@@ -8232,7 +8239,7 @@
       "name": "AccessCan",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@person uniqueidentifier,@permission varchar(100),@own bit)\nRETURNS bit",
-      "source": "database/migrations/121_template_feature_access.sql"
+      "source": "database/migrations/122_employee_default_permissions.sql"
     },
     {
       "name": "ReadAccessWorkspace",
@@ -8568,7 +8575,7 @@
       "name": "BusinessProjection",
       "kind": "FUNCTION",
       "signature": "(@account uniqueidentifier,@actor uniqueidentifier) RETURNS nvarchar(max)",
-      "source": "database/migrations/121_template_feature_access.sql"
+      "source": "database/migrations/122_employee_default_permissions.sql"
     },
     {
       "name": "BusinessContext",
@@ -8580,13 +8587,13 @@
       "name": "BusinessAdministration",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@person_id uniqueidentifier=NULL",
-      "source": "database/migrations/121_template_feature_access.sql"
+      "source": "database/migrations/122_employee_default_permissions.sql"
     },
     {
       "name": "SaveBusinessChange",
       "kind": "PROCEDURE",
       "signature": "@account_id uniqueidentifier,@actor_id uniqueidentifier,@expected_revision int,@kind varchar(30),@id uniqueidentifier,@payload nvarchar(max)",
-      "source": "database/migrations/121_template_feature_access.sql"
+      "source": "database/migrations/122_employee_default_permissions.sql"
     },
     {
       "name": "BusinessDashboard",
@@ -8941,6 +8948,12 @@
       "kind": "FUNCTION",
       "signature": "(\n @account uniqueidentifier, @actor uniqueidentifier, @feature varchar(12)\n) RETURNS bit",
       "source": "database/migrations/121_template_feature_access.sql"
+    },
+    {
+      "name": "DefaultEmployeePermissions",
+      "kind": "FUNCTION",
+      "signature": "() RETURNS nvarchar(512)",
+      "source": "database/migrations/122_employee_default_permissions.sql"
     }
   ],
   "groups": {

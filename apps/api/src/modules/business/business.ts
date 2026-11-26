@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { AccessError } from '../../shared/errors.js';
 import { phaseTwoAvailable } from '../../shared/release-features.js';
+import { employeePermissionOptions, requiredEmployeePermission } from '../access/index.js';
 /** SQL JSON omits null collections when a subquery has no rows. */
 export function normalizeBusinessCollections<T extends object>(value: T, keys: string[]): T {
   const result = { ...value };
@@ -394,6 +395,24 @@ export function businessChange(value: unknown): BusinessChange {
     if (typeof p.enabled !== 'boolean')
       throw new AccessError(400, 'Choose personal baseline state.');
     payload = { enabled: p.enabled, reason };
+    const employeePermissions = p.employeePermissions;
+    if (employeePermissions !== undefined) {
+      if (
+        !Array.isArray(employeePermissions) ||
+        !employeePermissions.includes(requiredEmployeePermission) ||
+        new Set(employeePermissions).size !== employeePermissions.length ||
+        employeePermissions.some(
+          permission => !employeePermissionOptions.some(option => option.code === permission),
+        )
+      )
+        throw new AccessError(
+          400,
+          'Choose supported employee permissions and keep View own profile.',
+        );
+      payload.employeePermissions = employeePermissionOptions
+        .filter(option => employeePermissions.includes(option.code))
+        .map(option => option.code);
+    }
   }
   return {
     revision: Number(q.revision),
@@ -412,6 +431,8 @@ export function previewBusiness(
   const rows = (key: string) => (current[key] ?? []) as Record<string, unknown>[];
   if (change.kind === 'TEMPLATE_FEATURES' && !Array.isArray(current.templateFeatures))
     throw new AccessError(503, 'Template module settings require migration 121.');
+  if ('employeePermissions' in change.payload && !Array.isArray(current.employeePermissions))
+    throw new AccessError(503, 'Editing default employee permissions requires migration 122.');
   const endsTemplateFallback =
     change.kind === 'TEMPLATE_FEATURES' && templateFeatureFallbackActive(current);
   const employeeFallback = endsTemplateFallback && change.payload.template === 'EMPLOYEE';
@@ -477,7 +498,12 @@ export function previewBusiness(
     throw new AccessError(409, 'Project name already exists.');
   const before =
     change.kind === 'PERSONAL_BASELINE'
-      ? { enabled: current.personalBaseline }
+      ? {
+          enabled: current.personalBaseline,
+          ...(Array.isArray(current.employeePermissions) && {
+            employeePermissions: current.employeePermissions,
+          }),
+        }
       : change.kind === 'TEMPLATE_FEATURES'
         ? (rows('templateFeatures').find(
             feature => feature.template === change.payload.template,
@@ -507,11 +533,25 @@ export function previewBusiness(
               : []),
           ]
       : change.kind === 'PERSONAL_BASELINE'
-        ? [
-            'Own profile, skills and certification claims',
-            'Personal learning and participant requests/incidents',
-            'Published skill catalogue',
-          ]
+        ? Array.isArray(change.payload.employeePermissions)
+          ? employeePermissionOptions
+              .filter(
+                ({ code }) =>
+                  (Array.isArray(current.employeePermissions) &&
+                    current.employeePermissions.includes(code)) !==
+                  (change.payload.employeePermissions as string[]).includes(code),
+              )
+              .map(
+                ({ code, label }) =>
+                  ((change.payload.employeePermissions as string[]).includes(code)
+                    ? 'Add '
+                    : 'Remove ') + label,
+              )
+          : [
+              'Own profile, skills and certification claims',
+              'Personal learning and participant requests/incidents',
+              'Published skill catalogue',
+            ]
         : change.kind === 'TEMPLATE_FEATURES'
           ? ['Learn & Grow', 'Requests & Incidents']
           : ['No new authority'];
@@ -528,7 +568,14 @@ export function previewBusiness(
       .digest('hex'),
     change,
     before,
-    after: { id: change.id, ...change.payload },
+    after: {
+      id: change.id,
+      ...(change.kind === 'PERSONAL_BASELINE' &&
+        Array.isArray(current.employeePermissions) && {
+          employeePermissions: current.employeePermissions,
+        }),
+      ...change.payload,
+    },
     impact: {
       person: person?.name,
       binding: binding?.name,

@@ -209,6 +209,43 @@ test('workspace exposes each template module only when its effective availabilit
   assert.equal(workspaceFor(current, viewer).capabilities.requests, true);
 });
 
+test('employee permission edits preserve required profile and change only the baseline grant', () => {
+  const current = state();
+  const viewer = current.people[0];
+  const payload = {
+    enabled: true,
+    employeePermissions: ['profile.view', 'skill.view'],
+    reason: 'Remove default claims',
+  };
+  const input = { kind: 'PERSONAL_BASELINE', id: scope, revision: 1, payload };
+  const change = businessChange(input);
+  const reviewed = previewBusiness(
+    actor,
+    {
+      revision: 1,
+      personalBaseline: true,
+      employeePermissions: ['profile.view', 'skill.view', 'skill.claim'],
+    },
+    change,
+  );
+  assert.deepEqual(reviewed.impact.actions, ['Remove Submit skill and certification claims']);
+  for (const employeePermissions of [
+    [],
+    ['profile.view', 'users.manage'],
+    ['profile.view', 'profile.view'],
+  ])
+    assert.throws(
+      () => businessChange({ ...input, payload: { ...payload, employeePermissions } }),
+      { status: 400 },
+    );
+  assert.equal(workspaceFor(current, viewer).capabilities.claimSkills, true);
+  viewer.business!.employeePermissions = payload.employeePermissions;
+  assert.equal(effectiveAccess(current, viewer, 'profile.view').allowed, true);
+  assert.equal(effectiveAccess(current, viewer, 'skill.claim').allowed, false);
+  viewer.overrides = [{ permission: 'skill.claim', effect: 'ALLOW', scope: 'OWN' }];
+  assert.equal(effectiveAccess(current, viewer, 'skill.claim').allowed, true);
+});
+
 test('template module switches agree across direct API access, Genie actions and notifications', async t => {
   const originalFlag = process.env.PHASE_TWO_ENABLED;
   t.after(() => {

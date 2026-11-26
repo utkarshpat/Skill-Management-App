@@ -327,6 +327,7 @@ function evaluateAccess(
   }[] = [
     ...(person.business?.personalBaseline &&
     personalBaselinePermissions.has(action) &&
+    (person.business.employeePermissions?.includes(action) ?? true) &&
     (context === 'OWN' || action === 'skill.view')
       ? [
           {

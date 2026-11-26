@@ -2,7 +2,7 @@ import { verifyRequestIdentity } from '../../shared/request-identity.js';
 import { streamPrivateFile } from '../../shared/private-file-response.js';
 import type { Express } from 'express';
 import type { Identity, DevelopmentSessions } from '../identity/index.js';
-import { readActorAccess, type AccessStore } from '../access/index.js';
+import { employeePermissionOptions, readActorAccess, type AccessStore } from '../access/index.js';
 import { AccessError } from '../../shared/errors.js';
 import {
   businessQuery,
@@ -232,6 +232,9 @@ export function registerBusinessRoutes(
       const savedAdministration = await deps!.business!.administration(actor, personId);
       const administration = {
         ...savedAdministration,
+        ...(Array.isArray(savedAdministration.employeePermissions) && {
+          employeePermissionOptions,
+        }),
         templateFeatureFallbackActive: templateFeatureFallbackActive(savedAdministration),
       };
       if (!deps?.leadAdministration) {

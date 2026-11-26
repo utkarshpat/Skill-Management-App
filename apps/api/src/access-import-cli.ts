@@ -36,7 +36,7 @@ try {
       await new sql.Request(transaction)
         .input('account', sql.UniqueIdentifier, accountId)
         .input('revision', sql.Int, state.revision + 1)
-        .query('INSERT dbo.AccessWorkspace VALUES(@account,@revision);');
+        .query('INSERT dbo.AccessWorkspace(account_id,revision) VALUES(@account,@revision);');
       for (const role of state.roles) {
         await new sql.Request(transaction)
           .input('account', sql.UniqueIdentifier, accountId)

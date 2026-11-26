@@ -345,6 +345,28 @@ test('employee modules use separate switches and save only after an explicit pre
   assert.equal(saves[0].previewReceipt, 'current-business-receipt');
 });
 
+test('employee permissions support add and remove while keeping own profile required', async () => {
+  state.employeePermissions = ['profile.view', 'skill.view'];
+  state.employeePermissionOptions = [
+    { code: 'profile.view', label: 'View own profile', required: true },
+    { code: 'skill.view', label: 'View published skills', required: false },
+    { code: 'request.create', label: 'Create requests', required: false },
+  ];
+  await mount(true);
+  const required = [...document.querySelectorAll('button')].find(
+    button => button.textContent === 'Required',
+  );
+  assert.equal(required?.disabled, true);
+  await click('Remove View published skills');
+  await click('Add Create requests');
+  await fill('Reason', 'Update default employee grants.');
+  await click('Preview change');
+  assert.deepEqual(previews[0].payload.employeePermissions, ['profile.view', 'request.create']);
+  assert.equal(saves.length, 0);
+  await click('Confirm & save', review());
+  assert.equal(saves[0].previewReceipt, 'current-business-receipt');
+});
+
 test('first Employee module save starts from the current workspace-wide defaults', async () => {
   state.templateFeatures = [];
   state.templateFeatureFallbackActive = true;

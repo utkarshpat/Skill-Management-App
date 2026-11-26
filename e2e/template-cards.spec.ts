@@ -37,6 +37,12 @@ test('templates show Employee, Business Analytics and Admin and create/edit cust
         revision: 7,
         personalBaseline: true,
         baselineAffectedPeople: 2,
+        employeePermissions: ['profile.view', 'skill.view'],
+        employeePermissionOptions: [
+          { code: 'profile.view', label: 'View own profile', required: true },
+          { code: 'skill.view', label: 'View published skills', required: false },
+          { code: 'skill.claim', label: 'Submit skill and certification claims', required: false },
+        ],
         templateFeatures: [],
         projects: [],
         memberships: [],
@@ -66,9 +72,13 @@ test('templates show Employee, Business Analytics and Admin and create/edit cust
   await expect(cards.getByRole('heading', { name: '3 templates' })).toBeVisible();
   await expect(cards.locator('article')).toHaveCount(3);
   await cards.getByRole('button', { name: 'Edit Employee access' }).click();
+  await expect(page.getByRole('button', { name: 'Required', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Remove View published skills' }).click();
+  await expect(page.getByRole('button', { name: 'Add View published skills' })).toBeVisible();
+  await page.getByRole('button', { name: 'Add Submit skill and certification claims' }).click();
   await expect(
-    page.getByRole('checkbox', { name: 'Enable default employee access' }),
-  ).toBeChecked();
+    page.getByRole('button', { name: 'Remove Submit skill and certification claims' }),
+  ).toBeVisible();
   await expect(page.getByText(/Existing explicit denies remain effective/)).toBeVisible();
   await page.getByRole('button', { name: 'Modules', exact: true }).click();
   await expect(page.getByRole('checkbox', { name: 'Learn & Grow' })).not.toBeChecked();

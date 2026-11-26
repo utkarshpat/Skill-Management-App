@@ -154,6 +154,7 @@ if (command !== 'check' && command !== 'migrate') {
           [119, '119_ai_token_budgets.sql'],
           [120, '120_profile_manager_projection.sql'],
           [121, '121_template_feature_access.sql'],
+          [122, '122_employee_default_permissions.sql'],
         ] as const) {
           const transaction = new sql.Transaction(pool);
           await transaction.begin();

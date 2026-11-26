@@ -10,6 +10,8 @@ import './business-administration.css';
 interface Administration {
   revision: number;
   personalBaseline: boolean;
+  employeePermissions?: string[];
+  employeePermissionOptions?: { code: string; label: string; required: boolean }[];
   baselineAffectedPeople: number;
   templateFeatures?: { template: FeatureTemplate; learning: boolean; requests: boolean }[];
   templateFeatureFallbackActive?: boolean;
@@ -116,7 +118,8 @@ export function BusinessAdministration({
     [active, setActive] = useState(true),
     [until, setUntil] = useState(''),
     [reason, setReason] = useState(''),
-    [enabled, setEnabled] = useState(true),
+    [enabledDraft, setEnabledDraft] = useState<boolean>(),
+    [permissionEdits, setPermissionEdits] = useState<Record<string, boolean>>({}),
     [features, setFeatures] = useState<Partial<{ learning: boolean; requests: boolean }>>({}),
     [busy, setBusy] = useState(false),
     [preview, setPreview] = useState<{
@@ -128,8 +131,7 @@ export function BusinessAdministration({
       warnings: string[];
     }>(),
     guard = useRef(false),
-    previewRequest = useRef<AbortController | undefined>(undefined),
-    baselineInitialized = useRef(false);
+    previewRequest = useRef<AbortController | undefined>(undefined);
   const invalidatePreview = () => {
     previewRequest.current?.abort();
     setPreview(undefined);
@@ -149,13 +151,7 @@ export function BusinessAdministration({
         readApiResponse<Administration>(r, 'Project and access configuration is unavailable.'),
       )
       .then(v => {
-        if (!abort.signal.aborted) {
-          setState(v);
-          if (!baselineInitialized.current) {
-            setEnabled(v.personalBaseline);
-            baselineInitialized.current = true;
-          }
-        }
+        if (!abort.signal.aborted) setState(v);
       })
       .catch(e => {
         if (!abort.signal.aborted) {
@@ -238,7 +234,20 @@ export function BusinessAdministration({
             }
           : kind === 'TEMPLATE_FEATURES'
             ? { template: featureTemplate, ...moduleSettings, reason }
-            : { enabled, reason };
+            : {
+                enabled: baselineEnabled,
+                ...(employeePermissions && { employeePermissions }),
+                reason,
+              };
+  const employeePermissions = state?.employeePermissionOptions
+    ?.filter(
+      ({ code, required }) =>
+        required || (permissionEdits[code] ?? state.employeePermissions?.includes(code)),
+    )
+    .map(({ code }) => code);
+  const baselineEnabled =
+    Boolean(employeePermissions && state?.personalBaseline) ||
+    (enabledDraft ?? state?.personalBaseline ?? false);
   const savedModules = state?.templateFeatures?.find(
     features => features.template === featureTemplate,
   );
@@ -334,6 +343,14 @@ export function BusinessAdministration({
         'Change could not be saved.',
       );
       setPreview(undefined);
+      if (preview.change.kind === 'PERSONAL_BASELINE' && employeePermissions) {
+        setState(
+          current =>
+            current && { ...current, personalBaseline: baselineEnabled, employeePermissions },
+        );
+        setPermissionEdits({});
+        setEnabledDraft(undefined);
+      }
       if (preview.change.kind === 'TEMPLATE_FEATURES' && featureTemplate) {
         setState(current =>
           current?.templateFeatures
@@ -1070,19 +1087,64 @@ export function BusinessAdministration({
                 </label>
               ) : (
                 <>
-                  <label className="bo-check">
-                    <input
-                      type="checkbox"
-                      checked={enabled}
-                      onChange={e => setEnabled(e.target.checked)}
-                    />{' '}
-                    Enable default employee access
-                  </label>
+                  {(!employeePermissions || !state.personalBaseline) && (
+                    <label className="bo-check">
+                      <input
+                        type="checkbox"
+                        checked={baselineEnabled}
+                        onChange={e => setEnabledDraft(e.target.checked)}
+                      />{' '}
+                      Enable default employee access
+                    </label>
+                  )}
                   <p className="bo-note">
                     Applies to {state.baselineAffectedPeople} active provisioned people and future
                     provisioned employees. Existing explicit denies remain effective. Role names and
                     designation do not affect this baseline.
                   </p>
+                  {!employeePermissions && employeeTemplate && (
+                    <p className="bo-full bo-note">
+                      Apply database migration 122 to edit individual Employee permissions.
+                    </p>
+                  )}
+                  {employeePermissions && (
+                    <div className="bo-full">
+                      <h4>Employee permissions</h4>
+                      <p className="bo-note">
+                        Add or remove default grants. Module availability is configured separately.
+                      </p>
+                      <ul className="bo-employee-permissions">
+                        {state.employeePermissionOptions?.map(({ code, label, required }) => {
+                          const included = employeePermissions.includes(code);
+                          return (
+                            <li key={code}>
+                              <span>{label}</span>
+                              {required ? (
+                                <button type="button" className="secondary-button" disabled>
+                                  Required
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="secondary-button"
+                                  aria-label={(included ? 'Remove ' : 'Add ') + label}
+                                  onClick={() => {
+                                    invalidatePreview();
+                                    setPermissionEdits(current => ({
+                                      ...current,
+                                      [code]: !included,
+                                    }));
+                                  }}
+                                >
+                                  {included ? 'Remove' : 'Add'}
+                                </button>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
                 </>
               )}
               <label className="bo-full">
@@ -1276,6 +1338,7 @@ function AccessChangeSummary({ value, state }: { value: unknown; state?: Adminis
     effect: 'Effect',
     active: 'State',
     enabled: 'Employee baseline',
+    employeePermissions: 'Employee permissions',
     template: 'Template audience',
     learning: 'Learn & Grow',
     requests: 'Requests & Incidents',
@@ -1314,6 +1377,15 @@ function AccessChangeSummary({ value, state }: { value: unknown; state?: Adminis
                 : 'All issuers'
               : undefined;
           const text =
+            (key === 'employeePermissions' && Array.isArray(raw)
+              ? raw
+                  .map(
+                    code =>
+                      state?.employeePermissionOptions?.find(option => option.code === code)
+                        ?.label ?? String(code),
+                  )
+                  .join(', ')
+              : undefined) ??
             issuerCoverage ??
             resolved ??
             (raw === 'BUSINESS_OPERATIONS'

@@ -1,4 +1,5 @@
 import { phaseTwoAvailable } from '../../shared/release-features.js';
+import { permissionCatalogue } from './access-catalogue.js';
 
 /** Account-bound SQL projection. These summaries never authorize a resource or write. */
 export interface BusinessScope {
@@ -13,6 +14,7 @@ export interface BusinessScope {
 }
 export interface BusinessProjection {
   personalBaseline: boolean;
+  employeePermissions?: string[];
   learningEnabled?: boolean;
   requestsEnabled?: boolean;
   systemAdmin: boolean;
@@ -53,6 +55,14 @@ export const personalBaselinePermissions = new Set([
   'incident.assign',
   'incident.resolve',
 ]);
+export const requiredEmployeePermission = 'profile.view';
+export const employeePermissionOptions = permissionCatalogue
+  .filter(([code]) => personalBaselinePermissions.has(code))
+  .map(([code, label]) => ({
+    code,
+    label: code === requiredEmployeePermission ? 'View own profile' : label,
+    required: code === requiredEmployeePermission,
+  }));
 export const systemAdminPermissions = new Set([
   'permissions.manage',
   'users.manage',
