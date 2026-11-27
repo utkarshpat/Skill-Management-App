@@ -218,6 +218,13 @@ test('employee permission edits preserve required profile and change only the ba
     reason: 'Remove default claims',
   };
   const input = { kind: 'PERSONAL_BASELINE', id: scope, revision: 1, payload };
+  const existing = [
+    'profile.view',
+    'skill.view',
+    'skill.claim',
+    'learning.view',
+    'learning.manage',
+  ];
   const change = businessChange(input);
   const reviewed = previewBusiness(
     actor,
@@ -229,6 +236,38 @@ test('employee permission edits preserve required profile and change only the ba
     change,
   );
   assert.deepEqual(reviewed.impact.actions, ['Remove Submit skill and certification claims']);
+  const settings = { revision: 1, personalBaseline: true, employeePermissions: existing };
+  const withDependencies = previewBusiness(
+    actor,
+    settings,
+    businessChange({
+      ...input,
+      payload: {
+        ...payload,
+        employeePermissions: ['profile.view', 'skill.claim', 'learning.manage'],
+      },
+    }),
+  );
+  assert.match(
+    withDependencies.warnings.join(' '),
+    /Skills & Certifications.*ability to submit claims/,
+  );
+  assert.match(
+    withDependencies.warnings.join(' '),
+    /certification recommendations, even if Learn & Grow is off/,
+  );
+  assert.throws(
+    () =>
+      previewBusiness(
+        actor,
+        settings,
+        businessChange({
+          ...input,
+          payload: { ...payload, employeePermissions: [...existing].reverse() },
+        }),
+      ),
+    { status: 400, message: 'Change at least one Employee setting before previewing.' },
+  );
   for (const employeePermissions of [
     [],
     ['profile.view', 'users.manage'],
@@ -740,8 +779,16 @@ test('HTTP preview and execution bind actor and reject forged receipts and chang
     revision: 1,
     kind: 'PERSONAL_BASELINE',
     id: scope,
-    payload: { enabled: true, reason: 'QA baseline' },
+    payload: { enabled: false, reason: 'QA baseline' },
   };
+  const noChange = { ...body, payload: { ...body.payload, enabled: true } };
+  for (const path of ['/administration/preview', '/administration'])
+    assert.equal(
+      (await fetch(root + path, { method: 'POST', headers, body: JSON.stringify(noChange) }))
+        .status,
+      400,
+    );
+  assert.equal(saved, 0);
   const preview = await fetch(root + '/administration/preview', {
     method: 'POST',
     headers,

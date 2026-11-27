@@ -213,6 +213,10 @@ tree = await initialize(
       : json({ ...snapshot, revision: 7 + conflictReads++ }),
   'EMPLOYEE',
 );
+nodes(tree)
+  .find(n => n.type === 'input' && n.props.type === 'checkbox')
+  .props.onChange({ target: { checked: false } });
+tree = render();
 for (let i = 0; i < 2; i++) {
   nodes(tree)
     .find(n => n.type === 'form')
@@ -248,6 +252,10 @@ tree = await initialize(async (url, options) => {
     ? json(snapshot)
     : json({ error: { message: 'Administration denied.' } }, 403);
 }, 'EMPLOYEE');
+nodes(tree)
+  .find(n => n.type === 'input' && n.props.type === 'checkbox')
+  .props.onChange({ target: { checked: false } });
+tree = render();
 nodes(tree)
   .find(n => n.type === 'form')
   .props.onSubmit({ preventDefault() {} });

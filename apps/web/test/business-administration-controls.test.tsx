@@ -357,9 +357,17 @@ test('employee permissions support add and remove while keeping own profile requ
     button => button.textContent === 'Required',
   );
   assert.equal(required?.disabled, true);
+  await fill('Reason', 'Update default employee grants.');
+  const previewButton = [...document.querySelectorAll('button')].find(
+    button => button.textContent === 'Preview change',
+  );
+  assert.equal(previewButton?.disabled, true);
+  await click('Remove View published skills');
+  assert.equal(previewButton?.disabled, false);
+  await click('Add View published skills');
+  assert.equal(previewButton?.disabled, true);
   await click('Remove View published skills');
   await click('Add Create requests');
-  await fill('Reason', 'Update default employee grants.');
   await click('Preview change');
   assert.deepEqual(previews[0].payload.employeePermissions, ['profile.view', 'request.create']);
   assert.equal(saves.length, 0);

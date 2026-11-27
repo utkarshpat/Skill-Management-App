@@ -433,6 +433,64 @@ export function previewBusiness(
     throw new AccessError(503, 'Template module settings require migration 121.');
   if ('employeePermissions' in change.payload && !Array.isArray(current.employeePermissions))
     throw new AccessError(503, 'Editing default employee permissions requires migration 122.');
+  const baselineActions: string[] = [];
+  const baselineWarnings: string[] = [];
+  if (change.kind === 'PERSONAL_BASELINE') {
+    const enabledChanged = current.personalBaseline !== change.payload.enabled;
+    const before = new Set(
+      Array.isArray(current.employeePermissions)
+        ? current.employeePermissions
+        : employeePermissionOptions.map(option => option.code),
+    );
+    const after = Array.isArray(change.payload.employeePermissions)
+      ? new Set(change.payload.employeePermissions)
+      : before;
+    const edited = employeePermissionOptions.filter(
+      ({ code }) => before.has(code) !== after.has(code),
+    );
+    if (!enabledChanged && edited.length === 0)
+      throw new AccessError(400, 'Change at least one Employee setting before previewing.');
+    if (enabledChanged)
+      baselineActions.push(
+        change.payload.enabled
+          ? 'Enable default employee access'
+          : 'Disable default employee access',
+      );
+    baselineActions.push(
+      ...edited.map(({ code, label }) => (after.has(code) ? 'Add ' : 'Remove ') + label),
+    );
+    const losesDefault = (code: string) =>
+      current.personalBaseline === true &&
+      before.has(code) &&
+      (!change.payload.enabled || !after.has(code));
+    if (losesDefault('profile.view'))
+      baselineWarnings.push(
+        'Employees who rely on the default profile grant may lose workspace access.',
+      );
+    if (losesDefault('skill.view'))
+      baselineWarnings.push(
+        'Employees who rely on the default skills grant may lose Skills & Certifications, the published skill catalogue and the ability to submit claims.',
+      );
+    if (losesDefault('learning.view'))
+      baselineWarnings.push(
+        'Employees who rely on the default learning view grant may lose learning plan access and certification recommendations, even if Learn & Grow is off.',
+      );
+    if (losesDefault('learning.manage') && !losesDefault('learning.view'))
+      baselineWarnings.push(
+        'Employees who rely on the default learning management grant may lose the ability to manage plans or respond to certification recommendations.',
+      );
+    if (losesDefault('request.view'))
+      baselineWarnings.push(
+        'Employees who rely on the default request view grant may lose the ability to view, create, assign or resolve requests.',
+      );
+    if (losesDefault('incident.view'))
+      baselineWarnings.push(
+        'Employees who rely on the default incident view grant may lose the ability to view, report, assign or resolve incidents.',
+      );
+    baselineWarnings.push(
+      'Separate grants can preserve access. Existing explicit denies still apply.',
+    );
+  }
   const endsTemplateFallback =
     change.kind === 'TEMPLATE_FEATURES' && templateFeatureFallbackActive(current);
   const employeeFallback = endsTemplateFallback && change.payload.template === 'EMPLOYEE';
@@ -533,25 +591,7 @@ export function previewBusiness(
               : []),
           ]
       : change.kind === 'PERSONAL_BASELINE'
-        ? Array.isArray(change.payload.employeePermissions)
-          ? employeePermissionOptions
-              .filter(
-                ({ code }) =>
-                  (Array.isArray(current.employeePermissions) &&
-                    current.employeePermissions.includes(code)) !==
-                  (change.payload.employeePermissions as string[]).includes(code),
-              )
-              .map(
-                ({ code, label }) =>
-                  ((change.payload.employeePermissions as string[]).includes(code)
-                    ? 'Add '
-                    : 'Remove ') + label,
-              )
-          : [
-              'Own profile, skills and certification claims',
-              'Personal learning and participant requests/incidents',
-              'Published skill catalogue',
-            ]
+        ? baselineActions
         : change.kind === 'TEMPLATE_FEATURES'
           ? ['Learn & Grow', 'Requests & Incidents']
           : ['No new authority'];
@@ -588,19 +628,21 @@ export function previewBusiness(
           : undefined,
     },
     warnings:
-      change.kind === 'TEMPLATE_FEATURES'
-        ? [
-            ...(endsTemplateFallback
-              ? [
-                  'This first save replaces workspace-wide module availability with template settings. Only modules enabled by a saved matching template will remain available. Existing records are retained.',
-                ]
-              : []),
-            'A module is available if any matching template enables it. Existing permissions and explicit denies still apply.',
-          ]
-        : [
-            'Membership is separate from reporting and never grants authority.',
-            'Private drafts stay private. Approvals follow current manager or eligible Business Analytics coverage.',
-            'Existing unsupported role grants are retained for explicit review.',
-          ],
+      change.kind === 'PERSONAL_BASELINE'
+        ? baselineWarnings
+        : change.kind === 'TEMPLATE_FEATURES'
+          ? [
+              ...(endsTemplateFallback
+                ? [
+                    'This first save replaces workspace-wide module availability with template settings. Only modules enabled by a saved matching template will remain available. Existing records are retained.',
+                  ]
+                : []),
+              'A module is available if any matching template enables it. Existing permissions and explicit denies still apply.',
+            ]
+          : [
+              'Membership is separate from reporting and never grants authority.',
+              'Private drafts stay private. Approvals follow current manager or eligible Business Analytics coverage.',
+              'Existing unsupported role grants are retained for explicit review.',
+            ],
   };
 }

@@ -248,6 +248,12 @@ export function BusinessAdministration({
   const baselineEnabled =
     Boolean(employeePermissions && state?.personalBaseline) ||
     (enabledDraft ?? state?.personalBaseline ?? false);
+  const unchangedBaseline =
+    kind === 'PERSONAL_BASELINE' &&
+    baselineEnabled === state?.personalBaseline &&
+    (!employeePermissions ||
+      (employeePermissions.length === state.employeePermissions?.length &&
+        employeePermissions.every(code => state.employeePermissions?.includes(code))));
   const savedModules = state?.templateFeatures?.find(
     features => features.template === featureTemplate,
   );
@@ -260,7 +266,7 @@ export function BusinessAdministration({
   };
   const modulesAvailable = Array.isArray(state?.templateFeatures);
   async function prepare() {
-    if (guard.current || !state) return;
+    if (guard.current || !state || unchangedBaseline) return;
     const isLead = kind === 'RESPONSIBILITY' && bundle === 'CAPABILITY_LEAD';
     if (kind === 'RESPONSIBILITY' && !isLead && until && !Number.isFinite(Date.parse(until))) {
       setError('Enter a valid expiry date and time or leave it blank.');
@@ -1157,7 +1163,7 @@ export function BusinessAdministration({
                   placeholder="Why is this change needed?"
                 />
               </label>
-              <button className="primary-button" disabled={busy}>
+              <button className="primary-button" disabled={busy || unchangedBaseline}>
                 {busy ? 'Checking…' : 'Preview change'}
               </button>
             </form>
